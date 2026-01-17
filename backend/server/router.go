@@ -41,6 +41,7 @@ func (s *Server) setupRoutes() {
 
 	// YouTube routes
 	api.HandleFunc("/youtube/search", handler.SearchYouTube(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)
+	api.HandleFunc("/youtube/videos/{id}", handler.GetYouTubeVideo(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)
 
 	s.addTracingAndMetrics(api)
 }

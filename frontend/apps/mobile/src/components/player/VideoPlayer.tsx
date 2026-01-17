@@ -5,9 +5,10 @@ import { usePlaybackStore } from '../../stores/playbackStore';
 
 interface Props {
     isVisible?: boolean;
+    onEnded?: () => void;
 }
 
-export const VideoPlayer: React.FC<Props> = ({ isVisible = true }) => {
+export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
     const { currentSong, isPlaying, actualPositionMs, setPlaybackState } = usePlaybackStore();
     const playerRef = useRef<any>(null);
     const [isReady, setIsReady] = useState(false);
@@ -52,6 +53,7 @@ export const VideoPlayer: React.FC<Props> = ({ isVisible = true }) => {
                 width="100%"
                 height="100%"
                 onReady={() => setIsReady(true)}
+                onEnded={onEnded}
                 onError={(e: any) => console.error('ReactPlayer error:', e)}
             />
         </View>
