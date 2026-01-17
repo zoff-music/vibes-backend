@@ -1,4 +1,4 @@
-import { View, Text, Pressable, TextInput, Switch, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, Text, Pressable, TextInput, Switch, ScrollView, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
 import { api } from '../../src/api/client';
@@ -46,6 +46,15 @@ export default function CreateRoom() {
         }
 
         if (room) {
+            const createdAt = new Date(room.createdAt);
+            const now = new Date();
+            // If room was created more than 10 seconds ago, it's an existing room
+            const isExisting = now.getTime() - createdAt.getTime() > 10000;
+
+            if (isExisting) {
+                Alert.alert('Welcome', 'That room already exists, welcome!');
+            }
+            
             router.replace(`/room/${room.id}`);
         }
     };

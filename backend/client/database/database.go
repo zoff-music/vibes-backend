@@ -22,20 +22,21 @@ type Client struct {
 	maxQueueLength int
 
 	// Room statements
-	GetRoomStatement    *sql.Stmt
-	CreateRoomStatement *sql.Stmt
+	GetRoomStatement            *sql.Stmt
+	GetRoomByNameStatement      *sql.Stmt
+	CreateRoomStatement         *sql.Stmt
 	CreateRoomSettingsStatement *sql.Stmt
-	UpdateRoomStatement *sql.Stmt
+	UpdateRoomStatement         *sql.Stmt
 	UpdateRoomSettingsStatement *sql.Stmt
 
 	// Song statements
-	GetSongsStatement         *sql.Stmt
-	GetSongStatement          *sql.Stmt
-	AddSongStatement          *sql.Stmt
-	RemoveSongStatement       *sql.Stmt
-	GetMaxPositionStatement   *sql.Stmt
+	GetSongsStatement           *sql.Stmt
+	GetSongStatement            *sql.Stmt
+	AddSongStatement            *sql.Stmt
+	RemoveSongStatement         *sql.Stmt
+	GetMaxPositionStatement     *sql.Stmt
 	UpdateSongPositionStatement *sql.Stmt
-	GetNextSongStatement      *sql.Stmt
+	GetNextSongStatement        *sql.Stmt
 	ShiftPositionsDownStatement *sql.Stmt
 	ShiftPositionsUpStatement   *sql.Stmt
 
@@ -59,6 +60,11 @@ type Client struct {
 	ClearSkipVotesStatement *sql.Stmt
 }
 
+// ... (Init function is unchanged, but I need to make sure I don't overwrite it in ReplaceContent)
+// Wait, I can't just replace the struct and the method in one go if they are far apart.
+// I will do two chunks using multi_replace_file_content since the tool call above is replace_file_content.
+// Actually, I can just use multi_replace for this.
+
 // Init sets up a new database client.
 func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Init")
@@ -76,7 +82,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 
 	// Ensure the directory exists
 	dir := filepath.Dir(cfg.DatabasePath)
-	err := os.MkdirAll(dir, 0755)
+	err := os.MkdirAll(dir, 0o755)
 	if err != nil {
 		return fmt.Errorf("error in db: create data directory: %w", err)
 	}
@@ -130,6 +136,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 func (c *Client) Close() error {
 	statements := []*sql.Stmt{
 		c.GetRoomStatement,
+		c.GetRoomByNameStatement,
 		c.CreateRoomStatement,
 		c.CreateRoomSettingsStatement,
 		c.UpdateRoomStatement,
@@ -187,6 +194,7 @@ func (c *Client) prepareStatements() error {
 	preparedStatements := []prepareStatementFunc{
 		// Room statements
 		c.prepareGetRoomStmt,
+		c.prepareGetRoomByNameStmt,
 		c.prepareCreateRoomStmt,
 		c.prepareCreateRoomSettingsStmt,
 		c.prepareUpdateRoomStmt,

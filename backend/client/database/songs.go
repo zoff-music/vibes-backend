@@ -206,8 +206,9 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 // prepareAddSongStmt prepares the AddSongStatement.
 func (c *Client) prepareAddSongStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO songs (id, room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position)
-		VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+		INSERT INTO songs (room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position)
+		VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+		RETURNING id
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing AddSongStatement: %w", err)
@@ -226,8 +227,9 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.AddSongStatement.ExecContext(cctx,
-		song.ID,
+	var returnedID string
+	err := c.AddSongStatement.QueryRowContext(cctx,
+		// song.ID is removed
 		song.RoomID,
 		string(song.SourceType),
 		song.SourceID,
@@ -239,10 +241,12 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 		song.AddedByNickname,
 		song.AddedAt,
 		song.Position,
-	)
+	).Scan(&returnedID)
 	if err != nil {
 		return nil, fmt.Errorf("error adding song: %w", err)
 	}
+
+	song.ID = returnedID
 
 	return song, nil
 }

@@ -11,7 +11,7 @@ import (
 const schema = `
 -- Rooms table
 CREATE TABLE IF NOT EXISTS rooms (
-	id TEXT PRIMARY KEY,
+	id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
 	name TEXT NOT NULL,
 	admin_password_hash TEXT,
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS room_settings (
 
 -- Songs table (queue items)
 CREATE TABLE IF NOT EXISTS songs (
-	id TEXT PRIMARY KEY,
+	id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
 	room_id TEXT NOT NULL,
 	source_type TEXT NOT NULL,
 	source_id TEXT NOT NULL,
@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS playback_state (
 
 -- Room users table (session tracking)
 CREATE TABLE IF NOT EXISTS room_users (
-	id TEXT PRIMARY KEY,
+	id TEXT PRIMARY KEY DEFAULT (lower(hex(randomblob(4))) || '-' || lower(hex(randomblob(2))) || '-4' || substr(lower(hex(randomblob(2))),2) || '-' || substr('89ab',abs(random()) % 4 + 1, 1) || substr(lower(hex(randomblob(2))),2) || '-' || lower(hex(randomblob(6)))),
 	room_id TEXT NOT NULL,
 	nickname TEXT,
 	is_admin INTEGER DEFAULT 0,

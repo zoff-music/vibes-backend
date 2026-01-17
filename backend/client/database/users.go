@@ -221,8 +221,9 @@ func (r *countUsersInRoomRow) toCount() int {
 // prepareCreateUserStmt prepares the CreateUserStatement.
 func (c *Client) prepareCreateUserStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO room_users (id, room_id, nickname, is_admin, joined_at, last_seen_at)
-		VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+		INSERT INTO room_users (room_id, nickname, is_admin, joined_at, last_seen_at)
+		VALUES (?1, ?2, ?3, ?4, ?5)
+		RETURNING id
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateUserStatement: %w", err)
@@ -246,17 +247,21 @@ func (c *Client) CreateUser(ctx context.Context, user *vibe.User) (*vibe.User, e
 		isAdmin = 1
 	}
 
-	_, err := c.CreateUserStatement.ExecContext(cctx,
-		user.ID,
+	var returnedID string
+
+	err := c.CreateUserStatement.QueryRowContext(cctx,
+		// user.ID is removed
 		user.RoomID,
 		user.Nickname,
 		isAdmin,
 		user.JoinedAt,
 		user.LastSeenAt,
-	)
+	).Scan(&returnedID)
 	if err != nil {
 		return nil, fmt.Errorf("error creating user: %w", err)
 	}
+
+	user.ID = returnedID
 
 	return user, nil
 }
