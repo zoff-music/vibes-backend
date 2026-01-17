@@ -1,12 +1,13 @@
 {
   "name": "vibez",
   "private": true,
+  "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "pnpm --filter @vibez/mobile dev",
-    "dev:web": "pnpm --filter @vibez/mobile dev:web",
-    "build": "pnpm --filter @vibez/mobile build",
-    "typecheck": "pnpm -r typecheck",
-    "lint": "pnpm -r lint",
+    "dev": "bun --filter @vibez/mobile dev",
+    "dev:web": "bun --filter @vibez/mobile dev:web",
+    "build": "bun --filter @vibez/mobile build",
+    "typecheck": "bun run --filter '*' typecheck",
+    "lint": "bun run --filter '*' lint",
     "backend": "cd backend && go run cmd/server/main.go",
     "backend:build": "cd backend && go build -o bin/server cmd/server/main.go"
   },
@@ -14,8 +15,6 @@
     "typescript": "^5.3.0"
   },
   "engines": {
-    "node": ">=18",
-    "pnpm": ">=8"
-  },
-  "packageManager": "pnpm@9.0.0"
+    "node": ">=18"
+  }
 }
