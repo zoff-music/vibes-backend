@@ -14,8 +14,20 @@ CREATE TABLE IF NOT EXISTS rooms (
 	id TEXT PRIMARY KEY,
 	name TEXT NOT NULL,
 	admin_password_hash TEXT,
-	settings_json TEXT NOT NULL DEFAULT '{}',
 	created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Room settings table
+CREATE TABLE IF NOT EXISTS room_settings (
+	room_id TEXT PRIMARY KEY,
+	skip_allowed INTEGER NOT NULL DEFAULT 1,
+	democratic_skip INTEGER NOT NULL DEFAULT 1,
+	skip_vote_threshold REAL NOT NULL DEFAULT 0.5,
+	max_continuous_adds INTEGER NOT NULL DEFAULT 3,
+	remove_on_play INTEGER NOT NULL DEFAULT 1,
+	loop_queue INTEGER NOT NULL DEFAULT 0,
+	allow_duplicates INTEGER NOT NULL DEFAULT 0,
+	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );
 
 -- Songs table (queue items)
