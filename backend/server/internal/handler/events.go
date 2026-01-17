@@ -12,8 +12,10 @@ import (
 )
 
 // RoomEvents handles GET /api/v1/rooms/:id/events (SSE)
+// RoomEvents handles GET /api/v1/rooms/:id/events (SSE)
 func RoomEvents(
 	sb vibe.Subscriber,
+	pf vibe.PlaybackFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -43,6 +45,21 @@ func RoomEvents(
 		// Send initial heartbeat or connection established event
 		fmt.Fprintf(w, "event: connected\ndata: {\"time\": %d}\n\n", time.Now().UnixMilli())
 		flusher.Flush()
+
+		// Send initial playback state
+		state, err := pf.GetPlaybackState(ctx, roomID)
+		if err == nil {
+			// Project position to current time if playing
+			if state.IsPlaying && state.UpdatedAt.Before(time.Now()) {
+				state.PositionMs += time.Since(state.UpdatedAt).Milliseconds()
+				state.UpdatedAt = time.Now()
+			}
+			state.ServerTimeMs = time.Now().UnixMilli()
+
+			data, _ := json.Marshal(state)
+			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.EventTypePlaybackUpdate, data)
+			flusher.Flush()
+		}
 
 		ticker := time.NewTicker(15 * time.Second)
 		defer ticker.Stop()

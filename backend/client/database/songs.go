@@ -42,7 +42,7 @@ func (c *Client) GetSongs(ctx context.Context, roomID string) ([]vibe.Song, erro
 	}
 	defer rows.Close()
 
-	var songs []vibe.Song
+	songs := []vibe.Song{}
 
 	for rows.Next() {
 		var row songRow
@@ -346,32 +346,28 @@ func (c *Client) prepareUpdateSongPositionStmt() error {
 	return nil
 }
 
-// prepareShiftPositionsDownStmt prepares the ShiftPositionsDownStatement.
-func (c *Client) prepareShiftPositionsDownStmt() error {
+// prepareReorderSongsStmt prepares the ReorderSongsStatement.
+func (c *Client) prepareReorderSongsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE songs SET position = position - 1
-		WHERE room_id = ?1 AND position > ?2
+		UPDATE songs
+		SET position = CASE
+			WHEN id = ?1 THEN ?2
+			WHEN ?2 < ?3 AND position >= ?2 AND position < ?3 THEN position + 1
+			WHEN ?2 > ?3 AND position > ?3 AND position <= ?2 THEN position - 1
+			ELSE position
+		END
+		WHERE room_id = ?4
+			AND (
+				id = ?1
+				OR (?2 < ?3 AND position >= ?2 AND position < ?3)
+				OR (?2 > ?3 AND position > ?3 AND position <= ?2)
+			)
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing ShiftPositionsDownStatement: %w", err)
+		return fmt.Errorf("error preparing ReorderSongsStatement: %w", err)
 	}
 
-	c.ShiftPositionsDownStatement = stmt
-
-	return nil
-}
-
-// prepareShiftPositionsUpStmt prepares the ShiftPositionsUpStatement.
-func (c *Client) prepareShiftPositionsUpStmt() error {
-	stmt, err := c.DB.Prepare(`
-		UPDATE songs SET position = position + 1
-		WHERE room_id = ?1 AND position >= ?2 AND position < ?3
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing ShiftPositionsUpStatement: %w", err)
-	}
-
-	c.ShiftPositionsUpStatement = stmt
+	c.ReorderSongsStatement = stmt
 
 	return nil
 }
@@ -399,38 +395,14 @@ func (c *Client) ReorderSongs(ctx context.Context, roomID, songID string, newPos
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	tx, err := c.DB.BeginTx(cctx, nil)
+	_, err = c.ReorderSongsStatement.ExecContext(cctx,
+		songID,
+		newPosition,
+		oldPosition,
+		roomID,
+	)
 	if err != nil {
-		return fmt.Errorf("error beginning transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	if newPosition < oldPosition {
-		// Moving up: shift songs between newPosition and oldPosition down
-		_, err = tx.StmtContext(cctx, c.ShiftPositionsUpStatement).ExecContext(cctx, roomID, newPosition, oldPosition)
-		if err != nil {
-			return fmt.Errorf("error shifting positions up: %w", err)
-		}
-	} else {
-		// Moving down: shift songs between oldPosition and newPosition up
-		_, err = tx.ExecContext(cctx, `
-			UPDATE songs SET position = position - 1
-			WHERE room_id = ?1 AND position > ?2 AND position <= ?3
-		`, roomID, oldPosition, newPosition)
-		if err != nil {
-			return fmt.Errorf("error shifting positions down: %w", err)
-		}
-	}
-
-	// Update the song's position
-	_, err = tx.StmtContext(cctx, c.UpdateSongPositionStatement).ExecContext(cctx, newPosition, roomID, songID)
-	if err != nil {
-		return fmt.Errorf("error updating song position: %w", err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return fmt.Errorf("error committing transaction: %w", err)
+		return fmt.Errorf("error reordering songs: %w", err)
 	}
 
 	return nil

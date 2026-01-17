@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
+	_ "github.com/mattn/go-sqlite3"
 	"github.com/zoff-music/vibes/config"
 	"github.com/zoff-music/vibes/monitoring/opentracing"
-	_ "modernc.org/sqlite"
 )
 
 // Client holds the database client and prepared statements.
@@ -22,12 +22,10 @@ type Client struct {
 	maxQueueLength int
 
 	// Room statements
-	GetRoomStatement            *sql.Stmt
-	GetRoomByNameStatement      *sql.Stmt
-	CreateRoomStatement         *sql.Stmt
-	CreateRoomSettingsStatement *sql.Stmt
-	UpdateRoomStatement         *sql.Stmt
-	UpdateRoomSettingsStatement *sql.Stmt
+	GetRoomStatement       *sql.Stmt
+	GetRoomByNameStatement *sql.Stmt
+	CreateRoomStatement    *sql.Stmt
+	UpdateRoomStatement    *sql.Stmt
 
 	// Song statements
 	GetSongsStatement           *sql.Stmt
@@ -37,8 +35,7 @@ type Client struct {
 	GetMaxPositionStatement     *sql.Stmt
 	UpdateSongPositionStatement *sql.Stmt
 	GetNextSongStatement        *sql.Stmt
-	ShiftPositionsDownStatement *sql.Stmt
-	ShiftPositionsUpStatement   *sql.Stmt
+	ReorderSongsStatement       *sql.Stmt
 
 	// Playback statements
 	GetPlaybackStateStatement    *sql.Stmt
@@ -87,7 +84,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		return fmt.Errorf("error in db: create data directory: %w", err)
 	}
 
-	db, err := sql.Open("sqlite", cfg.DatabasePath)
+	db, err := sql.Open("sqlite3", cfg.DatabasePath)
 	if err != nil {
 		return fmt.Errorf("error in db: open sqlite: %w", err)
 	}
@@ -124,9 +121,129 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		return fmt.Errorf("error in db: migrate schema: %w", err)
 	}
 
-	err = c.prepareStatements()
+	err = c.prepareGetRoomStmt()
 	if err != nil {
-		return fmt.Errorf("error in db: prepare statements: %w", err)
+		return err
+	}
+
+	err = c.prepareGetRoomByNameStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareCreateRoomStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareUpdateRoomStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetSongsStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetSongStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareAddSongStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareRemoveSongStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetMaxPositionStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareUpdateSongPositionStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetNextSongStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareReorderSongsStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetPlaybackStateStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareUpsertPlaybackStateStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetUserStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetUsersInRoomStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareCountUsersInRoomStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareCreateUserStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareUpdateUserLastSeenStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareRemoveUserStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareCleanupInactiveUsersStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetSkipVotesStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareHasUserVotedStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareAddSkipVoteStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareClearSkipVotesStmt()
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -138,9 +255,7 @@ func (c *Client) Close() error {
 		c.GetRoomStatement,
 		c.GetRoomByNameStatement,
 		c.CreateRoomStatement,
-		c.CreateRoomSettingsStatement,
 		c.UpdateRoomStatement,
-		c.UpdateRoomSettingsStatement,
 		c.GetSongsStatement,
 		c.GetSongStatement,
 		c.AddSongStatement,
@@ -148,8 +263,7 @@ func (c *Client) Close() error {
 		c.GetMaxPositionStatement,
 		c.UpdateSongPositionStatement,
 		c.GetNextSongStatement,
-		c.ShiftPositionsDownStatement,
-		c.ShiftPositionsUpStatement,
+		c.ReorderSongsStatement,
 		c.GetPlaybackStateStatement,
 		c.UpsertPlaybackStateStatement,
 		c.GetUserStatement,
@@ -183,55 +297,6 @@ func (c *Client) Close() error {
 	err := c.DB.Close()
 	if err != nil {
 		return fmt.Errorf("error in db: close database: %w", err)
-	}
-
-	return nil
-}
-
-type prepareStatementFunc func() error
-
-func (c *Client) prepareStatements() error {
-	preparedStatements := []prepareStatementFunc{
-		// Room statements
-		c.prepareGetRoomStmt,
-		c.prepareGetRoomByNameStmt,
-		c.prepareCreateRoomStmt,
-		c.prepareCreateRoomSettingsStmt,
-		c.prepareUpdateRoomStmt,
-		c.prepareUpdateRoomSettingsStmt,
-		// Song statements
-		c.prepareGetSongsStmt,
-		c.prepareGetSongStmt,
-		c.prepareAddSongStmt,
-		c.prepareRemoveSongStmt,
-		c.prepareGetMaxPositionStmt,
-		c.prepareUpdateSongPositionStmt,
-		c.prepareGetNextSongStmt,
-		c.prepareShiftPositionsDownStmt,
-		c.prepareShiftPositionsUpStmt,
-		// Playback statements
-		c.prepareGetPlaybackStateStmt,
-		c.prepareUpsertPlaybackStateStmt,
-		// User statements
-		c.prepareGetUserStmt,
-		c.prepareGetUsersInRoomStmt,
-		c.prepareCountUsersInRoomStmt,
-		c.prepareCreateUserStmt,
-		c.prepareUpdateUserLastSeenStmt,
-		c.prepareRemoveUserStmt,
-		c.prepareCleanupInactiveUsersStmt,
-		// Skip vote statements
-		c.prepareGetSkipVotesStmt,
-		c.prepareHasUserVotedStmt,
-		c.prepareAddSkipVoteStmt,
-		c.prepareClearSkipVotesStmt,
-	}
-
-	for _, stmt := range preparedStatements {
-		err := stmt()
-		if err != nil {
-			return fmt.Errorf("error in db: prepare statement: %w", err)
-		}
 	}
 
 	return nil

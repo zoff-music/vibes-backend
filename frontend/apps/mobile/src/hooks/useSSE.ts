@@ -38,7 +38,7 @@ export const useSSE = (roomId: string | undefined) => {
         }
       });
 
-      es.addEventListener('playback:sync', (e) => {
+      es.addEventListener('playback:update', (e) => {
         try {
           const state = JSON.parse(e.data) as PlaybackState;
           setPlaybackState(state);

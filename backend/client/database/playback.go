@@ -60,6 +60,21 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 		return nil, fmt.Errorf("error converting playback state row: %w", err)
 	}
 
+	if state.CurrentSongID != nil {
+		song, err := c.GetSong(ctx, state.RoomID, *state.CurrentSongID)
+		if err != nil {
+			// Log error but don't fail, just return state without song detail
+			// or maybe we should fail?
+			// Let's just return nil song if not found (consistency issue)
+			// For now, logging would be good but we don't have logger here.
+			// Let's return error because consistency is important.
+			// Actually, if song is deleted but playback state references it, that's a DB consistency issue.
+			// We'll ignore the error and return nil song to recover gracefully.
+		} else if !song.IsEmpty() {
+			state.CurrentSong = song
+		}
+	}
+
 	return state, nil
 }
 
