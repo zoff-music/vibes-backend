@@ -33,12 +33,12 @@
 
 ## Build & Run Commands
 
--   Install Dependencies: `bun install`
--   Dev (All): `bun dev`
--   Dev (Mobile): `bun run --filter @vibez/mobile dev:web`
--   Build (Mobile): `bun run --filter @vibez/mobile build`
--   Backend (Manual): `bun backend`
--   Type Check: `bun typecheck`
+-   Install Dependencies: `cd frontend && bun install`
+-   Dev (All): `cd frontend && bun dev`
+-   Dev (Mobile): `cd frontend && bun run --filter @vibez/mobile dev:web`
+-   Build (Mobile): `cd frontend && bun run --filter @vibez/mobile build`
+-   Backend (Manual): `cd frontend && bun backend`
+-   Type Check: `cd frontend && bun typecheck`
 
 ### Monorepo Structure
 ```
@@ -46,7 +46,6 @@ vibez/
 ├── CLAUDE.md                    # This file
 ├── AGENTS.md                    # Coding conventions (from boilerplate)
 ├── TASKS.md                     # Task breakdown and progress
-├── package.json                 # Root workspace config (using bun)
 ├── bunfig.toml                  # Bun workspace config
 ├── docker-compose.yml           # Local dev environment
 │
@@ -81,43 +80,47 @@ vibez/
 │   └── vibe/                   # ALL domain types & interfaces
 │       └── vibe.go             # Room, Song, Playback, User types
 │
-├── apps/
-│   └── mobile/                 # Expo SDK 54 app (React 19)
-│       ├── package.json        # @vibez/mobile
-│       ├── app.json            # Expo config
-│       ├── tsconfig.json
-│       ├── app/                # Expo Router file-based routing
-│       │   ├── _layout.tsx     # Root layout with dark theme
-│       │   ├── index.tsx       # ✅ Home/landing (Create/Join room)
-│       │   └── room/
-│       │       ├── create.tsx  # ✅ Create room screen
-│       │       └── [id]/
-│       │           └── index.tsx # ✅ Room view (placeholder)
-│       │
-│       └── src/                # (To be created)
-│           ├── api/            # API client (fetch or wiretyped)
-│           ├── components/     # Reusable components
-│           │   ├── ui/         # Design system primitives
-│           │   ├── player/     # Video player components
-│           │   └── queue/      # Queue list components
-│           ├── hooks/
-│           │   ├── useRoom.ts
-│           │   ├── useQueue.ts
-│           │   ├── usePlayback.ts
-│           │   └── useSSE.ts   # Server-Sent Events hook
-│           ├── stores/         # Zustand stores
-│           │   ├── roomStore.ts
-│           │   ├── queueStore.ts
-│           │   └── playbackStore.ts
-│           └── utils/
-│               └── wrap.ts     # safeWrap/safeWrapAsync
-│
-└── packages/
-    └── shared/                 # Shared types between frontend/backend
-        ├── package.json
-        └── src/
-            ├── types.ts        # Room, QueueItem, PlaybackState types
-            └── constants.ts    # Shared constants
+├── frontend/
+│   ├── package.json            # Workspace config
+│   ├── bun.lock                # Bun lockfile
+│   ├── tsconfig.json           # Shared TypeScript config
+│   ├── apps/
+│   │   └── mobile/             # Expo SDK 54 app (React 19)
+│   │       ├── package.json    # @vibez/mobile
+│   │       ├── app.json        # Expo config
+│   │       ├── tsconfig.json
+│   │       ├── app/            # Expo Router file-based routing
+│   │       │   ├── _layout.tsx # Root layout with dark theme
+│   │       │   ├── index.tsx   # ✅ Home/landing (Create/Join room)
+│   │       │   └── room/
+│   │       │       ├── create.tsx # ✅ Create room screen
+│   │       │       └── [id]/
+│   │       │           └── index.tsx # ✅ Room view (placeholder)
+│   │       │
+│   │       └── src/            # (To be created)
+│   │           ├── api/        # API client (fetch or wiretyped)
+│   │           ├── components/ # Reusable components
+│   │           │   ├── ui/     # Design system primitives
+│   │           │   ├── player/ # Video player components
+│   │           │   └── queue/  # Queue list components
+│   │           ├── hooks/
+│   │           │   ├── useRoom.ts
+│   │           │   ├── useQueue.ts
+│   │           │   ├── usePlayback.ts
+│   │           │   └── useSSE.ts # Server-Sent Events hook
+│   │           ├── stores/     # Zustand stores
+│   │           │   ├── roomStore.ts
+│   │           │   ├── queueStore.ts
+│   │           │   └── playbackStore.ts
+│   │           └── utils/
+│   │               └── wrap.ts # safeWrap/safeWrapAsync
+│   │
+│   └── packages/
+│       └── shared/             # Shared types between frontend/backend
+│           ├── package.json
+│           └── src/
+│               ├── types.ts    # Room, QueueItem, PlaybackState types
+│               └── constants.ts # Shared constants
 ```
 
 ---
@@ -403,7 +406,7 @@ See `backend/AGENTS.md` - strictly follow:
 - Tracing via middleware only
 
 ### Frontend
-See `apps/mobile/AGENTS.md` - strictly follow:
+See `frontend/apps/mobile/AGENTS.md` - strictly follow:
 - No `any` type
 - No `try/catch` - use `safeWrap`/`safeWrapAsync`
 - Use wiretyped + yup for all network calls

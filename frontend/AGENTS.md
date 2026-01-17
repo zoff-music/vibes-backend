@@ -4,6 +4,13 @@ This document defines strict conventions for frontend work in this repo. Follow 
 
 ---
 
+## 0) Tooling (strict)
+
+- Makefiles are the source of truth for initialization and common workflows; prefer `make` targets over ad hoc commands.
+- Docker/Compose is how we run the project; keep scripts and docs aligned with Docker usage.
+
+---
+
 ## 1) TypeScript rules (strict)
 
 - Do not use the `any` type. Prefer explicit, accurate types and compose them when needed.

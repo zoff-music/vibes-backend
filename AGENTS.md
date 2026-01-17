@@ -7,6 +7,8 @@ This document defines **non-negotiable conventions** for coding agents. Follow i
 ## 0) Non-negotiables (read first)
 
 - **Do not change** the `monitoring/` folder or its contents unless there is a glaring, obvious error (there isn’t).
+- **Makefiles are king** for initialization and common workflows; prefer `make` targets over ad hoc commands.
+- **Docker is how we run this project**; keep scripts and docs aligned with Docker/Compose usage.
 - **Avoid generics** unless they are truly necessary. Prefer explicit, readable types.
 - **We do not use service/repository patterns.** Do not introduce `service.*` or `repository.*` layers/structs as an architecture pattern.
 - **Avoid `New*` constructors** for structs unless strictly necessary (e.g., high reuse of default values, required invariants, or expensive setup that must be centralized). Prefer struct literals.
