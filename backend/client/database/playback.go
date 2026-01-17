@@ -88,7 +88,7 @@ func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
 	}
 
 	if !r.UpdatedAt.Valid {
-		return nil, fmt.Errorf("missing playback_state updated_at")
+		return nil, fmt.Errorf("error missing playback_state updated_at")
 	}
 
 	positionMs := int64(0)

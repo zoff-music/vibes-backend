@@ -320,6 +320,8 @@ if err != nil {
 return &data, nil
 ```
 
+All error messages must start with `error ` and must always be rewrapped (no bare returns).
+
 ### 7.3 `(*T, error)` rules
 - Prefer `(*T, error)` return signatures.
 - On error, return `nil, wrappedErr`.

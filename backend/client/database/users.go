@@ -151,11 +151,11 @@ func (r *userRow) toUser() (*vibe.User, error) {
 	}
 
 	if !r.JoinedAt.Valid {
-		return nil, fmt.Errorf("missing user joined_at")
+		return nil, fmt.Errorf("error missing user joined_at")
 	}
 
 	if !r.LastSeenAt.Valid {
-		return nil, fmt.Errorf("missing user last_seen_at")
+		return nil, fmt.Errorf("error missing user last_seen_at")
 	}
 
 	return &vibe.User{
