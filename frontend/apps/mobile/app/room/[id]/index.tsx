@@ -21,7 +21,7 @@ const colors = {
 
 export default function RoomView() {
     const { id } = useLocalSearchParams<{ id: string }>();
-    const { currentSong } = usePlayback(id as string);
+    const { currentSong, skip } = usePlayback(id as string);
     const { songs, fetchQueue } = useQueue(id as string);
     const { room, fetchRoom, isLoading, error, joinRoom, userId } = useRoom(id as string);
 
@@ -74,7 +74,7 @@ export default function RoomView() {
 
             <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
                 <View style={styles.playerSection}>
-                    <VideoPlayer />
+                    <VideoPlayer onEnded={skip} />
 
                     <View style={styles.nowPlayingInfo}>
                         <Text size="xl" bold numberOfLines={1}>

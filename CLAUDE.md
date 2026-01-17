@@ -391,6 +391,9 @@ DATABASE_PATH=./vibez.db
 
 # Frontend
 EXPO_PUBLIC_API_URL=http://localhost:8080
+
+# External Services
+YOUTUBE_API_KEY= # Required for search/metadata
 ```
 
 ---

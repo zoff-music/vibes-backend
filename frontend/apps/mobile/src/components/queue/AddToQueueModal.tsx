@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Modal, TouchableOpacity, Image } from 'react-native';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Text } from '../ui/Text';
 import { useQueue } from '../../hooks/useQueue';
+import { api } from '../../api/client';
+import { parseISODuration, formatDuration } from '../../utils/time';
 
 interface Props {
     roomId: string;
@@ -15,6 +17,7 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
     const [url, setUrl] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [previewVideo, setPreviewVideo] = useState<any>(null);
     const { addToQueue } = useQueue(roomId);
 
     const extractYoutubeId = (url: string) => {
@@ -23,8 +26,18 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
         return (match && match[2].length === 11) ? match[2] : null;
     };
 
-    const handleAdd = async () => {
+    const fetchVideoDetails = async (id: string) => {
+        const [err, video] = await api.get('/youtube/videos/{id}', { id });
+        if (err || !video) {
+            setError('Failed to fetch video details');
+            return null;
+        }
+        return video;
+    };
+
+    const handlePreview = async () => {
         setError(null);
+        setPreviewVideo(null);
         const id = extractYoutubeId(url);
         if (!id) {
             setError('Invalid YouTube URL');
@@ -32,20 +45,33 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
         }
 
         setIsLoading(true);
-        // For MVP, we'll use some placeholder metadata since we don't have a resolver yet
-        // In a real app, this would be fetched from YouTube API (client or server side)
+        const video = await fetchVideoDetails(id);
+        setIsLoading(false);
+
+        if (video) {
+            setPreviewVideo(video);
+        }
+    };
+
+    const handleAdd = async () => {
+        if (!previewVideo) return;
+
+        setIsLoading(true);
+        const durationSec = parseISODuration(previewVideo.duration || 'PT0S');
+
         const success = await addToQueue(
             'youtube',
-            id,
-            'YouTube Video', // Placeholder title
-            `https://img.youtube.com/vi/${id}/mqdefault.jpg`,
-            300, // Placeholder duration (5 mins)
-            'Unknown Artist'
+            previewVideo.id,
+            previewVideo.title,
+            previewVideo.thumbnailUrl,
+            durationSec,
+            previewVideo.channelTitle
         );
 
         setIsLoading(false);
         if (success) {
             setUrl('');
+            setPreviewVideo(null);
             onClose();
         } else {
             setError('Failed to add song to queue');
@@ -90,10 +116,29 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
                     </View>
 
                     <Button
+                        title="Search"
+                        onPress={handlePreview}
+                        loading={isLoading && !previewVideo}
+                        disabled={!url || (isLoading && !previewVideo)}
+                        variant="secondary"
+                        style={{ marginBottom: 16 }}
+                    />
+
+                    {previewVideo && (
+                        <View style={styles.previewContainer}>
+                            <Image source={{ uri: previewVideo.thumbnailUrl }} style={styles.thumbnail} />
+                            <View style={styles.previewInfo}>
+                                <Text bold numberOfLines={2}>{previewVideo.title}</Text>
+                                <Text size="xs" color="muted">{previewVideo.channelTitle} • {formatDuration(parseISODuration(previewVideo.duration))}</Text>
+                            </View>
+                        </View>
+                    )}
+
+                    <Button
                         title="Add to Queue"
                         onPress={handleAdd}
-                        loading={isLoading}
-                        disabled={!url}
+                        loading={isLoading && !!previewVideo}
+                        disabled={!previewVideo}
                     />
                 </TouchableOpacity>
             </TouchableOpacity>
@@ -123,5 +168,22 @@ const styles = StyleSheet.create({
     },
     tips: {
         marginBottom: 24,
+    },
+    previewContainer: {
+        flexDirection: 'row',
+        backgroundColor: '#1c1c1c',
+        borderRadius: 8,
+        padding: 8,
+        marginBottom: 24,
+        alignItems: 'center',
+    },
+    thumbnail: {
+        width: 80,
+        height: 60,
+        borderRadius: 4,
+        marginRight: 12,
+    },
+    previewInfo: {
+        flex: 1,
     }
 });
