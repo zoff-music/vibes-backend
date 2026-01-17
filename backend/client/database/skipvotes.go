@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -14,7 +15,7 @@ func (c *Client) prepareGetSkipVotesStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT song_id, user_id
 		FROM skip_votes
-		WHERE room_id = ? AND song_id = ?
+		WHERE room_id = ?1 AND song_id = ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSkipVotesStatement: %w", err)
@@ -42,14 +43,14 @@ func (c *Client) GetSkipVotes(ctx context.Context, roomID, songID string) ([]vib
 	var votes []vibe.SkipVote
 
 	for rows.Next() {
-		var vote vibe.SkipVote
+		var row skipVoteRow
 
-		err := rows.Scan(&vote.SongID, &vote.UserID)
+		err := row.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning skip vote row: %w", err)
 		}
 
-		votes = append(votes, vote)
+		votes = append(votes, row.toSkipVote())
 	}
 
 	err = rows.Err()
@@ -64,7 +65,7 @@ func (c *Client) GetSkipVotes(ctx context.Context, roomID, songID string) ([]vib
 func (c *Client) prepareHasUserVotedStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT COUNT(*) FROM skip_votes
-		WHERE room_id = ? AND song_id = ? AND user_id = ?
+		WHERE room_id = ?1 AND song_id = ?2 AND user_id = ?3
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing HasUserVotedStatement: %w", err)
@@ -75,6 +76,35 @@ func (c *Client) prepareHasUserVotedStmt() error {
 	return nil
 }
 
+// --- Internal types and helpers ---
+
+type skipVoteRow struct {
+	SongID string
+	UserID string
+}
+
+func (r *skipVoteRow) scanRows(rows *sql.Rows) error {
+	return rows.Scan(
+		&r.SongID,
+		&r.UserID,
+	)
+}
+
+func (r *skipVoteRow) toSkipVote() vibe.SkipVote {
+	return vibe.SkipVote{
+		SongID: r.SongID,
+		UserID: r.UserID,
+	}
+}
+
+type skipVoteCountRow struct {
+	Count int
+}
+
+func (r *skipVoteCountRow) scan(row *sql.Row) error {
+	return row.Scan(&r.Count)
+}
+
 // HasUserVoted checks if a user has already voted to skip a song.
 func (c *Client) HasUserVoted(ctx context.Context, roomID, songID, userID string) (bool, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "HasUserVoted")
@@ -83,21 +113,23 @@ func (c *Client) HasUserVoted(ctx context.Context, roomID, songID, userID string
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var count int
+	row := c.HasUserVotedStatement.QueryRowContext(cctx, roomID, songID, userID)
 
-	err := c.HasUserVotedStatement.QueryRowContext(cctx, roomID, songID, userID).Scan(&count)
+	var scanned skipVoteCountRow
+
+	err := scanned.scan(row)
 	if err != nil {
 		return false, fmt.Errorf("error checking user vote: %w", err)
 	}
 
-	return count > 0, nil
+	return scanned.Count > 0, nil
 }
 
 // prepareAddSkipVoteStmt prepares the AddSkipVoteStatement.
 func (c *Client) prepareAddSkipVoteStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT OR IGNORE INTO skip_votes (room_id, song_id, user_id)
-		VALUES (?, ?, ?)
+		VALUES (?1, ?2, ?3)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing AddSkipVoteStatement: %w", err)
@@ -127,7 +159,7 @@ func (c *Client) AddSkipVote(ctx context.Context, roomID, songID, userID string)
 // prepareClearSkipVotesStmt prepares the ClearSkipVotesStatement.
 func (c *Client) prepareClearSkipVotesStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM skip_votes WHERE room_id = ? AND song_id = ?
+		DELETE FROM skip_votes WHERE room_id = ?1 AND song_id = ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ClearSkipVotesStatement: %w", err)

@@ -16,7 +16,7 @@ func (c *Client) prepareGetSongsStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id, room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position
 		FROM songs
-		WHERE room_id = ?
+		WHERE room_id = ?1
 		ORDER BY position ASC
 	`)
 	if err != nil {
@@ -47,7 +47,7 @@ func (c *Client) GetSongs(ctx context.Context, roomID string) ([]vibe.Song, erro
 	for rows.Next() {
 		var row songRow
 
-		err := row.scan(rows)
+		err := row.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning song row: %w", err)
 		}
@@ -68,7 +68,7 @@ func (c *Client) prepareGetSongStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id, room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position
 		FROM songs
-		WHERE room_id = ? AND id = ?
+		WHERE room_id = ?1 AND id = ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSongStatement: %w", err)
@@ -87,22 +87,11 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var row songRow
+	row := c.GetSongStatement.QueryRowContext(cctx, roomID, songID)
 
-	err := c.GetSongStatement.QueryRowContext(cctx, roomID, songID).Scan(
-		&row.ID,
-		&row.RoomID,
-		&row.SourceType,
-		&row.SourceID,
-		&row.Title,
-		&row.Artist,
-		&row.ThumbnailURL,
-		&row.Duration,
-		&row.AddedBy,
-		&row.AddedByNickname,
-		&row.AddedAt,
-		&row.Position,
-	)
+	var scanned songRow
+
+	err := scanned.scan(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &vibe.Song{}, nil
@@ -111,7 +100,7 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 		return nil, fmt.Errorf("error fetching song: %w", err)
 	}
 
-	song := row.toSong()
+	song := scanned.toSong()
 
 	return &song, nil
 }
@@ -120,7 +109,7 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 func (c *Client) prepareAddSongStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO songs (id, room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing AddSongStatement: %w", err)
@@ -164,7 +153,7 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 func (c *Client) prepareRemoveSongStmt() error {
 	stmt, err := c.DB.Prepare(`
 		DELETE FROM songs
-		WHERE room_id = ? AND id = ?
+		WHERE room_id = ?1 AND id = ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing RemoveSongStatement: %w", err)
@@ -194,7 +183,7 @@ func (c *Client) RemoveSong(ctx context.Context, roomID, songID string) error {
 // prepareGetMaxPositionStmt prepares the GetMaxPositionStatement.
 func (c *Client) prepareGetMaxPositionStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT COALESCE(MAX(position), -1) FROM songs WHERE room_id = ?
+		SELECT COALESCE(MAX(position), -1) FROM songs WHERE room_id = ?1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetMaxPositionStatement: %w", err)
@@ -213,20 +202,22 @@ func (c *Client) GetMaxPosition(ctx context.Context, roomID string) (int, error)
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var maxPosition int
+	row := c.GetMaxPositionStatement.QueryRowContext(cctx, roomID)
 
-	err := c.GetMaxPositionStatement.QueryRowContext(cctx, roomID).Scan(&maxPosition)
+	var scanned maxPositionRow
+
+	err := scanned.scan(row)
 	if err != nil {
 		return 0, fmt.Errorf("error getting max position: %w", err)
 	}
 
-	return maxPosition, nil
+	return scanned.MaxPosition, nil
 }
 
 // prepareUpdateSongPositionStmt prepares the UpdateSongPositionStatement.
 func (c *Client) prepareUpdateSongPositionStmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE songs SET position = ? WHERE room_id = ? AND id = ?
+		UPDATE songs SET position = ?1 WHERE room_id = ?2 AND id = ?3
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateSongPositionStatement: %w", err)
@@ -241,7 +232,7 @@ func (c *Client) prepareUpdateSongPositionStmt() error {
 func (c *Client) prepareShiftPositionsDownStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE songs SET position = position - 1
-		WHERE room_id = ? AND position > ?
+		WHERE room_id = ?1 AND position > ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ShiftPositionsDownStatement: %w", err)
@@ -256,7 +247,7 @@ func (c *Client) prepareShiftPositionsDownStmt() error {
 func (c *Client) prepareShiftPositionsUpStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE songs SET position = position + 1
-		WHERE room_id = ? AND position >= ? AND position < ?
+		WHERE room_id = ?1 AND position >= ?2 AND position < ?3
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ShiftPositionsUpStatement: %w", err)
@@ -306,7 +297,7 @@ func (c *Client) ReorderSongs(ctx context.Context, roomID, songID string, newPos
 		// Moving down: shift songs between oldPosition and newPosition up
 		_, err = tx.ExecContext(cctx, `
 			UPDATE songs SET position = position - 1
-			WHERE room_id = ? AND position > ? AND position <= ?
+			WHERE room_id = ?1 AND position > ?2 AND position <= ?3
 		`, roomID, oldPosition, newPosition)
 		if err != nil {
 			return fmt.Errorf("error shifting positions down: %w", err)
@@ -332,7 +323,7 @@ func (c *Client) prepareGetNextSongStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id, room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position
 		FROM songs
-		WHERE room_id = ? AND position > ?
+		WHERE room_id = ?1 AND position > ?2
 		ORDER BY position ASC
 		LIMIT 1
 	`)
@@ -353,22 +344,11 @@ func (c *Client) GetNextSong(ctx context.Context, roomID string, currentPosition
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var row songRow
+	row := c.GetNextSongStatement.QueryRowContext(cctx, roomID, currentPosition)
 
-	err := c.GetNextSongStatement.QueryRowContext(cctx, roomID, currentPosition).Scan(
-		&row.ID,
-		&row.RoomID,
-		&row.SourceType,
-		&row.SourceID,
-		&row.Title,
-		&row.Artist,
-		&row.ThumbnailURL,
-		&row.Duration,
-		&row.AddedBy,
-		&row.AddedByNickname,
-		&row.AddedAt,
-		&row.Position,
-	)
+	var scanned songRow
+
+	err := scanned.scan(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &vibe.Song{}, nil
@@ -377,12 +357,20 @@ func (c *Client) GetNextSong(ctx context.Context, roomID string, currentPosition
 		return nil, fmt.Errorf("error getting next song: %w", err)
 	}
 
-	song := row.toSong()
+	song := scanned.toSong()
 
 	return &song, nil
 }
 
 // --- Internal types and helpers ---
+
+type maxPositionRow struct {
+	MaxPosition int
+}
+
+func (r *maxPositionRow) scan(row *sql.Row) error {
+	return row.Scan(&r.MaxPosition)
+}
 
 type songRow struct {
 	ID              string
@@ -399,8 +387,25 @@ type songRow struct {
 	Position        int
 }
 
-func (r *songRow) scan(rows *sql.Rows) error {
+func (r *songRow) scanRows(rows *sql.Rows) error {
 	return rows.Scan(
+		&r.ID,
+		&r.RoomID,
+		&r.SourceType,
+		&r.SourceID,
+		&r.Title,
+		&r.Artist,
+		&r.ThumbnailURL,
+		&r.Duration,
+		&r.AddedBy,
+		&r.AddedByNickname,
+		&r.AddedAt,
+		&r.Position,
+	)
+}
+
+func (r *songRow) scan(row *sql.Row) error {
+	return row.Scan(
 		&r.ID,
 		&r.RoomID,
 		&r.SourceType,

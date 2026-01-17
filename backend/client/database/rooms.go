@@ -17,7 +17,7 @@ func (c *Client) prepareGetRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id, name, admin_password_hash, settings_json, created_at
 		FROM rooms
-		WHERE id = ?
+		WHERE id = ?1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetRoomStatement: %w", err)
@@ -36,15 +36,11 @@ func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var row roomRow
+	row := c.GetRoomStatement.QueryRowContext(cctx, id)
 
-	err := c.GetRoomStatement.QueryRowContext(cctx, id).Scan(
-		&row.ID,
-		&row.Name,
-		&row.AdminPasswordHash,
-		&row.SettingsJSON,
-		&row.CreatedAt,
-	)
+	var scanned roomRow
+
+	err := scanned.scan(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &vibe.Room{}, nil
@@ -53,7 +49,7 @@ func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
 		return nil, fmt.Errorf("error fetching room: %w", err)
 	}
 
-	room, err := row.toRoom()
+	room, err := scanned.toRoom()
 	if err != nil {
 		return nil, fmt.Errorf("error converting room row: %w", err)
 	}
@@ -65,7 +61,7 @@ func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
 func (c *Client) prepareCreateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO rooms (id, name, admin_password_hash, settings_json, created_at)
-		VALUES (?, ?, ?, ?, ?)
+		VALUES (?1, ?2, ?3, ?4, ?5)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRoomStatement: %w", err)
@@ -107,8 +103,8 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 func (c *Client) prepareUpdateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE rooms
-		SET name = ?, admin_password_hash = ?, settings_json = ?
-		WHERE id = ?
+		SET name = ?1, admin_password_hash = ?2, settings_json = ?3
+		WHERE id = ?4
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateRoomStatement: %w", err)
@@ -153,6 +149,16 @@ type roomRow struct {
 	AdminPasswordHash sql.NullString
 	SettingsJSON      string
 	CreatedAt         time.Time
+}
+
+func (r *roomRow) scan(row *sql.Row) error {
+	return row.Scan(
+		&r.ID,
+		&r.Name,
+		&r.AdminPasswordHash,
+		&r.SettingsJSON,
+		&r.CreatedAt,
+	)
 }
 
 func (r *roomRow) toRoom() (*vibe.Room, error) {

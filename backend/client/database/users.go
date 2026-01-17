@@ -16,7 +16,7 @@ func (c *Client) prepareGetUserStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id, room_id, nickname, is_admin, joined_at, last_seen_at
 		FROM room_users
-		WHERE room_id = ? AND id = ?
+		WHERE room_id = ?1 AND id = ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetUserStatement: %w", err)
@@ -35,16 +35,11 @@ func (c *Client) GetUser(ctx context.Context, roomID, userID string) (*vibe.User
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var row userRow
+	row := c.GetUserStatement.QueryRowContext(cctx, roomID, userID)
 
-	err := c.GetUserStatement.QueryRowContext(cctx, roomID, userID).Scan(
-		&row.ID,
-		&row.RoomID,
-		&row.Nickname,
-		&row.IsAdmin,
-		&row.JoinedAt,
-		&row.LastSeenAt,
-	)
+	var scanned userRow
+
+	err := scanned.scan(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &vibe.User{}, nil
@@ -53,7 +48,7 @@ func (c *Client) GetUser(ctx context.Context, roomID, userID string) (*vibe.User
 		return nil, fmt.Errorf("error fetching user: %w", err)
 	}
 
-	user := row.toUser()
+	user := scanned.toUser()
 
 	return &user, nil
 }
@@ -63,7 +58,7 @@ func (c *Client) prepareGetUsersInRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id, room_id, nickname, is_admin, joined_at, last_seen_at
 		FROM room_users
-		WHERE room_id = ?
+		WHERE room_id = ?1
 		ORDER BY joined_at ASC
 	`)
 	if err != nil {
@@ -94,7 +89,7 @@ func (c *Client) GetUsersInRoom(ctx context.Context, roomID string) ([]vibe.User
 	for rows.Next() {
 		var row userRow
 
-		err := row.scan(rows)
+		err := row.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning user row: %w", err)
 		}
@@ -113,7 +108,7 @@ func (c *Client) GetUsersInRoom(ctx context.Context, roomID string) ([]vibe.User
 // prepareCountUsersInRoomStmt prepares the CountUsersInRoomStatement.
 func (c *Client) prepareCountUsersInRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT COUNT(*) FROM room_users WHERE room_id = ?
+		SELECT COUNT(*) FROM room_users WHERE room_id = ?1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CountUsersInRoomStatement: %w", err)
@@ -132,21 +127,23 @@ func (c *Client) CountUsersInRoom(ctx context.Context, roomID string) (int, erro
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var count int
+	row := c.CountUsersInRoomStatement.QueryRowContext(cctx, roomID)
 
-	err := c.CountUsersInRoomStatement.QueryRowContext(cctx, roomID).Scan(&count)
+	var scanned countUsersInRoomRow
+
+	err := scanned.scan(row)
 	if err != nil {
 		return 0, fmt.Errorf("error counting users: %w", err)
 	}
 
-	return count, nil
+	return scanned.Count, nil
 }
 
 // prepareCreateUserStmt prepares the CreateUserStatement.
 func (c *Client) prepareCreateUserStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO room_users (id, room_id, nickname, is_admin, joined_at, last_seen_at)
-		VALUES (?, ?, ?, ?, ?, ?)
+		VALUES (?1, ?2, ?3, ?4, ?5, ?6)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateUserStatement: %w", err)
@@ -188,7 +185,7 @@ func (c *Client) CreateUser(ctx context.Context, user *vibe.User) (*vibe.User, e
 // prepareUpdateUserLastSeenStmt prepares the UpdateUserLastSeenStatement.
 func (c *Client) prepareUpdateUserLastSeenStmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE room_users SET last_seen_at = ? WHERE room_id = ? AND id = ?
+		UPDATE room_users SET last_seen_at = ?1 WHERE room_id = ?2 AND id = ?3
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateUserLastSeenStatement: %w", err)
@@ -218,7 +215,7 @@ func (c *Client) UpdateUserLastSeen(ctx context.Context, roomID, userID string) 
 // prepareRemoveUserStmt prepares the RemoveUserStatement.
 func (c *Client) prepareRemoveUserStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM room_users WHERE room_id = ? AND id = ?
+		DELETE FROM room_users WHERE room_id = ?1 AND id = ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing RemoveUserStatement: %w", err)
@@ -248,7 +245,7 @@ func (c *Client) RemoveUser(ctx context.Context, roomID, userID string) error {
 // prepareCleanupInactiveUsersStmt prepares the CleanupInactiveUsersStatement.
 func (c *Client) prepareCleanupInactiveUsersStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM room_users WHERE room_id = ? AND last_seen_at < ?
+		DELETE FROM room_users WHERE room_id = ?1 AND last_seen_at < ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CleanupInactiveUsersStatement: %w", err)
@@ -279,6 +276,14 @@ func (c *Client) CleanupInactiveUsers(ctx context.Context, roomID string, thresh
 
 // --- Internal types and helpers ---
 
+type countUsersInRoomRow struct {
+	Count int
+}
+
+func (r *countUsersInRoomRow) scan(row *sql.Row) error {
+	return row.Scan(&r.Count)
+}
+
 type userRow struct {
 	ID         string
 	RoomID     string
@@ -288,8 +293,19 @@ type userRow struct {
 	LastSeenAt time.Time
 }
 
-func (r *userRow) scan(rows *sql.Rows) error {
+func (r *userRow) scanRows(rows *sql.Rows) error {
 	return rows.Scan(
+		&r.ID,
+		&r.RoomID,
+		&r.Nickname,
+		&r.IsAdmin,
+		&r.JoinedAt,
+		&r.LastSeenAt,
+	)
+}
+
+func (r *userRow) scan(row *sql.Row) error {
+	return row.Scan(
 		&r.ID,
 		&r.RoomID,
 		&r.Nickname,
