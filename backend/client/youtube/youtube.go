@@ -14,63 +14,73 @@ const (
 	baseURL = "https://www.googleapis.com/youtube/v3"
 )
 
-// Client implements vibe.YouTubeFetcher
+// Client implements vibe.MusicSearcher
 type Client struct {
 	apiKey string
 	client *http.Client
 }
 
-// NewClient creates a new YouTube API client
-func NewClient(apiKey string) *Client {
-	return &Client{
-		apiKey: apiKey,
-		client: &http.Client{},
+// Init initializes the YouTube API client
+func (c *Client) Init(apiKey string) error {
+	if apiKey == "" {
+		return fmt.Errorf("YouTube API key is required")
 	}
+	c.apiKey = apiKey
+	c.client = &http.Client{}
+	return nil
 }
 
 type searchResponse struct {
-	Items []struct {
-		ID struct {
-			VideoID string `json:"videoId"`
-		} `json:"id"`
-		Snippet struct {
-			Title        string `json:"title"`
-			ChannelTitle string `json:"channelTitle"`
-			Thumbnails   struct {
-				Default struct {
-					URL string `json:"url"`
-				} `json:"default"`
-				Medium struct {
-					URL string `json:"url"`
-				} `json:"medium"`
-				High struct {
-					URL string `json:"url"`
-				} `json:"high"`
-			} `json:"thumbnails"`
-		} `json:"snippet"`
-	} `json:"items"`
+	Items []searchItem `json:"items"`
+}
+
+type searchItem struct {
+	ID      searchID      `json:"id"`
+	Snippet searchSnippet `json:"snippet"`
+}
+
+type searchID struct {
+	VideoID string `json:"videoId"`
+}
+
+type searchSnippet struct {
+	Title        string           `json:"title"`
+	ChannelTitle string           `json:"channelTitle"`
+	Thumbnails   searchThumbnails `json:"thumbnails"`
+}
+
+type searchThumbnails struct {
+	Default thumbnail `json:"default"`
+	Medium  thumbnail `json:"medium"`
+	High    thumbnail `json:"high"`
+}
+
+type thumbnail struct {
+	URL string `json:"url"`
 }
 
 type videoResponse struct {
-	Items []struct {
-		ID      string `json:"id"`
-		Snippet struct {
-			Title        string `json:"title"`
-			ChannelTitle string `json:"channelTitle"`
-			Thumbnails   struct {
-				Medium struct {
-					URL string `json:"url"`
-				} `json:"medium"`
-			} `json:"thumbnails"`
-		} `json:"snippet"`
-		ContentDetails struct {
-			Duration string `json:"duration"`
-		} `json:"contentDetails"`
-	} `json:"items"`
+	Items []videoItem `json:"items"`
+}
+
+type videoItem struct {
+	ID             string              `json:"id"`
+	Snippet        videoSnippet        `json:"snippet"`
+	ContentDetails videoContentDetails `json:"contentDetails"`
+}
+
+type videoSnippet struct {
+	Title        string           `json:"title"`
+	ChannelTitle string           `json:"channelTitle"`
+	Thumbnails   searchThumbnails `json:"thumbnails"`
+}
+
+type videoContentDetails struct {
+	Duration string `json:"duration"`
 }
 
 // Search searches for videos on YouTube
-func (c *Client) Search(ctx context.Context, query string) ([]vibe.YouTubeVideo, error) {
+func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, error) {
 	if c.apiKey == "" {
 		return nil, fmt.Errorf("YouTube API key not configured")
 	}
@@ -104,34 +114,35 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.YouTubeVideo,
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	videos := make([]vibe.YouTubeVideo, 0, len(result.Items))
+	tracks := make([]vibe.MusicTrack, 0, len(result.Items))
 	for _, item := range result.Items {
 		// Only include items with a video ID (safety check, though type=video should ensure this)
 		if item.ID.VideoID == "" {
 			continue
 		}
 
-		thumbnail := item.Snippet.Thumbnails.High.URL
-		if thumbnail == "" {
-			thumbnail = item.Snippet.Thumbnails.Medium.URL
+		thmb := item.Snippet.Thumbnails.High.URL
+		if thmb == "" {
+			thmb = item.Snippet.Thumbnails.Medium.URL
 		}
-		if thumbnail == "" {
-			thumbnail = item.Snippet.Thumbnails.Default.URL
+		if thmb == "" {
+			thmb = item.Snippet.Thumbnails.Default.URL
 		}
 
-		videos = append(videos, vibe.YouTubeVideo{
+		tracks = append(tracks, vibe.MusicTrack{
 			ID:           item.ID.VideoID,
+			Source:       vibe.SourceTypeYouTube,
 			Title:        item.Snippet.Title,
 			ChannelTitle: item.Snippet.ChannelTitle,
-			ThumbnailURL: thumbnail,
+			ThumbnailURL: thmb,
 		})
 	}
 
-	return videos, nil
+	return tracks, nil
 }
 
-// GetVideo fetches details for a specific video ID
-func (c *Client) GetVideo(ctx context.Context, id string) (*vibe.YouTubeVideo, error) {
+// GetTrack fetches details for a specific video ID
+func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, error) {
 	if c.apiKey == "" {
 		return nil, fmt.Errorf("YouTube API key not configured")
 	}
@@ -164,12 +175,13 @@ func (c *Client) GetVideo(ctx context.Context, id string) (*vibe.YouTubeVideo, e
 	}
 
 	if len(result.Items) == 0 {
-		return nil, fmt.Errorf("video not found")
+		return nil, fmt.Errorf("track not found")
 	}
 
 	item := result.Items[0]
-	return &vibe.YouTubeVideo{
+	return &vibe.MusicTrack{
 		ID:           item.ID,
+		Source:       vibe.SourceTypeYouTube,
 		Title:        item.Snippet.Title,
 		ChannelTitle: item.Snippet.ChannelTitle,
 		ThumbnailURL: item.Snippet.Thumbnails.Medium.URL,

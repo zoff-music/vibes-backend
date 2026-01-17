@@ -245,19 +245,20 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	}
 	defer tx.Rollback()
 
-	var returnedID string
-
 	// Create room
-	err = tx.StmtContext(cctx, c.CreateRoomStatement).QueryRowContext(cctx,
+	row := tx.StmtContext(cctx, c.CreateRoomStatement).QueryRowContext(cctx,
 		room.Name,
 		room.AdminPasswordHash,
 		room.CreatedAt,
-	).Scan(&returnedID)
+	)
+
+	var scanned createRoomRow
+	err = scanned.scan(row)
 	if err != nil {
 		return nil, fmt.Errorf("error creating room: %w", err)
 	}
 
-	room.ID = returnedID
+	room.ID = scanned.ID.String
 
 	// Create room settings
 	_, err = tx.StmtContext(cctx, c.CreateRoomSettingsStatement).ExecContext(cctx,
@@ -303,6 +304,14 @@ func (c *Client) prepareCreateRoomSettingsStmt() error {
 	c.CreateRoomSettingsStatement = stmt
 
 	return nil
+}
+
+type createRoomRow struct {
+	ID sql.NullString
+}
+
+func (r *createRoomRow) scan(row *sql.Row) error {
+	return row.Scan(&r.ID)
 }
 
 // prepareUpdateRoomStmt prepares the UpdateRoomStatement.
