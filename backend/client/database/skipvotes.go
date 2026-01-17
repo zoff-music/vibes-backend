@@ -61,6 +61,25 @@ func (c *Client) GetSkipVotes(ctx context.Context, roomID, songID string) ([]vib
 	return votes, nil
 }
 
+type skipVoteRow struct {
+	SongID sql.NullString
+	UserID sql.NullString
+}
+
+func (r *skipVoteRow) scanRows(rows *sql.Rows) error {
+	return rows.Scan(
+		&r.SongID,
+		&r.UserID,
+	)
+}
+
+func (r *skipVoteRow) toSkipVote() vibe.SkipVote {
+	return vibe.SkipVote{
+		SongID: r.SongID.String,
+		UserID: r.UserID.String,
+	}
+}
+
 // prepareHasUserVotedStmt prepares the HasUserVotedStatement.
 func (c *Client) prepareHasUserVotedStmt() error {
 	stmt, err := c.DB.Prepare(`
@@ -74,35 +93,6 @@ func (c *Client) prepareHasUserVotedStmt() error {
 	c.HasUserVotedStatement = stmt
 
 	return nil
-}
-
-// --- Internal types and helpers ---
-
-type skipVoteRow struct {
-	SongID string
-	UserID string
-}
-
-func (r *skipVoteRow) scanRows(rows *sql.Rows) error {
-	return rows.Scan(
-		&r.SongID,
-		&r.UserID,
-	)
-}
-
-func (r *skipVoteRow) toSkipVote() vibe.SkipVote {
-	return vibe.SkipVote{
-		SongID: r.SongID,
-		UserID: r.UserID,
-	}
-}
-
-type skipVoteCountRow struct {
-	Count int
-}
-
-func (r *skipVoteCountRow) scan(row *sql.Row) error {
-	return row.Scan(&r.Count)
 }
 
 // HasUserVoted checks if a user has already voted to skip a song.
@@ -122,7 +112,23 @@ func (c *Client) HasUserVoted(ctx context.Context, roomID, songID, userID string
 		return false, fmt.Errorf("error checking user vote: %w", err)
 	}
 
-	return scanned.Count > 0, nil
+	return scanned.toHasUserVoted(), nil
+}
+
+type skipVoteCountRow struct {
+	Count sql.NullInt64
+}
+
+func (r *skipVoteCountRow) scan(row *sql.Row) error {
+	return row.Scan(&r.Count)
+}
+
+func (r *skipVoteCountRow) toHasUserVoted() bool {
+	if !r.Count.Valid {
+		return false
+	}
+
+	return r.Count.Int64 > 0
 }
 
 // prepareAddSkipVoteStmt prepares the AddSkipVoteStatement.

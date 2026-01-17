@@ -57,6 +57,51 @@ func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
 	return room, nil
 }
 
+type roomRow struct {
+	ID                sql.NullString
+	Name              sql.NullString
+	AdminPasswordHash sql.NullString
+	SettingsJSON      sql.NullString
+	CreatedAt         sql.NullTime
+}
+
+func (r *roomRow) scan(row *sql.Row) error {
+	return row.Scan(
+		&r.ID,
+		&r.Name,
+		&r.AdminPasswordHash,
+		&r.SettingsJSON,
+		&r.CreatedAt,
+	)
+}
+
+func (r *roomRow) toRoom() (*vibe.Room, error) {
+	var settings vibe.RoomSettings
+
+	settingsJSON := r.SettingsJSON.String
+	if !r.SettingsJSON.Valid {
+		settingsJSON = "{}"
+	}
+
+	err := json.Unmarshal([]byte(settingsJSON), &settings)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling room settings: %w", err)
+	}
+
+	if !r.CreatedAt.Valid {
+		return nil, fmt.Errorf("missing room created_at")
+	}
+
+	return &vibe.Room{
+		ID:                r.ID.String,
+		Name:              r.Name.String,
+		AdminPasswordHash: r.AdminPasswordHash.String,
+		HasPassword:       r.AdminPasswordHash.Valid && r.AdminPasswordHash.String != "",
+		Settings:          settings,
+		CreatedAt:         r.CreatedAt.Time,
+	}, nil
+}
+
 // prepareCreateRoomStmt prepares the CreateRoomStatement.
 func (c *Client) prepareCreateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
@@ -139,42 +184,4 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	}
 
 	return room, nil
-}
-
-// --- Internal types and helpers ---
-
-type roomRow struct {
-	ID                string
-	Name              string
-	AdminPasswordHash sql.NullString
-	SettingsJSON      string
-	CreatedAt         time.Time
-}
-
-func (r *roomRow) scan(row *sql.Row) error {
-	return row.Scan(
-		&r.ID,
-		&r.Name,
-		&r.AdminPasswordHash,
-		&r.SettingsJSON,
-		&r.CreatedAt,
-	)
-}
-
-func (r *roomRow) toRoom() (*vibe.Room, error) {
-	var settings vibe.RoomSettings
-
-	err := json.Unmarshal([]byte(r.SettingsJSON), &settings)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling room settings: %w", err)
-	}
-
-	return &vibe.Room{
-		ID:                r.ID,
-		Name:              r.Name,
-		AdminPasswordHash: r.AdminPasswordHash.String,
-		HasPassword:       r.AdminPasswordHash.Valid && r.AdminPasswordHash.String != "",
-		Settings:          settings,
-		CreatedAt:         r.CreatedAt,
-	}, nil
 }

@@ -248,6 +248,9 @@ if err != nil {
   - Use `ErrExpected` if you **do** want to retry
 (See section 7.4.)
 
+### 5.4 Database null types
+When representing nullable database columns in row structs, always use `database/sql` null types (`sql.NullString`, `sql.NullInt64`, `sql.NullBool`, etc). Do not use proprietary or custom null wrapper types.
+
 ---
 
 ## 6) Tracing & context timeouts

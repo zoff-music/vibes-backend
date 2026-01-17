@@ -52,7 +52,12 @@ func (c *Client) GetSongs(ctx context.Context, roomID string) ([]vibe.Song, erro
 			return nil, fmt.Errorf("error scanning song row: %w", err)
 		}
 
-		songs = append(songs, row.toSong())
+		song, err := row.toSong()
+		if err != nil {
+			return nil, fmt.Errorf("error converting song row: %w", err)
+		}
+
+		songs = append(songs, *song)
 	}
 
 	err = rows.Err()
@@ -61,6 +66,96 @@ func (c *Client) GetSongs(ctx context.Context, roomID string) ([]vibe.Song, erro
 	}
 
 	return songs, nil
+}
+
+type songRow struct {
+	ID              sql.NullString
+	RoomID          sql.NullString
+	SourceType      sql.NullString
+	SourceID        sql.NullString
+	Title           sql.NullString
+	Artist          sql.NullString
+	ThumbnailURL    sql.NullString
+	Duration        sql.NullInt64
+	AddedBy         sql.NullString
+	AddedByNickname sql.NullString
+	AddedAt         sql.NullTime
+	Position        sql.NullInt64
+}
+
+func (r *songRow) scanRows(rows *sql.Rows) error {
+	return rows.Scan(
+		&r.ID,
+		&r.RoomID,
+		&r.SourceType,
+		&r.SourceID,
+		&r.Title,
+		&r.Artist,
+		&r.ThumbnailURL,
+		&r.Duration,
+		&r.AddedBy,
+		&r.AddedByNickname,
+		&r.AddedAt,
+		&r.Position,
+	)
+}
+
+func (r *songRow) scan(row *sql.Row) error {
+	return row.Scan(
+		&r.ID,
+		&r.RoomID,
+		&r.SourceType,
+		&r.SourceID,
+		&r.Title,
+		&r.Artist,
+		&r.ThumbnailURL,
+		&r.Duration,
+		&r.AddedBy,
+		&r.AddedByNickname,
+		&r.AddedAt,
+		&r.Position,
+	)
+}
+
+func (r *songRow) toSong() (*vibe.Song, error) {
+	var artist *string
+	if r.Artist.Valid {
+		artist = &r.Artist.String
+	}
+
+	var addedByNickname *string
+	if r.AddedByNickname.Valid {
+		addedByNickname = &r.AddedByNickname.String
+	}
+
+	if !r.AddedAt.Valid {
+		return nil, fmt.Errorf("missing song added_at")
+	}
+
+	duration := 0
+	if r.Duration.Valid {
+		duration = int(r.Duration.Int64)
+	}
+
+	position := 0
+	if r.Position.Valid {
+		position = int(r.Position.Int64)
+	}
+
+	return &vibe.Song{
+		ID:              r.ID.String,
+		RoomID:          r.RoomID.String,
+		SourceType:      vibe.SourceType(r.SourceType.String),
+		SourceID:        r.SourceID.String,
+		Title:           r.Title.String,
+		Artist:          artist,
+		ThumbnailURL:    r.ThumbnailURL.String,
+		Duration:        duration,
+		AddedBy:         r.AddedBy.String,
+		AddedByNickname: addedByNickname,
+		AddedAt:         r.AddedAt.Time,
+		Position:        position,
+	}, nil
 }
 
 // prepareGetSongStmt prepares the GetSongStatement.
@@ -100,9 +195,12 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 		return nil, fmt.Errorf("error fetching song: %w", err)
 	}
 
-	song := scanned.toSong()
+	song, err := scanned.toSong()
+	if err != nil {
+		return nil, fmt.Errorf("error converting song row: %w", err)
+	}
 
-	return &song, nil
+	return song, nil
 }
 
 // prepareAddSongStmt prepares the AddSongStatement.
@@ -211,7 +309,23 @@ func (c *Client) GetMaxPosition(ctx context.Context, roomID string) (int, error)
 		return 0, fmt.Errorf("error getting max position: %w", err)
 	}
 
-	return scanned.MaxPosition, nil
+	return scanned.toMaxPosition(), nil
+}
+
+type maxPositionRow struct {
+	MaxPosition sql.NullInt64
+}
+
+func (r *maxPositionRow) scan(row *sql.Row) error {
+	return row.Scan(&r.MaxPosition)
+}
+
+func (r *maxPositionRow) toMaxPosition() int {
+	if !r.MaxPosition.Valid {
+		return 0
+	}
+
+	return int(r.MaxPosition.Int64)
 }
 
 // prepareUpdateSongPositionStmt prepares the UpdateSongPositionStatement.
@@ -357,93 +471,10 @@ func (c *Client) GetNextSong(ctx context.Context, roomID string, currentPosition
 		return nil, fmt.Errorf("error getting next song: %w", err)
 	}
 
-	song := scanned.toSong()
-
-	return &song, nil
-}
-
-// --- Internal types and helpers ---
-
-type maxPositionRow struct {
-	MaxPosition int
-}
-
-func (r *maxPositionRow) scan(row *sql.Row) error {
-	return row.Scan(&r.MaxPosition)
-}
-
-type songRow struct {
-	ID              string
-	RoomID          string
-	SourceType      string
-	SourceID        string
-	Title           string
-	Artist          sql.NullString
-	ThumbnailURL    string
-	Duration        int
-	AddedBy         string
-	AddedByNickname sql.NullString
-	AddedAt         time.Time
-	Position        int
-}
-
-func (r *songRow) scanRows(rows *sql.Rows) error {
-	return rows.Scan(
-		&r.ID,
-		&r.RoomID,
-		&r.SourceType,
-		&r.SourceID,
-		&r.Title,
-		&r.Artist,
-		&r.ThumbnailURL,
-		&r.Duration,
-		&r.AddedBy,
-		&r.AddedByNickname,
-		&r.AddedAt,
-		&r.Position,
-	)
-}
-
-func (r *songRow) scan(row *sql.Row) error {
-	return row.Scan(
-		&r.ID,
-		&r.RoomID,
-		&r.SourceType,
-		&r.SourceID,
-		&r.Title,
-		&r.Artist,
-		&r.ThumbnailURL,
-		&r.Duration,
-		&r.AddedBy,
-		&r.AddedByNickname,
-		&r.AddedAt,
-		&r.Position,
-	)
-}
-
-func (r *songRow) toSong() vibe.Song {
-	var artist *string
-	if r.Artist.Valid {
-		artist = &r.Artist.String
+	song, err := scanned.toSong()
+	if err != nil {
+		return nil, fmt.Errorf("error converting song row: %w", err)
 	}
 
-	var addedByNickname *string
-	if r.AddedByNickname.Valid {
-		addedByNickname = &r.AddedByNickname.String
-	}
-
-	return vibe.Song{
-		ID:              r.ID,
-		RoomID:          r.RoomID,
-		SourceType:      vibe.SourceType(r.SourceType),
-		SourceID:        r.SourceID,
-		Title:           r.Title,
-		Artist:          artist,
-		ThumbnailURL:    r.ThumbnailURL,
-		Duration:        r.Duration,
-		AddedBy:         r.AddedBy,
-		AddedByNickname: addedByNickname,
-		AddedAt:         r.AddedAt,
-		Position:        r.Position,
-	}
+	return song, nil
 }
