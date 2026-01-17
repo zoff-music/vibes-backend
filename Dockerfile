@@ -59,7 +59,7 @@ RUN bun install
 COPY frontend/. .
 
 EXPOSE 19006
-CMD ["bun", "run", "dev:web", "--", "--host", "0.0.0.0", "--port", "19006"]
+CMD ["bun", "run", "dev:web", "--", "--host", "localhost", "--port", "19006"]
 
 # Create production image for application with needed files
 FROM scratch
