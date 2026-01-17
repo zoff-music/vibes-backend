@@ -43,10 +43,10 @@ Detailed implementation tasks for MVP.
 - [x] Create `frontend/apps/mobile/src/utils/wrap.ts` (safeWrap/safeWrapAsync)
 
 ### 1.6 API Client Setup
-- [ ] Create `frontend/apps/mobile/src/api/client.ts` - wiretyped or fetch-based client
-- [ ] Create `frontend/apps/mobile/src/api/schemas/room.ts` (yup schemas)
-- [ ] Create `frontend/apps/mobile/src/api/schemas/songs.ts`
-- [ ] Create `frontend/apps/mobile/src/api/schemas/playback.ts`
+- [x] Create `frontend/apps/mobile/src/api/client.ts` - wiretyped or fetch-based client
+- [x] Create `frontend/apps/mobile/src/api/schemas/room.ts` (yup schemas)
+- [x] Create `frontend/apps/mobile/src/api/schemas/songs.ts`
+- [x] Create `frontend/apps/mobile/src/api/schemas/playback.ts`
 
 
 ---
@@ -122,9 +122,15 @@ Detailed implementation tasks for MVP.
 
 ### 3.5 Route Wiring ✅
 - [x] Update `server/router.go` with all new routes
-- [ ] Add room ID extraction middleware
+- [x] Add room ID extraction middleware
 - [x] Add user session middleware
-- [ ] Add user session middleware
+- [x] Add user session middleware
+
+### 3.6 YouTube Integration ✅
+- [x] YouTube client implementation
+- [x] YouTube search handler
+- [x] YouTube video lookup handler
+- [x] Frontend API client integration
 
 ---
 
@@ -210,21 +216,21 @@ Detailed implementation tasks for MVP.
   - Optimized for TV viewing
 
 ### 5.5 Add to Queue Modal
-- [ ] Create `frontend/apps/mobile/src/components/queue/AddToQueueModal.tsx`:
-  - YouTube URL paste
-  - (Future: search functionality)
-  - Preview before adding
+- [x] Create `frontend/apps/mobile/src/components/queue/AddToQueueModal.tsx`:
+  - [x] YouTube URL paste
+  - [x] (Future: search functionality)
+  - [x] Preview before adding
 
 ---
 
 ## Phase 6: Video Player
 
 ### 6.1 Player Component
-- [ ] Create `frontend/apps/mobile/src/components/player/VideoPlayer.tsx`:
-  - react-player wrapper
-  - YouTube support
-  - Sync to playbackStore position
-  - Handle play/pause/seek events
+- [x] Create `frontend/apps/mobile/src/components/player/VideoPlayer.tsx`:
+  - [x] react-player wrapper
+  - [x] YouTube support
+  - [x] Sync to playbackStore position
+  - [x] Handle play/pause/seek events
 - [ ] Create `frontend/apps/mobile/src/components/player/PlayerControls.tsx`:
   - Play/pause button
   - Progress bar with seek
