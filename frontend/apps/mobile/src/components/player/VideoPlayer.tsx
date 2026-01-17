@@ -1,6 +1,6 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
-import ReactPlayer from 'react-player';
+import YoutubePlayer, { YoutubeIframeRef } from 'react-native-youtube-iframe';
 import { usePlaybackStore } from '../../stores/playbackStore';
 
 interface Props {
@@ -9,52 +9,76 @@ interface Props {
 }
 
 export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
-    const { currentSong, isPlaying, actualPositionMs, setPlaybackState } = usePlaybackStore();
-    const playerRef = useRef<any>(null);
+    const { currentSong, isPlaying } = usePlaybackStore();
+    const playerRef = useRef<YoutubeIframeRef>(null);
     const [isReady, setIsReady] = useState(false);
+    const [layout, setLayout] = useState({ width: 0, height: 0 });
 
-    // Sync position if drift > 2 seconds
+    // Sync position check loop (every 1s)
     useEffect(() => {
-        if (isReady && playerRef.current && isPlaying) {
-            const currentPlayerTime = playerRef.current.getCurrentTime();
-            const targetTime = actualPositionMs / 1000;
+        const interval = setInterval(() => {
+            if (isReady && playerRef.current && isPlaying) {
+                const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
 
-            const drift = Math.abs(currentPlayerTime - targetTime);
-            if (drift > 2) {
-                playerRef.current.seekTo(targetTime, 'seconds');
+                playerRef.current.getCurrentTime().then((currentPlayerTime) => {
+                    const targetTime = actualPositionMs / 1000;
+
+                    const drift = Math.abs(currentPlayerTime - targetTime);
+                    if (drift > 2) {
+                        playerRef.current?.seekTo(targetTime, true);
+                    }
+                }).catch(() => { });
             }
+        }, 1000);
+
+        return () => clearInterval(interval);
+    }, [isReady, isPlaying]);
+
+    const onPlayerReady = useCallback(() => {
+        setIsReady(true);
+    }, []);
+
+    const onStateChange = useCallback((state: string) => {
+        if (state === 'ended') {
+            onEnded?.();
         }
-    }, [actualPositionMs, isReady, isPlaying]);
+    }, [onEnded]);
+
+    const onLayout = useCallback((event: any) => {
+        const { width } = event.nativeEvent.layout;
+        setLayout({ width, height: width * (9 / 16) });
+    }, []);
 
     if (!currentSong) {
         return null;
     }
 
-    const videoUrl = currentSong.sourceType === 'youtube'
-        ? `https://www.youtube.com/watch?v=${currentSong.sourceId}`
-        : '';
+    const videoId = currentSong.sourceType === 'youtube' ? currentSong.sourceId : null;
 
-    if (!videoUrl) return null;
-
-    const Player = ReactPlayer as any;
+    if (!videoId) return null;
 
     return (
-        <View style={[styles.container, !isVisible && styles.hidden]}>
+        <View style={[styles.container, !isVisible && styles.hidden]} onLayout={onLayout}>
             {!isReady && (
                 <View style={styles.loader}>
                     <ActivityIndicator size="large" color="#a855f7" />
                 </View>
             )}
-            <Player
+            <YoutubePlayer
                 ref={playerRef}
-                url={videoUrl}
-                playing={isPlaying}
-                controls={false}
-                width="100%"
-                height="100%"
-                onReady={() => setIsReady(true)}
-                onEnded={onEnded}
-                onError={(e: any) => console.error('ReactPlayer error:', e)}
+                height={layout.height || 220}
+                width={layout.width || 320}
+                videoId={videoId}
+                play={isPlaying}
+                onChangeState={onStateChange}
+                onReady={onPlayerReady}
+                // forceAndroidAutoplay={true}
+                // initialPlayerParams={{
+                //     controls: false, // We want custom controls or no controls?
+                //     modestbranding: true,
+                // }}
+                // removed webViewProps as it caused issues on web
+                contentScale={1}
             />
         </View>
     );
@@ -69,6 +93,7 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         overflow: 'hidden',
         position: 'relative',
+        justifyContent: 'center', // Center the player
     },
     hidden: {
         height: 0,
