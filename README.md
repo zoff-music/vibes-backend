@@ -1,5 +1,8 @@
+# Vibez
 
-**Start here:** read `AGENTS.md`. It is the source of truth for rules on clients, tracing, errors, file structure, and API/subscriber patterns.
+**A collaborative music queue with synchronized playback.**
+
+**Start here:** read `CLAUDE.md` for project overview and architecture. Read `backend/AGENTS.md` for backend coding conventions.
 
 ---
 

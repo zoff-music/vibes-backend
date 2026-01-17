@@ -20,9 +20,10 @@
 ### Stack
 | Layer | Technology | Notes |
 |-------|------------|-------|
-| Frontend | Expo (web-first) + Expo Router + TypeScript | Mobile-first responsive design |
-| Styling | Unistyles v3 | Design tokens: colors, spacing, radii, fonts |
-| Network | wiretyped + yup | Type-safe API calls with validation |
+| Frontend | Expo SDK 54 + React 19 + expo-router 6 + TypeScript | Mobile-first responsive design |
+| Package Manager | Bun | Migrated from pnpm for faster installs |
+| Styling | React Native StyleSheet (plain) | NativeWind pending babel config fixes |
+| Network | fetch or wiretyped + yup | Type-safe API calls with validation |
 | Backend | Go | Following existing AGENTS.md patterns |
 | Database | SQLite | Single-file, easy deployment |
 | Real-time | Server-Sent Events (SSE) via wiretyped | Server pushes state; clients send via HTTP |
@@ -35,8 +36,9 @@
 vibez/
 ├── CLAUDE.md                    # This file
 ├── AGENTS.md                    # Coding conventions (from boilerplate)
-├── package.json                 # Root workspace config
-├── pnpm-workspace.yaml
+├── TASKS.md                     # Task breakdown and progress
+├── package.json                 # Root workspace config (using bun)
+├── bunfig.toml                  # Bun workspace config
 ├── docker-compose.yml           # Local dev environment
 │
 ├── backend/                     # Go backend
@@ -71,48 +73,35 @@ vibez/
 │       └── vibe.go             # Room, Song, Playback, User types
 │
 ├── apps/
-│   └── mobile/                 # Expo app (web-first)
-│       ├── AGENTS.md           # Frontend conventions
-│       ├── package.json
-│       ├── app.json
+│   └── mobile/                 # Expo SDK 54 app (React 19)
+│       ├── package.json        # @vibez/mobile
+│       ├── app.json            # Expo config
 │       ├── tsconfig.json
 │       ├── app/                # Expo Router file-based routing
-│       │   ├── _layout.tsx     # Root layout
-│       │   ├── index.tsx       # Home/landing
-│       │   ├── room/
-│       │   │   ├── [id]/
-│       │   │   │   ├── _layout.tsx
-│       │   │   │   ├── index.tsx      # Main room view
-│       │   │   │   ├── queue.tsx      # Queue management
-│       │   │   │   └── settings.tsx   # Admin settings
-│       │   │   └── create.tsx
-│       │   └── cast/
-│       │       └── [id].tsx    # Cast/TV display mode
-│       └── src/
-│           ├── api/            # wiretyped client & endpoint definitions
-│           │   ├── client.ts
-│           │   ├── endpoints.ts
-│           │   └── schemas/    # yup schemas per endpoint
-│           ├── components/
+│       │   ├── _layout.tsx     # Root layout with dark theme
+│       │   ├── index.tsx       # ✅ Home/landing (Create/Join room)
+│       │   └── room/
+│       │       ├── create.tsx  # ✅ Create room screen
+│       │       └── [id]/
+│       │           └── index.tsx # ✅ Room view (placeholder)
+│       │
+│       └── src/                # (To be created)
+│           ├── api/            # API client (fetch or wiretyped)
+│           ├── components/     # Reusable components
 │           │   ├── ui/         # Design system primitives
 │           │   ├── player/     # Video player components
-│           │   ├── queue/      # Queue list components
-│           │   └── room/       # Room-specific components
+│           │   └── queue/      # Queue list components
 │           ├── hooks/
 │           │   ├── useRoom.ts
 │           │   ├── useQueue.ts
 │           │   ├── usePlayback.ts
-│           │   └── useSSE.ts
-│           ├── stores/         # State management (zustand or context)
-│           ├── styles/         # Unistyles config
-│           │   ├── theme.ts    # Design tokens
-│           │   └── unistyles.ts
-│           ├── utils/
-│           │   └── wrap.ts     # safeWrap/safeWrapAsync
-│           └── addons/         # Plugin system for visualizers, etc.
-│               ├── types.ts
-│               ├── visualizer/
-│               └── shot-timer/
+│           │   └── useSSE.ts   # Server-Sent Events hook
+│           ├── stores/         # Zustand stores
+│           │   ├── roomStore.ts
+│           │   ├── queueStore.ts
+│           │   └── playbackStore.ts
+│           └── utils/
+│               └── wrap.ts     # safeWrap/safeWrapAsync
 │
 └── packages/
     └── shared/                 # Shared types between frontend/backend
