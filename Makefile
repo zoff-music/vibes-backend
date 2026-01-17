@@ -34,10 +34,9 @@ help:
 	@echo "Usage:"
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
 
-## docker: Builds and runs the app via the project dockerfile, importing the .env-file as environment variables.
+## docker: Builds and runs backend + frontend via docker compose.
 docker:
-	docker build --progress=plain -t $(PROJECT_NAME) .
-	docker run --rm --name $(PROJECT_NAME) -p 8000:8000 --env-file .env -it $(PROJECT_NAME)
+	docker compose up --build
 
 ## dev: Runs backend + frontend via docker compose
 dev:
