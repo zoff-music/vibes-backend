@@ -38,7 +38,6 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 	row := c.GetPlaybackStateStatement.QueryRowContext(cctx, roomID)
 
 	var scanned playbackStateRow
-
 	err := scanned.scan(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -56,9 +55,55 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 		return nil, fmt.Errorf("error fetching playback state: %w", err)
 	}
 
-	state := scanned.toPlaybackState()
+	state, err := scanned.toPlaybackState()
+	if err != nil {
+		return nil, fmt.Errorf("error converting playback state row: %w", err)
+	}
 
-	return &state, nil
+	return state, nil
+}
+
+type playbackStateRow struct {
+	RoomID        sql.NullString
+	CurrentSongID sql.NullString
+	IsPlaying     sql.NullInt64
+	PositionMs    sql.NullInt64
+	UpdatedAt     sql.NullTime
+}
+
+func (r *playbackStateRow) scan(row *sql.Row) error {
+	return row.Scan(
+		&r.RoomID,
+		&r.CurrentSongID,
+		&r.IsPlaying,
+		&r.PositionMs,
+		&r.UpdatedAt,
+	)
+}
+
+func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
+	var currentSongID *string
+	if r.CurrentSongID.Valid {
+		currentSongID = &r.CurrentSongID.String
+	}
+
+	if !r.UpdatedAt.Valid {
+		return nil, fmt.Errorf("missing playback_state updated_at")
+	}
+
+	positionMs := int64(0)
+	if r.PositionMs.Valid {
+		positionMs = r.PositionMs.Int64
+	}
+
+	return &vibe.PlaybackState{
+		RoomID:        r.RoomID.String,
+		CurrentSongID: currentSongID,
+		IsPlaying:     r.IsPlaying.Valid && r.IsPlaying.Int64 == 1,
+		PositionMs:    positionMs,
+		UpdatedAt:     r.UpdatedAt.Time,
+		ServerTimeMs:  time.Now().UnixMilli(),
+	}, nil
 }
 
 // prepareUpsertPlaybackStateStmt prepares the UpsertPlaybackStateStatement.
@@ -106,40 +151,4 @@ func (c *Client) UpsertPlaybackState(ctx context.Context, state *vibe.PlaybackSt
 	}
 
 	return nil
-}
-
-// --- Internal types and helpers ---
-
-type playbackStateRow struct {
-	RoomID        string
-	CurrentSongID sql.NullString
-	IsPlaying     int
-	PositionMs    int64
-	UpdatedAt     time.Time
-}
-
-func (r *playbackStateRow) scan(row *sql.Row) error {
-	return row.Scan(
-		&r.RoomID,
-		&r.CurrentSongID,
-		&r.IsPlaying,
-		&r.PositionMs,
-		&r.UpdatedAt,
-	)
-}
-
-func (r *playbackStateRow) toPlaybackState() vibe.PlaybackState {
-	var currentSongID *string
-	if r.CurrentSongID.Valid {
-		currentSongID = &r.CurrentSongID.String
-	}
-
-	return vibe.PlaybackState{
-		RoomID:        r.RoomID,
-		CurrentSongID: currentSongID,
-		IsPlaying:     r.IsPlaying == 1,
-		PositionMs:    r.PositionMs,
-		UpdatedAt:     r.UpdatedAt,
-		ServerTimeMs:  time.Now().UnixMilli(),
-	}
 }

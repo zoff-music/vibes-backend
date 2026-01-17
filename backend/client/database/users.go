@@ -48,9 +48,12 @@ func (c *Client) GetUser(ctx context.Context, roomID, userID string) (*vibe.User
 		return nil, fmt.Errorf("error fetching user: %w", err)
 	}
 
-	user := scanned.toUser()
+	user, err := scanned.toUser()
+	if err != nil {
+		return nil, fmt.Errorf("error converting user row: %w", err)
+	}
 
-	return &user, nil
+	return user, nil
 }
 
 // prepareGetUsersInRoomStmt prepares the GetUsersInRoomStatement.
@@ -94,7 +97,12 @@ func (c *Client) GetUsersInRoom(ctx context.Context, roomID string) ([]vibe.User
 			return nil, fmt.Errorf("error scanning user row: %w", err)
 		}
 
-		users = append(users, row.toUser())
+		user, err := row.toUser()
+		if err != nil {
+			return nil, fmt.Errorf("error converting user row: %w", err)
+		}
+
+		users = append(users, *user)
 	}
 
 	err = rows.Err()
@@ -103,6 +111,61 @@ func (c *Client) GetUsersInRoom(ctx context.Context, roomID string) ([]vibe.User
 	}
 
 	return users, nil
+}
+
+type userRow struct {
+	ID         sql.NullString
+	RoomID     sql.NullString
+	Nickname   sql.NullString
+	IsAdmin    sql.NullInt64
+	JoinedAt   sql.NullTime
+	LastSeenAt sql.NullTime
+}
+
+func (r *userRow) scanRows(rows *sql.Rows) error {
+	return rows.Scan(
+		&r.ID,
+		&r.RoomID,
+		&r.Nickname,
+		&r.IsAdmin,
+		&r.JoinedAt,
+		&r.LastSeenAt,
+	)
+}
+
+func (r *userRow) scan(row *sql.Row) error {
+	return row.Scan(
+		&r.ID,
+		&r.RoomID,
+		&r.Nickname,
+		&r.IsAdmin,
+		&r.JoinedAt,
+		&r.LastSeenAt,
+	)
+}
+
+func (r *userRow) toUser() (*vibe.User, error) {
+	var nickname *string
+	if r.Nickname.Valid {
+		nickname = &r.Nickname.String
+	}
+
+	if !r.JoinedAt.Valid {
+		return nil, fmt.Errorf("missing user joined_at")
+	}
+
+	if !r.LastSeenAt.Valid {
+		return nil, fmt.Errorf("missing user last_seen_at")
+	}
+
+	return &vibe.User{
+		ID:         r.ID.String,
+		RoomID:     r.RoomID.String,
+		Nickname:   nickname,
+		IsAdmin:    r.IsAdmin.Valid && r.IsAdmin.Int64 == 1,
+		JoinedAt:   r.JoinedAt.Time,
+		LastSeenAt: r.LastSeenAt.Time,
+	}, nil
 }
 
 // prepareCountUsersInRoomStmt prepares the CountUsersInRoomStatement.
@@ -136,7 +199,23 @@ func (c *Client) CountUsersInRoom(ctx context.Context, roomID string) (int, erro
 		return 0, fmt.Errorf("error counting users: %w", err)
 	}
 
-	return scanned.Count, nil
+	return scanned.toCount(), nil
+}
+
+type countUsersInRoomRow struct {
+	Count sql.NullInt64
+}
+
+func (r *countUsersInRoomRow) scan(row *sql.Row) error {
+	return row.Scan(&r.Count)
+}
+
+func (r *countUsersInRoomRow) toCount() int {
+	if !r.Count.Valid {
+		return 0
+	}
+
+	return int(r.Count.Int64)
 }
 
 // prepareCreateUserStmt prepares the CreateUserStatement.
@@ -272,61 +351,4 @@ func (c *Client) CleanupInactiveUsers(ctx context.Context, roomID string, thresh
 	}
 
 	return nil
-}
-
-// --- Internal types and helpers ---
-
-type countUsersInRoomRow struct {
-	Count int
-}
-
-func (r *countUsersInRoomRow) scan(row *sql.Row) error {
-	return row.Scan(&r.Count)
-}
-
-type userRow struct {
-	ID         string
-	RoomID     string
-	Nickname   sql.NullString
-	IsAdmin    int
-	JoinedAt   time.Time
-	LastSeenAt time.Time
-}
-
-func (r *userRow) scanRows(rows *sql.Rows) error {
-	return rows.Scan(
-		&r.ID,
-		&r.RoomID,
-		&r.Nickname,
-		&r.IsAdmin,
-		&r.JoinedAt,
-		&r.LastSeenAt,
-	)
-}
-
-func (r *userRow) scan(row *sql.Row) error {
-	return row.Scan(
-		&r.ID,
-		&r.RoomID,
-		&r.Nickname,
-		&r.IsAdmin,
-		&r.JoinedAt,
-		&r.LastSeenAt,
-	)
-}
-
-func (r *userRow) toUser() vibe.User {
-	var nickname *string
-	if r.Nickname.Valid {
-		nickname = &r.Nickname.String
-	}
-
-	return vibe.User{
-		ID:         r.ID,
-		RoomID:     r.RoomID,
-		Nickname:   nickname,
-		IsAdmin:    r.IsAdmin == 1,
-		JoinedAt:   r.JoinedAt,
-		LastSeenAt: r.LastSeenAt,
-	}
 }
