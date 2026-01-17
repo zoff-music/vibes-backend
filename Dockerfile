@@ -8,7 +8,7 @@ RUN cd backend && go mod download
 COPY . .
 
 WORKDIR /go/src/github.com/zoff-music/vibes/backend
-EXPOSE 8000
+EXPOSE 8080
 CMD ["go", "run", "cmd/server/main.go"]
 
 FROM golang:1.25.5 AS backend-builder
@@ -76,7 +76,7 @@ COPY --from=backend-builder /go/src/github.com/zoff-music/vibes/backend/main /ap
 
 USER appuser:appuser
 
-EXPOSE 8000
+EXPOSE 8080
 
 WORKDIR /app
 ENTRYPOINT [ "/app/main" ]

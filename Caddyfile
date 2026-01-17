@@ -1,14 +1,20 @@
 :42069 {
+	handle /api/v1/rooms/*/events {
+		reverse_proxy backend:8080 {
+			flush_interval -1
+		}
+	}
+
 	handle /api/* {
-		reverse_proxy backend:8000
+		reverse_proxy backend:8080
 	}
 
 	handle /metrics {
-		reverse_proxy backend:8000
+		reverse_proxy backend:8080
 	}
 
 	handle /_healthz {
-		reverse_proxy backend:8000
+		reverse_proxy backend:8080
 	}
 
 	handle {

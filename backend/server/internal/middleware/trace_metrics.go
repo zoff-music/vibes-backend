@@ -35,7 +35,7 @@ func (tm *TraceMetrics) MetricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		routeName := mux.CurrentRoute(r).GetName()
 
-		crw := customResponseWriter{ResponseWriter: w}
+		crw := customResponseWriter{ResponseWriter: w, status: http.StatusOK}
 		start := time.Now()
 
 		next.ServeHTTP(&crw, r)
@@ -55,6 +55,15 @@ type customResponseWriter struct {
 func (crw *customResponseWriter) WriteHeader(status int) {
 	crw.status = status
 	crw.ResponseWriter.WriteHeader(status)
+}
+
+func (crw *customResponseWriter) Flush() {
+	flusher, ok := crw.ResponseWriter.(http.Flusher)
+	if !ok {
+		return
+	}
+
+	flusher.Flush()
 }
 
 func initRootSpan(r *http.Request, operationName string) (opentracing.Span, context.Context) {
