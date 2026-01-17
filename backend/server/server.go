@@ -19,13 +19,15 @@ import (
 	"github.com/zoff-music/vibes/config"
 	"github.com/zoff-music/vibes/monitoring/metrics"
 	"github.com/zoff-music/vibes/monitoring/trace"
+	"github.com/zoff-music/vibes/server/internal/event"
 )
 
 // Server holds the HTTP server, router, config and all clients.
 type Server struct {
-	Config *config.Config
-	HTTP   *http.Server
-	Router *mux.Router
+	Config         *config.Config
+	HTTP           *http.Server
+	InternalPubSub *internalpubsub.Client
+	Router         *mux.Router
 }
 
 // Create sets up the HTTP server, router and all clients.
@@ -33,7 +35,13 @@ type Server struct {
 func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	metrics.RegisterPrometheusCollectors()
 
+	var internalpubsubClient internalpubsub.Client
+	if err := internalpubsubClient.Init(); err != nil {
+		return fmt.Errorf("internalpubsub client: %w", err)
+	}
+
 	s.Config = config
+	s.InternalPubSub = &internalpubsubClient
 	s.Router = mux.NewRouter()
 	s.HTTP = &http.Server{
 		Addr:              fmt.Sprintf(":%s", s.Config.Port),
@@ -46,44 +54,67 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	return nil
 }
 
-// Serve tells the server to start listening and serve HTTP requests.
+// Serve starts subscribing for messages.
 // It also makes sure that the server gracefully shuts down on exit.
 // Returns an error if an error occurs.
-func (s *Server) Serve(ctx context.Context) error {
+func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 	closer, err := trace.InitGlobalTracer(s.Config)
 	if err != nil {
-		return fmt.Errorf("init global tracer: %w", err)
+		errc <- err
 	}
 
-	defer func() {
-		err := closer.Close()
-		if err != nil {
-			log.Errorf("error closing global tracer: %s", err.Error())
-		}
-	}()
+	defer closer.Close()
 
-	idleConnsClosed := make(chan struct{}) // this is used to signal that we can not exit
-	go func(ctx context.Context, s *http.Server) {
+	go s.serveHTTP(ctx, errc)
+	go s.subscribeAndListen(ctx, errc)
+
+	log.Info("Ready")
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+	// Block until we receive sigterm or interrupt
+	<-stop
+
+	log.Info("Main server has received a shutdown signal")
+
+	s.shutdown(ctx)
+}
+
+func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
+	go func(ctx context.Context, httpServ *http.Server) {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
 
+		// Block until we receive sigterm or interrupt
 		<-stop
 
-		log.Info("Shutdown signal received")
+		log.Info("HTTP server has received a shutdown signal")
 
-		if err := s.Shutdown(ctx); err != nil {
+		if err := httpServ.Shutdown(ctx); err != nil {
 			log.Error(err.Error())
 		}
-
-		close(idleConnsClosed) // call close to say we can now exit the function
 	}(ctx, s.HTTP)
 
 	log.Infof("Ready at: %s", s.Config.Port)
 
+	// Block until httpServ.Shutdown is called
 	if err := s.HTTP.ListenAndServe(); err != http.ErrServerClosed {
-		return fmt.Errorf("unexpected server error: %w", err)
+		errc <- fmt.Errorf("unexpected server error: %w", err)
+		return
 	}
-	<-idleConnsClosed // this will block until close is called
 
-	return nil
+	log.Info("HTTP server closed")
+}
+
+func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
+	for _, e := range event.GetAppEvents() {
+		go func(e event.AppEvent) {
+			e.SubscribeAndListen(ctx)
+		}(e)
+	}
+}
+
+func (s *Server) shutdown(ctx context.Context) {
+	log.Info("client closed")
 }
