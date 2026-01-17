@@ -39,6 +39,9 @@ func (s *Server) setupRoutes() {
 	// SSE route
 	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub)).Methods(http.MethodGet, http.MethodOptions)
 
+	// YouTube routes
+	api.HandleFunc("/youtube/search", handler.SearchYouTube(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)
+
 	s.addTracingAndMetrics(api)
 }
 
