@@ -27,7 +27,11 @@ func main() {
 		log.WithField("err", err.Error()).Fatal("Server error from s.Create()")
 	}
 
-	if err := s.Serve(ctx); err != nil {
+	errc := make(chan error)
+	go s.Serve(ctx, errc)
+
+	err = <-errc
+	if err != nil {
 		log.WithField("err", err.Error()).Fatal("Server error from s.Serve()")
 	}
 }

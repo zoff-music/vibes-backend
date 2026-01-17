@@ -16,6 +16,8 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"github.com/zoff-music/vibes/client/database"
+	"github.com/zoff-music/vibes/client/internalpubsub"
 	"github.com/zoff-music/vibes/config"
 	"github.com/zoff-music/vibes/monitoring/metrics"
 	"github.com/zoff-music/vibes/monitoring/trace"
@@ -26,6 +28,7 @@ import (
 type Server struct {
 	Config         *config.Config
 	HTTP           *http.Server
+	DB             *database.Client
 	InternalPubSub *internalpubsub.Client
 	Router         *mux.Router
 }
@@ -36,11 +39,19 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	metrics.RegisterPrometheusCollectors()
 
 	var internalpubsubClient internalpubsub.Client
-	if err := internalpubsubClient.Init(); err != nil {
+	err := internalpubsubClient.Init()
+	if err != nil {
 		return fmt.Errorf("internalpubsub client: %w", err)
 	}
 
+	var dbClient database.Client
+	err = dbClient.Init(ctx, config)
+	if err != nil {
+		return fmt.Errorf("database client: %w", err)
+	}
+
 	s.Config = config
+	s.DB = &dbClient
 	s.InternalPubSub = &internalpubsubClient
 	s.Router = mux.NewRouter()
 	s.HTTP = &http.Server{
@@ -116,5 +127,12 @@ func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
 }
 
 func (s *Server) shutdown(ctx context.Context) {
+	if s.DB != nil {
+		err := s.DB.Close()
+		if err != nil {
+			log.Errorf("error closing database: %v", err)
+		}
+	}
+
 	log.Info("client closed")
 }
