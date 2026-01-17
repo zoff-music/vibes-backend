@@ -1,0 +1,7 @@
+{
+    "comment_1": "Insane choice to use json for configuration, but we'll roll with it",
+    "global": {
+        "comment_2": "Exclude G104, which complains if an error is unhandled",
+        "exclude":   "G104"
+    }
+}

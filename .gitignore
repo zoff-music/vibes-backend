@@ -137,3 +137,36 @@ dist
 # Vite logs files
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# Editors
+/.idea/
+*.vim
+/.vscode
+
+# Snyk cache
+.dccache
+
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+main
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Dependency directories (comment below to include vendor)
+vendor/
+
+# Env
+.env
+
+# Apple / MS system files
+.DS_Store
+
+/tag-state
