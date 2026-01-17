@@ -218,9 +218,26 @@ func (r *roomRow) toRoomSettings() (vibe.RoomSettings, error) {
 // prepareCreateRoomStmt prepares the CreateRoomStatement.
 func (c *Client) prepareCreateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO rooms (name, admin_password_hash, created_at)
-		VALUES (?1, ?2, ?3)
-		RETURNING id
+		WITH new_room AS (
+			INSERT INTO rooms (id, name, admin_password_hash, created_at)
+			VALUES (?1, ?2, ?3, ?4)
+			RETURNING id
+		)
+		INSERT INTO room_settings (
+			room_id,
+			skip_allowed,
+			democratic_skip,
+			skip_vote_threshold,
+			max_continuous_adds,
+			remove_on_play,
+			loop_queue,
+			allow_duplicates
+		)
+		SELECT
+			id,
+			?5, ?6, ?7, ?8, ?9, ?10, ?11
+		FROM new_room
+		RETURNING room_id
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRoomStatement: %w", err)
@@ -239,30 +256,12 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	tx, err := c.DB.BeginTx(cctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error beginning create room transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	// Create room
-	row := tx.StmtContext(cctx, c.CreateRoomStatement).QueryRowContext(cctx,
+	// Atomic CTE query
+	row := c.CreateRoomStatement.QueryRowContext(cctx,
+		room.ID,
 		room.Name,
 		room.AdminPasswordHash,
 		room.CreatedAt,
-	)
-
-	var scanned createRoomRow
-	err = scanned.scan(row)
-	if err != nil {
-		return nil, fmt.Errorf("error creating room: %w", err)
-	}
-
-	room.ID = scanned.ID.String
-
-	// Create room settings
-	_, err = tx.StmtContext(cctx, c.CreateRoomSettingsStatement).ExecContext(cctx,
-		room.ID,
 		boolToInt(room.Settings.SkipAllowed),
 		boolToInt(room.Settings.DemocraticSkip),
 		room.Settings.SkipVoteThreshold,
@@ -271,39 +270,14 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		boolToInt(room.Settings.LoopQueue),
 		boolToInt(room.Settings.AllowDuplicates),
 	)
-	if err != nil {
-		return nil, fmt.Errorf("error creating room settings: %w", err)
-	}
 
-	err = tx.Commit()
+	var scanned createRoomRow
+	err := scanned.scan(row)
 	if err != nil {
-		return nil, fmt.Errorf("error committing create room transaction: %w", err)
+		return nil, fmt.Errorf("error creating room: %w", err)
 	}
 
 	return room, nil
-}
-
-// prepareCreateRoomSettingsStmt prepares the CreateRoomSettingsStatement.
-func (c *Client) prepareCreateRoomSettingsStmt() error {
-	stmt, err := c.DB.Prepare(`
-		INSERT INTO room_settings (
-			room_id,
-			skip_allowed,
-			democratic_skip,
-			skip_vote_threshold,
-			max_continuous_adds,
-			remove_on_play,
-			loop_queue,
-			allow_duplicates
-		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing CreateRoomSettingsStatement: %w", err)
-	}
-
-	c.CreateRoomSettingsStatement = stmt
-
-	return nil
 }
 
 type createRoomRow struct {
@@ -317,9 +291,22 @@ func (r *createRoomRow) scan(row *sql.Row) error {
 // prepareUpdateRoomStmt prepares the UpdateRoomStatement.
 func (c *Client) prepareUpdateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE rooms
-		SET name = ?1, admin_password_hash = ?2
-		WHERE id = ?3
+		WITH target AS (
+			UPDATE rooms
+			SET name = ?1, admin_password_hash = ?2
+			WHERE id = ?3
+			RETURNING id
+		)
+		UPDATE room_settings
+		SET
+			skip_allowed = ?4,
+			democratic_skip = ?5,
+			skip_vote_threshold = ?6,
+			max_continuous_adds = ?7,
+			remove_on_play = ?8,
+			loop_queue = ?9,
+			allow_duplicates = ?10
+		WHERE room_id IN (SELECT id FROM target)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateRoomStatement: %w", err)
@@ -338,22 +325,10 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	tx, err := c.DB.BeginTx(cctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error beginning update room transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	_, err = tx.StmtContext(cctx, c.UpdateRoomStatement).ExecContext(cctx,
+	_, err := c.UpdateRoomStatement.ExecContext(cctx,
 		room.Name,
 		room.AdminPasswordHash,
 		room.ID,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error updating room: %w", err)
-	}
-
-	_, err = tx.StmtContext(cctx, c.UpdateRoomSettingsStatement).ExecContext(cctx,
 		boolToInt(room.Settings.SkipAllowed),
 		boolToInt(room.Settings.DemocraticSkip),
 		room.Settings.SkipVoteThreshold,
@@ -361,41 +336,12 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		boolToInt(room.Settings.RemoveOnPlay),
 		boolToInt(room.Settings.LoopQueue),
 		boolToInt(room.Settings.AllowDuplicates),
-		room.ID,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error updating room settings: %w", err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return nil, fmt.Errorf("error committing update room transaction: %w", err)
+		return nil, fmt.Errorf("error updating room: %w", err)
 	}
 
 	return room, nil
-}
-
-// prepareUpdateRoomSettingsStmt prepares the UpdateRoomSettingsStatement.
-func (c *Client) prepareUpdateRoomSettingsStmt() error {
-	stmt, err := c.DB.Prepare(`
-		UPDATE room_settings
-		SET
-			skip_allowed = ?1,
-			democratic_skip = ?2,
-			skip_vote_threshold = ?3,
-			max_continuous_adds = ?4,
-			remove_on_play = ?5,
-			loop_queue = ?6,
-			allow_duplicates = ?7
-		WHERE room_id = ?8
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing UpdateRoomSettingsStatement: %w", err)
-	}
-
-	c.UpdateRoomSettingsStatement = stmt
-
-	return nil
 }
 
 func boolToInt(value bool) int {
