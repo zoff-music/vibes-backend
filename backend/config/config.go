@@ -7,7 +7,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
-	log "github.com/sirupsen/logrus"
 )
 
 // Config contains environment variables.
@@ -31,9 +30,9 @@ type Config struct {
 
 // LoadConfig reads environment variables and populates Config.
 func LoadConfig() (*Config, error) {
-	if err := godotenv.Load(); err != nil {
-		log.Info("No .env file found")
-	}
+	// Try loading from current directory and parent directory (monorepo root)
+	_ = godotenv.Load()
+	_ = godotenv.Load("../.env")
 
 	var c Config
 
