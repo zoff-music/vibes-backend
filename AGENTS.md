@@ -460,6 +460,7 @@ Abbreviations for dependencies should be representative:
 - Do not use the `any` type. Prefer explicit, accurate types and compose them when needed.
 - Do not use `@ts-ignore` or `@ts-nocheck`. Fix the type error or adjust types instead.
 - Do not use `try {}`/`catch {}`. Use `safeWrap`/`safeWrapAsync` from `frontend/src/utils/wrap.ts` for error capture and propagation.
+- Use `wiretyped` instead of raw `fetch` and `EventSource`, always. With `wiretyped` you should also always spec up full schema validation with `yup`. Don't skip out on speccing it up.
 
 ---
 
