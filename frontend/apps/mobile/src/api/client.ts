@@ -5,7 +5,7 @@ import { playbackStateSchema, roomActionRequestSchema } from './schemas/playback
 import { sessionResponseSchema, createSessionRequestSchema } from './schemas/session';
 import { emptyObjectSchema } from './schemas/common';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:42069';
+const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
 const API_BASE_PATH = '/api/v1';
 
 const endpoints = {
