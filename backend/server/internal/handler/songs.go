@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes/vibe"
 )
@@ -48,6 +49,7 @@ func AddSong(
 
 		artist := req.Artist
 		song := &vibe.Song{
+			ID:           uuid.New().String(),
 			RoomID:       roomID,
 			SourceType:   req.SourceType,
 			SourceID:     req.SourceID,
