@@ -11,20 +11,6 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type CreateRoomRequest struct {
-	Name     string `json:"name"`
-	Password string `json:"password,omitempty"`
-}
-
-type UpdateRoomRequest struct {
-	Settings vibe.RoomSettings `json:"settings"`
-}
-
-type CreateSessionRequest struct {
-	Nickname string `json:"nickname,omitempty"`
-	Password string `json:"password,omitempty"`
-}
-
 // CreateRoom handles POST /api/v1/rooms
 func CreateRoom(
 	rc vibe.RoomCreator,
@@ -32,7 +18,7 @@ func CreateRoom(
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		var req CreateRoomRequest
+		var req vibe.CreateRoomRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
@@ -101,7 +87,6 @@ func GetRoom(
 
 // UpdateRoom handles PATCH /api/v1/rooms/:id
 func UpdateRoom(
-	rf vibe.RoomFetcher,
 	ru vibe.RoomUpdater,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -112,14 +97,14 @@ func UpdateRoom(
 		// TODO: Implement admin authorization check
 		// For now, we assume the user is authorized if they are an admin in their session
 
-		var req UpdateRoomRequest
+		var req vibe.UpdateRoomRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
 			return
 		}
 
-		room, err := rf.GetRoom(ctx, roomID)
+		room, err := ru.GetRoom(ctx, roomID)
 		if err != nil {
 			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
 			return
@@ -144,22 +129,21 @@ func UpdateRoom(
 
 // CreateSession handles POST /api/v1/rooms/:id/sessions
 func CreateSession(
-	rf vibe.RoomFetcher,
-	um vibe.UserManager,
+	sc vibe.SessionCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		vars := mux.Vars(r)
 		roomID := vars["id"]
 
-		var req CreateSessionRequest
+		var req vibe.CreateSessionRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
 			return
 		}
 
-		room, err := rf.GetRoom(ctx, roomID)
+		room, err := sc.GetRoom(ctx, roomID)
 		if err != nil {
 			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
 			return
@@ -186,7 +170,7 @@ func CreateSession(
 			LastSeenAt: time.Now(),
 		}
 
-		createdUser, err := um.CreateUser(ctx, user)
+		createdUser, err := sc.CreateUser(ctx, user)
 		if err != nil {
 			handleError(w, fmt.Errorf("failed to create session: %w", err), http.StatusInternalServerError, true)
 			return

@@ -1,4 +1,4 @@
-.PHONY: build install server test help docker godoc gosec govulncheck ci-lint
+.PHONY: build install server test help docker dev dev-down gosec govulncheck ci-lint
 
 PROJECT_NAME=$(shell basename $(CURDIR))
 BACKEND_DIR=backend
@@ -38,6 +38,14 @@ help:
 docker:
 	docker build --progress=plain -t $(PROJECT_NAME) .
 	docker run --rm --name $(PROJECT_NAME) -p 8000:8000 --env-file .env -it $(PROJECT_NAME)
+
+## dev: Runs backend + frontend via docker compose
+dev:
+	docker compose up --build
+
+## dev-down: Stops docker compose services
+dev-down:
+	docker compose down
 
 ## gosec: Runs gosec
 gosec:

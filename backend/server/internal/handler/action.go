@@ -11,20 +11,9 @@ import (
 	"github.com/zoff-music/vibes/vibe"
 )
 
-type RoomActionRequest struct {
-	Action     vibe.RoomAction `json:"action"`
-	PositionMs int64           `json:"positionMs,omitempty"`
-}
-
 // RoomAction handles POST /api/v1/rooms/:id
 func RoomAction(
-	rf vibe.RoomFetcher,
-	pc vibe.PlaybackController,
-	pf vibe.PlaybackFetcher,
-	sm vibe.SongsModifier,
-	svf vibe.SkipVoteFetcher,
-	svm vibe.SkipVoteManager,
-	uf vibe.UserFetcher,
+	ra vibe.RoomActioner,
 	eb vibe.RoomEventBroadcaster,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +21,7 @@ func RoomAction(
 		vars := mux.Vars(r)
 		roomID := vars["id"]
 
-		var req RoomActionRequest
+		var req vibe.RoomActionRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
@@ -41,7 +30,7 @@ func RoomAction(
 
 		userID := r.Header.Get("X-User-ID")
 
-		state, err := pf.GetPlaybackState(ctx, roomID)
+		state, err := ra.GetPlaybackState(ctx, roomID)
 		if err != nil {
 			handleError(w, fmt.Errorf("failed to fetch playback state: %w", err), http.StatusInternalServerError, true)
 			return
@@ -51,19 +40,19 @@ func RoomAction(
 		case vibe.RoomActionPlay:
 			state.IsPlaying = true
 			state.UpdatedAt = time.Now()
-			err = pc.UpsertPlaybackState(ctx, state)
+			err = ra.UpsertPlaybackState(ctx, state)
 		case vibe.RoomActionPause:
 			state.IsPlaying = false
 			state.UpdatedAt = time.Now()
-			err = pc.UpsertPlaybackState(ctx, state)
+			err = ra.UpsertPlaybackState(ctx, state)
 		case vibe.RoomActionSeek:
 			state.PositionMs = req.PositionMs
 			state.UpdatedAt = time.Now()
-			err = pc.UpsertPlaybackState(ctx, state)
+			err = ra.UpsertPlaybackState(ctx, state)
 		case vibe.RoomActionSkip:
-			err = skipToNextSong(ctx, roomID, state, sm, pc)
+			err = skipToNextSong(ctx, roomID, state, ra, ra)
 		case vibe.RoomActionVote:
-			err = handleVote(ctx, roomID, userID, state, rf, svf, svm, sm, pc, uf)
+			err = handleVote(ctx, roomID, userID, state, ra, ra, ra, ra, ra, ra)
 		default:
 			handleError(w, fmt.Errorf("invalid action: %s", req.Action), http.StatusBadRequest, false)
 			return
