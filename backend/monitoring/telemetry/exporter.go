@@ -24,6 +24,10 @@ type ExporterWithLogging struct {
 }
 
 func (d *ExporterWithLogging) ExportSpans(ctx context.Context, spans []sdktrace.ReadOnlySpan) error {
+	if d.traceExporter == nil {
+		return nil
+	}
+
 	err := d.traceExporter.ExportSpans(ctx, spans)
 	if err != nil {
 		log.WithError(err).Errorf("Failed to export %d spans", len(spans))
@@ -38,12 +42,21 @@ func (d *ExporterWithLogging) ExportSpans(ctx context.Context, spans []sdktrace.
 }
 
 func (d *ExporterWithLogging) Shutdown(ctx context.Context) error {
+	if d.traceExporter == nil {
+		return nil
+	}
+
 	return d.traceExporter.Shutdown(ctx)
 }
 
 func (d *ExporterWithLogging) Init(ctx context.Context) error {
 	if d.Timeout == 0 {
 		d.Timeout = 100 * time.Millisecond
+	}
+
+	if d.Endpoint == "" {
+		d.traceExporter = noopSpanExporter{}
+		return nil
 	}
 
 	options := []otlptracegrpc.Option{
@@ -62,6 +75,16 @@ func (d *ExporterWithLogging) Init(ctx context.Context) error {
 	}
 
 	d.traceExporter = exporter
+	return nil
+}
+
+type noopSpanExporter struct{}
+
+func (noopSpanExporter) ExportSpans(context.Context, []sdktrace.ReadOnlySpan) error {
+	return nil
+}
+
+func (noopSpanExporter) Shutdown(context.Context) error {
 	return nil
 }
 
