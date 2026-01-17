@@ -1,10 +1,12 @@
-// Package database contains a SQLite client for lab.
+// Package database contains a SQLite client for Vibes.
 package database
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/zoff-music/vibes/config"
@@ -16,7 +18,43 @@ import (
 type Client struct {
 	DB *sql.DB
 
-	maxNameLength int
+	maxNameLength  int
+	maxQueueLength int
+
+	// Room statements
+	GetRoomStatement    *sql.Stmt
+	CreateRoomStatement *sql.Stmt
+	UpdateRoomStatement *sql.Stmt
+
+	// Song statements
+	GetSongsStatement         *sql.Stmt
+	GetSongStatement          *sql.Stmt
+	AddSongStatement          *sql.Stmt
+	RemoveSongStatement       *sql.Stmt
+	GetMaxPositionStatement   *sql.Stmt
+	UpdateSongPositionStatement *sql.Stmt
+	GetNextSongStatement      *sql.Stmt
+	ShiftPositionsDownStatement *sql.Stmt
+	ShiftPositionsUpStatement   *sql.Stmt
+
+	// Playback statements
+	GetPlaybackStateStatement    *sql.Stmt
+	UpsertPlaybackStateStatement *sql.Stmt
+
+	// User statements
+	GetUserStatement              *sql.Stmt
+	GetUsersInRoomStatement       *sql.Stmt
+	CountUsersInRoomStatement     *sql.Stmt
+	CreateUserStatement           *sql.Stmt
+	UpdateUserLastSeenStatement   *sql.Stmt
+	RemoveUserStatement           *sql.Stmt
+	CleanupInactiveUsersStatement *sql.Stmt
+
+	// Skip vote statements
+	GetSkipVotesStatement   *sql.Stmt
+	HasUserVotedStatement   *sql.Stmt
+	AddSkipVoteStatement    *sql.Stmt
+	ClearSkipVotesStatement *sql.Stmt
 }
 
 // Init sets up a new database client.
@@ -24,16 +62,28 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "Init")
 	defer span.Finish()
 
-	maxNameLength := cfg.MaxNameLength
-	if maxNameLength == 0 {
-		maxNameLength = 40
+	c.maxNameLength = cfg.MaxNameLength
+	if c.maxNameLength == 0 {
+		c.maxNameLength = 100
 	}
-	c.maxNameLength = maxNameLength
 
-	db, err := sql.Open("sqlite", cfg.HighscoreDB)
+	c.maxQueueLength = cfg.MaxQueueLength
+	if c.maxQueueLength == 0 {
+		c.maxQueueLength = 200
+	}
+
+	// Ensure the directory exists
+	dir := filepath.Dir(cfg.DatabasePath)
+	err := os.MkdirAll(dir, 0755)
+	if err != nil {
+		return fmt.Errorf("error in db: create data directory: %w", err)
+	}
+
+	db, err := sql.Open("sqlite", cfg.DatabasePath)
 	if err != nil {
 		return fmt.Errorf("error in db: open sqlite: %w", err)
 	}
+
 	db.SetConnMaxLifetime(30 * time.Minute)
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
@@ -44,11 +94,19 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	if err != nil {
 		return fmt.Errorf("error in db: set journal_mode: %w", err)
 	}
+
 	cctx, cancel = context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	_, err = db.ExecContext(cctx, "PRAGMA synchronous = NORMAL;")
 	if err != nil {
 		return fmt.Errorf("error in db: set synchronous: %w", err)
+	}
+
+	cctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	_, err = db.ExecContext(cctx, "PRAGMA foreign_keys = ON;")
+	if err != nil {
+		return fmt.Errorf("error in db: enable foreign keys: %w", err)
 	}
 
 	c.DB = db
@@ -68,11 +126,39 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 
 // Close closes the database connection and statements.
 func (c *Client) Close() error {
-	statements := []*sql.Stmt{}
+	statements := []*sql.Stmt{
+		c.GetRoomStatement,
+		c.CreateRoomStatement,
+		c.UpdateRoomStatement,
+		c.GetSongsStatement,
+		c.GetSongStatement,
+		c.AddSongStatement,
+		c.RemoveSongStatement,
+		c.GetMaxPositionStatement,
+		c.UpdateSongPositionStatement,
+		c.GetNextSongStatement,
+		c.ShiftPositionsDownStatement,
+		c.ShiftPositionsUpStatement,
+		c.GetPlaybackStateStatement,
+		c.UpsertPlaybackStateStatement,
+		c.GetUserStatement,
+		c.GetUsersInRoomStatement,
+		c.CountUsersInRoomStatement,
+		c.CreateUserStatement,
+		c.UpdateUserLastSeenStatement,
+		c.RemoveUserStatement,
+		c.CleanupInactiveUsersStatement,
+		c.GetSkipVotesStatement,
+		c.HasUserVotedStatement,
+		c.AddSkipVoteStatement,
+		c.ClearSkipVotesStatement,
+	}
+
 	for _, stmt := range statements {
 		if stmt == nil {
 			continue
 		}
+
 		err := stmt.Close()
 		if err != nil {
 			return fmt.Errorf("error in db: close statement: %w", err)
@@ -82,17 +168,50 @@ func (c *Client) Close() error {
 	if c.DB == nil {
 		return nil
 	}
+
 	err := c.DB.Close()
 	if err != nil {
 		return fmt.Errorf("error in db: close database: %w", err)
 	}
+
 	return nil
 }
 
 type prepareStatementFunc func() error
 
 func (c *Client) prepareStatements() error {
-	preparedStatements := []prepareStatementFunc{}
+	preparedStatements := []prepareStatementFunc{
+		// Room statements
+		c.prepareGetRoomStmt,
+		c.prepareCreateRoomStmt,
+		c.prepareUpdateRoomStmt,
+		// Song statements
+		c.prepareGetSongsStmt,
+		c.prepareGetSongStmt,
+		c.prepareAddSongStmt,
+		c.prepareRemoveSongStmt,
+		c.prepareGetMaxPositionStmt,
+		c.prepareUpdateSongPositionStmt,
+		c.prepareGetNextSongStmt,
+		c.prepareShiftPositionsDownStmt,
+		c.prepareShiftPositionsUpStmt,
+		// Playback statements
+		c.prepareGetPlaybackStateStmt,
+		c.prepareUpsertPlaybackStateStmt,
+		// User statements
+		c.prepareGetUserStmt,
+		c.prepareGetUsersInRoomStmt,
+		c.prepareCountUsersInRoomStmt,
+		c.prepareCreateUserStmt,
+		c.prepareUpdateUserLastSeenStmt,
+		c.prepareRemoveUserStmt,
+		c.prepareCleanupInactiveUsersStmt,
+		// Skip vote statements
+		c.prepareGetSkipVotesStmt,
+		c.prepareHasUserVotedStmt,
+		c.prepareAddSkipVoteStmt,
+		c.prepareClearSkipVotesStmt,
+	}
 
 	for _, stmt := range preparedStatements {
 		err := stmt()
@@ -100,5 +219,6 @@ func (c *Client) prepareStatements() error {
 			return fmt.Errorf("error in db: prepare statement: %w", err)
 		}
 	}
+
 	return nil
 }

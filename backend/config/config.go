@@ -12,19 +12,20 @@ import (
 
 // Config contains environment variables.
 type Config struct {
-	Port                       string        `envconfig:"PORT" default:"8000"`
-	OtelEndpoint               string        `envconfig:"OTEL_ENDPOINT" required:"true"`
-	OtelSamplerParam           float64       `envconfig:"OTEL_SAMPLER_PARAM" default:"1"`
-	OtelExporterTimeout        time.Duration `envconfig:"OTEL_EXPORTER_TIMEOUT" default:"1s"` // GRPC timeout for span export requests
-	OtelBatchInterval          time.Duration `envconfig:"OTEL_BATCH_INTERVAL" default:"5s"`   // Maximum interval for batching spans
-	OtelBatchSize              int           `envconfig:"OTEL_BATCH_SIZE" default:"512"`      // Maximum number of spans in a batch
-	DatabasePassword           string        `envconfig:"DATABASE_PASSWORD" required:"true"`
-	DatabaseUser               string        `envconfig:"DATABASE_USER" required:"true"`
-	DatabaseDB                 string        `envconfig:"DATABASE_DB" default:"postgres"`
-	DatabaseOptions            string        `envconfig:"DATABASE_OPTIONS" default:"sslmode=disable"`
-	DatabaseMaxConnections     int           `envconfig:"DATABASE_MAX_CONNECTIONS" default:"200"`
-	DatabaseMaxIdleConnections int           `envconfig:"DATABASE_MAX_IDLE_CONNECTIONS" default:"50"`
-	DatabaseMaxIdleTimeMinutes int           `envconfig:"DATABASE_MAX_IDLE_TIME_MINUTES" default:"5"`
+	Port                string        `envconfig:"PORT" default:"8080"`
+	OtelEndpoint        string        `envconfig:"OTEL_ENDPOINT" default:""`
+	OtelSamplerParam    float64       `envconfig:"OTEL_SAMPLER_PARAM" default:"1"`
+	OtelExporterTimeout time.Duration `envconfig:"OTEL_EXPORTER_TIMEOUT" default:"1s"`
+	OtelBatchInterval   time.Duration `envconfig:"OTEL_BATCH_INTERVAL" default:"5s"`
+	OtelBatchSize       int           `envconfig:"OTEL_BATCH_SIZE" default:"512"`
+
+	// SQLite configuration
+	DatabasePath   string `envconfig:"DATABASE_PATH" default:"./data/vibes.db"`
+	MaxNameLength  int    `envconfig:"MAX_NAME_LENGTH" default:"100"`
+	MaxQueueLength int    `envconfig:"MAX_QUEUE_LENGTH" default:"200"`
+
+	// User session settings
+	UserInactivityTimeout time.Duration `envconfig:"USER_INACTIVITY_TIMEOUT" default:"30m"`
 }
 
 // LoadConfig reads environment variables and populates Config.

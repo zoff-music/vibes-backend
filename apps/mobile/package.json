@@ -1,0 +1,37 @@
+{
+  "name": "@vibez/mobile",
+  "version": "0.0.1",
+  "private": true,
+  "main": "expo-router/entry",
+  "scripts": {
+    "dev": "expo start",
+    "dev:web": "expo start --web",
+    "android": "expo start --android",
+    "ios": "expo start --ios",
+    "build": "expo export --platform web",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@vibez/shared": "workspace:*",
+    "expo": "~52.0.0",
+    "expo-router": "~4.0.0",
+    "expo-status-bar": "~2.0.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-native": "0.76.0",
+    "react-native-web": "~0.19.13",
+    "react-native-safe-area-context": "4.14.0",
+    "react-native-screens": "~4.4.0",
+    "react-native-unistyles": "^3.0.0-alpha.1",
+    "react-player": "^2.16.0",
+    "wiretyped": "^0.7.0",
+    "yup": "^1.4.0",
+    "zustand": "^5.0.0"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.24.0",
+    "@types/react": "~18.3.0",
+    "typescript": "^5.3.0"
+  }
+}
