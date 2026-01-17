@@ -5,7 +5,7 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/zoff-music/cibes/client"
+	"github.com/zoff-music/vibes/client"
 
 	log "github.com/sirupsen/logrus"
 )

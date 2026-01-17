@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/cibes/client"
-	"github.com/zoff-music/cibes/example"
-	"github.com/zoff-music/cibes/monitoring/opentracing"
 	"net/http"
+
+	"github.com/zoff-music/vibes/client"
+	"github.com/zoff-music/vibes/example"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 )
 
 // GetExampleData gets example data from the example api.

@@ -4,10 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/zoff-music/cibes/example"
-	"github.com/zoff-music/cibes/monitoring/opentracing"
-	"github.com/jmoiron/sqlx"
 	"time"
+
+	"github.com/jmoiron/sqlx"
+	"github.com/zoff-music/vibes/example"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 )
 
 func (c *Client) prepareRecordExampleDataStmt() error {

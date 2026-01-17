@@ -25,7 +25,7 @@ RUN go install "golang.org/x/vuln/cmd/govulncheck@latest"
 ENV GOSEC_VERSION="v2.22.10"
 RUN curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(go env GOPATH)/bin "${GOSEC_VERSION}"
 
-WORKDIR /go/src/github.com/zoff-music/cibes
+WORKDIR /go/src/github.com/zoff-music/vibes
 
 COPY . .
 
@@ -44,7 +44,7 @@ COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
 # Copy binary from builder
-COPY --from=builder /go/src/github.com/zoff-music/cibes/main /app/main
+COPY --from=builder /go/src/github.com/zoff-music/vibes/main /app/main
 
 USER appuser:appuser
 

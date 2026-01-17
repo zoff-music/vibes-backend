@@ -14,12 +14,12 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/zoff-music/cibes/client/api"
-	"github.com/zoff-music/cibes/config"
-	"github.com/zoff-music/cibes/monitoring/metrics"
-	"github.com/zoff-music/cibes/monitoring/trace"
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
+	"github.com/zoff-music/vibes/client/api"
+	"github.com/zoff-music/vibes/config"
+	"github.com/zoff-music/vibes/monitoring/metrics"
+	"github.com/zoff-music/vibes/monitoring/trace"
 )
 
 // Server holds the HTTP server, router, config and all clients.
