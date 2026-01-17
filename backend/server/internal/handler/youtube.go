@@ -9,9 +9,9 @@ import (
 	"github.com/zoff-music/vibes/vibe"
 )
 
-// SearchYouTube handles GET /api/v1/youtube/search
-func SearchYouTube(
-	yf vibe.YouTubeFetcher,
+// SearchMusic handles GET /api/v1/search (originally youtube/search)
+func SearchMusic(
+	ms vibe.MusicSearcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -22,20 +22,27 @@ func SearchYouTube(
 			return
 		}
 
-		videos, err := yf.Search(ctx, query)
+		tracks, err := ms.Search(ctx, query)
 		if err != nil {
 			handleError(w, fmt.Errorf("search failed: %w", err), http.StatusInternalServerError, true)
 			return
 		}
 
+		body, err := json.Marshal(tracks)
+		if err != nil {
+			handleError(w, fmt.Errorf("search music: marshal response: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(videos)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
 	}
 }
 
-// GetYouTubeVideo handles GET /api/v1/youtube/videos/:id
-func GetYouTubeVideo(
-	yf vibe.YouTubeFetcher,
+// GetMusicTrack handles GET /api/v1/tracks/:id
+func GetMusicTrack(
+	ms vibe.MusicSearcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -43,17 +50,24 @@ func GetYouTubeVideo(
 		id := vars["id"]
 
 		if id == "" {
-			handleError(w, fmt.Errorf("missing video id"), http.StatusBadRequest, true)
+			handleError(w, fmt.Errorf("missing track id"), http.StatusBadRequest, true)
 			return
 		}
 
-		video, err := yf.GetVideo(ctx, id)
+		track, err := ms.GetTrack(ctx, id)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to get video: %w", err), http.StatusInternalServerError, true)
+			handleError(w, fmt.Errorf("failed to get track: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+
+		body, err := json.Marshal(track)
+		if err != nil {
+			handleError(w, fmt.Errorf("get music track: marshal response: %w", err), http.StatusInternalServerError, true)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(video)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
 	}
 }

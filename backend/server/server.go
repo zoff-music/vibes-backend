@@ -52,12 +52,16 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("database client: %w", err)
 	}
 
-	youtubeClient := youtube.NewClient(config.YouTubeAPIKey)
+	var youtubeClient youtube.Client
+	err = youtubeClient.Init(config.YouTubeAPIKey)
+	if err != nil {
+		return fmt.Errorf("youtube client: %w", err)
+	}
 
 	s.Config = config
 	s.DB = &dbClient
 	s.InternalPubSub = &internalpubsubClient
-	s.YouTube = youtubeClient
+	s.YouTube = &youtubeClient
 	s.Router = mux.NewRouter()
 	s.HTTP = &http.Server{
 		Addr:              fmt.Sprintf(":%s", s.Config.Port),

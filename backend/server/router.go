@@ -40,8 +40,9 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub)).Methods(http.MethodGet, http.MethodOptions)
 
 	// YouTube routes
-	api.HandleFunc("/youtube/search", handler.SearchYouTube(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)
-	api.HandleFunc("/youtube/videos/{id}", handler.GetYouTubeVideo(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)
+	// YouTube routes
+	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)
+	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)
 
 	s.addTracingAndMetrics(api)
 }
