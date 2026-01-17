@@ -1,9 +1,11 @@
 .PHONY: build install server test help docker godoc gosec govulncheck ci-lint
 
 PROJECT_NAME=$(shell basename $(CURDIR))
+BACKEND_DIR=backend
 
 ## build: build the application
 build:
+	cd $(BACKEND_DIR) && \
 	go mod download; \
 	go mod vendor; \
 	CGO_ENABLED=0 \
@@ -13,15 +15,18 @@ build:
 
 ## install: fetches go modules
 install:
+	cd $(BACKEND_DIR) && \
 	go mod tidy; \
 	go mod download
 
 ## server: runs the server with -race
 server:
+	cd $(BACKEND_DIR) && \
 	go run -race cmd/server/main.go
 
 ## test: runs tests
 test:
+	cd $(BACKEND_DIR) && \
 	go test -race ./...
 
 ## help: prints help message
@@ -36,8 +41,8 @@ docker:
 
 ## gosec: Runs gosec
 gosec:
-	@echo "Running gosec:" && gosec -conf gosec-config.json ./...
+	@echo "Running gosec:" && cd $(BACKEND_DIR) && gosec -conf ../gosec-config.json ./...
 
 ## govulncheck: Runs govulncheck
 govulncheck:
-	@echo "Running govulncheck:" && govulncheck ./...
+	@echo "Running govulncheck:" && cd $(BACKEND_DIR) && govulncheck ./...
