@@ -3,7 +3,6 @@ package database
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -15,9 +14,21 @@ import (
 // prepareGetRoomStmt prepares the GetRoomStatement.
 func (c *Client) prepareGetRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT id, name, admin_password_hash, settings_json, created_at
+		SELECT
+			rooms.id,
+			rooms.name,
+			rooms.admin_password_hash,
+			rooms.created_at,
+			room_settings.skip_allowed,
+			room_settings.democratic_skip,
+			room_settings.skip_vote_threshold,
+			room_settings.max_continuous_adds,
+			room_settings.remove_on_play,
+			room_settings.loop_queue,
+			room_settings.allow_duplicates
 		FROM rooms
-		WHERE id = ?1
+		JOIN room_settings ON room_settings.room_id = rooms.id
+		WHERE rooms.id = ?1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetRoomStatement: %w", err)
@@ -61,8 +72,14 @@ type roomRow struct {
 	ID                sql.NullString
 	Name              sql.NullString
 	AdminPasswordHash sql.NullString
-	SettingsJSON      sql.NullString
 	CreatedAt         sql.NullTime
+	SkipAllowed       sql.NullInt64
+	DemocraticSkip    sql.NullInt64
+	SkipVoteThreshold sql.NullFloat64
+	MaxContinuousAdds sql.NullInt64
+	RemoveOnPlay      sql.NullInt64
+	LoopQueue         sql.NullInt64
+	AllowDuplicates   sql.NullInt64
 }
 
 func (r *roomRow) scan(row *sql.Row) error {
@@ -70,26 +87,25 @@ func (r *roomRow) scan(row *sql.Row) error {
 		&r.ID,
 		&r.Name,
 		&r.AdminPasswordHash,
-		&r.SettingsJSON,
 		&r.CreatedAt,
+		&r.SkipAllowed,
+		&r.DemocraticSkip,
+		&r.SkipVoteThreshold,
+		&r.MaxContinuousAdds,
+		&r.RemoveOnPlay,
+		&r.LoopQueue,
+		&r.AllowDuplicates,
 	)
 }
 
 func (r *roomRow) toRoom() (*vibe.Room, error) {
-	var settings vibe.RoomSettings
-
-	settingsJSON := r.SettingsJSON.String
-	if !r.SettingsJSON.Valid {
-		settingsJSON = "{}"
-	}
-
-	err := json.Unmarshal([]byte(settingsJSON), &settings)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling room settings: %w", err)
-	}
-
 	if !r.CreatedAt.Valid {
 		return nil, fmt.Errorf("error missing room created_at")
+	}
+
+	settings, err := r.toRoomSettings()
+	if err != nil {
+		return nil, fmt.Errorf("error converting room settings: %w", err)
 	}
 
 	return &vibe.Room{
@@ -102,11 +118,51 @@ func (r *roomRow) toRoom() (*vibe.Room, error) {
 	}, nil
 }
 
+func (r *roomRow) toRoomSettings() (vibe.RoomSettings, error) {
+	if !r.SkipAllowed.Valid {
+		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings skip_allowed")
+	}
+
+	if !r.DemocraticSkip.Valid {
+		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings democratic_skip")
+	}
+
+	if !r.SkipVoteThreshold.Valid {
+		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings skip_vote_threshold")
+	}
+
+	if !r.MaxContinuousAdds.Valid {
+		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings max_continuous_adds")
+	}
+
+	if !r.RemoveOnPlay.Valid {
+		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings remove_on_play")
+	}
+
+	if !r.LoopQueue.Valid {
+		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings loop_queue")
+	}
+
+	if !r.AllowDuplicates.Valid {
+		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings allow_duplicates")
+	}
+
+	return vibe.RoomSettings{
+		SkipAllowed:       r.SkipAllowed.Int64 == 1,
+		DemocraticSkip:    r.DemocraticSkip.Int64 == 1,
+		SkipVoteThreshold: r.SkipVoteThreshold.Float64,
+		MaxContinuousAdds: int(r.MaxContinuousAdds.Int64),
+		RemoveOnPlay:      r.RemoveOnPlay.Int64 == 1,
+		LoopQueue:         r.LoopQueue.Int64 == 1,
+		AllowDuplicates:   r.AllowDuplicates.Int64 == 1,
+	}, nil
+}
+
 // prepareCreateRoomStmt prepares the CreateRoomStatement.
 func (c *Client) prepareCreateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO rooms (id, name, admin_password_hash, settings_json, created_at)
-		VALUES (?1, ?2, ?3, ?4, ?5)
+		INSERT INTO rooms (id, name, admin_password_hash, created_at)
+		VALUES (?1, ?2, ?3, ?4)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRoomStatement: %w", err)
@@ -125,31 +181,73 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	settingsJSON, err := json.Marshal(room.Settings)
+	tx, err := c.DB.BeginTx(cctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling room settings: %w", err)
+		return nil, fmt.Errorf("error beginning create room transaction: %w", err)
 	}
+	defer tx.Rollback()
 
-	_, err = c.CreateRoomStatement.ExecContext(cctx,
+	_, err = tx.StmtContext(cctx, c.CreateRoomStatement).ExecContext(cctx,
 		room.ID,
 		room.Name,
 		room.AdminPasswordHash,
-		string(settingsJSON),
 		room.CreatedAt,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating room: %w", err)
 	}
 
+	_, err = tx.StmtContext(cctx, c.CreateRoomSettingsStatement).ExecContext(cctx,
+		room.ID,
+		boolToInt(room.Settings.SkipAllowed),
+		boolToInt(room.Settings.DemocraticSkip),
+		room.Settings.SkipVoteThreshold,
+		room.Settings.MaxContinuousAdds,
+		boolToInt(room.Settings.RemoveOnPlay),
+		boolToInt(room.Settings.LoopQueue),
+		boolToInt(room.Settings.AllowDuplicates),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error creating room settings: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, fmt.Errorf("error committing create room transaction: %w", err)
+	}
+
 	return room, nil
+}
+
+// prepareCreateRoomSettingsStmt prepares the CreateRoomSettingsStatement.
+func (c *Client) prepareCreateRoomSettingsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		INSERT INTO room_settings (
+			room_id,
+			skip_allowed,
+			democratic_skip,
+			skip_vote_threshold,
+			max_continuous_adds,
+			remove_on_play,
+			loop_queue,
+			allow_duplicates
+		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing CreateRoomSettingsStatement: %w", err)
+	}
+
+	c.CreateRoomSettingsStatement = stmt
+
+	return nil
 }
 
 // prepareUpdateRoomStmt prepares the UpdateRoomStatement.
 func (c *Client) prepareUpdateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE rooms
-		SET name = ?1, admin_password_hash = ?2, settings_json = ?3
-		WHERE id = ?4
+		SET name = ?1, admin_password_hash = ?2
+		WHERE id = ?3
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateRoomStatement: %w", err)
@@ -168,20 +266,70 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	settingsJSON, err := json.Marshal(room.Settings)
+	tx, err := c.DB.BeginTx(cctx, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling room settings: %w", err)
+		return nil, fmt.Errorf("error beginning update room transaction: %w", err)
 	}
+	defer tx.Rollback()
 
-	_, err = c.UpdateRoomStatement.ExecContext(cctx,
+	_, err = tx.StmtContext(cctx, c.UpdateRoomStatement).ExecContext(cctx,
 		room.Name,
 		room.AdminPasswordHash,
-		string(settingsJSON),
 		room.ID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error updating room: %w", err)
 	}
 
+	_, err = tx.StmtContext(cctx, c.UpdateRoomSettingsStatement).ExecContext(cctx,
+		boolToInt(room.Settings.SkipAllowed),
+		boolToInt(room.Settings.DemocraticSkip),
+		room.Settings.SkipVoteThreshold,
+		room.Settings.MaxContinuousAdds,
+		boolToInt(room.Settings.RemoveOnPlay),
+		boolToInt(room.Settings.LoopQueue),
+		boolToInt(room.Settings.AllowDuplicates),
+		room.ID,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error updating room settings: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, fmt.Errorf("error committing update room transaction: %w", err)
+	}
+
 	return room, nil
+}
+
+// prepareUpdateRoomSettingsStmt prepares the UpdateRoomSettingsStatement.
+func (c *Client) prepareUpdateRoomSettingsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE room_settings
+		SET
+			skip_allowed = ?1,
+			democratic_skip = ?2,
+			skip_vote_threshold = ?3,
+			max_continuous_adds = ?4,
+			remove_on_play = ?5,
+			loop_queue = ?6,
+			allow_duplicates = ?7
+		WHERE room_id = ?8
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing UpdateRoomSettingsStatement: %w", err)
+	}
+
+	c.UpdateRoomSettingsStatement = stmt
+
+	return nil
+}
+
+func boolToInt(value bool) int {
+	if value {
+		return 1
+	}
+
+	return 0
 }
