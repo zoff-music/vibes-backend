@@ -34,6 +34,21 @@ const (
 	SourceTypeSoundCloud SourceType = "soundcloud"
 )
 
+// YouTubeVideo represents a YouTube video search result
+type YouTubeVideo struct {
+	ID           string `json:"id"`
+	Title        string `json:"title"`
+	ChannelTitle string `json:"channelTitle"`
+	ThumbnailURL string `json:"thumbnailUrl"`
+	Duration     string `json:"duration,omitempty"` // ISO 8601 duration
+}
+
+// YouTubeFetcher searches for YouTube videos
+type YouTubeFetcher interface {
+	Search(ctx context.Context, query string) ([]YouTubeVideo, error)
+	GetVideo(ctx context.Context, id string) (*YouTubeVideo, error)
+}
+
 // RoomSettings holds configuration for a room
 type RoomSettings struct {
 	SkipAllowed       bool    `json:"skipAllowed"`

@@ -23,6 +23,7 @@ type Config struct {
 	DatabasePath   string `envconfig:"DATABASE_PATH" default:"./data/vibes.db"`
 	MaxNameLength  int    `envconfig:"MAX_NAME_LENGTH" default:"100"`
 	MaxQueueLength int    `envconfig:"MAX_QUEUE_LENGTH" default:"200"`
+	YouTubeAPIKey  string `envconfig:"YOUTUBE_API_KEY" default:""`
 
 	// User session settings
 	UserInactivityTimeout time.Duration `envconfig:"USER_INACTIVITY_TIMEOUT" default:"30m"`

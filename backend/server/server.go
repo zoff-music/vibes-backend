@@ -18,6 +18,7 @@ import (
 	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/client/database"
 	"github.com/zoff-music/vibes/client/internalpubsub"
+	"github.com/zoff-music/vibes/client/youtube"
 	"github.com/zoff-music/vibes/config"
 	"github.com/zoff-music/vibes/monitoring/metrics"
 	"github.com/zoff-music/vibes/monitoring/trace"
@@ -30,6 +31,7 @@ type Server struct {
 	HTTP           *http.Server
 	DB             *database.Client
 	InternalPubSub *internalpubsub.Client
+	YouTube        *youtube.Client
 	Router         *mux.Router
 }
 
@@ -50,9 +52,12 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("database client: %w", err)
 	}
 
+	youtubeClient := youtube.NewClient(config.YouTubeAPIKey)
+
 	s.Config = config
 	s.DB = &dbClient
 	s.InternalPubSub = &internalpubsubClient
+	s.YouTube = youtubeClient
 	s.Router = mux.NewRouter()
 	s.HTTP = &http.Server{
 		Addr:              fmt.Sprintf(":%s", s.Config.Port),
