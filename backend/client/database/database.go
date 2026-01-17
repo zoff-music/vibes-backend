@@ -1,85 +1,66 @@
-// Package database contains a Postgres client and methods for communicating with the database.
+// Package database contains a SQLite client for lab.
 package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"net"
 	"time"
 
-	"cloud.google.com/go/cloudsqlconn"
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
 	"github.com/zoff-music/vibes/config"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
+	_ "modernc.org/sqlite"
 )
 
 // Client holds the database client and prepared statements.
 type Client struct {
-	DB                         *sqlx.DB
-	CloudSQLDialer             *cloudsqlconn.Dialer
-	PgxPool                    *pgxpool.Pool
-	GetExampleDataStatement    *sqlx.Stmt
-	RecordExampleDataStatement *sqlx.Stmt
+	DB *sql.DB
+
+	maxNameLength int
 }
 
-type prepareStatementFunc func() error
-
 // Init sets up a new database client.
-func (c *Client) Init(ctx context.Context, config *config.Config) error {
-	dsn := fmt.Sprintf("user=%s password=%s dbname=%s %s",
-		config.DatabaseUser, config.DatabasePassword,
-		config.DatabaseDB, config.DatabaseOptions)
-	pgxConf, err := pgxpool.ParseConfig(dsn)
+func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Init")
+	defer span.Finish()
+
+	maxNameLength := cfg.MaxNameLength
+	if maxNameLength == 0 {
+		maxNameLength = 40
+	}
+	c.maxNameLength = maxNameLength
+
+	db, err := sql.Open("sqlite", cfg.HighscoreDB)
 	if err != nil {
-		return fmt.Errorf("failed to parse PGX DSN: %w", err)
+		return fmt.Errorf("error in db: open sqlite: %w", err)
 	}
+	db.SetConnMaxLifetime(30 * time.Minute)
+	db.SetMaxOpenConns(1)
+	db.SetMaxIdleConns(1)
 
-	pgxConf.MaxConns = int32(config.DatabaseMaxConnections) // #nosec G115 - There's no way this setting will ever go beyond an int32 max value
-	pgxConf.MaxConnIdleTime = time.Minute * time.Duration(config.DatabaseMaxIdleTimeMinutes)
-
-	dialer, err := cloudsqlconn.NewDialer(ctx, cloudsqlconn.WithDefaultDialOptions(
-		cloudsqlconn.WithPrivateIP(), // default to private IP, since we're using Private Services Access
-	))
+	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	_, err = db.ExecContext(cctx, "PRAGMA journal_mode = WAL;")
 	if err != nil {
-		return fmt.Errorf("failed to create cloudsql dialer: %w", err)
+		return fmt.Errorf("error in db: set journal_mode: %w", err)
 	}
-	c.CloudSQLDialer = dialer
-
-	pgxConf.ConnConfig.DialFunc = func(ctx context.Context, _ string, _ string) (net.Conn, error) {
-		return dialer.Dial(ctx, config.CloudSQLInstance)
-	}
-
-	pool, err := pgxpool.NewWithConfig(ctx, pgxConf)
+	cctx, cancel = context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	_, err = db.ExecContext(cctx, "PRAGMA synchronous = NORMAL;")
 	if err != nil {
-		return fmt.Errorf("failed to create PGX pool: %w", err)
+		return fmt.Errorf("error in db: set synchronous: %w", err)
 	}
-	c.PgxPool = pool
-
-	sqlDB := stdlib.OpenDBFromPool(pool)
-	db := sqlx.NewDb(sqlDB, "pgx")
-
-	err = db.Ping()
-	if err != nil {
-		return fmt.Errorf("failed to ping database: %w", err)
-	}
-
-	db.SetMaxOpenConns(config.DatabaseMaxConnections)
-	db.SetMaxIdleConns(config.DatabaseMaxIdleConnections)
-	db.SetConnMaxIdleTime(time.Minute * time.Duration(config.DatabaseMaxIdleTimeMinutes))
 
 	c.DB = db
 
-	preparedStatements := []prepareStatementFunc{
-		c.prepareGetExampleDataStmt,
-		c.prepareRecordExampleDataStmt,
+	err = c.migrateSchema(ctx)
+	if err != nil {
+		return fmt.Errorf("error in db: migrate schema: %w", err)
 	}
 
-	for _, stmt := range preparedStatements {
-		err = stmt()
-		if err != nil {
-			return fmt.Errorf("failed to prepare statements: %w", err)
-		}
+	err = c.prepareStatements()
+	if err != nil {
+		return fmt.Errorf("error in db: prepare statements: %w", err)
 	}
 
 	return nil
@@ -87,27 +68,37 @@ func (c *Client) Init(ctx context.Context, config *config.Config) error {
 
 // Close closes the database connection and statements.
 func (c *Client) Close() error {
-	statements := []*sqlx.Stmt{
-		c.GetExampleDataStatement,
-		c.RecordExampleDataStatement,
-	}
-
+	statements := []*sql.Stmt{}
 	for _, stmt := range statements {
+		if stmt == nil {
+			continue
+		}
 		err := stmt.Close()
 		if err != nil {
-			return fmt.Errorf("error closing statements: %w", err)
+			return fmt.Errorf("error in db: close statement: %w", err)
 		}
 	}
 
+	if c.DB == nil {
+		return nil
+	}
 	err := c.DB.Close()
 	if err != nil {
-		return fmt.Errorf("error closing database: %w", err)
+		return fmt.Errorf("error in db: close database: %w", err)
 	}
+	return nil
+}
 
-	err = c.CloudSQLDialer.Close()
-	if err != nil {
-		return fmt.Errorf("error closing cloudsql dialer: %w", err)
+type prepareStatementFunc func() error
+
+func (c *Client) prepareStatements() error {
+	preparedStatements := []prepareStatementFunc{}
+
+	for _, stmt := range preparedStatements {
+		err := stmt()
+		if err != nil {
+			return fmt.Errorf("error in db: prepare statement: %w", err)
+		}
 	}
-
 	return nil
 }
