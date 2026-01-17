@@ -1,4 +1,4 @@
-module github.com/zoff-music/cibes
+module github.com/zoff-music/vibes
 
 go 1.25.4
 

@@ -3,8 +3,8 @@ package trace
 import (
 	"context"
 
-	"github.com/zoff-music/cibes/monitoring/opentracing"
 	log "github.com/sirupsen/logrus"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 )
 
 // InjectIntoCarrier returns a textMapCarrier, basically a map[string]string,
@@ -27,7 +27,6 @@ func InjectIntoCarrier(ctx context.Context) opentracing.TextMapCarrier {
 // ExtractFromCarrier returns a span with context passed by the carrier.
 // ctx should not already have span in it.
 func ExtractFromCarrier(ctx context.Context, carrier opentracing.TextMapCarrier, spanName string) (opentracing.Span, context.Context) {
-
 	tracer := opentracing.GlobalTracer()
 	wireContext, err := tracer.Extract(opentracing.TextMap, carrier)
 	if err != nil {

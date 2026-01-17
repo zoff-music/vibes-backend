@@ -2,15 +2,16 @@
 package database
 
 import (
-	"cloud.google.com/go/cloudsqlconn"
 	"context"
 	"fmt"
-	"github.com/zoff-music/cibes/config"
+	"net"
+	"time"
+
+	"cloud.google.com/go/cloudsqlconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
-	"net"
-	"time"
+	"github.com/zoff-music/vibes/config"
 )
 
 // Client holds the database client and prepared statements.

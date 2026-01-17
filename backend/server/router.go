@@ -1,11 +1,12 @@
 package server
 
 import (
-	"github.com/zoff-music/cibes/server/internal/handler"
-	"github.com/zoff-music/cibes/server/internal/middleware"
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"net/http"
+	"github.com/zoff-music/vibes/server/internal/handler"
+	"github.com/zoff-music/vibes/server/internal/middleware"
 )
 
 const v1API string = "/api/v1"

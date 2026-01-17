@@ -3,9 +3,9 @@ package main
 import (
 	"context"
 
-	"github.com/zoff-music/cibes/config"
-	"github.com/zoff-music/cibes/server"
 	log "github.com/sirupsen/logrus"
+	"github.com/zoff-music/vibes/config"
+	"github.com/zoff-music/vibes/server"
 )
 
 func main() {

@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/cibes/example"
-	"github.com/zoff-music/cibes/monitoring/opentracing"
+
+	"github.com/zoff-music/vibes/example"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 )
 
 // NotifyExampleData is used to publish example data to pubsub.

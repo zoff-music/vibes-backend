@@ -3,13 +3,15 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/cibes/example"
 	"net/http"
+
+	"github.com/zoff-music/vibes/example"
 )
 
 // Example is handler that provides an example of how handlers should be written.
-// 		GET /api/v1/api
-// 		Responds: 200, 500
+//
+//	GET /api/v1/api
+//	Responds: 200, 500
 //
 // The handler should accept an interface(s), and should contain only high level
 // business logic. There should be no implementation details here (except I guess

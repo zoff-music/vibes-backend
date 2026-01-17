@@ -3,12 +3,13 @@ package middleware
 
 import (
 	"context"
-	"github.com/zoff-music/cibes/monitoring/metrics"
-	"github.com/gorilla/mux"
 	"net/http"
 	"time"
 
-	"github.com/zoff-music/cibes/monitoring/opentracing"
+	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes/monitoring/metrics"
+
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 )
 
 // TraceMetrics is the configuration for trace and metrics middleware.

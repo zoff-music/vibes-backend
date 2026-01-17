@@ -5,14 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/cibes/monitoring/opentracing"
 	"net/http"
 	"strconv"
 	"sync"
 	"time"
 
-	"github.com/zoff-music/cibes/client"
-	"github.com/zoff-music/cibes/config"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
+
+	"github.com/zoff-music/vibes/client"
+	"github.com/zoff-music/vibes/config"
 )
 
 // Client holds the api client.

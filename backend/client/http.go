@@ -11,8 +11,8 @@ import (
 	"net/url"
 	"time"
 
-	opentracing "github.com/zoff-music/cibes/monitoring/opentracing"
 	log "github.com/sirupsen/logrus"
+	opentracing "github.com/zoff-music/vibes/monitoring/opentracing"
 )
 
 // Parameters provides the parameters used when creating a new HTTP client.

@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/zoff-music/cibes/config"
-	"github.com/zoff-music/cibes/monitoring/opentracing"
+	"github.com/zoff-music/vibes/config"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 )
 
 // InitGlobalTracer starts the global tracer, while conforming to the old interface

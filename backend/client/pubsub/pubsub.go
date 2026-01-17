@@ -3,11 +3,12 @@ package pubsub
 import (
 	"context"
 	"fmt"
-	"github.com/zoff-music/cibes/monitoring/trace"
+
+	"github.com/zoff-music/vibes/monitoring/trace"
 
 	ps "cloud.google.com/go/pubsub/v2"
 
-	"github.com/zoff-music/cibes/config"
+	"github.com/zoff-music/vibes/config"
 )
 
 // Client holds the PubSub client.
