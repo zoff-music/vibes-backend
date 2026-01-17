@@ -42,7 +42,7 @@ func (c *Client) GetSongs(ctx context.Context, roomID string) ([]vibe.Song, erro
 	}
 	defer rows.Close()
 
-	var songs []vibe.Song
+	songs := []vibe.Song{}
 
 	for rows.Next() {
 		var row songRow

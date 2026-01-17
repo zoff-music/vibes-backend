@@ -37,7 +37,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms/{id}/action", handler.RoomAction(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions)
 
 	// SSE route
-	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub)).Methods(http.MethodGet, http.MethodOptions)
+	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions)
 
 	// YouTube routes
 	api.HandleFunc("/youtube/search", handler.SearchYouTube(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)

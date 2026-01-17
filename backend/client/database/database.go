@@ -124,9 +124,144 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		return fmt.Errorf("error in db: migrate schema: %w", err)
 	}
 
-	err = c.prepareStatements()
+	err = c.prepareGetRoomStmt()
 	if err != nil {
-		return fmt.Errorf("error in db: prepare statements: %w", err)
+		return err
+	}
+
+	err = c.prepareGetRoomByNameStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareCreateRoomStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareCreateRoomSettingsStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareUpdateRoomStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareUpdateRoomSettingsStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetSongsStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetSongStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareAddSongStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareRemoveSongStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetMaxPositionStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareUpdateSongPositionStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetNextSongStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareShiftPositionsDownStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareShiftPositionsUpStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetPlaybackStateStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareUpsertPlaybackStateStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetUserStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetUsersInRoomStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareCountUsersInRoomStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareCreateUserStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareUpdateUserLastSeenStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareRemoveUserStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareCleanupInactiveUsersStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareGetSkipVotesStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareHasUserVotedStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareAddSkipVoteStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareClearSkipVotesStmt()
+	if err != nil {
+		return err
 	}
 
 	return nil
