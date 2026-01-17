@@ -17,13 +17,16 @@ func (s *Server) setupRoutes() {
 	s.Router.HandleFunc("/_healthz", handler.Healthz).Methods(http.MethodGet).Name("Health")
 
 	api := s.Router.PathPrefix(v1API).Subrouter()
-	api.HandleFunc("/example", handler.Example(s.API)).Methods(http.MethodGet).Name("Example")
-	addTracingAndMetrics(api)
+
+	s.addTracingAndMetrics(api)
 }
 
 // addTracingAndMetrics - Adds tracing and metrics to a router.
-func addTracingAndMetrics(r *mux.Router) {
+func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
 	tm := middleware.TraceMetrics{}
-	r.Use(tm.TraceMiddleware)
-	r.Use(tm.MetricsMiddleware)
+
+	for _, r := range routers {
+		r.Use(tm.TraceMiddleware)
+		r.Use(tm.MetricsMiddleware)
+	}
 }

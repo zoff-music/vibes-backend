@@ -16,7 +16,6 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	"github.com/zoff-music/vibes/client/api"
 	"github.com/zoff-music/vibes/config"
 	"github.com/zoff-music/vibes/monitoring/metrics"
 	"github.com/zoff-music/vibes/monitoring/trace"
@@ -25,7 +24,6 @@ import (
 // Server holds the HTTP server, router, config and all clients.
 type Server struct {
 	Config *config.Config
-	API    *api.Client
 	HTTP   *http.Server
 	Router *mux.Router
 }
@@ -35,13 +33,6 @@ type Server struct {
 func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	metrics.RegisterPrometheusCollectors()
 
-	var apiClient api.Client
-
-	if err := apiClient.Init(config); err != nil {
-		return fmt.Errorf("api client: %w", err)
-	}
-
-	s.API = &apiClient
 	s.Config = config
 	s.Router = mux.NewRouter()
 	s.HTTP = &http.Server{
