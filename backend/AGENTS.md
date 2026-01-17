@@ -189,6 +189,25 @@ Within a DB client file, order sections strictly:
 4) Internal scan methods (direct row scans)  
 5) Mapping method to domain type  
 
+When using `QueryRowContext`, always use a dedicated row struct with a `scan(*sql.Row) error` method and map from that struct to the domain type.
+
+Pattern:
+
+```go
+row := c.GetSessionStatement.QueryRowContext(cctx, token)
+
+var scanned sessionRow
+
+err := scanned.scan(row)
+if err != nil {
+	if err != sql.ErrNoRows {
+		log.Printf("auth: fetch session: %v", err)
+	}
+
+	return sessionRow{}, false
+}
+```
+
 Example scan + map:
 
 ```go
