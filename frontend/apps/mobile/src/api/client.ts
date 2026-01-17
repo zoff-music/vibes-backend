@@ -69,14 +69,33 @@ const baseClient = new RequestClient({
 });
 
 // Helper to extract full error details from wiretyped errors
-function formatError(error: Error, context: string): Error {
+async function formatError(error: Error, context: string): Promise<Error> {
   const details: string[] = [context];
   
   // Walk the cause chain to get all error details
   let current: unknown = error;
   while (current instanceof Error) {
     details.push(`  → ${current.message}`);
-    current = current.cause;
+    
+    // Check if it's an HTTPError from wiretyped
+    // We check the name property as the class might not be exported or easily accessible
+    if (current.name === 'HTTPError' || (current as any).response) {
+      const response = (current as any).response as Response;
+      if (response) {
+        details.push(`  → Status: ${response.status} ${response.statusText}`);
+        try {
+          // Clone response if we need to read it multiple times
+          const body = await response.clone().text();
+          if (body) {
+            details.push(`  → Response Body: ${body}`);
+          }
+        } catch (e) {
+          details.push(`  → (Failed to read response body)`);
+        }
+      }
+    }
+    
+    current = (current as any).cause;
   }
   
   // If there's a non-Error cause, include it
@@ -89,7 +108,7 @@ function formatError(error: Error, context: string): Error {
   
   // Create a new error with the full details but keep original cause chain
   const formatted = new Error(fullMessage);
-  formatted.cause = error;
+  (formatted as any).cause = error;
   return formatted;
 }
 
@@ -99,7 +118,7 @@ const wrappedClient = {
     console.log('[API] GET', args[0], args[1] ? JSON.stringify(args[1]) : '');
     const [err, data] = await baseClient.get(...args);
     if (err) {
-      return [formatError(err, `GET ${args[0]} failed`), null] as const;
+      return [await formatError(err, `GET ${args[0]} failed`), null] as const;
     }
     console.log('[API] GET', args[0], '→ success');
     return [null, data] as const;
@@ -109,7 +128,7 @@ const wrappedClient = {
     console.log('[API] POST', args[0], args[1] ? JSON.stringify(args[1]) : '', args[2] ? JSON.stringify(args[2]) : '');
     const [err, data] = await baseClient.post(...args);
     if (err) {
-      return [formatError(err, `POST ${args[0]} failed`), null] as const;
+      return [await formatError(err, `POST ${args[0]} failed`), null] as const;
     }
     console.log('[API] POST', args[0], '→ success');
     return [null, data] as const;
@@ -119,7 +138,7 @@ const wrappedClient = {
     console.log('[API] PATCH', args[0], args[1] ? JSON.stringify(args[1]) : '', args[2] ? JSON.stringify(args[2]) : '');
     const [err, data] = await baseClient.patch(...args);
     if (err) {
-      return [formatError(err, `PATCH ${args[0]} failed`), null] as const;
+      return [await formatError(err, `PATCH ${args[0]} failed`), null] as const;
     }
     console.log('[API] PATCH', args[0], '→ success');
     return [null, data] as const;
@@ -129,7 +148,7 @@ const wrappedClient = {
     console.log('[API] DELETE', args[0], args[1] ? JSON.stringify(args[1]) : '');
     const [err, data] = await baseClient.delete(...args);
     if (err) {
-      return [formatError(err, `DELETE ${args[0]} failed`), null] as const;
+      return [await formatError(err, `DELETE ${args[0]} failed`), null] as const;
     }
     console.log('[API] DELETE', args[0], '→ success');
     return [null, data] as const;
