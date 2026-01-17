@@ -16,7 +16,7 @@ func (c *Client) prepareGetPlaybackStateStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT room_id, current_song_id, is_playing, position_ms, updated_at
 		FROM playback_state
-		WHERE room_id = ?
+		WHERE room_id = ?1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetPlaybackStateStatement: %w", err)
@@ -35,15 +35,11 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var row playbackStateRow
+	row := c.GetPlaybackStateStatement.QueryRowContext(cctx, roomID)
 
-	err := c.GetPlaybackStateStatement.QueryRowContext(cctx, roomID).Scan(
-		&row.RoomID,
-		&row.CurrentSongID,
-		&row.IsPlaying,
-		&row.PositionMs,
-		&row.UpdatedAt,
-	)
+	var scanned playbackStateRow
+
+	err := scanned.scan(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// Return default state if no state exists
@@ -60,7 +56,7 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 		return nil, fmt.Errorf("error fetching playback state: %w", err)
 	}
 
-	state := row.toPlaybackState()
+	state := scanned.toPlaybackState()
 
 	return &state, nil
 }
@@ -69,7 +65,7 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 func (c *Client) prepareUpsertPlaybackStateStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO playback_state (room_id, current_song_id, is_playing, position_ms, updated_at)
-		VALUES (?, ?, ?, ?, ?)
+		VALUES (?1, ?2, ?3, ?4, ?5)
 		ON CONFLICT(room_id) DO UPDATE SET
 			current_song_id = excluded.current_song_id,
 			is_playing = excluded.is_playing,
@@ -120,6 +116,16 @@ type playbackStateRow struct {
 	IsPlaying     int
 	PositionMs    int64
 	UpdatedAt     time.Time
+}
+
+func (r *playbackStateRow) scan(row *sql.Row) error {
+	return row.Scan(
+		&r.RoomID,
+		&r.CurrentSongID,
+		&r.IsPlaying,
+		&r.PositionMs,
+		&r.UpdatedAt,
+	)
 }
 
 func (r *playbackStateRow) toPlaybackState() vibe.PlaybackState {
