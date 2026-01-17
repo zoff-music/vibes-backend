@@ -1,6 +1,7 @@
-import { View, Text, Pressable, TextInput, Switch, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, Pressable, TextInput, Switch, ScrollView, StyleSheet, ActivityIndicator } from 'react-native';
 import { useState } from 'react';
 import { router } from 'expo-router';
+import { api } from '../../src/api/client';
 
 const colors = {
     background: '#0a0a0a',
@@ -10,6 +11,7 @@ const colors = {
     text: '#fafafa',
     textMuted: '#a1a1aa',
     textInverse: '#0a0a0a',
+    error: '#ef4444',
 };
 
 const DEFAULT_SETTINGS = {
@@ -22,10 +24,30 @@ export default function CreateRoom() {
     const [name, setName] = useState('');
     const [password, setPassword] = useState('');
     const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+    const [isLoading, setIsLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
 
     const handleCreate = async () => {
-        // TODO: Call API to create room
-        router.replace('/room/new-room-id');
+        if (!name.trim() || isLoading) return;
+
+        setIsLoading(true);
+        setError(null);
+
+        const [err, room] = await api.post('/rooms', null, {
+            name: name.trim(),
+            password: password || undefined,
+        });
+
+        if (err) {
+            console.error('Failed to create room:', err);
+            setError(err.message || 'Failed to create room');
+            setIsLoading(false);
+            return;
+        }
+
+        if (room) {
+            router.replace(`/room/${room.id}`);
+        }
     };
 
     const updateSetting = <K extends keyof typeof settings>(
@@ -118,12 +140,22 @@ export default function CreateRoom() {
                 </View>
             </View>
 
+            {error && (
+                <View style={styles.errorContainer}>
+                    <Text style={styles.errorText}>{error}</Text>
+                </View>
+            )}
+
             <Pressable
-                style={[styles.createButton, !name.trim() && styles.buttonDisabled]}
+                style={[styles.createButton, (!name.trim() || isLoading) && styles.buttonDisabled]}
                 onPress={handleCreate}
-                disabled={!name.trim()}
+                disabled={!name.trim() || isLoading}
             >
-                <Text style={styles.createButtonText}>Create Room</Text>
+                {isLoading ? (
+                    <ActivityIndicator color={colors.textInverse} />
+                ) : (
+                    <Text style={styles.createButtonText}>Create Room</Text>
+                )}
             </Pressable>
         </ScrollView>
     );
@@ -216,5 +248,17 @@ const styles = StyleSheet.create({
     },
     buttonDisabled: {
         opacity: 0.5,
+    },
+    errorContainer: {
+        backgroundColor: colors.error + '20',
+        borderColor: colors.error,
+        borderWidth: 1,
+        borderRadius: 8,
+        padding: 12,
+        marginTop: 16,
+    },
+    errorText: {
+        color: colors.error,
+        fontSize: 14,
     },
 });

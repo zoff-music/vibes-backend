@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes/vibe"
 	"golang.org/x/crypto/bcrypt"
@@ -40,7 +41,10 @@ func CreateRoom(
 			passwordHash = string(hash)
 		}
 
+		roomID := uuid.New().String()
+
 		room := &vibe.Room{
+			ID:                roomID,
 			Name:              req.Name,
 			AdminPasswordHash: passwordHash,
 			HasPassword:       passwordHash != "",
