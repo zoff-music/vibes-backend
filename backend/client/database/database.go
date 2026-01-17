@@ -24,7 +24,9 @@ type Client struct {
 	// Room statements
 	GetRoomStatement    *sql.Stmt
 	CreateRoomStatement *sql.Stmt
+	CreateRoomSettingsStatement *sql.Stmt
 	UpdateRoomStatement *sql.Stmt
+	UpdateRoomSettingsStatement *sql.Stmt
 
 	// Song statements
 	GetSongsStatement         *sql.Stmt
@@ -129,7 +131,9 @@ func (c *Client) Close() error {
 	statements := []*sql.Stmt{
 		c.GetRoomStatement,
 		c.CreateRoomStatement,
+		c.CreateRoomSettingsStatement,
 		c.UpdateRoomStatement,
+		c.UpdateRoomSettingsStatement,
 		c.GetSongsStatement,
 		c.GetSongStatement,
 		c.AddSongStatement,
@@ -184,7 +188,9 @@ func (c *Client) prepareStatements() error {
 		// Room statements
 		c.prepareGetRoomStmt,
 		c.prepareCreateRoomStmt,
+		c.prepareCreateRoomSettingsStmt,
 		c.prepareUpdateRoomStmt,
+		c.prepareUpdateRoomSettingsStmt,
 		// Song statements
 		c.prepareGetSongsStmt,
 		c.prepareGetSongStmt,
