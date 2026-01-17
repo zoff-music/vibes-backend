@@ -2,9 +2,9 @@
 package config
 
 import (
+	"fmt"
 	"time"
 
-	"fmt"
 	"github.com/joho/godotenv"
 	"github.com/kelseyhightower/envconfig"
 	log "github.com/sirupsen/logrus"
@@ -18,12 +18,6 @@ type Config struct {
 	OtelExporterTimeout        time.Duration `envconfig:"OTEL_EXPORTER_TIMEOUT" default:"1s"` // GRPC timeout for span export requests
 	OtelBatchInterval          time.Duration `envconfig:"OTEL_BATCH_INTERVAL" default:"5s"`   // Maximum interval for batching spans
 	OtelBatchSize              int           `envconfig:"OTEL_BATCH_SIZE" default:"512"`      // Maximum number of spans in a batch
-	ExampleAPIEndpoint         string        `envconfig:"EXAMPLE_API_ENDPOINT" required:"true"`
-	ExampleAPIAccessEndpoint   string        `envconfig:"EXAMPLE_API_ACCESS_ENDPOINT" required:"true"`
-	ExampleAPIClientID         string        `envconfig:"EXAMPLE_API_CLIENT_ID" required:"true"`
-	ExampleAPIClientSecret     string        `envconfig:"EXAMPLE_API_CLIENT_SECRET" required:"true"`
-	PubSubProjectName          string        `envconfig:"PUBSUB_PROJECT_NAME" required:"true"`
-	CloudSQLInstance           string        `envconfig:"CLOUD_SQL_INSTANCE" required:"true"`
 	DatabasePassword           string        `envconfig:"DATABASE_PASSWORD" required:"true"`
 	DatabaseUser               string        `envconfig:"DATABASE_USER" required:"true"`
 	DatabaseDB                 string        `envconfig:"DATABASE_DB" default:"postgres"`
