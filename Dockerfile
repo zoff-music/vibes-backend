@@ -44,7 +44,7 @@ COPY --from=builder /etc/passwd /etc/passwd
 COPY --from=builder /etc/group /etc/group
 
 # Copy binary from builder
-COPY --from=builder /go/src/github.com/zoff-music/vibes/main /app/main
+COPY --from=builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
 
 USER appuser:appuser
 
