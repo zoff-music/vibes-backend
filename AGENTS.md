@@ -335,21 +335,6 @@ return internalerror.ErrExpected{
 return fmt.Errorf("error EXPLAIN ERROR: %w", err)
 ```
 
-### 7.5 API error propagation across services
-For API errors that must propagate upward (e.g., through `naboo-router-api`), wrap with:
-
-```go
-return client.ErrorCodeWrapper{
-	Err:        fmt.Errorf("error EXPLAIN ERROR: %w", err),
-	StatusCode: STATUSCODE,
-	ResponseBody: client.ErrorCodeResponseBody{
-		Error:     strconv.Itoa(STATUSCODE),
-		Message:   "MESSAGE THAT CAN BE PASSED TO CLIENT.",
-		Propagate: true,
-	},
-}
-```
-
 ---
 
 ## 8) Interfaces, dependency injection, naming
@@ -413,26 +398,9 @@ func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
 
 ---
 
-## 10) Subscribers / processors conventions
+## 10) Subscriber handlers
 
-### 10.1 Subscription naming scheme
-Use:
-
-`APP-NAME-SUB-NAME-(number)`
-
-Examples:
-- App: `naboo-user-data-processor`
-- Topic: `naboo-user-data`
-- Subscription: `naboo-user-data-processor-user-data`
-
-If the same app needs a second subscription to the same topic:
-- `naboo-user-data-processor-user-data-2`
-
-If listening to a different namespace/topic:
-- Topic: `exegol-execution-start`
-- Subscription: `naboo-user-data-processor-exegol-execution-start`
-
-### 10.2 Handler struct placement and naming
+### 10.1 Handler struct placement and naming
 For each subscriber handler, define the dependency struct **immediately above** the handler:
 
 ```go
@@ -461,9 +429,6 @@ func (e Example) Handle(ctx context.Context, data []byte) error {
 Abbreviations for dependencies should be representative:
 - `DB` (database), `PS` (pubsub), `CS` (cloud storage), `BT` (bigtable), `AI` (LLMs), etc.
 
-### 10.3 Ordered PubSub publishing
-If ordered delivery is required, the PubSub client must use `sendOrdered` with an ordering key.
-
 ---
 
 ## 11) Regex rules
@@ -486,5 +451,20 @@ If ordered delivery is required, the PubSub client must use `sendOrdered` with a
 - Add newlines after `})` for readability.
 - Prefer explicit, readable code over cleverness.
 - Avoid generics unless clearly justified and materially beneficial.
+
+---
+
+
+## 14) Frontend code structure (strict)
+
+- Do not use the `any` type. Prefer explicit, accurate types and compose them when needed.
+- Do not use `@ts-ignore` or `@ts-nocheck`. Fix the type error or adjust types instead.
+- Do not use `try {}`/`catch {}`. Use `safeWrap`/`safeWrapAsync` from `frontend/src/utils/wrap.ts` for error capture and propagation.
+
+---
+
+## 15) Support & help (general)
+
+- Long-running tooling must use explicit timeouts or non-interactive/batch mode.
 
 ---
