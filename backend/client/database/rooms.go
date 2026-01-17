@@ -218,9 +218,8 @@ func (r *roomRow) toRoomSettings() (vibe.RoomSettings, error) {
 // prepareCreateRoomStmt prepares the CreateRoomStatement.
 func (c *Client) prepareCreateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO rooms (name, admin_password_hash, created_at)
-		VALUES (?1, ?2, ?3)
-		RETURNING id
+		INSERT INTO rooms (id, name, admin_password_hash, created_at)
+		VALUES (?1, ?2, ?3, ?4)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRoomStatement: %w", err)
@@ -245,19 +244,16 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	}
 	defer tx.Rollback()
 
-	var returnedID string
-
 	// Create room
-	err = tx.StmtContext(cctx, c.CreateRoomStatement).QueryRowContext(cctx,
+	_, err = tx.StmtContext(cctx, c.CreateRoomStatement).ExecContext(cctx,
+		room.ID,
 		room.Name,
 		room.AdminPasswordHash,
 		room.CreatedAt,
-	).Scan(&returnedID)
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error creating room: %w", err)
 	}
-
-	room.ID = returnedID
 
 	// Create room settings
 	_, err = tx.StmtContext(cctx, c.CreateRoomSettingsStatement).ExecContext(cctx,
