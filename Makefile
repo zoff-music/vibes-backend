@@ -1,4 +1,4 @@
-.PHONY: build install server test help docker dev dev-down frontend gosec govulncheck ci-lint
+.PHONY: build install server test help docker dev dev-down frontend local-dev gosec govulncheck ci-lint
 
 PROJECT_NAME=$(shell basename $(CURDIR))
 BACKEND_DIR=backend
@@ -49,6 +49,14 @@ dev-down:
 ## frontend: Runs frontend dev server locally
 frontend:
 	cd frontend && bun dev
+
+## local-dev: Runs backend + frontend locally with env ports set
+local-dev:
+	PORT=8080 EXPO_PUBLIC_API_URL=http://localhost:8080 \
+	sh -c 'cd backend && go run cmd/server/main.go' & \
+	PORT=8080 EXPO_PUBLIC_API_URL=http://localhost:8080 \
+	sh -c 'cd frontend && bun install && bun dev' & \
+	wait
 
 ## gosec: Runs gosec
 gosec:
