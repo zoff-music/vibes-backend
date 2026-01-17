@@ -20,11 +20,16 @@ Detailed implementation tasks for MVP.
 - [x] SQLite driver: using `modernc.org/sqlite` (pure Go, no CGO)
 
 ### 1.3 Frontend Setup (Expo) ✅
-- [x] Expo app initialized at `apps/mobile`
-- [x] expo-router configured
-- [x] Dependencies installed: wiretyped, yup, react-native-unistyles v3
-- [x] Set up path aliases in `tsconfig.json`
-- [ ] Install remaining: react-player, zustand
+- [x] Migrated monorepo from pnpm to bun
+- [x] Created fresh Expo SDK 54 app with React 19.1.0
+- [x] expo-router 6.0.21 configured with file-based routing
+- [x] Created home screen (`app/index.tsx`)
+- [x] Created create room screen (`app/room/create.tsx`)  
+- [x] Created room view screen (`app/room/[id]/index.tsx`)
+- [x] React Native StyleSheet with Vibez dark theme
+- [x] Dependencies installed: yup, zustand, react-player
+- [ ] Install wiretyped for API client (optional, can use fetch)
+- [ ] Add NativeWind/Tailwind after babel config issues resolved
 
 ### 1.4 Shared Package ✅
 - [x] Create `packages/shared/package.json`
@@ -33,15 +38,16 @@ Detailed implementation tasks for MVP.
 - [x] Create `packages/shared/src/constants.ts`
 
 ### 1.5 Design System Foundation ✅
-- [x] Create `apps/mobile/src/styles/theme.ts` with tokens
-- [x] Create `apps/mobile/src/styles/unistyles.ts` setup
+- [x] Created Vibez dark theme colors (background, surface, primary purple, etc.)
+- [x] Using plain React Native StyleSheet for now
 - [x] Create `apps/mobile/src/utils/wrap.ts` (safeWrap/safeWrapAsync)
 
-### 1.6 API Client Setup ✅
-- [x] Create `apps/mobile/src/api/client.ts` - wiretyped RequestClient
-- [x] Create `apps/mobile/src/api/schemas/room.ts` (yup schemas)
-- [x] Create `apps/mobile/src/api/schemas/songs.ts`
-- [x] Create `apps/mobile/src/api/schemas/playback.ts`
+### 1.6 API Client Setup
+- [ ] Create `apps/mobile/src/api/client.ts` - wiretyped or fetch-based client
+- [ ] Create `apps/mobile/src/api/schemas/room.ts` (yup schemas)
+- [ ] Create `apps/mobile/src/api/schemas/songs.ts`
+- [ ] Create `apps/mobile/src/api/schemas/playback.ts`
+
 
 ---
 
