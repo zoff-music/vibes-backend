@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { api } from '../api/client';
 import { useQueueStore } from '../stores/queueStore';
 import { useRoomStore } from '../stores/roomStore';
-import { safeWrapAsync } from '../utils/wrap';
 import { SourceType } from '@vibez/shared';
 
 export const useQueue = (roomId: string) => {
@@ -10,9 +9,7 @@ export const useQueue = (roomId: string) => {
   const { userId } = useRoomStore();
 
   const fetchQueue = useCallback(async () => {
-    const [data, err] = await safeWrapAsync(api.get(`/rooms/{id}/songs`, { 
-      params: { id: roomId } 
-    }));
+    const [err, data] = await api.get('/rooms/{id}/songs', { id: roomId });
     
     if (data) {
       setSongs(data);
@@ -29,19 +26,17 @@ export const useQueue = (roomId: string) => {
   ) => {
     if (!userId) return null;
 
-    const [data, err] = await safeWrapAsync(
-      api.post(`/rooms/{id}/songs`, {
-        params: { id: roomId },
-        request: {
-          sourceType,
-          sourceId,
-          title,
-          thumbnailUrl,
-          duration,
-          artist,
-          addedBy: userId,
-        }
-      })
+    const [err, data] = await api.post('/rooms/{id}/songs', 
+      { id: roomId },
+      {
+        sourceType,
+        sourceId,
+        title,
+        thumbnailUrl,
+        duration,
+        artist,
+        addedBy: userId,
+      }
     );
 
     if (data) {
@@ -56,11 +51,7 @@ export const useQueue = (roomId: string) => {
     // Optimistic update
     removeSong(songId);
 
-    const [_, err] = await safeWrapAsync(
-      api.delete(`/rooms/{id}/songs/{songId}`, {
-        params: { id: roomId, songId }
-      })
-    );
+    const [err, _] = await api.delete('/rooms/{id}/songs/{songId}', { id: roomId, songId });
 
     if (err) {
       // Rollback or re-fetch on error
@@ -72,11 +63,9 @@ export const useQueue = (roomId: string) => {
     // Optimistic update
     reorderSongs(songId, newPosition);
 
-    const [_, err] = await safeWrapAsync(
-      api.patch(`/rooms/{id}/songs/reorder/{songId}`, {
-        params: { id: roomId, songId },
-        request: { newPosition }
-      })
+    const [err, _] = await api.patch('/rooms/{id}/songs/reorder/{songId}', 
+      { id: roomId, songId },
+      { newPosition }
     );
 
     if (err) {
@@ -93,3 +82,4 @@ export const useQueue = (roomId: string) => {
     moveInQueue,
   };
 };
+

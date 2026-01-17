@@ -2,18 +2,17 @@ import { useCallback, useState } from 'react';
 import { api } from '../api/client';
 import { useRoomStore } from '../stores/roomStore';
 import { useSSE } from './useSSE';
-import { safeWrapAsync } from '../utils/wrap';
 
 export const useRoom = (roomId: string) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const { room, users, setRoom, setSession, reset } = useRoomStore();
+  const { room, users, userId, setRoom, setSession, reset } = useRoomStore();
 
   useSSE(roomId);
 
   const fetchRoom = useCallback(async () => {
     setIsLoading(true);
-    const [data, err] = await safeWrapAsync(api.get(`/rooms/{id}`, { params: { id: roomId } }));
+    const [err, data] = await api.get('/rooms/{id}', { id: roomId });
     setIsLoading(false);
 
     if (err) {
@@ -28,12 +27,10 @@ export const useRoom = (roomId: string) => {
 
   const joinRoom = useCallback(async (nickname?: string, password?: string) => {
     setIsLoading(true);
-    const [data, err] = await safeWrapAsync(
-      api.post(`/rooms/{id}/sessions`, { 
-        params: { id: roomId },
-        request: { nickname, password }
-      })
-    );
+    const [err, data] = await api.post('/rooms/{id}/sessions', 
+        { id: roomId },
+        { nickname, password }
+      );
     setIsLoading(true); // Keep loading state until we handle result
 
     if (err) {
@@ -60,6 +57,7 @@ export const useRoom = (roomId: string) => {
   return {
     room,
     users,
+    userId,
     isLoading,
     error,
     fetchRoom,
@@ -67,3 +65,4 @@ export const useRoom = (roomId: string) => {
     leaveRoom,
   };
 };
+

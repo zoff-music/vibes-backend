@@ -90,77 +90,78 @@ Detailed implementation tasks for MVP.
 
 ---
 
-## Phase 3: Backend API (Handlers & SSE)
+## Phase 3: Backend API (Handlers & SSE) ✅ COMPLETE
 
-### 3.1 Room Handlers
-- [ ] Create `server/internal/handler/rooms.go`:
-  - `CreateRoom()` - POST /api/v1/rooms
-  - `GetRoom()` - GET /api/v1/rooms/:id
-  - `UpdateRoom()` - PATCH /api/v1/rooms/:id
-  - `CreateSession()` - POST /api/v1/rooms/:id/sessions (join + optional admin auth)
+### 3.1 Room Handlers ✅
+- [x] Create `server/internal/handler/rooms.go`:
+  - [x] `CreateRoom()` - POST /api/v1/rooms
+  - [x] `GetRoom()` - GET /api/v1/rooms/:id
+  - [x] `UpdateRoom()` - PATCH /api/v1/rooms/:id
+  - [x] `CreateSession()` - POST /api/v1/rooms/:id/sessions (join + optional admin auth)
 
-### 3.2 Songs Handlers
-- [ ] Create `server/internal/handler/songs.go`:
-  - `GetSongs()` - GET /api/v1/rooms/:id/songs
-  - `AddSong()` - POST /api/v1/rooms/:id/songs
-  - `RemoveSong()` - DELETE /api/v1/rooms/:id/songs/:songId
-  - `ReorderSongs()` - PATCH /api/v1/rooms/:id/songs/reorder
+### 3.2 Songs Handlers ✅
+- [x] Create `server/internal/handler/songs.go`:
+  - [x] `GetSongs()` - GET /api/v1/rooms/:id/songs
+  - [x] `AddSong()` - POST /api/v1/rooms/:id/songs
+  - [x] `RemoveSong()` - DELETE /api/v1/rooms/:id/songs/:songId
+  - [x] `ReorderSongs()` - PATCH /api/v1/rooms/:id/songs/reorder
 
-### 3.3 Room Actions Handler
-- [ ] Update `server/internal/handler/rooms.go`:
-  - `RoomAction()` - POST /api/v1/rooms/:id
-    - Handle actions: play, pause, seek, skip, vote
-    - Discriminate by `action` field in request body
+### 3.3 Room Actions Handler ✅
+- [x] Create `server/internal/handler/action.go`:
+  - [x] `RoomAction()` - POST /api/v1/rooms/:id/action
+    - [x] Handle actions: play, pause, seek, skip, vote
+    - [x] Discriminate by `action` field in request body
 
-### 3.4 SSE Implementation
-- [ ] Create SSE broker (can use existing internalpubsub):
-  - Room-scoped topics
-  - Subscribe/unsubscribe handling
-- [ ] Create `server/internal/handler/events.go`:
-  - `RoomEvents()` - GET /api/v1/rooms/:id/events (SSE endpoint)
-- [ ] Integrate SSE broadcast into handlers
+### 3.4 SSE Implementation ✅
+- [x] Create SSE broker (can use existing internalpubsub):
+  - [x] Room-scoped topics
+  - [x] Subscribe/unsubscribe handling
+- [x] Create `server/internal/handler/events.go`:
+  - [x] `RoomEvents()` - GET /api/v1/rooms/:id/events (SSE endpoint)
+- [x] Integrate SSE broadcast into handlers
 
-### 3.5 Route Wiring
-- [ ] Update `server/router.go` with all new routes
+### 3.5 Route Wiring ✅
+- [x] Update `server/router.go` with all new routes
 - [ ] Add room ID extraction middleware
+- [x] Add user session middleware
 - [ ] Add user session middleware
 
 ---
 
-## Phase 4: Frontend Foundation (API & State)
+## Phase 4: Frontend Foundation (API & State) ✅ COMPLETE
 
-### 4.1 SSE Hook
-- [ ] Create `apps/mobile/src/hooks/useSSE.ts`:
-  - Connect to room events endpoint
-  - Parse event types
-  - Reconnection with exponential backoff
-  - Clean disposal
+### 4.1 SSE Hook ✅
+- [x] Create `apps/mobile/src/hooks/useSSE.ts`:
+  - [x] Connect to room events endpoint
+  - [x] Parse event types
+  - [x] Reconnection with exponential backoff
+  - [x] Clean disposal
 
-### 4.2 State Management
-- [ ] Create `apps/mobile/src/stores/roomStore.ts` (zustand):
-  - Room data
-  - Users list
-  - Admin status
-- [ ] Create `apps/mobile/src/stores/queueStore.ts`:
-  - Queue items
-  - Add/remove optimistic updates
-- [ ] Create `apps/mobile/src/stores/playbackStore.ts`:
-  - Current item
-  - Playing state
-  - Position (synced)
-  - Calculated actual position
+### 4.2 State Management ✅
+- [x] Create `apps/mobile/src/stores/roomStore.ts` (zustand):
+  - [x] Room data
+  - [x] Users list
+  - [x] Admin status
+- [x] Create `apps/mobile/src/stores/queueStore.ts`:
+  - [x] Queue items
+  - [x] Add/remove optimistic updates
+- [x] Create `apps/mobile/src/stores/playbackStore.ts`:
+  - [x] Current item
+  - [x] Playing state
+  - [x] Position (synced)
+  - [x] Calculated actual position
 
-### 4.3 Custom Hooks
-- [ ] Create `apps/mobile/src/hooks/useRoom.ts`:
-  - Fetch room on mount
-  - Subscribe to SSE
-  - Update store on events
-- [ ] Create `apps/mobile/src/hooks/useQueue.ts`:
-  - Fetch queue
-  - Add/remove mutations
-- [ ] Create `apps/mobile/src/hooks/usePlayback.ts`:
-  - Sync logic (server time vs client time)
-  - Control methods (play, pause, seek, skip)
+### 4.3 Custom Hooks ✅
+- [x] Create `apps/mobile/src/hooks/useRoom.ts`:
+  - [x] Fetch room on mount
+  - [x] Subscribe to SSE
+  - [x] Update store on events
+- [x] Create `apps/mobile/src/hooks/useQueue.ts`:
+  - [x] Fetch queue
+  - [x] Add/remove mutations
+- [x] Create `apps/mobile/src/hooks/usePlayback.ts`:
+  - [x] Sync logic (server time vs client time)
+  - [x] Control methods (play, pause, seek, skip)
 
 ---
 

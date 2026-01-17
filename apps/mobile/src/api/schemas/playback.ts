@@ -3,7 +3,7 @@ import { songSchema } from './songs';
 
 export const playbackStateSchema = yup.object({
   currentSongId: yup.string().nullable().defined(),
-  currentSong: songSchema.nullable().optional(),
+  currentSong: songSchema.nullable().defined(),
   isPlaying: yup.boolean().required(),
   positionMs: yup.number().required(),
   updatedAt: yup.string().required(),

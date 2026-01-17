@@ -1,7 +1,6 @@
 import { useCallback, useEffect } from 'react';
 import { api } from '../api/client';
 import { usePlaybackStore } from '../stores/playbackStore';
-import { safeWrapAsync } from '../utils/wrap';
 
 export const usePlayback = (roomId: string) => {
   const playback = usePlaybackStore();
@@ -16,11 +15,9 @@ export const usePlayback = (roomId: string) => {
   }, [playback]);
 
   const performAction = useCallback(async (action: 'play' | 'pause' | 'skip' | 'vote' | 'seek', positionMs?: number) => {
-    const [data, err] = await safeWrapAsync(
-      api.post(`/rooms/{id}/action`, {
-        params: { id: roomId },
-        request: { action, positionMs }
-      })
+    const [err, data] = await api.post('/rooms/{id}/action', 
+      { id: roomId },
+      { action, positionMs }
     );
 
     if (data) {
@@ -43,3 +40,4 @@ export const usePlayback = (roomId: string) => {
     vote,
   };
 };
+
