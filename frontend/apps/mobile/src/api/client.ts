@@ -9,6 +9,8 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
 const API_BASE_PATH = '/api/v1';
 const URL = API_URL + API_BASE_PATH
 
+console.log('[API] Initialized with base URL:', URL);
+
 const endpoints = {
   '/rooms': {
     post: {
@@ -59,9 +61,84 @@ const endpoints = {
   },
 } satisfies RequestDefinitions;
 
-export const api = new RequestClient({
+const baseClient = new RequestClient({
   hostname: URL,
   baseUrl: URL,
   endpoints,
   validation: true,
 });
+
+// Helper to extract full error details from wiretyped errors
+function formatError(error: Error, context: string): Error {
+  const details: string[] = [context];
+  
+  // Walk the cause chain to get all error details
+  let current: unknown = error;
+  while (current instanceof Error) {
+    details.push(`  → ${current.message}`);
+    current = current.cause;
+  }
+  
+  // If there's a non-Error cause, include it
+  if (current !== undefined && current !== null) {
+    details.push(`  → ${JSON.stringify(current)}`);
+  }
+  
+  const fullMessage = details.join('\n');
+  console.error('[API Error]', fullMessage);
+  
+  // Create a new error with the full details but keep original cause chain
+  const formatted = new Error(fullMessage);
+  formatted.cause = error;
+  return formatted;
+}
+
+// Create wrapped client that adds logging
+const wrappedClient = {
+  async get(...args: Parameters<typeof baseClient.get>) {
+    console.log('[API] GET', args[0], args[1] ? JSON.stringify(args[1]) : '');
+    const [err, data] = await baseClient.get(...args);
+    if (err) {
+      return [formatError(err, `GET ${args[0]} failed`), null] as const;
+    }
+    console.log('[API] GET', args[0], '→ success');
+    return [null, data] as const;
+  },
+
+  async post(...args: Parameters<typeof baseClient.post>) {
+    console.log('[API] POST', args[0], args[1] ? JSON.stringify(args[1]) : '', args[2] ? JSON.stringify(args[2]) : '');
+    const [err, data] = await baseClient.post(...args);
+    if (err) {
+      return [formatError(err, `POST ${args[0]} failed`), null] as const;
+    }
+    console.log('[API] POST', args[0], '→ success');
+    return [null, data] as const;
+  },
+
+  async patch(...args: Parameters<typeof baseClient.patch>) {
+    console.log('[API] PATCH', args[0], args[1] ? JSON.stringify(args[1]) : '', args[2] ? JSON.stringify(args[2]) : '');
+    const [err, data] = await baseClient.patch(...args);
+    if (err) {
+      return [formatError(err, `PATCH ${args[0]} failed`), null] as const;
+    }
+    console.log('[API] PATCH', args[0], '→ success');
+    return [null, data] as const;
+  },
+
+  async delete(...args: Parameters<typeof baseClient.delete>) {
+    console.log('[API] DELETE', args[0], args[1] ? JSON.stringify(args[1]) : '');
+    const [err, data] = await baseClient.delete(...args);
+    if (err) {
+      return [formatError(err, `DELETE ${args[0]} failed`), null] as const;
+    }
+    console.log('[API] DELETE', args[0], '→ success');
+    return [null, data] as const;
+  },
+
+  // Expose SSE and other methods from base client
+  sse: baseClient.sse.bind(baseClient),
+  url: baseClient.url.bind(baseClient),
+};
+
+export const api = wrappedClient as unknown as typeof baseClient;
+
