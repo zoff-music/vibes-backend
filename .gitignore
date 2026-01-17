@@ -153,6 +153,7 @@ vite.config.ts.timestamp-*
 *.so
 *.dylib
 main
+data/
 
 # Test binary, built with `go test -c`
 *.test
