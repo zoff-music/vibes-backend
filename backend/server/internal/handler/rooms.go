@@ -167,6 +167,7 @@ func CreateSession(
 		}
 
 		user := &vibe.User{
+			ID:         uuid.New().String(),
 			RoomID:     roomID,
 			Nickname:   &req.Nickname,
 			IsAdmin:    isAdmin,
