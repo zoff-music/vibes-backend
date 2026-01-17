@@ -129,7 +129,7 @@ func (r *songRow) toSong() (*vibe.Song, error) {
 	}
 
 	if !r.AddedAt.Valid {
-		return nil, fmt.Errorf("missing song added_at")
+		return nil, fmt.Errorf("error missing song added_at")
 	}
 
 	duration := 0
@@ -384,7 +384,7 @@ func (c *Client) ReorderSongs(ctx context.Context, roomID, songID string, newPos
 	}
 
 	if song.IsEmpty() {
-		return fmt.Errorf("song not found")
+		return fmt.Errorf("error song not found")
 	}
 
 	oldPosition := song.Position

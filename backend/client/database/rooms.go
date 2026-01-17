@@ -89,7 +89,7 @@ func (r *roomRow) toRoom() (*vibe.Room, error) {
 	}
 
 	if !r.CreatedAt.Valid {
-		return nil, fmt.Errorf("missing room created_at")
+		return nil, fmt.Errorf("error missing room created_at")
 	}
 
 	return &vibe.Room{
