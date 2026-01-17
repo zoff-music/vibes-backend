@@ -31,6 +31,15 @@
 | Casting | Chromecast + AirPlay SDKs | Native casting protocols |
 | Deployment | Docker (backend + bundled web), EAS (mobile) | |
 
+## Build & Run Commands
+
+-   Install Dependencies: `bun install`
+-   Dev (All): `bun dev`
+-   Dev (Mobile): `bun run --filter @vibez/mobile dev:web`
+-   Build (Mobile): `bun run --filter @vibez/mobile build`
+-   Backend (Manual): `bun backend`
+-   Type Check: `bun typecheck`
+
 ### Monorepo Structure
 ```
 vibez/
@@ -369,27 +378,6 @@ interface SourcePlugin {
 
 ---
 
-## Development Workflow
-
-### Commands
-```bash
-# Install dependencies
-pnpm install
-
-# Start backend
-cd backend && go run cmd/server/main.go
-
-# Start frontend (web)
-cd apps/mobile && pnpm expo start --web
-
-# Start frontend (mobile)
-cd apps/mobile && pnpm expo start
-
-# Run backend tests
-cd backend && go test ./...
-
-# Type check frontend
-cd apps/mobile && pnpm tsc --noEmit
 ```
 
 ### Environment Variables
@@ -428,7 +416,7 @@ See `apps/mobile/AGENTS.md` - strictly follow:
 See `TASKS.md` for detailed task breakdown with checkboxes.
 
 ### ✅ Phase 1: Project Setup - COMPLETE
-- pnpm workspace initialized
+- Bun workspace initialized
 - Expo app with expo-router configured
 - Unistyles v3 theme set up
 - Shared types package created
