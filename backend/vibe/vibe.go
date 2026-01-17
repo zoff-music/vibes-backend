@@ -69,6 +69,23 @@ type Room struct {
 	UserCount         int          `json:"userCount,omitempty"`
 }
 
+// CreateRoomRequest is the request payload for creating a room.
+type CreateRoomRequest struct {
+	Name     string `json:"name"`
+	Password string `json:"password,omitempty"`
+}
+
+// UpdateRoomRequest is the request payload for updating a room.
+type UpdateRoomRequest struct {
+	Settings RoomSettings `json:"settings"`
+}
+
+// CreateSessionRequest is the request payload for creating a session.
+type CreateSessionRequest struct {
+	Nickname string `json:"nickname,omitempty"`
+	Password string `json:"password,omitempty"`
+}
+
 // IsEmpty returns true if the room is empty/not found
 func (r *Room) IsEmpty() bool {
 	return r.ID == ""
@@ -88,6 +105,22 @@ type Song struct {
 	AddedByNickname *string    `json:"addedByNickname,omitempty"`
 	AddedAt         time.Time  `json:"addedAt"`
 	Position        int        `json:"position"`
+}
+
+// AddSongRequest is the request payload for adding a song.
+type AddSongRequest struct {
+	SourceType SourceType `json:"sourceType"`
+	SourceID   string     `json:"sourceId"`
+	Title      string     `json:"title"`
+	Artist     string     `json:"artist,omitempty"`
+	Thumbnail  string     `json:"thumbnailUrl"`
+	Duration   int        `json:"duration"`
+	AddedBy    string     `json:"addedBy"`
+}
+
+// ReorderSongsRequest is the request payload for reordering songs.
+type ReorderSongsRequest struct {
+	NewPosition int `json:"newPosition"`
 }
 
 // IsEmpty returns true if the song is empty/not found
@@ -127,6 +160,12 @@ const (
 	RoomActionVote  RoomAction = "vote"
 )
 
+// RoomActionRequest is the request payload for room actions.
+type RoomActionRequest struct {
+	Action     RoomAction `json:"action"`
+	PositionMs int64      `json:"positionMs,omitempty"`
+}
+
 // IsEmpty returns true if the user is empty/not found
 func (u *User) IsEmpty() bool {
 	return u.ID == ""
@@ -160,6 +199,7 @@ type RoomCreator interface {
 
 // RoomUpdater updates room data
 type RoomUpdater interface {
+	GetRoom(ctx context.Context, id string) (*Room, error)
 	UpdateRoom(ctx context.Context, room *Room) (*Room, error)
 }
 
@@ -208,6 +248,12 @@ type UserManager interface {
 	CleanupInactiveUsers(ctx context.Context, roomID string, threshold time.Duration) error
 }
 
+// SessionCreator creates sessions for rooms.
+type SessionCreator interface {
+	GetRoom(ctx context.Context, id string) (*Room, error)
+	CreateUser(ctx context.Context, user *User) (*User, error)
+}
+
 // --- Interfaces for Skip Vote operations ---
 
 // SkipVoteFetcher fetches skip votes
@@ -246,4 +292,15 @@ type RoomEvent struct {
 // RoomEventBroadcaster broadcasts events to room subscribers
 type RoomEventBroadcaster interface {
 	BroadcastToRoom(ctx context.Context, roomID string, event *RoomEvent) error
+}
+
+// RoomActioner performs room actions and related state updates.
+type RoomActioner interface {
+	RoomFetcher
+	PlaybackController
+	PlaybackFetcher
+	SongsModifier
+	SkipVoteFetcher
+	SkipVoteManager
+	UserFetcher
 }

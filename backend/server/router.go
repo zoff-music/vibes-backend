@@ -21,26 +21,17 @@ func (s *Server) setupRoutes() {
 	// Room routes
 	api.HandleFunc("/rooms", handler.CreateRoom(s.DB)).Methods(http.MethodPost)
 	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet)
-	api.HandleFunc("/rooms/{id}", handler.UpdateRoom(s.DB, s.DB)).Methods(http.MethodPatch)
-	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB, s.DB)).Methods(http.MethodPost)
+	api.HandleFunc("/rooms/{id}", handler.UpdateRoom(s.DB)).Methods(http.MethodPatch)
+	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB)).Methods(http.MethodPost)
 
 	// Song routes
 	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet)
 	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB)).Methods(http.MethodPost)
 	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB)).Methods(http.MethodDelete)
-	api.HandleFunc("/rooms/{id}/songs/reorder/{songId}", handler.ReorderSongs(s.DB)).Methods(http.MethodPatch)
+	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.ReorderSongs(s.DB)).Methods(http.MethodPatch)
 
 	// Action route
-	api.HandleFunc("/rooms/{id}/action", handler.RoomAction(
-		s.DB,             // RoomFetcher
-		s.DB,             // PlaybackController
-		s.DB,             // PlaybackFetcher
-		s.DB,             // SongsModifier
-		s.DB,             // SkipVoteFetcher
-		s.DB,             // SkipVoteManager
-		s.DB,             // UserFetcher
-		s.InternalPubSub, // RoomEventBroadcaster
-	)).Methods(http.MethodPost)
+	api.HandleFunc("/rooms/{id}/action", handler.RoomAction(s.DB, s.InternalPubSub)).Methods(http.MethodPost)
 
 	// SSE route
 	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub)).Methods(http.MethodGet)

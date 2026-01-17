@@ -10,20 +10,6 @@ import (
 	"github.com/zoff-music/vibes/vibe"
 )
 
-type AddSongRequest struct {
-	SourceType vibe.SourceType `json:"sourceType"`
-	SourceID   string          `json:"sourceId"`
-	Title      string          `json:"title"`
-	Artist     string          `json:"artist,omitempty"`
-	Thumbnail  string          `json:"thumbnailUrl"`
-	Duration   int             `json:"duration"`
-	AddedBy    string          `json:"addedBy"`
-}
-
-type ReorderSongsRequest struct {
-	NewPosition int `json:"newPosition"`
-}
-
 // GetSongs handles GET /api/v1/rooms/:id/songs
 func GetSongs(
 	sf vibe.SongsFetcher,
@@ -53,7 +39,7 @@ func AddSong(
 		vars := mux.Vars(r)
 		roomID := vars["id"]
 
-		var req AddSongRequest
+		var req vibe.AddSongRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
@@ -115,7 +101,7 @@ func ReorderSongs(
 		roomID := vars["id"]
 		songID := vars["songId"]
 
-		var req ReorderSongsRequest
+		var req vibe.ReorderSongsRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)

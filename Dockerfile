@@ -1,4 +1,17 @@
-FROM golang:1.25.5 AS builder
+FROM golang:1.25.5 AS backend-dev
+
+WORKDIR /go/src/github.com/zoff-music/vibes
+
+COPY backend/go.mod backend/go.sum ./backend/
+RUN cd backend && go mod download
+
+COPY . .
+
+WORKDIR /go/src/github.com/zoff-music/vibes/backend
+EXPOSE 8000
+CMD ["go", "run", "cmd/server/main.go"]
+
+FROM golang:1.25.5 AS backend-builder
 
 # See https://stackoverflow.com/a/55757473/12429735
 # Create an app-user with no shell, no login, no home directory,
@@ -33,18 +46,33 @@ COPY . .
 RUN make test \
  && make build
 
+FROM oven/bun:1.2.0 AS frontend-dev
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+COPY apps ./apps
+COPY packages ./packages
+
+RUN bun install
+
+COPY . .
+
+EXPOSE 19006
+CMD ["bun", "run", "dev:web", "--", "--host", "0.0.0.0", "--port", "19006"]
+
 # Create production image for application with needed files
 FROM scratch
 
 # Copy SSL certificates from builder
-COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+COPY --from=backend-builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 
 # Copy app user from builder
-COPY --from=builder /etc/passwd /etc/passwd
-COPY --from=builder /etc/group /etc/group
+COPY --from=backend-builder /etc/passwd /etc/passwd
+COPY --from=backend-builder /etc/group /etc/group
 
 # Copy binary from builder
-COPY --from=builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
+COPY --from=backend-builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
 
 USER appuser:appuser
 
