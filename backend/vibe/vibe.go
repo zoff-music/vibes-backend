@@ -116,6 +116,17 @@ type User struct {
 	LastSeenAt time.Time `json:"lastSeenAt"`
 }
 
+// RoomAction represents a playback action
+type RoomAction string
+
+const (
+	RoomActionPlay  RoomAction = "play"
+	RoomActionPause RoomAction = "pause"
+	RoomActionSeek  RoomAction = "seek"
+	RoomActionSkip  RoomAction = "skip"
+	RoomActionVote  RoomAction = "vote"
+)
+
 // IsEmpty returns true if the user is empty/not found
 func (u *User) IsEmpty() bool {
 	return u.ID == ""

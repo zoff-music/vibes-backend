@@ -7,7 +7,7 @@ Detailed implementation tasks for MVP.
 ## Phase 1: Project Setup (Foundation) ✅ COMPLETE
 
 ### 1.1 Monorepo Initialization ✅
-- [x] Create `pnpm-workspace.yaml` with apps/mobile and packages/shared
+- [x] Initialize Bun workspace (`bunfig.toml`, `package.json`)
 - [x] Create root `package.json` with workspace scripts
 - [x] Create root `tsconfig.json` for shared settings
 - [x] Create `.gitignore` with node_modules, dist, .expo, *.db, .env
@@ -289,8 +289,8 @@ Detailed implementation tasks for MVP.
 
 ## Current Status
 
-**Completed Phases:** 1, 2
-**Next Phase:** 3 (Backend API Handlers)
+**Completed Phases:** 1, 2, 3
+**Next Phase:** 4 (Frontend Foundation)
 
 ### Files Created/Modified in Phase 2:
 - `backend/vibe/vibe.go` - All domain types and interfaces
