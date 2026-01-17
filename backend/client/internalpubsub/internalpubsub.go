@@ -2,6 +2,7 @@ package internalpubsub
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -31,6 +32,19 @@ func (c *Client) PublishToInternalSubscription(ctx context.Context, topicName st
 
 	topic.publish(data)
 	return nil
+}
+
+func (c *Client) BroadcastToRoom(ctx context.Context, roomID string, event *vibe.RoomEvent) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "BroadcastToRoom")
+	defer span.Finish()
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("error marshaling room event: %w", err)
+	}
+
+	topicName := fmt.Sprintf("room:%s", roomID)
+	return c.PublishToInternalSubscription(ctx, topicName, data)
 }
 
 func (c *Client) Subscribe(topicName string) (*vibe.SubscriptionContainer, error) {
