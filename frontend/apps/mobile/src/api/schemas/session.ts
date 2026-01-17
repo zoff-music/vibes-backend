@@ -3,7 +3,7 @@ import { roomSchema } from './room';
 
 export const roomUserSchema = yup.object({
   id: yup.string().required(),
-  nickname: yup.string().optional(),
+  nickname: yup.string().nullable().optional(),
   isAdmin: yup.boolean().required(),
   joinedAt: yup.string().required(),
   lastSeenAt: yup.string().required(),
@@ -11,7 +11,7 @@ export const roomUserSchema = yup.object({
 
 export const sessionResponseSchema = yup.object({
   userId: yup.string().required(),
-  nickname: yup.string().optional(),
+  nickname: yup.string().nullable().optional(),
   isAdmin: yup.boolean().required(),
   room: roomSchema.required(),
 });

@@ -205,11 +205,13 @@ type SkipVote struct {
 // RoomFetcher fetches room data
 type RoomFetcher interface {
 	GetRoom(ctx context.Context, id string) (*Room, error)
+	GetRoomByName(ctx context.Context, name string) (*Room, error)
 }
 
 // RoomCreator creates rooms
 type RoomCreator interface {
 	CreateRoom(ctx context.Context, room *Room) (*Room, error)
+	GetRoomByName(ctx context.Context, name string) (*Room, error)
 }
 
 // RoomUpdater updates room data

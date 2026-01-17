@@ -39,6 +39,63 @@ func (c *Client) prepareGetRoomStmt() error {
 	return nil
 }
 
+// prepareGetRoomByNameStmt prepares the GetRoomByNameStatement.
+func (c *Client) prepareGetRoomByNameStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT
+			rooms.id,
+			rooms.name,
+			rooms.admin_password_hash,
+			rooms.created_at,
+			room_settings.skip_allowed,
+			room_settings.democratic_skip,
+			room_settings.skip_vote_threshold,
+			room_settings.max_continuous_adds,
+			room_settings.remove_on_play,
+			room_settings.loop_queue,
+			room_settings.allow_duplicates
+		FROM rooms
+		JOIN room_settings ON room_settings.room_id = rooms.id
+		WHERE rooms.name = ?1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetRoomByNameStatement: %w", err)
+	}
+
+	c.GetRoomByNameStatement = stmt
+
+	return nil
+}
+
+// GetRoomByName fetches a room by name.
+func (c *Client) GetRoomByName(ctx context.Context, name string) (*vibe.Room, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "GetRoomByName")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	row := c.GetRoomByNameStatement.QueryRowContext(cctx, name)
+
+	var scanned roomRow
+
+	err := scanned.scan(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return &vibe.Room{}, nil
+		}
+
+		return nil, fmt.Errorf("error fetching room by name: %w", err)
+	}
+
+	room, err := scanned.toRoom()
+	if err != nil {
+		return nil, fmt.Errorf("error converting room row: %w", err)
+	}
+
+	return room, nil
+}
+
 // GetRoom fetches a room by ID.
 func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "GetRoom")
@@ -161,8 +218,9 @@ func (r *roomRow) toRoomSettings() (vibe.RoomSettings, error) {
 // prepareCreateRoomStmt prepares the CreateRoomStatement.
 func (c *Client) prepareCreateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO rooms (id, name, admin_password_hash, created_at)
-		VALUES (?1, ?2, ?3, ?4)
+		INSERT INTO rooms (name, admin_password_hash, created_at)
+		VALUES (?1, ?2, ?3)
+		RETURNING id
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRoomStatement: %w", err)
@@ -187,16 +245,21 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	}
 	defer tx.Rollback()
 
-	_, err = tx.StmtContext(cctx, c.CreateRoomStatement).ExecContext(cctx,
-		room.ID,
+	var returnedID string
+
+	// Create room
+	err = tx.StmtContext(cctx, c.CreateRoomStatement).QueryRowContext(cctx,
 		room.Name,
 		room.AdminPasswordHash,
 		room.CreatedAt,
-	)
+	).Scan(&returnedID)
 	if err != nil {
 		return nil, fmt.Errorf("error creating room: %w", err)
 	}
 
+	room.ID = returnedID
+
+	// Create room settings
 	_, err = tx.StmtContext(cctx, c.CreateRoomSettingsStatement).ExecContext(cctx,
 		room.ID,
 		boolToInt(room.Settings.SkipAllowed),
