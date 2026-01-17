@@ -218,7 +218,7 @@ POST   /api/v1/rooms/:id/songs          # Add song to queue
 DELETE /api/v1/rooms/:id/songs/:songId  # Remove song from queue
 PATCH  /api/v1/rooms/:id/songs/reorder  # Reorder songs (admin)
 
-POST   /api/v1/rooms/:id                # Room actions (play, pause, seek, skip, vote)
+POST   /api/v1/rooms/:id/action         # Room actions (play, pause, seek, skip, vote)
                                         # { action: "play" | "pause" | "seek" | "skip" | "vote", ... }
 
 GET    /api/v1/rooms/:id/events         # SSE endpoint
@@ -499,7 +499,7 @@ func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
 ### Room Actions Endpoint Design
 All playback controls go through single endpoint with action discriminator:
 ```
-POST /api/v1/rooms/:id
+POST /api/v1/rooms/:id/action
 {
   "action": "play" | "pause" | "seek" | "skip" | "vote",
   "positionMs": 1234  // only for seek
