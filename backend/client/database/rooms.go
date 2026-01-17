@@ -218,13 +218,11 @@ func (r *roomRow) toRoomSettings() (vibe.RoomSettings, error) {
 // prepareCreateRoomStmt prepares the CreateRoomStatement.
 func (c *Client) prepareCreateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH new_room AS (
-			INSERT INTO rooms (id, name, admin_password_hash, created_at)
-			VALUES (?1, ?2, ?3, ?4)
-			RETURNING id
-		)
-		INSERT INTO room_settings (
-			room_id,
+		INSERT INTO rooms_view (
+			id,
+			name,
+			admin_password_hash,
+			created_at,
 			skip_allowed,
 			democratic_skip,
 			skip_vote_threshold,
@@ -232,12 +230,8 @@ func (c *Client) prepareCreateRoomStmt() error {
 			remove_on_play,
 			loop_queue,
 			allow_duplicates
-		)
-		SELECT
-			id,
-			?5, ?6, ?7, ?8, ?9, ?10, ?11
-		FROM new_room
-		RETURNING room_id
+		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+		RETURNING id
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRoomStatement: %w", err)
@@ -291,14 +285,10 @@ func (r *createRoomRow) scan(row *sql.Row) error {
 // prepareUpdateRoomStmt prepares the UpdateRoomStatement.
 func (c *Client) prepareUpdateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH target AS (
-			UPDATE rooms
-			SET name = ?1, admin_password_hash = ?2
-			WHERE id = ?3
-			RETURNING id
-		)
-		UPDATE room_settings
+		UPDATE rooms_view
 		SET
+			name = ?1,
+			admin_password_hash = ?2,
 			skip_allowed = ?4,
 			democratic_skip = ?5,
 			skip_vote_threshold = ?6,
@@ -306,7 +296,7 @@ func (c *Client) prepareUpdateRoomStmt() error {
 			remove_on_play = ?8,
 			loop_queue = ?9,
 			allow_duplicates = ?10
-		WHERE room_id IN (SELECT id FROM target)
+		WHERE id = ?3
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateRoomStatement: %w", err)
