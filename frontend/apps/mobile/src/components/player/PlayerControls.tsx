@@ -99,10 +99,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#a855f7',
         alignItems: 'center',
         justifyContent: 'center',
-        shadowColor: '#a855f7',
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.3,
-        shadowRadius: 8,
+        boxShadow: '0px 4px 8px rgba(168, 85, 247, 0.3)',
         elevation: 5,
     },
     secondaryButton: {

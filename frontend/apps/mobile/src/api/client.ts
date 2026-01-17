@@ -7,6 +7,7 @@ import { emptyObjectSchema } from './schemas/common';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
 const API_BASE_PATH = '/api/v1';
+const URL = API_URL + API_BASE_PATH
 
 const endpoints = {
   '/rooms': {
@@ -59,8 +60,8 @@ const endpoints = {
 } satisfies RequestDefinitions;
 
 export const api = new RequestClient({
-  hostname: API_URL,
-  baseUrl: API_BASE_PATH,
+  hostname: URL,
+  baseUrl: URL,
   endpoints,
   validation: true,
 });
