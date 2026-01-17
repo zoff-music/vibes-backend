@@ -1,4 +1,4 @@
-.PHONY: build install server test help docker dev dev-down gosec govulncheck ci-lint
+.PHONY: build install server test help docker dev dev-down frontend gosec govulncheck ci-lint
 
 PROJECT_NAME=$(shell basename $(CURDIR))
 BACKEND_DIR=backend
@@ -46,6 +46,10 @@ dev:
 ## dev-down: Stops docker compose services
 dev-down:
 	docker compose down
+
+## frontend: Runs frontend dev server locally
+frontend:
+	cd frontend && bun dev
 
 ## gosec: Runs gosec
 gosec:

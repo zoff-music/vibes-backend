@@ -7,9 +7,9 @@ Detailed implementation tasks for MVP.
 ## Phase 1: Project Setup (Foundation) ✅ COMPLETE
 
 ### 1.1 Monorepo Initialization ✅
-- [x] Initialize Bun workspace (`bunfig.toml`, `package.json`)
-- [x] Create root `package.json` with workspace scripts
-- [x] Create root `tsconfig.json` for shared settings
+- [x] Initialize Bun workspace (`bunfig.toml`, `frontend/package.json`)
+- [x] Create `frontend/package.json` with workspace scripts
+- [x] Create `frontend/tsconfig.json` for shared settings
 - [x] Create `.gitignore` with node_modules, dist, .expo, *.db, .env
 
 ### 1.2 Backend Setup ✅
@@ -32,21 +32,21 @@ Detailed implementation tasks for MVP.
 - [ ] Add NativeWind/Tailwind after babel config issues resolved
 
 ### 1.4 Shared Package ✅
-- [x] Create `packages/shared/package.json`
-- [x] Create `packages/shared/tsconfig.json`
-- [x] Create `packages/shared/src/types.ts` (Room, Song, PlaybackState)
-- [x] Create `packages/shared/src/constants.ts`
+- [x] Create `frontend/packages/shared/package.json`
+- [x] Create `frontend/packages/shared/tsconfig.json`
+- [x] Create `frontend/packages/shared/src/types.ts` (Room, Song, PlaybackState)
+- [x] Create `frontend/packages/shared/src/constants.ts`
 
 ### 1.5 Design System Foundation ✅
 - [x] Created Vibez dark theme colors (background, surface, primary purple, etc.)
 - [x] Using plain React Native StyleSheet for now
-- [x] Create `apps/mobile/src/utils/wrap.ts` (safeWrap/safeWrapAsync)
+- [x] Create `frontend/apps/mobile/src/utils/wrap.ts` (safeWrap/safeWrapAsync)
 
 ### 1.6 API Client Setup
-- [ ] Create `apps/mobile/src/api/client.ts` - wiretyped or fetch-based client
-- [ ] Create `apps/mobile/src/api/schemas/room.ts` (yup schemas)
-- [ ] Create `apps/mobile/src/api/schemas/songs.ts`
-- [ ] Create `apps/mobile/src/api/schemas/playback.ts`
+- [ ] Create `frontend/apps/mobile/src/api/client.ts` - wiretyped or fetch-based client
+- [ ] Create `frontend/apps/mobile/src/api/schemas/room.ts` (yup schemas)
+- [ ] Create `frontend/apps/mobile/src/api/schemas/songs.ts`
+- [ ] Create `frontend/apps/mobile/src/api/schemas/playback.ts`
 
 
 ---
@@ -131,35 +131,35 @@ Detailed implementation tasks for MVP.
 ## Phase 4: Frontend Foundation (API & State) ✅ COMPLETE
 
 ### 4.1 SSE Hook ✅
-- [x] Create `apps/mobile/src/hooks/useSSE.ts`:
+- [x] Create `frontend/apps/mobile/src/hooks/useSSE.ts`:
   - [x] Connect to room events endpoint
   - [x] Parse event types
   - [x] Reconnection with exponential backoff
   - [x] Clean disposal
 
 ### 4.2 State Management ✅
-- [x] Create `apps/mobile/src/stores/roomStore.ts` (zustand):
+- [x] Create `frontend/apps/mobile/src/stores/roomStore.ts` (zustand):
   - [x] Room data
   - [x] Users list
   - [x] Admin status
-- [x] Create `apps/mobile/src/stores/queueStore.ts`:
+- [x] Create `frontend/apps/mobile/src/stores/queueStore.ts`:
   - [x] Queue items
   - [x] Add/remove optimistic updates
-- [x] Create `apps/mobile/src/stores/playbackStore.ts`:
+- [x] Create `frontend/apps/mobile/src/stores/playbackStore.ts`:
   - [x] Current item
   - [x] Playing state
   - [x] Position (synced)
   - [x] Calculated actual position
 
 ### 4.3 Custom Hooks ✅
-- [x] Create `apps/mobile/src/hooks/useRoom.ts`:
+- [x] Create `frontend/apps/mobile/src/hooks/useRoom.ts`:
   - [x] Fetch room on mount
   - [x] Subscribe to SSE
   - [x] Update store on events
-- [x] Create `apps/mobile/src/hooks/useQueue.ts`:
+- [x] Create `frontend/apps/mobile/src/hooks/useQueue.ts`:
   - [x] Fetch queue
   - [x] Add/remove mutations
-- [x] Create `apps/mobile/src/hooks/usePlayback.ts`:
+- [x] Create `frontend/apps/mobile/src/hooks/usePlayback.ts`:
   - [x] Sync logic (server time vs client time)
   - [x] Control methods (play, pause, seek, skip)
 
@@ -168,49 +168,49 @@ Detailed implementation tasks for MVP.
 ## Phase 5: Frontend Screens
 
 ### 5.1 App Layout
-- [ ] Create `apps/mobile/app/_layout.tsx`:
+- [ ] Create `frontend/apps/mobile/app/_layout.tsx`:
   - Unistyles provider
   - Store providers
   - Font loading
-- [ ] Create `apps/mobile/app/index.tsx`:
+- [ ] Create `frontend/apps/mobile/app/index.tsx`:
   - Landing page
   - "Create Room" CTA
   - "Join Room" input
 
 ### 5.2 Create Room Flow
-- [ ] Create `apps/mobile/app/room/create.tsx`:
+- [ ] Create `frontend/apps/mobile/app/room/create.tsx`:
   - Room name input
   - Optional admin password
   - Basic settings preview
   - Create button → navigate to room
 
 ### 5.3 Room View
-- [ ] Create `apps/mobile/app/room/[id]/_layout.tsx`:
+- [ ] Create `frontend/apps/mobile/app/room/[id]/_layout.tsx`:
   - SSE connection
   - Bottom tab navigation (Now Playing, Queue, Settings)
-- [ ] Create `apps/mobile/app/room/[id]/index.tsx` (Now Playing):
+- [ ] Create `frontend/apps/mobile/app/room/[id]/index.tsx` (Now Playing):
   - Blurred background from thumbnail
   - Current track info
   - Playback controls
   - Mini queue preview
-- [ ] Create `apps/mobile/app/room/[id]/queue.tsx`:
+- [ ] Create `frontend/apps/mobile/app/room/[id]/queue.tsx`:
   - Full queue list
   - Add to queue button
   - Swipe to remove (if admin)
   - Drag to reorder (if admin)
-- [ ] Create `apps/mobile/app/room/[id]/settings.tsx`:
+- [ ] Create `frontend/apps/mobile/app/room/[id]/settings.tsx`:
   - Admin password prompt (if not admin)
   - Settings toggles (skip, democratic skip, etc.)
 
 ### 5.4 Cast Display Mode
-- [ ] Create `apps/mobile/app/cast/[id].tsx`:
+- [ ] Create `frontend/apps/mobile/app/cast/[id].tsx`:
   - Full-screen video player
   - Minimal UI overlay
   - Queue sidebar (toggleable)
   - Optimized for TV viewing
 
 ### 5.5 Add to Queue Modal
-- [ ] Create `apps/mobile/src/components/queue/AddToQueueModal.tsx`:
+- [ ] Create `frontend/apps/mobile/src/components/queue/AddToQueueModal.tsx`:
   - YouTube URL paste
   - (Future: search functionality)
   - Preview before adding
@@ -220,17 +220,17 @@ Detailed implementation tasks for MVP.
 ## Phase 6: Video Player
 
 ### 6.1 Player Component
-- [ ] Create `apps/mobile/src/components/player/VideoPlayer.tsx`:
+- [ ] Create `frontend/apps/mobile/src/components/player/VideoPlayer.tsx`:
   - react-player wrapper
   - YouTube support
   - Sync to playbackStore position
   - Handle play/pause/seek events
-- [ ] Create `apps/mobile/src/components/player/PlayerControls.tsx`:
+- [ ] Create `frontend/apps/mobile/src/components/player/PlayerControls.tsx`:
   - Play/pause button
   - Progress bar with seek
   - Skip button
   - Volume (where supported)
-- [ ] Create `apps/mobile/src/components/player/NowPlayingBackground.tsx`:
+- [ ] Create `frontend/apps/mobile/src/components/player/NowPlayingBackground.tsx`:
   - Blurred thumbnail as background
   - Gradient overlay
 
@@ -245,19 +245,19 @@ Detailed implementation tasks for MVP.
 ## Phase 7: UI Components (Design System)
 
 ### 7.1 Primitives
-- [ ] `apps/mobile/src/components/ui/Button.tsx`
-- [ ] `apps/mobile/src/components/ui/Input.tsx`
-- [ ] `apps/mobile/src/components/ui/Card.tsx`
-- [ ] `apps/mobile/src/components/ui/Text.tsx` (styled variants)
-- [ ] `apps/mobile/src/components/ui/IconButton.tsx`
-- [ ] `apps/mobile/src/components/ui/Modal.tsx`
-- [ ] `apps/mobile/src/components/ui/Skeleton.tsx`
+- [ ] `frontend/apps/mobile/src/components/ui/Button.tsx`
+- [ ] `frontend/apps/mobile/src/components/ui/Input.tsx`
+- [ ] `frontend/apps/mobile/src/components/ui/Card.tsx`
+- [ ] `frontend/apps/mobile/src/components/ui/Text.tsx` (styled variants)
+- [ ] `frontend/apps/mobile/src/components/ui/IconButton.tsx`
+- [ ] `frontend/apps/mobile/src/components/ui/Modal.tsx`
+- [ ] `frontend/apps/mobile/src/components/ui/Skeleton.tsx`
 
 ### 7.2 Composite Components
-- [ ] `apps/mobile/src/components/queue/QueueItem.tsx`
-- [ ] `apps/mobile/src/components/queue/QueueList.tsx`
-- [ ] `apps/mobile/src/components/room/RoomHeader.tsx`
-- [ ] `apps/mobile/src/components/room/UserCount.tsx`
+- [ ] `frontend/apps/mobile/src/components/queue/QueueItem.tsx`
+- [ ] `frontend/apps/mobile/src/components/queue/QueueList.tsx`
+- [ ] `frontend/apps/mobile/src/components/room/RoomHeader.tsx`
+- [ ] `frontend/apps/mobile/src/components/room/UserCount.tsx`
 
 ---
 
@@ -316,7 +316,7 @@ Phase 2 (Backend Core) ✅ ──────────────┐
     ↓                                   │
 Phase 3 (Backend API) ← NEXT            │
     ↓                                   ↓
-Phase 4 (Frontend Foundation) ←── packages/shared
+Phase 4 (Frontend Foundation) ←── frontend/packages/shared
     ↓
 Phase 5 (Screens) + Phase 6 (Player) + Phase 7 (UI)
     ↓
