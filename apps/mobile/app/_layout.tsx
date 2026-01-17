@@ -1,6 +1,5 @@
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import '../src/styles/unistyles';
 
 export default function RootLayout() {
   return (
