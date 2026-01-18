@@ -59,7 +59,7 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
         setIsSearching(true);
         setError(null);
 
-        const [err, results] = await api.youtubeSearch(query);
+        const [err, results] = await api.get('/youtube/search', { $search: { q: query } });
         setIsSearching(false);
 
         if (err || !results) {
