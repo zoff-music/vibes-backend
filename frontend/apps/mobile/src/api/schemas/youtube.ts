@@ -9,3 +9,7 @@ export const youTubeVideoSchema = yup.object({
 });
 
 export const youTubeSearchResponseSchema = yup.array(youTubeVideoSchema);
+
+export const youTubeSearchQuerySchema = yup.object({
+  q: yup.string().required(),
+});
