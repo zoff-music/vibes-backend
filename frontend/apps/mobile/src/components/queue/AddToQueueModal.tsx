@@ -121,7 +121,7 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
         if (!previewVideo || justAdded) return;
 
         setIsLoading(true);
-        const durationSec = parseISODuration(previewVideo.duration || 'PT0S');
+        const durationSec = parseISODuration(previewVideo.duration);
 
         const success = await addToQueue(
             'youtube',
@@ -147,11 +147,11 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
 
     return (
         <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 animate-fade-in"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-start justify-center pt-4 pb-safe z-50 animate-fade-in overflow-y-auto"
             onClick={onClose}
         >
             <div
-                className="glass-elevated rounded-2xl p-6 max-w-lg w-full animate-scale-in"
+                className="bg-surface/95 backdrop-blur-xl rounded-2xl p-6 max-w-lg w-full mx-4 animate-scale-in shadow-2xl border border-border/50"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Header */}
@@ -214,23 +214,30 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
 
                     {/* Search Results Dropdown */}
                     {showResults && searchResults.length > 0 && (
-                        <div className="absolute top-full left-0 right-0 mt-2 glass-elevated rounded-xl overflow-hidden max-h-96 overflow-y-auto z-10 animate-scale-in">
-                            {searchResults.map((result) => (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-surfaceElevated/98 backdrop-blur-xl rounded-xl overflow-hidden max-h-96 overflow-y-auto z-10 animate-scale-in shadow-2xl border border-border">
+                            {searchResults.map((result, index) => (
                                 <button
                                     key={result.id}
                                     onClick={() => handleSelectResult(result)}
-                                    className="w-full flex gap-3 p-3 hover:bg-surfaceHover transition-colors text-left"
+                                    className={`w-full flex gap-3 p-4 hover:bg-surfaceHover/80 transition-all text-left ${index > 0 ? 'border-t border-border/50' : ''}`}
                                 >
-                                    <img
-                                        src={result.thumbnailUrl}
-                                        alt={result.title}
-                                        className="w-24 h-16 rounded-lg object-cover bg-surfaceElevated flex-shrink-0"
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="font-medium line-clamp-2 text-sm mb-1">
+                                    <div className="relative flex-shrink-0">
+                                        <img
+                                            src={result.thumbnailUrl}
+                                            alt={result.title}
+                                            className="w-28 h-20 rounded-lg object-cover bg-black ring-1 ring-border"
+                                        />
+                                        {result.duration && (
+                                            <div className="absolute bottom-1.5 right-1.5 bg-black/90 backdrop-blur-sm px-1.5 py-0.5 rounded text-xs font-medium">
+                                                {formatDuration(parseISODuration(result.duration))}
+                                            </div>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0 flex flex-col justify-center">
+                                        <h4 className="font-semibold line-clamp-2 text-sm mb-1.5 leading-snug">
                                             {result.title}
                                         </h4>
-                                        <p className="text-xs text-text-muted line-clamp-1">
+                                        <p className="text-xs text-text-muted line-clamp-1 font-medium">
                                             {result.channelTitle}
                                         </p>
                                     </div>
