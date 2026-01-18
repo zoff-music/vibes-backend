@@ -152,10 +152,8 @@ export default function RoomView() {
                 <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
                     {/* Player Section */}
                     <div className="space-y-6">
-                        {/* Video Player - Hidden but functional */}
-                        <div className="hidden">
-                            <VideoPlayer onEnded={skip} />
-                        </div>
+                        {/* Video Player */}
+                        <VideoPlayer onEnded={skip} isVisible={true} />
 
                         {/* Now Playing Card */}
                         <div className="glass-elevated rounded-3xl p-8 relative overflow-hidden animate-scale-in border-4 border-ink/10 shadow-retro-pink">
@@ -198,7 +196,7 @@ export default function RoomView() {
                                 )}
 
                                 {/* Player Controls */}
-                                <PlayerControls roomId={id || ''} />
+                                <PlayerControls roomId={id || ''} hasSongsInQueue={songs && songs.length > 0} />
                             </div>
                         </div>
                     </div>

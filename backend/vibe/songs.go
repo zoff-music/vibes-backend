@@ -54,4 +54,5 @@ type SongsModifier interface {
 	RemoveSong(ctx context.Context, roomID, songID string) error
 	ReorderSongs(ctx context.Context, roomID, songID string, newPosition int) error
 	GetNextSong(ctx context.Context, roomID string, currentPosition int) (*Song, error)
+	GetMaxPosition(ctx context.Context, roomID string) (int, error)
 }

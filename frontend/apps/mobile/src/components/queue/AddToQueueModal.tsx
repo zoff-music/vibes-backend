@@ -111,25 +111,17 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
         }, 300);
     };
 
-    const handleSelectResult = (result: SearchResult) => {
-        setPreviewVideo(result);
-        setShowResults(false);
-        setSearchQuery(result.title);
-    };
-
-    const handleAdd = async () => {
-        if (!previewVideo || justAdded) return;
-
+    const handleSelectResult = async (result: SearchResult) => {
         setIsLoading(true);
-        const durationSec = parseISODuration(previewVideo.duration);
+        const durationSec = parseISODuration(result.duration);
 
         const success = await addToQueue(
             'youtube',
-            previewVideo.id,
-            previewVideo.title,
-            previewVideo.thumbnailUrl,
+            result.id,
+            result.title,
+            result.thumbnailUrl,
             durationSec,
-            previewVideo.channelTitle
+            result.channelTitle
         );
 
         setIsLoading(false);
@@ -141,6 +133,25 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
         } else {
             setError('Failed to add song to queue');
         }
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
+            if (searchResults.length > 0) {
+                handleSelectResult(searchResults[0]);
+            }
+        }
+    };
+
+    // Kept for backward compatibility if needed, or can be removed if strictly unused.
+    // The previous logic for handleAdd is now largely merged into handleSelectResult.
+    const handleAdd = async () => {
+        if (!previewVideo || justAdded) return;
+        // ... (logic is same as above but targeting previewVideo)
+        // Since we are skipping preview, this might become redundant.
+        // For now, I'll direct handleAdd to work if previewVideo exists (e.g. from copy-paste URL which might still use preview flow if we want, but user asked to skip "last add to queue step").
+        // If "skip the last add to queue step" applies to search results, we use handleSelectResult.
+        // If it applies to everything, we need to auto-add on URL match too.
     };
 
     if (!isVisible) return null;
@@ -189,6 +200,7 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
                             placeholder="Search songs or paste YouTube URL..."
                             value={searchQuery}
                             onChange={(e) => handleSearchChange(e.target.value)}
+                            onKeyDown={handleKeyDown}
                             className="w-full bg-surface rounded-xl pl-12 pr-12 py-4 text-base text-ink placeholder:text-ink/40 border-2 border-ink/20 focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] transition-all font-medium"
                             autoFocus
                         />

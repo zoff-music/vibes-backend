@@ -47,6 +47,13 @@ func AddSong(
 			return
 		}
 
+		// Get the max position to append new song at end of queue
+		maxPosition, err := sm.GetMaxPosition(ctx, roomID)
+		if err != nil {
+			handleError(w, fmt.Errorf("failed to get max position: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+
 		artist := req.Artist
 		song := &vibe.Song{
 			ID:           uuid.New().String(),
@@ -59,6 +66,7 @@ func AddSong(
 			Duration:     req.Duration,
 			AddedBy:      req.AddedBy,
 			AddedAt:      time.Now(),
+			Position:     maxPosition + 1,
 		}
 
 		created, err := sm.AddSong(ctx, song)

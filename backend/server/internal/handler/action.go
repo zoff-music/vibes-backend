@@ -38,9 +38,18 @@ func RoomAction(
 
 		switch req.Action {
 		case vibe.RoomActionPlay:
-			state.IsPlaying = true
-			state.UpdatedAt = time.Now()
-			err = ra.UpsertPlaybackState(ctx, state)
+			// If no song is currently playing, promote the first song from the queue
+			if state.CurrentSongID == nil {
+				err = skipToNextSong(ctx, roomID, state, ra, ra)
+				if err != nil {
+					handleError(w, fmt.Errorf("failed to start playback: %w", err), http.StatusInternalServerError, true)
+					return
+				}
+			} else {
+				state.IsPlaying = true
+				state.UpdatedAt = time.Now()
+				err = ra.UpsertPlaybackState(ctx, state)
+			}
 		case vibe.RoomActionPause:
 			state.IsPlaying = false
 			state.UpdatedAt = time.Now()
