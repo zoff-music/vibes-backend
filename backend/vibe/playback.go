@@ -9,7 +9,7 @@ import (
 type PlaybackState struct {
 	RoomID        string    `json:"-"`
 	CurrentSongID *string   `json:"currentSongId"`
-	CurrentSong   *Song     `json:"currentSong,omitempty"`
+	CurrentSong   *Song     `json:"currentSong"`
 	IsPlaying     bool      `json:"isPlaying"`
 	PositionMs    int64     `json:"positionMs"`
 	UpdatedAt     time.Time `json:"updatedAt"`
