@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQueue } from '../../hooks/useQueue';
 import { api } from '../../api/client';
 import { parseISODuration, formatDuration } from '../../utils/time';
@@ -9,18 +9,33 @@ interface Props {
     onClose: () => void;
 }
 
+interface SearchResult {
+    id: string;
+    title: string;
+    channelTitle: string;
+    thumbnailUrl: string;
+    duration?: string;
+}
+
 export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose }) => {
-    const [url, setUrl] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+    const [showResults, setShowResults] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [previewVideo, setPreviewVideo] = useState<any>(null);
+    const [previewVideo, setPreviewVideo] = useState<SearchResult | null>(null);
     const [justAdded, setJustAdded] = useState(false);
     const { addToQueue } = useQueue(roomId);
+    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         if (!isVisible) {
             setTimeout(() => {
-                setUrl('');
+                setSearchQuery('');
+                setSearchResults([]);
+                setShowResults(false);
                 setPreviewVideo(null);
                 setError(null);
                 setJustAdded(false);
@@ -34,31 +49,72 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
         return (match && match[2].length === 11) ? match[2] : null;
     };
 
-    const fetchVideoDetails = async (id: string) => {
-        const [err, video] = await api.get('/youtube/videos/{id}', { id });
-        if (err || !video) {
-            setError('Could not find that video');
-            return null;
+    const performSearch = async (query: string) => {
+        if (!query.trim()) {
+            setSearchResults([]);
+            setShowResults(false);
+            return;
         }
-        return video;
-    };
 
-    const handleUrlChange = async (newUrl: string) => {
-        setUrl(newUrl);
+        setIsSearching(true);
         setError(null);
 
-        const id = extractYoutubeId(newUrl);
-        if (id) {
-            setIsLoading(true);
-            setPreviewVideo(null);
-            const video = await fetchVideoDetails(id);
-            setIsLoading(false);
-            if (video) {
-                setPreviewVideo(video);
-            }
-        } else {
-            setPreviewVideo(null);
+        const [err, results] = await api.youtubeSearch(query);
+        setIsSearching(false);
+
+        if (err || !results) {
+            setError('Search failed. Please try again.');
+            setSearchResults([]);
+            setShowResults(false);
+            return;
         }
+
+        setSearchResults(results);
+        setShowResults(true);
+    };
+
+    const handleSearchChange = (query: string) => {
+        setSearchQuery(query);
+        setError(null);
+        setPreviewVideo(null);
+
+        // Check if it's a YouTube URL
+        const videoId = extractYoutubeId(query);
+        if (videoId) {
+            // If it's a URL, fetch the video directly
+            setShowResults(false);
+            setIsSearching(true);
+            api.get('/youtube/videos/{id}', { id: videoId }).then(([err, video]) => {
+                setIsSearching(false);
+                if (err || !video) {
+                    setError('Could not find that video');
+                    return;
+                }
+                setPreviewVideo(video);
+            });
+            return;
+        }
+
+        // Debounce search
+        if (searchTimeoutRef.current) {
+            clearTimeout(searchTimeoutRef.current);
+        }
+
+        if (!query.trim()) {
+            setSearchResults([]);
+            setShowResults(false);
+            return;
+        }
+
+        searchTimeoutRef.current = setTimeout(() => {
+            performSearch(query);
+        }, 300);
+    };
+
+    const handleSelectResult = (result: SearchResult) => {
+        setPreviewVideo(result);
+        setShowResults(false);
+        setSearchQuery(result.title);
     };
 
     const handleAdd = async () => {
@@ -102,7 +158,7 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
                 <div className="flex items-center justify-between mb-6">
                     <div>
                         <h2 className="text-xl font-bold">Add a Song</h2>
-                        <p className="text-sm text-text-muted mt-1">Paste a YouTube link</p>
+                        <p className="text-sm text-text-muted mt-1">Search or paste a link</p>
                     </div>
                     <button
                         onClick={onClose}
@@ -114,20 +170,30 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
                     </button>
                 </div>
 
-                {/* URL Input */}
-                <div className="mb-6">
+                {/* Search Input */}
+                <div className="mb-6 relative">
                     <div className="relative">
+                        <div className="absolute left-3.5 top-1/2 -translate-y-1/2 text-text-subtle">
+                            {isSearching ? (
+                                <div className="w-4 h-4 border-2 border-text-subtle/30 border-t-text-subtle rounded-full animate-spin" />
+                            ) : (
+                                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                </svg>
+                            )}
+                        </div>
                         <input
+                            ref={inputRef}
                             type="text"
-                            placeholder="https://youtube.com/watch?v=..."
-                            value={url}
-                            onChange={(e) => handleUrlChange(e.target.value)}
-                            className="w-full bg-surfaceElevated/50 backdrop-blur-sm rounded-xl px-4 py-3.5 pr-12 text-base text-white placeholder:text-text-subtle border border-border focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
+                            placeholder="Search songs or paste YouTube URL..."
+                            value={searchQuery}
+                            onChange={(e) => handleSearchChange(e.target.value)}
+                            className="w-full bg-surfaceElevated/50 backdrop-blur-sm rounded-xl pl-11 pr-12 py-3.5 text-base text-white placeholder:text-text-subtle border border-border focus:outline-none focus:border-primary/50 focus:ring-2 focus:ring-primary/20 transition-all"
                             autoFocus
                         />
-                        {url && (
+                        {searchQuery && (
                             <button
-                                onClick={() => handleUrlChange('')}
+                                onClick={() => handleSearchChange('')}
                                 className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 hover:bg-surfaceHover rounded-lg transition-colors"
                             >
                                 <svg className="w-4 h-4 text-text-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -145,10 +211,37 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
                             <span>{error}</span>
                         </div>
                     )}
+
+                    {/* Search Results Dropdown */}
+                    {showResults && searchResults.length > 0 && (
+                        <div className="absolute top-full left-0 right-0 mt-2 glass-elevated rounded-xl overflow-hidden max-h-96 overflow-y-auto z-10 animate-scale-in">
+                            {searchResults.map((result) => (
+                                <button
+                                    key={result.id}
+                                    onClick={() => handleSelectResult(result)}
+                                    className="w-full flex gap-3 p-3 hover:bg-surfaceHover transition-colors text-left"
+                                >
+                                    <img
+                                        src={result.thumbnailUrl}
+                                        alt={result.title}
+                                        className="w-24 h-16 rounded-lg object-cover bg-surfaceElevated flex-shrink-0"
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="font-medium line-clamp-2 text-sm mb-1">
+                                            {result.title}
+                                        </h4>
+                                        <p className="text-xs text-text-muted line-clamp-1">
+                                            {result.channelTitle}
+                                        </p>
+                                    </div>
+                                </button>
+                            ))}
+                        </div>
+                    )}
                 </div>
 
                 {/* Loading State */}
-                {isLoading && !previewVideo && (
+                {isSearching && !previewVideo && extractYoutubeId(searchQuery) && (
                     <div className="glass rounded-xl p-8 text-center animate-scale-in">
                         <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-surfaceElevated mb-3">
                             <div className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
