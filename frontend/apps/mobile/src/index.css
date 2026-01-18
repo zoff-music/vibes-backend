@@ -1,25 +1,402 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&family=Noto+Sans+JP:wght@300;400;500;700&display=swap')
+layer(base);
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-background: #fefefe;
+  --color-paper: #ffffff;
+  --color-surface: #f8f8fb;
+  --color-surfaceElevated: #ffffff;
+  --color-surfaceHover: #f0f0f8;
+  --color-border: #e5e5f0;
+
+  --color-dark-background: #0d0d0f;
+  --color-dark-paper: #141416;
+  --color-dark-surface: #1a1a1e;
+  --color-dark-surfaceElevated: #222226;
+  --color-dark-surfaceHover: #2a2a30;
+  --color-dark-border: #2a2a30;
+
+  --color-dark-text: #f5f5f7;
+  --color-dark-text-muted: #a1a1a8;
+  --color-dark-text-subtle: #6b6b73;
+  --color-dark-text-inverse: #0d0d0f;
+
+  --color-primary: #ff2e97;
+  --color-primary-muted: #ff1493;
+  --color-primary-light: #ffb3e6;
+
+  --color-secondary: #00d9ff;
+  --color-accent: #ffd700;
+  --color-purple: #b24bf3;
+  --color-sakura: #ffb7c5;
+  --color-matcha: #a8d8b9;
+  --color-ink: #2d3142;
+
+  --color-text: #2d3142;
+  --color-text-muted: #6b7280;
+  --color-text-subtle: #9ca3af;
+  --color-text-inverse: #ffffff;
+
+  --color-success: #00d9a3;
+  --color-warning: #ffd93d;
+  --color-error: #ff2e63;
+
+  --font-body: Inter, Noto Sans JP, system-ui, sans-serif;
+  --font-heading: Poppins, Noto Sans JP, system-ui, sans-serif;
+  --font-mono: 'Courier New', MS PGothic, monospace;
+  --font-japanese: 'Noto Sans JP', 'Hiragino Sans', sans-serif;
+
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-xs--letter-spacing: 0.02em;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-sm--letter-spacing: 0.01em;
+  --text-base: 16px;
+  --text-base--line-height: 24px;
+  --text-base--letter-spacing: 0;
+  --text-md: 16px;
+  --text-md--line-height: 24px;
+  --text-md--letter-spacing: 0;
+  --text-lg: 18px;
+  --text-lg--line-height: 28px;
+  --text-lg--letter-spacing: -0.01em;
+  --text-xl: 22px;
+  --text-xl--line-height: 32px;
+  --text-xl--letter-spacing: -0.02em;
+  --text-2xl: 28px;
+  --text-2xl--line-height: 36px;
+  --text-2xl--letter-spacing: -0.02em;
+  --text-3xl: 36px;
+  --text-3xl--line-height: 44px;
+  --text-3xl--letter-spacing: -0.03em;
+  --text-4xl: 48px;
+  --text-4xl--line-height: 56px;
+  --text-4xl--letter-spacing: -0.03em;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+
+  --shadow-retro: 4px 4px 0px 0px rgba(0, 0, 0, 0.15);
+  --shadow-retro-lg: 6px 6px 0px 0px rgba(0, 0, 0, 0.15);
+  --shadow-retro-pink: 4px 4px 0px 0px rgba(255, 46, 151, 0.3);
+  --shadow-retro-cyan: 4px 4px 0px 0px rgba(0, 217, 255, 0.3);
+  --shadow-neon-pink: 0 0 20px rgba(255, 46, 151, 0.5);
+  --shadow-neon-cyan: 0 0 20px rgba(0, 217, 255, 0.5);
+  --shadow-soft: 0 2px 8px rgba(45, 49, 66, 0.08);
+
+  --backdrop-blur-xs: 2px;
+  --backdrop-blur-sm: 4px;
+  --backdrop-blur: 8px;
+  --backdrop-blur-md: 12px;
+  --backdrop-blur-lg: 16px;
+
+  --animate-fade-in: fadeIn 0.4s ease-out;
+  --animate-slide-up: slideUp 0.3s ease-out;
+  --animate-slide-down: slideDown 0.3s ease-out;
+  --animate-scale-in: scaleIn 0.2s ease-out;
+  --animate-neon-pulse: neonPulse 2s ease-in-out infinite;
+  --animate-float: float 3s ease-in-out infinite;
+
+  @keyframes fadeIn {
+    0% {
+      opacity: 0;
+    }
+    100% {
+      opacity: 1;
+    }
+  }
+  @keyframes slideUp {
+    0% {
+      transform: translateY(10px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes slideDown {
+    0% {
+      transform: translateY(-10px);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+  @keyframes scaleIn {
+    0% {
+      transform: scale(0.98);
+      opacity: 0;
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+  @keyframes neonPulse {
+    0%,
+    100% {
+      opacity: 1;
+      filter: brightness(1);
+    }
+    50% {
+      opacity: 0.8;
+      filter: brightness(1.2);
+    }
+  }
+  @keyframes float {
+    0%,
+    100% {
+      transform: translateY(0px);
+    }
+    50% {
+      transform: translateY(-10px);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--color-gray-200, currentcolor);
+  }
+}
+
+@utility glass {
+  /* Glass surfaces - now using CSS variables */
+  background-color: var(--theme-glass-bg);
+  border: 1px solid var(--theme-glass-border);
+  box-shadow: 4px 4px 0px 0px var(--theme-shadow);
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+@utility glass-elevated {
+  background-color: var(--theme-bg-elevated);
+  border: 1px solid var(--theme-border-strong);
+  box-shadow:
+    6px 6px 0px 0px var(--theme-shadow-accent),
+    0 4px 20px var(--theme-shadow);
+  transition:
+    background-color 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+}
+
+@utility neon-pink {
+  /* Neon accents */
+  box-shadow:
+    0 0 10px rgba(255, 46, 151, 0.3),
+    0 0 20px rgba(255, 46, 151, 0.15);
+
+  .dark & {
+    box-shadow:
+      0 0 15px rgba(255, 46, 151, 0.5),
+      0 0 30px rgba(255, 46, 151, 0.25);
+  }
+}
+
+@utility dark {
+  & .neon-pink {
+    box-shadow:
+      0 0 15px rgba(255, 46, 151, 0.5),
+      0 0 30px rgba(255, 46, 151, 0.25);
+  }
+
+  & .neon-cyan {
+    box-shadow:
+      0 0 15px rgba(0, 217, 255, 0.5),
+      0 0 30px rgba(0, 217, 255, 0.25);
+  }
+}
+
+@utility neon-cyan {
+  box-shadow:
+    0 0 10px rgba(0, 217, 255, 0.3),
+    0 0 20px rgba(0, 217, 255, 0.15);
+
+  .dark & {
+    box-shadow:
+      0 0 15px rgba(0, 217, 255, 0.5),
+      0 0 30px rgba(0, 217, 255, 0.25);
+  }
+}
+
+@utility transition-smooth {
+  /* Smooth transitions */
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@utility jp-art {
+  /* Japanese text art helper */
+  font-family: 'Noto Sans JP', sans-serif;
+  letter-spacing: 0.1em;
+}
+
+@utility text-theme {
+  /* Theme-aware text utilities */
+  color: var(--theme-text);
+}
+
+@utility text-theme-muted {
+  color: var(--theme-text-muted);
+}
+
+@utility text-theme-subtle {
+  color: var(--theme-text-subtle);
+}
+
+@utility bg-theme {
+  background-color: var(--theme-bg);
+}
+
+@utility bg-theme-surface {
+  background-color: var(--theme-bg-surface);
+}
+
+@utility bg-theme-elevated {
+  background-color: var(--theme-bg-elevated);
+}
+
+@utility border-theme {
+  border-color: var(--theme-border);
+}
+
+/*
+ * THEME SYSTEM
+ * ============
+ * To add a new theme:
+ * 1. Add a new theme class (e.g., .theme-sunset) 
+ * 2. Define all --theme-* CSS variables within it
+ * 3. Add the theme to the themes object in themeStore.ts
+ */
 
 @layer base {
+  /* ===== THEME VARIABLES ===== */
+  :root {
+    /* Background colors */
+    --theme-bg: #fefefe;
+    --theme-bg-paper: #ffffff;
+    --theme-bg-surface: #f8f8fb;
+    --theme-bg-elevated: #ffffff;
+    --theme-bg-hover: #f0f0f8;
+    
+    /* Text colors */
+    --theme-text: #2d3142;
+    --theme-text-muted: #6b7280;
+    --theme-text-subtle: #9ca3af;
+    
+    /* Brand/accent colors */
+    --theme-primary: #ff2e97;
+    --theme-primary-muted: #ff1493;
+    --theme-primary-light: #ffb3e6;
+    
+    /* Border colors */
+    --theme-border: rgba(45, 49, 66, 0.1);
+    --theme-border-strong: rgba(45, 49, 66, 0.15);
+    
+    /* Shadow colors */
+    --theme-shadow: rgba(0, 0, 0, 0.08);
+    --theme-shadow-accent: rgba(255, 46, 151, 0.15);
+    
+    /* Glass effect */
+    --theme-glass-bg: #ffffff;
+    --theme-glass-border: rgba(45, 49, 66, 0.1);
+  }
+
+  /* ===== DARK THEME ===== */
+  .dark {
+    --theme-bg: #0d0d0f;
+    --theme-bg-paper: #141416;
+    --theme-bg-surface: #1a1a1e;
+    --theme-bg-elevated: #222226;
+    --theme-bg-hover: #2a2a30;
+    
+    --theme-text: #f5f5f7;
+    --theme-text-muted: #a1a1a8;
+    --theme-text-subtle: #6b6b73;
+    
+    --theme-primary: #ff2e97;
+    --theme-primary-muted: #ff1493;
+    --theme-primary-light: #ff6bb3;
+    
+    --theme-border: rgba(255, 46, 151, 0.12);
+    --theme-border-strong: rgba(255, 46, 151, 0.18);
+    
+    --theme-shadow: rgba(0, 0, 0, 0.4);
+    --theme-shadow-accent: rgba(255, 46, 151, 0.12);
+    
+    --theme-glass-bg: #1a1a1e;
+    --theme-glass-border: rgba(255, 46, 151, 0.12);
+  }
+
+  /* ===== EXAMPLE: Add more themes like this =====
+  .theme-sunset {
+    --theme-bg: #1a1215;
+    --theme-bg-paper: #22181c;
+    --theme-bg-surface: #2d2024;
+    --theme-bg-elevated: #392830;
+    --theme-bg-hover: #45323c;
+    
+    --theme-text: #fff5f7;
+    --theme-text-muted: #d4a5b0;
+    --theme-text-subtle: #8c6570;
+    
+    --theme-primary: #ff6b35;
+    --theme-primary-muted: #e85d2c;
+    --theme-primary-light: #ff9f7a;
+    
+    --theme-border: rgba(255, 107, 53, 0.15);
+    --theme-border-strong: rgba(255, 107, 53, 0.25);
+    
+    --theme-shadow: rgba(0, 0, 0, 0.4);
+    --theme-shadow-accent: rgba(255, 107, 53, 0.15);
+    
+    --theme-glass-bg: #2d2024;
+    --theme-glass-border: rgba(255, 107, 53, 0.15);
+  }
+  */
+
   * {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply bg-background;
-    color: #2d3142;
+    background-color: var(--theme-bg);
+    color: var(--theme-text);
     font-family: 'Inter', 'Noto Sans JP', system-ui, -apple-system, sans-serif;
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  /* Subtle synthwave accent gradient */
+  /* Subtle accent gradient */
   body::before {
     content: '';
     position: fixed;
@@ -32,52 +409,17 @@
                 radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.02) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
+    transition: background 0.3s ease;
+  }
+
+  .dark body::before {
+    background: radial-gradient(circle at 20% 80%, rgba(255, 46, 151, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 46, 151, 0.04) 0%, transparent 50%),
+                radial-gradient(circle at 50% 100%, rgba(255, 46, 151, 0.06) 0%, transparent 40%);
   }
 
   #root {
     position: relative;
     z-index: 1;
-  }
-}
-
-@layer components {
-  /* Retro paper surface */
-  .glass {
-    background-color: #ffffff;
-    border-width: 1px;
-    border-style: solid;
-    border-color: rgba(45, 49, 66, 0.1);
-    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.08);
-  }
-
-  .glass-elevated {
-    background-color: #ffffff;
-    border-width: 1px;
-    border-style: solid;
-    border-color: rgba(45, 49, 66, 0.15);
-    box-shadow: 6px 6px 0px 0px rgba(255, 46, 151, 0.15),
-                0 4px 20px rgba(0, 0, 0, 0.05);
-  }
-
-  /* Neon accents for interactive elements */
-  .neon-pink {
-    box-shadow: 0 0 10px rgba(255, 46, 151, 0.3),
-                0 0 20px rgba(255, 46, 151, 0.15);
-  }
-
-  .neon-cyan {
-    box-shadow: 0 0 10px rgba(0, 217, 255, 0.3),
-                0 0 20px rgba(0, 217, 255, 0.15);
-  }
-
-  /* Smooth transitions */
-  .transition-smooth {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  /* Japanese text art helper */
-  .jp-art {
-    font-family: 'Noto Sans JP', sans-serif;
-    letter-spacing: 0.1em;
   }
 }
