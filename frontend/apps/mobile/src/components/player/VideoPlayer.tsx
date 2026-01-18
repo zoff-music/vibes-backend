@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import YoutubePlayer, { YoutubeIframeRef } from 'react-native-youtube-iframe';
+import ReactPlayer from 'react-player';
 import { usePlaybackStore } from '../../stores/playbackStore';
 
 interface Props {
@@ -10,24 +11,34 @@ interface Props {
 
 export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
     const { currentSong, isPlaying } = usePlaybackStore();
-    const playerRef = useRef<YoutubeIframeRef>(null);
+    const nativePlayerRef = useRef<YoutubeIframeRef>(null);
+    const webPlayerRef = useRef<any>(null);
     const [isReady, setIsReady] = useState(false);
     const [layout, setLayout] = useState({ width: 0, height: 0 });
 
     // Sync position check loop (every 1s)
     useEffect(() => {
         const interval = setInterval(() => {
-            if (isReady && playerRef.current && isPlaying) {
+            if (isReady && isPlaying) {
                 const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
+                const targetTime = actualPositionMs / 1000;
 
-                playerRef.current.getCurrentTime().then((currentPlayerTime) => {
-                    const targetTime = actualPositionMs / 1000;
-
-                    const drift = Math.abs(currentPlayerTime - targetTime);
-                    if (drift > 2) {
-                        playerRef.current?.seekTo(targetTime, true);
+                if (Platform.OS === 'web' && webPlayerRef.current) {
+                    const currentPlayerTime = webPlayerRef.current.getCurrentTime();
+                    if (currentPlayerTime !== null) { // ReactPlayer might return null/0 if not ready
+                        const drift = Math.abs(currentPlayerTime - targetTime);
+                        if (drift > 2) {
+                            webPlayerRef.current.seekTo(targetTime, 'seconds');
+                        }
                     }
-                }).catch(() => { });
+                } else if (Platform.OS !== 'web' && nativePlayerRef.current) {
+                    nativePlayerRef.current.getCurrentTime().then((currentPlayerTime) => {
+                        const drift = Math.abs(currentPlayerTime - targetTime);
+                        if (drift > 2) {
+                            nativePlayerRef.current?.seekTo(targetTime, true);
+                        }
+                    }).catch(() => { });
+                }
             }
         }, 1000);
 
@@ -64,22 +75,36 @@ export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
                     <ActivityIndicator size="large" color="#a855f7" />
                 </View>
             )}
-            <YoutubePlayer
-                ref={playerRef}
-                height={layout.height || 220}
-                width={layout.width || 320}
-                videoId={videoId}
-                play={isPlaying}
-                onChangeState={onStateChange}
-                onReady={onPlayerReady}
-                // forceAndroidAutoplay={true}
-                // initialPlayerParams={{
-                //     controls: false, // We want custom controls or no controls?
-                //     modestbranding: true,
-                // }}
-                // removed webViewProps as it caused issues on web
-                contentScale={1}
-            />
+            {Platform.OS === 'web' ? (
+                // @ts-ignore
+                <ReactPlayer
+                    ref={webPlayerRef}
+                    url={`https://www.youtube.com/watch?v=${videoId}`}
+                    playing={isPlaying}
+                    width="100%"
+                    height="100%"
+                    controls={false}
+                    onReady={onPlayerReady}
+                    onEnded={onEnded}
+                />
+            ) : (
+                <YoutubePlayer
+                    ref={nativePlayerRef}
+                    height={layout.height || 220}
+                    width={layout.width || 320}
+                    videoId={videoId}
+                    play={isPlaying}
+                    onChangeState={onStateChange}
+                    onReady={onPlayerReady}
+                    // forceAndroidAutoplay={true}
+                    // initialPlayerParams={{
+                    //     controls: false, // We want custom controls or no controls?
+                    //     modestbranding: true,
+                    // }}
+                    // removed webViewProps as it caused issues on web
+                    contentScale={1}
+                />
+            )}
         </View>
     );
 };
