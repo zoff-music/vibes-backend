@@ -1,9 +1,11 @@
-# Backend
+# Vibes Backend
 
-Go backend with SQLite database.
+Go server for vibes.
 
-**Read `AGENTS.md` before writing code.**
-
+## Run
 ```bash
 go build ./cmd/server && ./server
 ```
+
+## Structure
+See [AGENTS.md](./AGENTS.md) for coding rules and structure details.

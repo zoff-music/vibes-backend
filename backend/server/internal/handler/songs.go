@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes/server/internal/middleware"
 	"github.com/zoff-music/vibes/vibe"
 )
 
@@ -31,8 +32,20 @@ func GetSongs(
 			return
 		}
 
+		body, err := json.Marshal(songs)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(songs)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
 	}
 }
 
@@ -124,9 +137,20 @@ func AddSong(
 			}
 		}
 
+		body, err := json.Marshal(created)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(created)
+		_, _ = w.Write(body)
 	}
 }
 
@@ -209,5 +233,52 @@ func ReorderSongs(
 		}
 
 		w.WriteHeader(http.StatusOK)
+	}
+}
+
+// VoteSong handles voting for a song
+func VoteSong(
+	db vibe.SongsModifier,
+	ips vibe.RoomEventNotifier,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		vars := mux.Vars(r)
+		roomID := vars["id"]
+		songID := vars["songId"]
+
+		session, ok := ctx.Value(middleware.SessionKey).(middleware.SessionPayload)
+		if !ok || session.UserID == "" {
+			handleError(
+				w,
+				fmt.Errorf("unauthorized"),
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+		userID := session.UserID
+
+		err := db.VoteSong(ctx, roomID, songID, userID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("failed to vote for song: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		// Broadcast queue update
+		songs, err := db.GetSongs(ctx, roomID)
+		if err == nil {
+			_ = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
+				Type:    vibe.EventTypeQueueReordered,
+				Payload: songs,
+			})
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

@@ -7,10 +7,11 @@ interface Props {
     songs: Song[];
     roomId?: string; // eslint-disable-line @typescript-eslint/no-unused-vars
     onRemove?: (id: string) => void;
+    onVote?: (id: string) => void;
     isAdmin?: boolean;
 }
 
-export const QueueList: React.FC<Props> = ({ songs, onRemove, isAdmin }) => {
+export const QueueList: React.FC<Props> = ({ songs, onRemove, onVote, isAdmin }) => {
     if (songs.length === 0) {
         return (
             <div className="glass rounded-3xl p-12 text-center animate-fade-in border-2 border-ink/10 bg-white/50">
@@ -37,6 +38,7 @@ export const QueueList: React.FC<Props> = ({ songs, onRemove, isAdmin }) => {
                         song={song}
                         position={index + 1}
                         onRemove={onRemove}
+                        onVote={onVote}
                         isAdmin={isAdmin}
                     />
                 ))}

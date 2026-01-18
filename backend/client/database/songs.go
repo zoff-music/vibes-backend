@@ -19,7 +19,7 @@ func (c *Client) prepareGetSongsStmt() error {
 		LEFT JOIN song_votes sv ON s.id = sv.song_id AND s.room_id = sv.room_id
 		WHERE s.room_id = ?1
 		GROUP BY s.id
-		ORDER BY s.position ASC
+		ORDER BY vote_count DESC, s.position ASC
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSongsStatement: %w", err)
@@ -441,6 +441,38 @@ func (c *Client) ReorderSongs(ctx context.Context, roomID, songID string, newPos
 	)
 	if err != nil {
 		return fmt.Errorf("error reordering songs: %w", err)
+	}
+
+	return nil
+}
+
+// prepareVoteSongStmt prepares the VoteSongStatement.
+func (c *Client) prepareVoteSongStmt() error {
+	stmt, err := c.DB.Prepare(`
+		INSERT INTO song_votes (room_id, song_id, user_id)
+		VALUES (?1, ?2, ?3)
+		ON CONFLICT(room_id, song_id, user_id) DO NOTHING
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing VoteSongStatement: %w", err)
+	}
+
+	c.VoteSongStatement = stmt
+
+	return nil
+}
+
+// VoteSong adds a vote for a song.
+func (c *Client) VoteSong(ctx context.Context, roomID, songID, userID string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "VoteSong")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := c.VoteSongStatement.ExecContext(cctx, roomID, songID, userID)
+	if err != nil {
+		return fmt.Errorf("error voting for song: %w", err)
 	}
 
 	return nil

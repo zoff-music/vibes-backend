@@ -27,6 +27,10 @@ const endpoints = {
       request: roomUpdateSchema,
       response: roomSchema,
     },
+    post: {
+      request: roomActionRequestSchema,
+      response: playbackStateSchema,
+    },
   },
   '/rooms/{id}/sessions': {
     post: {
@@ -47,19 +51,15 @@ const endpoints = {
     delete: {
       response: emptyObjectSchema,
     },
-  },
-  '/rooms/{id}/songs/reorder/{songId}': {
+    post: {
+      response: emptyObjectSchema,
+    },
     patch: {
       request: reorderSongsRequestSchema,
       response: emptyObjectSchema,
     },
   },
-  '/rooms/{id}/action': {
-    post: {
-      request: roomActionRequestSchema,
-      response: playbackStateSchema,
-    },
-  },
+
   '/youtube/search': {
     get: {
       $search: youTubeSearchQuerySchema,

@@ -1,9 +1,16 @@
-# Frontend
+# Vibes Frontend
 
-React 19 web app with Vite and Tailwind.
+React + Vite + TypeScript workspace.
 
-**Read `AGENTS.md` before writing code.**
+## Apps
+- `apps/mobile`: Main web application.
 
+## Run
 ```bash
-bun install && bun dev
+bun install
+bun dev
 ```
+(Runs `@vibez/mobile` via filter)
+
+## Rules
+See [AGENTS.md](./AGENTS.md).
