@@ -1,11 +1,9 @@
 # Frontend
 
-This folder contains the frontend application and its agent conventions.
+React 19 web app with Vite and Tailwind.
 
-## Key files
+**Read `AGENTS.md` before writing code.**
 
-- `AGENTS.md`: Rules and conventions for frontend changes.
-
-## Notes
-
-- Follow `AGENTS.md` for TypeScript, error handling, and network request patterns.
+```bash
+bun install && bun dev
+```
