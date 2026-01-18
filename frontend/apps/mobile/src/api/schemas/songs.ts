@@ -14,6 +14,7 @@ export const songSchema = yup.object({
   addedByNickname: yup.string().optional(),
   addedAt: yup.string().required(),
   position: yup.number().required(),
+  voteCount: yup.number().optional(),
 });
 
 export const addSongRequestSchema = yup.object({

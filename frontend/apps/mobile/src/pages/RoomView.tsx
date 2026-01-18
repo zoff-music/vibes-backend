@@ -392,7 +392,22 @@ export default function RoomView() {
                                 <QueueList 
                                     songs={songs.filter(s => s.id !== currentSong?.id)} 
                                     roomId={id || ''} 
-                                    onVote={voteSong}
+                                    onVote={async (songId) => {
+                                        const result = await voteSong(songId);
+                                        if (result === 'success') {
+                                            setToasts(prev => [...prev, {
+                                                id: Math.random().toString(36).substr(2, 9),
+                                                message: 'Vote recorded!',
+                                                type: 'success'
+                                            }]);
+                                        } else if (result === 'already_voted') {
+                                            setToasts(prev => [...prev, {
+                                                id: Math.random().toString(36).substr(2, 9),
+                                                message: 'You have already voted for this song',
+                                                type: 'info'
+                                            }]);
+                                        }
+                                    }}
                                 />
                                 {songs.filter(s => s.position > 0 && s.id !== currentSong?.id).length === 0 && !currentSong && (
                                     <div className="text-center py-12 glass rounded-2xl border-2 border-dashed border-ink/10">
