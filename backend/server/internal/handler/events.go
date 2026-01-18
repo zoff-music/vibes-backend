@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -73,9 +74,12 @@ func RoomEvents(
 		fmt.Fprintf(w, "event: connected\ndata: {\"time\": %d}\n\n", time.Now().UnixMilli())
 		flusher.Flush()
 
-		// Update presence on connect
+		// Update presence on connect and cleanup on disconnect
 		if userID != "" {
 			_ = participants.UpdateParticipant(ctx, roomID, userID, true)
+			defer func() {
+				_ = participants.RemoveParticipant(context.Background(), roomID, userID)
+			}()
 		}
 
 		// Send initial playback state

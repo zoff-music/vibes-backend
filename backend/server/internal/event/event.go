@@ -27,7 +27,7 @@ func GetAppEvents(db vibe.RoomActioner, ips vibe.RoomEventNotifier, ps vibe.Part
 
 	appEvents = append(appEvents, AppEvent{
 		Name:    "CleanupInactiveParticipants",
-		Rate:    1 * time.Hour,
+		Rate:    5 * time.Minute,
 		Handler: NewCleanupHandler(ps),
 	})
 

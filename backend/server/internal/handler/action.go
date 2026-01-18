@@ -56,10 +56,59 @@ func RoomAction(
 
 		switch req.Action {
 		case vibe.RoomActionPlay, vibe.RoomActionPause, vibe.RoomActionSeek, vibe.RoomActionSkip:
+			log.Infof("Room %s: User %s attempting %s (room.Mode=%s, room.HostID=%s)", roomID, userID, req.Action, room.Mode, room.HostID)
+			// Register this user as an active participant so they can claim host
+			if ps, ok := db.(vibe.ParticipantStorage); ok {
+				_ = ps.UpdateParticipant(ctx, roomID, userID, true)
+			}
 			// Enforce host permissions for these actions in Host Mode
-			if room.Mode == vibe.RoomModeHost && room.HostID != userID {
-				handleError(w, fmt.Errorf("only the host can perform this action"), http.StatusForbidden, false)
-				return
+			if room.Mode == vibe.RoomModeHost {
+				if room.HostID == "" {
+					// No host yet, this user becomes the host
+					ps, ok := db.(vibe.ParticipantStorage)
+					if ok {
+						err := ps.SetRoomHost(ctx, roomID, userID)
+						if err != nil {
+							log.Errorf("Failed to set room host: %v", err)
+						} else {
+							log.Infof("Room %s: Set new host to %s", roomID, userID)
+							room.HostID = userID
+						}
+					} else {
+						log.Warn("db does not implement ParticipantStorage, cannot set host")
+					}
+				} else if room.HostID != userID {
+					// Check if current host is still active before denying
+					ps, ok := db.(vibe.ParticipantStorage)
+					hostStillActive := true
+					if ok {
+						activeParticipants, err := ps.GetActiveParticipants(ctx, roomID, 30*time.Second)
+						if err == nil {
+							hostStillActive = false
+							for _, p := range activeParticipants {
+								if p.UserID == room.HostID {
+									hostStillActive = true
+									break
+								}
+							}
+							if !hostStillActive {
+								// Current host is inactive, make requester the new host
+								err := ps.SetRoomHost(ctx, roomID, userID)
+								if err != nil {
+									log.Errorf("Failed to set room host: %v", err)
+								} else {
+									log.Infof("Room %s: Host %s inactive, new host: %s", roomID, room.HostID, userID)
+									room.HostID = userID
+								}
+							}
+						}
+					}
+					// Re-check after potential host change
+					if room.HostID != userID {
+						handleError(w, fmt.Errorf("only the host can perform this action"), http.StatusForbidden, false)
+						return
+					}
+				}
 			}
 
 			if req.Action == vibe.RoomActionSkip {
