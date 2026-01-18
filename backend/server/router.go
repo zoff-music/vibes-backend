@@ -29,9 +29,9 @@ func (s *Server) setupRoutes() {
 
 	// Song routes
 	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions)
-	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB)).Methods(http.MethodPost, http.MethodOptions)
-	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB)).Methods(http.MethodDelete, http.MethodOptions)
-	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.ReorderSongs(s.DB)).Methods(http.MethodPatch, http.MethodOptions)
+	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions)
+	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions)
+	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.ReorderSongs(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions)
 
 	// Action route
 	api.HandleFunc("/rooms/{id}/action", handler.RoomAction(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions)

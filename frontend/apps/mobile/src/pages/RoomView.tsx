@@ -7,6 +7,8 @@ import { VideoPlayer } from '../components/player/VideoPlayer';
 import { PlayerControls } from '../components/player/PlayerControls';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { QueueList } from '../components/queue/QueueList';
+import { Toast } from '../components/ui/Toast';
+import { Song } from '@vibez/shared';
 
 export default function RoomView() {
     const { id } = useParams<{ id: string }>();
@@ -17,6 +19,7 @@ export default function RoomView() {
 
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
     const [showRoomInfo, setShowRoomInfo] = useState(false);
+    const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' }[]>([]);
 
     useEffect(() => {
         if (id) {
@@ -24,6 +27,21 @@ export default function RoomView() {
             fetchQueue();
         }
     }, [id, fetchRoom, fetchQueue]);
+
+    useEffect(() => {
+        const handleSongAdded = (e: any) => {
+            console.log('[UI] song-added event received:', e.detail);
+            const song = e.detail as Song;
+            setToasts(prev => [...prev, {
+                id: Math.random().toString(36).substr(2, 9),
+                message: `"${song.title}" added to queue`,
+                type: 'success'
+            }]);
+        };
+
+        window.addEventListener('song-added', handleSongAdded);
+        return () => window.removeEventListener('song-added', handleSongAdded);
+    }, []);
 
     useEffect(() => {
         if (!id || userId) return;
@@ -149,83 +167,97 @@ export default function RoomView() {
 
             {/* Main content */}
             <div className="flex-1 overflow-y-auto">
-                <div className="max-w-7xl mx-auto px-4 py-8 space-y-8">
+                <div className="max-w-7xl mx-auto px-4 py-8 lg:grid lg:grid-cols-[1fr,400px] lg:gap-12 items-start">
                     {/* Player Section */}
                     <div className="space-y-6">
                         {/* Video Player */}
                         <VideoPlayer onEnded={skip} isVisible={true} />
 
-                        {/* Now Playing Card */}
-                        <div className="glass-elevated rounded-3xl p-8 relative overflow-hidden animate-scale-in border-4 border-ink/10 shadow-retro-pink">
-                            {/* Playing indicator glow */}
-                            {isPlaying && (
-                                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 pointer-events-none" />
-                            )}
-
-                            <div className="relative">
-                                <div className="flex items-center gap-2 mb-6">
-                                    <div className={`w-3 h-3 rounded-full ${isPlaying ? 'bg-matcha animate-pulse shadow-neon-pink' : 'bg-ink/30'}`} />
-                                    <span className="text-xs text-ink/60 uppercase tracking-widest font-bold">
-                                        {isPlaying ? 'Now Playing' : 'Paused'}
-                                    </span>
-                                    <span className="text-xs jp-art text-ink/40">
-                                        {isPlaying ? '再生中' : '一時停止'}
-                                    </span>
-                                </div>
-
-                                {currentSong ? (
-                                    <div className="text-center mb-6">
-                                        <h2 className="text-3xl font-black mb-3 line-clamp-2 text-ink" style={{ fontFamily: 'Poppins' }}>
-                                            {currentSong.title}
-                                        </h2>
-                                        <p className="text-lg text-ink/60 font-medium">
-                                            {currentSong.artist || 'Unknown Artist'}
-                                        </p>
-                                    </div>
-                                ) : (
-                                    <div className="text-center mb-6 py-8">
-                                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white border-4 border-ink/20 shadow-retro mb-5">
-                                            <svg className="w-10 h-10 text-ink/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
-                                            </svg>
-                                        </div>
-                                        <h3 className="text-2xl font-black mb-2 text-ink" style={{ fontFamily: 'Poppins' }}>No song playing</h3>
-                                        <p className="text-ink/60 mb-2 font-medium">Add a song to get started</p>
-                                        <p className="text-sm jp-art text-ink/40">曲を追加してください</p>
-                                    </div>
-                                )}
-
-                                {/* Player Controls */}
-                                <PlayerControls roomId={id || ''} hasSongsInQueue={songs && songs.length > 0} />
-                            </div>
+                        {/* Controls (kept below video for better accessibility) */}
+                        <div className="hidden lg:block">
+                            <PlayerControls roomId={id || ''} hasSongsInQueue={songs && songs.length > 0} />
                         </div>
                     </div>
 
-                    {/* Queue Section */}
-                    <div>
-                        <div className="flex items-center justify-between mb-5">
-                            <div>
-                                <h2 className="text-2xl font-black text-ink" style={{ fontFamily: 'Poppins' }}>Up Next</h2>
-                                <p className="text-sm text-ink/60 mt-1 font-medium">
-                                    {songs.length} {songs.length === 1 ? 'song' : 'songs'} in queue
-                                </p>
-                                <p className="text-xs jp-art text-ink/40 mt-0.5">次の曲</p>
+                    {/* Queue & Now Playing Section */}
+                    <div className="mt-8 lg:mt-0 space-y-8">
+                        <div>
+                            <div className="flex items-center justify-between mb-6">
+                                <div>
+                                    <h2 className="text-2xl font-black text-ink" style={{ fontFamily: 'Poppins' }}>Queue</h2>
+                                    <p className="text-xs jp-art text-ink/40">キュー</p>
+                                </div>
+                                <button
+                                    onClick={() => setIsAddModalVisible(true)}
+                                    className="glass-elevated px-5 py-3 rounded-2xl hover:shadow-retro-pink transition-all hover:scale-105 active:scale-95 flex items-center gap-2 group border-2 border-ink/10"
+                                >
+                                    <svg className="w-5 h-5 text-primary group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
+                                    </svg>
+                                    <span className="font-black text-ink tracking-wide">Add Song</span>
+                                </button>
                             </div>
-                            <button
-                                onClick={() => setIsAddModalVisible(true)}
-                                className="glass-elevated px-5 py-3 rounded-2xl hover:shadow-retro-pink transition-all hover:scale-105 active:scale-95 flex items-center gap-2 group border-2 border-ink/10"
-                            >
-                                <svg className="w-5 h-5 text-primary group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                                </svg>
-                                <span className="font-black text-ink tracking-wide">Add Song</span>
-                            </button>
+
+                            {/* Now Playing (Integrated into list style) */}
+                            {currentSong && (
+                                <div className="mb-8">
+                                    <div className="flex items-center gap-2 mb-3">
+                                        <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-matcha animate-pulse shadow-neon-pink' : 'bg-ink/30'}`} />
+                                        <span className="text-[10px] text-ink/60 uppercase tracking-[0.2em] font-black">
+                                            {isPlaying ? 'Now Playing' : 'Paused'}
+                                        </span>
+                                    </div>
+
+                                    <div className="glass-elevated rounded-2xl p-4 border-2 border-primary/20 bg-primary/5 flex gap-4 items-center">
+                                        {currentSong.thumbnailUrl && (
+                                            <img
+                                                src={currentSong.thumbnailUrl}
+                                                alt=""
+                                                className="w-16 h-16 rounded-xl object-cover border-2 border-ink/10 shadow-sm"
+                                            />
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            <h3 className="font-bold text-ink truncate text-sm">{currentSong.title}</h3>
+                                            <p className="text-xs text-ink/60 truncate font-medium">{currentSong.artist || 'Unknown Artist'}</p>
+                                        </div>
+                                    </div>
+
+                                    <div className="h-px bg-ink/10 mt-8 mb-4" />
+                                </div>
+                            )}
+
+                            {/* Up Next List */}
+                            <div>
+                                <h3 className="text-[10px] text-ink/60 uppercase tracking-[0.2em] font-black mb-4">
+                                    Up Next ({songs.length})
+                                </h3>
+                                <QueueList songs={songs} roomId={id || ''} />
+                                {songs.length === 0 && !currentSong && (
+                                    <div className="text-center py-12 glass rounded-2xl border-2 border-dashed border-ink/10">
+                                        <p className="text-ink/40 font-bold">Queue is empty</p>
+                                        <p className="text-[10px] jp-art text-ink/20">キューは空です</p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        <QueueList songs={songs} roomId={id || ''} />
+                        {/* Controls (mobile layout) */}
+                        <div className="lg:hidden">
+                            <PlayerControls roomId={id || ''} hasSongsInQueue={songs && songs.length > 0} />
+                        </div>
                     </div>
                 </div>
             </div>
+
+            {/* Toasts */}
+            {toasts.map(toast => (
+                <Toast
+                    key={toast.id}
+                    message={toast.message}
+                    type={toast.type === 'success' ? 'success' : 'info'}
+                    onClose={() => setToasts(prev => prev.filter(t => t.id !== toast.id))}
+                />
+            ))}
 
             {/* Add Song Modal */}
             <AddToQueueModal

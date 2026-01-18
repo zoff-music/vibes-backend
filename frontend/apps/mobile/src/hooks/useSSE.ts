@@ -2,13 +2,13 @@ import { useEffect, useRef } from 'react';
 import { useRoomStore } from '../stores/roomStore';
 import { useQueueStore } from '../stores/queueStore';
 import { usePlaybackStore } from '../stores/playbackStore';
-import { Room, Song, PlaybackState, RoomUser, SSEEvent } from '@vibez/shared';
+import { Room, Song, PlaybackState, RoomUser } from '@vibez/shared';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
+const API_URL = (import.meta as any).env?.VITE_API_URL || 'http://localhost:8080';
 
 export const useSSE = (roomId: string | undefined) => {
   const { setRoom, setUsers } = useRoomStore();
-  const { setSongs, addSong, removeSong, updateSong } = useQueueStore();
+  const { setSongs } = useQueueStore();
   const { setPlaybackState } = usePlaybackStore();
   const eventSourceRef = useRef<EventSource | null>(null);
 
@@ -20,39 +20,51 @@ export const useSSE = (roomId: string | undefined) => {
       const es = new EventSource(url);
       eventSourceRef.current = es;
 
-      es.addEventListener('room:state', (e) => {
+      es.addEventListener('room_state', (e) => {
         try {
           const room = JSON.parse(e.data) as Room;
           setRoom(room);
         } catch (err) {
-          console.error('Failed to parse room:state event', err);
+          console.error('Failed to parse room_state event', err);
         }
       });
 
-      es.addEventListener('songs:update', (e) => {
+      es.addEventListener('songs_update', (e) => {
         try {
           const songs = JSON.parse(e.data) as Song[];
+          console.log('[SSE] songs_update received:', songs);
           setSongs(songs);
         } catch (err) {
-          console.error('Failed to parse songs:update event', err);
+          console.error('Failed to parse songs_update event', err);
         }
       });
 
-      es.addEventListener('playback:update', (e) => {
+      es.addEventListener('playback_update', (e) => {
         try {
           const state = JSON.parse(e.data) as PlaybackState;
+          console.log('[SSE] playback_update received:', state);
           setPlaybackState(state);
         } catch (err) {
-          console.error('Failed to parse playback:sync event', err);
+          console.error('Failed to parse playback_update event', err);
         }
       });
 
-      es.addEventListener('users:update', (e) => {
+      es.addEventListener('song_added', (e) => {
+        try {
+          const song = JSON.parse(e.data) as Song;
+          console.log('[SSE] song_added received:', song);
+          window.dispatchEvent(new CustomEvent('song-added', { detail: song }));
+        } catch (err) {
+          console.error('Failed to parse song_added event', err);
+        }
+      });
+
+      es.addEventListener('users_update', (e) => {
         try {
           const users = JSON.parse(e.data) as RoomUser[];
           setUsers(users);
         } catch (err) {
-          console.error('Failed to parse users:update event', err);
+          console.error('Failed to parse users_update event', err);
         }
       });
 

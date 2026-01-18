@@ -86,7 +86,13 @@ func RoomEvents(
 					continue
 				}
 
-				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, data)
+				payloadData, err := json.Marshal(event.Payload)
+				if err != nil {
+					log.Errorf("failed to marshal event payload: %v", err)
+					continue
+				}
+
+				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, payloadData)
 				flusher.Flush()
 			}
 		}
