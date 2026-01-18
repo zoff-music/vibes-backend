@@ -17,13 +17,13 @@ export const QueueItem: React.FC<Props> = ({ song, position, onRemove, isAdmin }
 
     return (
         <div
-            className="group glass rounded-xl p-4 hover:bg-surfaceHover transition-all animate-slide-up"
+            className="group glass rounded-2xl p-4 hover:shadow-retro transition-all animate-slide-up border-2 border-ink/10"
             style={{ animationDelay: `${position * 0.05}s` }}
         >
             <div className="flex items-center gap-4">
                 {/* Position number */}
                 <div className="flex-shrink-0 w-8 text-center">
-                    <span className="text-text-subtle font-medium">{position}</span>
+                    <span className="text-ink/50 font-black text-lg">{position}</span>
                 </div>
 
                 {/* Thumbnail */}
@@ -31,21 +31,20 @@ export const QueueItem: React.FC<Props> = ({ song, position, onRemove, isAdmin }
                     <img
                         src={song.thumbnailUrl}
                         alt={song.title}
-                        className="w-14 h-14 rounded-lg object-cover bg-surfaceElevated ring-1 ring-border"
+                        className="w-16 h-16 rounded-xl object-cover bg-surface ring-2 ring-ink/20"
                         loading="lazy"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent rounded-lg pointer-events-none" />
                 </div>
 
                 {/* Song info */}
                 <div className="flex-1 min-w-0">
-                    <h4 className="font-medium truncate mb-0.5 group-hover:text-primary transition-colors">
+                    <h4 className="font-bold truncate mb-1 group-hover:text-primary transition-colors text-ink">
                         {song.title}
                     </h4>
-                    <div className="flex items-center gap-2 text-sm text-text-muted">
+                    <div className="flex items-center gap-2 text-sm text-ink/60 font-medium">
                         <span className="truncate">{song.artist || 'Unknown Artist'}</span>
-                        <span className="text-text-subtle">•</span>
-                        <span className="flex-shrink-0">{formatDuration(song.duration)}</span>
+                        <span className="text-ink/40">•</span>
+                        <span className="flex-shrink-0 font-mono text-xs">{formatDuration(song.duration)}</span>
                     </div>
                 </div>
 
@@ -54,11 +53,11 @@ export const QueueItem: React.FC<Props> = ({ song, position, onRemove, isAdmin }
                     {isAdmin && (
                         <button
                             onClick={() => onRemove?.(song.id)}
-                            className="p-2 text-text-subtle hover:text-error hover:bg-error/10 rounded-lg transition-all"
+                            className="p-2.5 text-ink/40 hover:text-error hover:bg-error/10 rounded-lg transition-all border-2 border-transparent hover:border-error/20"
                             title="Remove from queue"
                         >
-                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                             </svg>
                         </button>
                     )}

@@ -4,7 +4,8 @@ import { addSongRequestSchema, songSchema, songsListSchema, reorderSongsRequestS
 import { playbackStateSchema, roomActionRequestSchema } from './schemas/playback';
 import { sessionResponseSchema, createSessionRequestSchema } from './schemas/session';
 import { emptyObjectSchema } from './schemas/common';
-import { youTubeSearchResponseSchema, youTubeVideoSchema } from './schemas/youtube';
+import { youTubeSearchResponseSchema, youTubeVideoSchema, youTubeSearchQuerySchema } from './schemas/youtube';
+import * as yup from 'yup';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const API_BASE_PATH = '/api/v1';
@@ -62,6 +63,7 @@ const endpoints = {
   },
   '/youtube/search': {
     get: {
+      $search: youTubeSearchQuerySchema,
       response: youTubeSearchResponseSchema,
     },
   },
