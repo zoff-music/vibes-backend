@@ -14,7 +14,7 @@ export const Input: React.FC<Props> = ({ label, error, className = '', ...props 
                 </label>
             )}
             <input
-                className={`w-full bg-surface rounded-lg px-4 py-3 text-text text-base placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-primary border ${
+                className={`w-full bg-surface rounded-lg px-4 py-3 text-text text-base placeholder:text-zinc-500 focus:outline-hidden focus:ring-2 focus:ring-primary border ${
                     error ? 'border-error' : 'border-surfaceElevated'
                 } ${className}`}
                 {...props}
