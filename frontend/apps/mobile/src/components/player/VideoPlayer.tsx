@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, memo } from 'react';
 import YouTube, { YouTubeProps } from 'react-youtube';
 import { usePlaybackStore } from '../../stores/playbackStore';
 
@@ -7,35 +7,20 @@ interface Props {
     onEnded?: () => void;
 }
 
-export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
-    const { currentSong, isPlaying } = usePlaybackStore();
+const VideoPlayerComponent: React.FC<Props> = ({ isVisible = true, onEnded }) => {
+    // Only subscribe to the fields we need to avoid unnecessary re-renders
+    const currentSong = usePlaybackStore((state) => state.currentSong);
+    const isPlaying = usePlaybackStore((state) => state.isPlaying);
+
     const playerRef = useRef<any>(null);
     const [isReady, setIsReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Debug: Log current song changes and reset ready state
+    // Reset ready state when song ID changes
     useEffect(() => {
-        console.log('[VideoPlayer] currentSong changed:', {
-            currentSong,
-            hasSong: !!currentSong,
-            sourceType: currentSong?.sourceType,
-            sourceId: currentSong?.sourceId,
-            title: currentSong?.title,
-        });
-        // Reset ready state when song changes
         setIsReady(false);
         setError(null);
     }, [currentSong?.id]);
-
-    // Debug: Log playing state changes
-    useEffect(() => {
-        console.log('[VideoPlayer] isPlaying changed:', isPlaying);
-    }, [isPlaying]);
-
-    // Debug: Log ready state changes
-    useEffect(() => {
-        console.log('[VideoPlayer] isReady changed:', isReady);
-    }, [isReady]);
 
     // Sync position check loop (every 1s)
     useEffect(() => {
@@ -84,7 +69,6 @@ export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
     }, [isReady, isPlaying]);
 
     const handleReady = useCallback((event: { target: { seekTo: (seconds: number, allowSeekAhead?: boolean) => void; getCurrentTime: () => number; playVideo: () => void; pauseVideo: () => void; getPlayerState: () => number } }) => {
-        console.log('[VideoPlayer] Player ready');
         playerRef.current = event.target;
         setIsReady(true);
         setError(null);
@@ -99,8 +83,7 @@ export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
 
     const handleStateChange = useCallback((event: { data: number }) => {
         const state = event.data;
-        console.log('[VideoPlayer] State changed:', state);
-        
+
         // Update isReady when player becomes ready
         if (state === 1 || state === 3) {
             setIsReady(true);
@@ -108,7 +91,6 @@ export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
     }, []);
 
     const handleEnd = useCallback(() => {
-        console.log('[VideoPlayer] Video ended');
         onEnded?.();
     }, [onEnded]);
 
@@ -118,28 +100,18 @@ export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
     }, []);
 
     if (!currentSong || !isVisible) {
-        console.log('[VideoPlayer] Not rendering - no song or not visible:', { 
-            hasSong: !!currentSong, 
-            isVisible 
-        });
         return null;
     }
 
     const videoId = currentSong.sourceType === 'youtube' ? currentSong.sourceId : null;
 
     if (!videoId) {
-        console.warn('[VideoPlayer] No video ID found:', {
-            sourceType: currentSong.sourceType,
-            sourceId: currentSong.sourceId,
-        });
         return (
             <div className="w-full aspect-video bg-black rounded-xl overflow-hidden relative flex items-center justify-center">
                 <p className="text-text-muted">Unsupported source type: {currentSong.sourceType}</p>
             </div>
         );
     }
-
-    console.log('[VideoPlayer] Rendering player with videoId:', videoId);
 
     const opts: YouTubeProps['opts'] = {
         height: '100%',
@@ -194,3 +166,9 @@ export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
         </div>
     );
 };
+
+// Memoize the component to prevent unnecessary re-renders
+// Only re-render when isVisible or onEnded props change
+export const VideoPlayer = memo(VideoPlayerComponent, (prevProps, nextProps) => {
+    return prevProps.isVisible === nextProps.isVisible && prevProps.onEnded === nextProps.onEnded;
+});

@@ -60,11 +60,6 @@ const endpoints = {
       response: playbackStateSchema,
     },
   },
-  '/youtube/search': {
-    get: {
-      response: youTubeSearchResponseSchema,
-    },
-  },
   '/youtube/videos/{id}': {
     get: {
       response: youTubeVideoSchema,
@@ -168,6 +163,36 @@ const wrappedClient = {
   // Expose SSE and other methods from base client
   sse: baseClient.sse.bind(baseClient),
   url: baseClient.url.bind(baseClient),
+
+  // Custom method for YouTube search (bypasses wiretyped schema validation for query params)
+  async youtubeSearch(query: string) {
+    console.log('[API] YouTube Search', query);
+    try {
+      const url = `${URL}/youtube/search?q=${encodeURIComponent(query)}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[API] YouTube Search failed:', response.status, errorText);
+        return [new Error(`Search failed: ${response.status}`), null] as const;
+      }
+
+      const data = await response.json();
+
+      // Validate response with schema
+      try {
+        const validated = await youTubeSearchResponseSchema.validate(data);
+        console.log('[API] YouTube Search → success');
+        return [null, validated] as const;
+      } catch (validationError) {
+        console.error('[API] YouTube Search validation failed:', validationError);
+        return [validationError as Error, null] as const;
+      }
+    } catch (error) {
+      console.error('[API] YouTube Search error:', error);
+      return [error as Error, null] as const;
+    }
+  },
 };
 
 export const api = wrappedClient as unknown as typeof baseClient;

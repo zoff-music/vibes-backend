@@ -395,6 +395,55 @@ If threshold is reached:
 
 ---
 
+### YouTube Search
+
+#### Search for Music
+```
+GET /youtube/search?q=query
+```
+
+Search for YouTube videos by query string.
+
+**Query Parameters:**
+- `q` (required): Search query string
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "id": "dQw4w9WgXcQ",
+    "source": "youtube",
+    "title": "Rick Astley - Never Gonna Give You Up",
+    "channelTitle": "Rick Astley",
+    "thumbnailUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg",
+    "duration": "PT3M33S"
+  }
+]
+```
+
+---
+
+#### Get Video Details
+```
+GET /youtube/videos/:id
+```
+
+Get details for a specific YouTube video by ID.
+
+**Response:** `200 OK`
+```json
+{
+  "id": "dQw4w9WgXcQ",
+  "source": "youtube",
+  "title": "Rick Astley - Never Gonna Give You Up",
+  "channelTitle": "Rick Astley",
+  "thumbnailUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg",
+  "duration": "PT3M33S"
+}
+```
+
+---
+
 ### Server-Sent Events
 
 #### Subscribe to Room Events
