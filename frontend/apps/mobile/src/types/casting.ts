@@ -66,6 +66,7 @@ export interface CastManager {
   // Playback Control
   castMedia(mediaInfo: MediaInfo): Promise<void>;
   updateQueue(queue: any[]): Promise<void>;
+  updateRoomInfo(roomInfo: { name: string; participantCount: number }): Promise<void>;
   syncPlaybackState(state: any): Promise<void>;
   
   // Event Handling
@@ -80,6 +81,7 @@ declare global {
     chrome: {
       cast: {
         isAvailable: boolean;
+        VERSION?: string;
         initialize: (
           apiConfig: chrome.cast.ApiConfig,
           onInitSuccess: () => void,
@@ -94,6 +96,18 @@ declare global {
           Media: any;
           MediaInfo: any;
           GenericMediaMetadata: any;
+          LoadRequest: any;
+          SeekRequest: any;
+          StreamType: {
+            BUFFERED: string;
+            LIVE: string;
+          };
+          PlayerState: {
+            IDLE: string;
+            PLAYING: string;
+            PAUSED: string;
+            BUFFERING: string;
+          };
         };
         ApiConfig: any;
         SessionRequest: any;
@@ -101,6 +115,10 @@ declare global {
           TAB_AND_ORIGIN_SCOPED: string;
           ORIGIN_SCOPED: string;
           PAGE_SCOPED: string;
+        };
+        ReceiverAvailability: {
+          AVAILABLE: string;
+          UNAVAILABLE: string;
         };
         Capability: {
           VIDEO_OUT: string;
@@ -123,7 +141,22 @@ declare global {
           SESSION_ERROR: string;
           TIMEOUT: string;
         };
+        framework?: {
+          CastContext: {
+            getInstance(): {
+              getCurrentSession(): any;
+            };
+          };
+        };
       };
     };
+  }
+
+  namespace chrome {
+    namespace cast {
+      interface ApiConfig {}
+      interface Session {}
+      interface Error {}
+    }
   }
 }

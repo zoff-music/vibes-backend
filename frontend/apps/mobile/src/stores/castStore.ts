@@ -9,6 +9,7 @@ interface CastState {
   currentSession: CastSession | null;
   isConnected: boolean;
   lastError: CastError | null;
+  isDiscovering: boolean;
   
   // Actions
   initialize: () => Promise<void>;
@@ -17,7 +18,10 @@ interface CastState {
   disconnectFromDevice: (deviceId: string) => Promise<void>;
   castCurrentSong: (song: any) => Promise<void>;
   syncPlaybackState: (state: any) => Promise<void>;
+  updateQueue: (queue: any[]) => Promise<void>;
+  updateRoomInfo: (roomInfo: { name: string; participantCount: number }) => Promise<void>;
   clearError: () => void;
+  cleanup: () => void;
 }
 
 export const useCastStore = create<CastState>((set, get) => ({
@@ -27,15 +31,22 @@ export const useCastStore = create<CastState>((set, get) => ({
   currentSession: null,
   isConnected: false,
   lastError: null,
+  isDiscovering: false,
 
   // Actions
   initialize: async () => {
     try {
+      set({ lastError: null });
+      
       // Set up event listeners
       castManager.onDeviceAvailable((device) => {
-        set((state) => ({
-          availableDevices: [...state.availableDevices.filter(d => d.id !== device.id), device]
-        }));
+        set((state) => {
+          // Remove existing device with same ID and add updated one
+          const filteredDevices = state.availableDevices.filter(d => d.id !== device.id);
+          return {
+            availableDevices: [...filteredDevices, device]
+          };
+        });
       });
 
       castManager.onSessionStateChange((session) => {
@@ -69,11 +80,16 @@ export const useCastStore = create<CastState>((set, get) => ({
 
   discoverDevices: async () => {
     try {
+      set({ isDiscovering: true, lastError: null });
       const devices = await castManager.discoverDevices();
-      set({ availableDevices: devices });
+      set({ 
+        availableDevices: devices,
+        isDiscovering: false 
+      });
     } catch (error) {
       console.error('Failed to discover devices:', error);
       set({
+        isDiscovering: false,
         lastError: {
           code: 'DISCOVERY_FAILED',
           description: 'Failed to discover casting devices',
@@ -89,7 +105,7 @@ export const useCastStore = create<CastState>((set, get) => ({
       const session = await castManager.connectToDevice(deviceId);
       set({
         currentSession: session,
-        isConnected: true
+        isConnected: session.state === 'connected'
       });
     } catch (error) {
       console.error('Failed to connect to device:', error);
@@ -105,6 +121,7 @@ export const useCastStore = create<CastState>((set, get) => ({
 
   disconnectFromDevice: async (deviceId: string) => {
     try {
+      set({ lastError: null });
       await castManager.disconnectFromDevice(deviceId);
       set({
         currentSession: null,
@@ -128,12 +145,14 @@ export const useCastStore = create<CastState>((set, get) => ({
         throw new Error('No active casting session');
       }
 
+      set({ lastError: null });
+
       const mediaInfo = {
         contentId: `https://www.youtube.com/watch?v=${song.sourceId}`,
         contentType: 'video/mp4',
         streamType: 'BUFFERED' as const,
         metadata: {
-          title: song.title,
+          title: song.title || 'Unknown Title',
           artist: song.artist || 'Unknown Artist',
           images: song.thumbnailUrl ? [{
             url: song.thumbnailUrl,
@@ -154,6 +173,7 @@ export const useCastStore = create<CastState>((set, get) => ({
           details: error
         }
       });
+      throw error; // Re-throw so calling code can handle it
     }
   },
 
@@ -161,6 +181,7 @@ export const useCastStore = create<CastState>((set, get) => ({
     try {
       if (!get().isConnected) return;
       
+      set({ lastError: null });
       await castManager.syncPlaybackState(state);
     } catch (error) {
       console.error('Failed to sync playback state:', error);
@@ -174,7 +195,59 @@ export const useCastStore = create<CastState>((set, get) => ({
     }
   },
 
+  updateQueue: async (queue: any[]) => {
+    try {
+      if (!get().isConnected) return;
+      
+      set({ lastError: null });
+      await castManager.updateQueue(queue);
+    } catch (error) {
+      console.error('Failed to update queue:', error);
+      set({
+        lastError: {
+          code: 'QUEUE_UPDATE_FAILED',
+          description: 'Failed to update queue on cast device',
+          details: error
+        }
+      });
+    }
+  },
+
+  updateRoomInfo: async (roomInfo: { name: string; participantCount: number }) => {
+    try {
+      if (!get().isConnected) return;
+      
+      set({ lastError: null });
+      await castManager.updateRoomInfo(roomInfo);
+    } catch (error) {
+      console.error('Failed to update room info:', error);
+      set({
+        lastError: {
+          code: 'ROOM_UPDATE_FAILED',
+          description: 'Failed to update room info on cast device',
+          details: error
+        }
+      });
+    }
+  },
+
   clearError: () => {
     set({ lastError: null });
+  },
+
+  cleanup: () => {
+    try {
+      castManager.destroy();
+      set({
+        isInitialized: false,
+        availableDevices: [],
+        currentSession: null,
+        isConnected: false,
+        lastError: null,
+        isDiscovering: false
+      });
+    } catch (error) {
+      console.error('Error during cleanup:', error);
+    }
   }
 }));
