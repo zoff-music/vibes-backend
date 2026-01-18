@@ -1,8 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, TouchableOpacity } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { usePlayback } from '../../hooks/usePlayback';
-import { Text } from '../ui/Text';
 
 interface Props {
     roomId: string;
@@ -21,88 +18,95 @@ export const PlayerControls: React.FC<Props> = ({ roomId }) => {
     const progress = currentSong ? (actualPositionMs / (currentSong.duration * 1000)) : 0;
 
     return (
-        <View style={styles.container}>
+        <div className="w-full px-5 py-2.5">
             {/* Progress Bar */}
-            <View style={styles.progressContainer}>
-                <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${progress * 100}%` }]} />
-                </View>
-                <View style={styles.timeContainer}>
-                    <Text size="xs" color="muted">{formatTime(actualPositionMs)}</Text>
-                    <Text size="xs" color="muted">{currentSong ? formatTime(currentSong.duration * 1000) : '0:00'}</Text>
-                </View>
-            </View>
+            <div className="mb-5">
+                <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
+                    <div
+                        className="h-full bg-primary transition-all"
+                        style={{ width: `${progress * 100}%` }}
+                    />
+                </div>
+                <div className="flex justify-between mt-2">
+                    <span className="text-xs text-text-muted">{formatTime(actualPositionMs)}</span>
+                    <span className="text-xs text-text-muted">
+                        {currentSong ? formatTime(currentSong.duration * 1000) : '0:00'}
+                    </span>
+                </div>
+            </div>
 
             {/* Main Controls */}
-            <View style={styles.controlsRow}>
-                <TouchableOpacity style={styles.secondaryButton}>
-                    <Ionicons name="shuffle-outline" size={24} color="#a1a1aa" />
-                </TouchableOpacity>
-
-                <View style={styles.centerControls}>
-                    <TouchableOpacity onPress={isPlaying ? pause : play} style={styles.playButton}>
-                        <Ionicons
-                            name={isPlaying ? "pause" : "play"}
-                            size={32}
-                            color="#fff"
-                            style={!isPlaying ? { marginLeft: 4 } : {}}
+            <div className="flex items-center justify-between px-10">
+                <button className="p-2.5 text-text-muted hover:text-text transition-colors">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
                         />
-                    </TouchableOpacity>
-                </View>
+                    </svg>
+                </button>
 
-                <TouchableOpacity onPress={skip} style={styles.secondaryButton}>
-                    <Ionicons name="play-skip-forward" size={24} color="#fff" />
-                </TouchableOpacity>
-            </View>
-        </View>
+                <div className="flex items-center">
+                    <button
+                        onClick={isPlaying ? pause : play}
+                        className="w-16 h-16 rounded-full bg-primary flex items-center justify-center hover:opacity-90 transition-opacity shadow-lg shadow-primary/30"
+                    >
+                        {isPlaying ? (
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-8 w-8 text-white"
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                            </svg>
+                        ) : (
+                            <svg
+                                xmlns="http://www.w3.org/2000/svg"
+                                className="h-8 w-8 text-white ml-1"
+                                fill="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path d="M8 5v14l11-7z" />
+                            </svg>
+                        )}
+                    </button>
+                </div>
+
+                <button
+                    onClick={skip}
+                    className="p-2.5 text-text hover:text-primary transition-colors"
+                >
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        className="h-6 w-6"
+                        fill="none"
+                        viewBox="0 0 24 24"
+                        stroke="currentColor"
+                    >
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M9 5l7 7-7 7"
+                        />
+                        <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M16 5l7 7-7 7"
+                        />
+                    </svg>
+                </button>
+            </div>
+        </div>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        width: '100%',
-        paddingHorizontal: 20,
-        paddingVertical: 10,
-    },
-    progressContainer: {
-        marginBottom: 20,
-    },
-    progressBarBg: {
-        height: 4,
-        backgroundColor: '#333',
-        borderRadius: 2,
-        overflow: 'hidden',
-    },
-    progressBarFill: {
-        height: '100%',
-        backgroundColor: '#a855f7',
-    },
-    timeContainer: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        marginTop: 8,
-    },
-    controlsRow: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        paddingHorizontal: 40,
-    },
-    centerControls: {
-        flexDirection: 'row',
-        alignItems: 'center',
-    },
-    playButton: {
-        width: 64,
-        height: 64,
-        borderRadius: 32,
-        backgroundColor: '#a855f7',
-        alignItems: 'center',
-        justifyContent: 'center',
-        boxShadow: '0px 4px 8px rgba(168, 85, 247, 0.3)',
-        elevation: 5,
-    },
-    secondaryButton: {
-        padding: 10,
-    },
-});

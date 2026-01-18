@@ -2,11 +2,13 @@ import { useCallback } from 'react';
 import { api } from '../api/client';
 import { useQueueStore } from '../stores/queueStore';
 import { useRoomStore } from '../stores/roomStore';
+import { usePlaybackStore } from '../stores/playbackStore';
 import { SourceType } from '@vibez/shared';
 
 export const useQueue = (roomId: string) => {
   const { songs, setSongs, addSong, removeSong, reorderSongs } = useQueueStore();
   const { userId } = useRoomStore();
+  const { setPlaybackState } = usePlaybackStore();
 
   const fetchQueue = useCallback(async () => {
     const [err, data] = await api.get('/rooms/{id}/songs', { id: roomId });
@@ -40,7 +42,24 @@ export const useQueue = (roomId: string) => {
     );
 
     if (data) {
+      const shouldAutoPlay = songs.length === 0 && !usePlaybackStore.getState().currentSongId;
       addSong(data);
+
+      if (shouldAutoPlay) {
+        const [playErr, playback] = await api.post('/rooms/{id}/action', 
+          { id: roomId },
+          { action: 'play' }
+        );
+
+        if (playErr) {
+          console.error('[Queue] Failed to auto-play after add:', playErr);
+        }
+
+        if (playback) {
+          setPlaybackState(playback);
+        }
+      }
+
       return data;
     }
     

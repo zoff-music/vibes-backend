@@ -20,24 +20,22 @@
 ### Stack
 | Layer | Technology | Notes |
 |-------|------------|-------|
-| Frontend | Expo SDK 54 + React 19 + expo-router 6 + TypeScript | Mobile-first responsive design |
-| Package Manager | Bun | Migrated from pnpm for faster installs |
-| Styling | React Native StyleSheet (plain) | NativeWind pending babel config fixes |
-| Network | fetch or wiretyped + yup | Type-safe API calls with validation |
+| Frontend | React 19 + Vite + React Router + TypeScript | Web-only, mobile-first responsive design |
+| Package Manager | Bun | Fast installs and builds |
+| Styling | Tailwind CSS | Utility-first CSS framework |
+| Network | wiretyped + yup | Type-safe API calls with validation |
 | Backend | Go | Following existing AGENTS.md patterns |
 | Database | SQLite | Single-file, easy deployment |
-| Real-time | Server-Sent Events (SSE) via wiretyped | Server pushes state; clients send via HTTP |
+| Real-time | Server-Sent Events (SSE) | Server pushes state; clients send via HTTP |
 | Video Player | react-player | Multi-source support for future expansion |
-| Casting | Chromecast + AirPlay SDKs | Native casting protocols |
-| Deployment | Docker (backend + bundled web), EAS (mobile) | |
+| Casting | Browser-based casting | Chromecast/AirPlay via browser APIs |
+| Deployment | Docker (backend + bundled web) | |
 
 ## Build & Run Commands
 
 -   Install Dependencies: `cd frontend && bun install`
--   Dev (All): `cd frontend && bun dev`
--   Dev (Mobile): `cd frontend && bun run --filter @vibez/mobile dev:web`
--   Build (Mobile): `cd frontend && bun run --filter @vibez/mobile build`
--   Backend (Manual): `cd frontend && bun backend`
+-   Dev: `cd frontend && bun dev`
+-   Build: `cd frontend && bun build`
 -   Type Check: `cd frontend && bun typecheck`
 
 ### Monorepo Structure
@@ -85,19 +83,20 @@ vibez/
 │   ├── bun.lock                # Bun lockfile
 │   ├── tsconfig.json           # Shared TypeScript config
 │   ├── apps/
-│   │   └── mobile/             # Expo SDK 54 app (React 19)
+│   │   └── mobile/             # React 19 web app
 │   │       ├── package.json    # @vibez/mobile
-│   │       ├── app.json        # Expo config
+│   │       ├── vite.config.ts  # Vite configuration
+│   │       ├── index.html      # HTML entry point
+│   │       ├── tailwind.config.js # Tailwind CSS config
 │   │       ├── tsconfig.json
-│   │       ├── app/            # Expo Router file-based routing
-│   │       │   ├── _layout.tsx # Root layout with dark theme
-│   │       │   ├── index.tsx   # ✅ Home/landing (Create/Join room)
-│   │       │   └── room/
-│   │       │       ├── create.tsx # ✅ Create room screen
-│   │       │       └── [id]/
-│   │       │           └── index.tsx # ✅ Room view (placeholder)
-│   │       │
-│   │       └── src/            # (To be created)
+│   │       ├── src/
+│   │       │   ├── main.tsx    # React entry point
+│   │       │   ├── App.tsx     # Router setup
+│   │       │   ├── index.css   # Global styles
+│   │       │   ├── pages/      # React Router pages
+│   │       │   │   ├── Home.tsx
+│   │       │   │   ├── CreateRoom.tsx
+│   │       │   │   └── RoomView.tsx
 │   │           ├── api/        # API client (fetch or wiretyped)
 │   │           ├── components/ # Reusable components
 │   │           │   ├── ui/     # Design system primitives
@@ -229,7 +228,7 @@ GET    /api/v1/rooms/:id/events         # SSE endpoint
 
 ---
 
-## Design System (Unistyles v3)
+## Design System (Tailwind CSS)
 
 ### Theme Tokens
 
@@ -390,7 +389,7 @@ PORT=8080
 DATABASE_PATH=./vibez.db
 
 # Frontend
-EXPO_PUBLIC_API_URL=http://localhost:8080
+VITE_API_URL=http://localhost:8080
 
 # External Services
 YOUTUBE_API_KEY= # Required for search/metadata
@@ -409,11 +408,12 @@ See `backend/AGENTS.md` - strictly follow:
 - Tracing via middleware only
 
 ### Frontend
-See `frontend/apps/mobile/AGENTS.md` - strictly follow:
+See `frontend/AGENTS.md` - strictly follow:
 - No `any` type
 - No `try/catch` - use `safeWrap`/`safeWrapAsync`
 - Use wiretyped + yup for all network calls
 - Component-first architecture
+- Use Tailwind CSS for styling (no inline styles or StyleSheet)
 
 ---
 
@@ -423,8 +423,8 @@ See `TASKS.md` for detailed task breakdown with checkboxes.
 
 ### ✅ Phase 1: Project Setup - COMPLETE
 - Bun workspace initialized
-- Expo app with expo-router configured
-- Unistyles v3 theme set up
+- React app with Vite and React Router configured
+- Tailwind CSS theme set up
 - Shared types package created
 - wiretyped API client configured with yup schemas
 
