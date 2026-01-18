@@ -57,7 +57,7 @@ export const useRoom = (roomId: string) => {
   const updateRoom = useCallback(async (updates: any) => {
     setIsLoading(true);
     // updates can contain { settings: {...} } or { mode: '...' } etc.
-    const [err, data] = await api.patch('/rooms/{id}', { id: roomId }, updates);
+    const [err, data] = await api.patch('/rooms/{id}/settings', { id: roomId }, updates);
     setIsLoading(false);
 
     if (err) {

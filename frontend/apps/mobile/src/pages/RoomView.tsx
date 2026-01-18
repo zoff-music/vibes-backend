@@ -342,8 +342,8 @@ export default function RoomView() {
                 <div className="max-w-7xl mx-auto px-4 py-8 lg:grid lg:grid-cols-[1fr,400px] lg:gap-12 items-start">
                     {/* Player Section */}
                     <div className="space-y-6">
-                        {/* Video Player */}
-                        <VideoPlayer onEnded={skip} isVisible={true} />
+                        {/* Video Player - only send skip in host mode, server mode backend handles it */}
+                        <VideoPlayer onEnded={room?.mode === 'host' ? skip : undefined} isVisible={true} />
 
                         {/* Controls (always below video) */}
                         <PlayerControls

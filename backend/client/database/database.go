@@ -22,10 +22,11 @@ type Client struct {
 	maxQueueLength int
 
 	// Room statements
-	GetRoomStatement       *sql.Stmt
-	GetRoomByNameStatement *sql.Stmt
-	CreateRoomStatement    *sql.Stmt
-	UpdateRoomStatement    *sql.Stmt
+	GetRoomStatement                  *sql.Stmt
+	GetRoomByNameStatement            *sql.Stmt
+	CreateRoomStatement               *sql.Stmt
+	UpdateRoomStatement               *sql.Stmt
+	ProcessNextAbandonedHostStatement *sql.Stmt
 
 	// Song statements
 	GetSongsStatement           *sql.Stmt
@@ -39,8 +40,9 @@ type Client struct {
 	VoteSongStatement           *sql.Stmt
 
 	// Playback statements
-	GetPlaybackStateStatement    *sql.Stmt
-	UpsertPlaybackStateStatement *sql.Stmt
+	GetPlaybackStateStatement           *sql.Stmt
+	UpsertPlaybackStateStatement        *sql.Stmt
+	ProcessNextExpiredPlaybackStatement *sql.Stmt
 
 	// User statements
 	GetUserStatement              *sql.Stmt
@@ -137,6 +139,11 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		return err
 	}
 
+	err = c.prepareProcessNextAbandonedHostStmt()
+	if err != nil {
+		return err
+	}
+
 	err = c.prepareGetSongsStmt()
 	if err != nil {
 		return err
@@ -188,6 +195,11 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	}
 
 	err = c.prepareUpsertPlaybackStateStmt()
+	if err != nil {
+		return err
+	}
+
+	err = c.prepareProcessNextExpiredPlaybackStmt()
 	if err != nil {
 		return err
 	}
@@ -257,6 +269,7 @@ func (c *Client) Close() error {
 		c.GetRoomByNameStatement,
 		c.CreateRoomStatement,
 		c.UpdateRoomStatement,
+		c.ProcessNextAbandonedHostStatement,
 		c.GetSongsStatement,
 		c.GetSongStatement,
 		c.AddSongStatement,
@@ -268,6 +281,7 @@ func (c *Client) Close() error {
 		c.VoteSongStatement,
 		c.GetPlaybackStateStatement,
 		c.UpsertPlaybackStateStatement,
+		c.ProcessNextExpiredPlaybackStatement,
 		c.GetUserStatement,
 		c.GetUsersInRoomStatement,
 		c.CountUsersInRoomStatement,

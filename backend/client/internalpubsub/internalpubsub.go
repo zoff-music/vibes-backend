@@ -47,6 +47,36 @@ func (c *Client) NotifyRoom(ctx context.Context, roomID string, event *vibe.Room
 	return c.NotifyTopic(ctx, topicName, data)
 }
 
+func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []*vibe.RoomEvent) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyRoomUpdates")
+	defer span.Finish()
+
+	var err error
+	topicName := fmt.Sprintf("room:%s", roomID)
+
+	for _, event := range events {
+		data, marshalErr := json.Marshal(event)
+		if marshalErr != nil {
+			// Log error and continue? Or return first error?
+			// User request implies batch update, but underlying system is per-message usually.
+			// Let's return first error but try others? No, fail fast usually better or log.
+			// Standard practice: stop on error.
+			if err == nil {
+				err = fmt.Errorf("error marshaling room event: %w", marshalErr)
+			}
+			continue
+		}
+
+		if notifyErr := c.NotifyTopic(ctx, topicName, data); notifyErr != nil {
+			if err == nil {
+				err = fmt.Errorf("error notifying topic: %w", notifyErr)
+			}
+		}
+	}
+
+	return err
+}
+
 func (c *Client) Subscribe(topicName string) (*vibe.SubscriptionContainer, error) {
 	topic := c.getTopic(topicName)
 

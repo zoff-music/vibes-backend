@@ -7,13 +7,8 @@ import (
 	"net/http"
 
 	log "github.com/sirupsen/logrus"
+	"github.com/zoff-music/vibes/server/internal/helper"
 )
-
-const SessionKey = "session"
-
-type SessionPayload struct {
-	UserID string `json:"user_id"`
-}
 
 // SessionMiddleware extracts the session from the "session" cookie and adds it to the context
 func SessionMiddleware(next http.Handler) http.Handler {
@@ -36,7 +31,7 @@ func SessionMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		var payload SessionPayload
+		var payload helper.SessionPayload
 		if err := json.Unmarshal(decoded, &payload); err != nil {
 			// Invalid JSON, ignore
 			log.Warnf("SessionMiddleware: failed to unmarshal payload: %v", err)
@@ -45,7 +40,7 @@ func SessionMiddleware(next http.Handler) http.Handler {
 		}
 
 		log.Debugf("SessionMiddleware: parsed userID=%s", payload.UserID)
-		ctx := context.WithValue(r.Context(), SessionKey, payload)
+		ctx := context.WithValue(r.Context(), helper.SessionKey, payload)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

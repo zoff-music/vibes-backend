@@ -1,0 +1,90 @@
+package middleware
+
+import (
+	"net/http"
+
+	"github.com/gorilla/mux"
+	log "github.com/sirupsen/logrus"
+	"github.com/zoff-music/vibes/server/internal/helper"
+	"github.com/zoff-music/vibes/vibe"
+)
+
+// AuthProvider defines the data access requirements for authentication
+type AuthProvider interface {
+	vibe.RoomFetcher
+	vibe.UserFetcher
+}
+
+// AuthMiddleware handles authentication for protected routes
+// AuthMiddleware handles authentication for protected routes
+type AuthMiddleware struct {
+	Provider        AuthProvider
+	ProtectedRoutes map[string]bool
+}
+
+// Middleware is the actual middleware function
+func (m *AuthMiddleware) Middleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		routeName := mux.CurrentRoute(r).GetName()
+		if !m.ProtectedRoutes[routeName] {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		vars := mux.Vars(r)
+		roomID := vars["id"]
+
+		ctx := r.Context()
+		session, ok := helper.GetSessionFromContext(ctx)
+
+		// 1. Check if we have a session. If not, we can't be admin.
+		// NOTE: If the room has NO password, we might still want to allow access.
+		// But first we need to fetch the room to know if it has a password.
+
+		room, err := m.Provider.GetRoom(ctx, roomID)
+		if err != nil {
+			log.Errorf("AuthMiddleware: failed to fetch room %s: %v", roomID, err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if room.IsEmpty() {
+			http.Error(w, "room not found", http.StatusNotFound)
+			return
+		}
+
+		// If room has no password, everyone is allowed to edit settings (as per requirements)
+		if !room.HasPassword {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Room has password, so we MUST have a valid user session
+		if !ok || session.UserID == "" {
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Fetch the user
+		user, err := m.Provider.GetUser(ctx, roomID, session.UserID)
+		if err != nil {
+			log.Errorf("AuthMiddleware: failed to fetch user %s in room %s: %v", session.UserID, roomID, err)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
+		if user.IsEmpty() {
+			http.Error(w, "user not found", http.StatusUnauthorized)
+			return
+		}
+
+		// Check if user belongs to this room or is not admin
+		if user.RoomID != roomID || !user.IsAdmin {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+
+		// Allowed
+		next.ServeHTTP(w, r)
+	})
+}

@@ -13,11 +13,6 @@ type CleanupHandler struct {
 	DB vibe.ParticipantStorage
 }
 
-// NewCleanupHandler creates a new CleanupHandler
-func NewCleanupHandler(db vibe.ParticipantStorage) *CleanupHandler {
-	return &CleanupHandler{DB: db}
-}
-
 // Handle deletes participants who haven't been seen in 1 hour
 func (h *CleanupHandler) Handle(ctx context.Context, data []byte) error {
 	deleted, err := h.DB.DeleteInactiveParticipants(ctx, 1*time.Hour)

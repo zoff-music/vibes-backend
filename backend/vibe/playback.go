@@ -33,42 +33,28 @@ type RoomActionRequest struct {
 	PositionMs int64      `json:"positionMs,omitempty"`
 }
 
-// SkipVote tracks skip votes for a song
-type SkipVote struct {
-	SongID string
-	UserID string
-}
-
 // PlaybackFetcher fetches playback state
 type PlaybackFetcher interface {
 	GetPlaybackState(ctx context.Context, roomID string) (*PlaybackState, error)
 }
 
+// PlaybackStateUpdater defines the interface for updating playback state
+type PlaybackStateUpdater interface {
+	RoomFetcher
+	UpdatePlayback(ctx context.Context, roomID string, userID string, action RoomAction, positionMs int64) (*PlaybackState, error)
+}
+
 // PlaybackController controls playback
 type PlaybackController interface {
 	UpsertPlaybackState(ctx context.Context, state *PlaybackState) error
-	SkipTrack(ctx context.Context, roomID string, state *PlaybackState) error
 }
 
-// SkipVoteFetcher fetches skip votes
-type SkipVoteFetcher interface {
-	GetSkipVotes(ctx context.Context, roomID, songID string) ([]SkipVote, error)
-	HasUserVoted(ctx context.Context, roomID, songID, userID string) (bool, error)
+// ExpiredPlaybackProcessor defines interfaces needed for background room playback automation
+type ExpiredPlaybackProcessor interface {
+	ProcessNextExpiredPlayback(ctx context.Context) (*PlaybackState, error)
 }
 
-// SkipVoteManager manages skip votes
-type SkipVoteManager interface {
-	AddSkipVote(ctx context.Context, roomID, songID, userID string) error
-	ClearSkipVotes(ctx context.Context, roomID, songID string) error
-	VoteToSkip(ctx context.Context, roomID, userID string, state *PlaybackState) (bool, error)
-}
-
-// RoomActioner performs room actions and related state updates.
-type RoomActioner interface {
-	RoomFetcher
-	SongsFetcher
-	GetPlaybackState(ctx context.Context, roomID string) (*PlaybackState, error)
-	UpdatePlayback(ctx context.Context, roomID string, action RoomAction, positionMs int64) (*PlaybackState, error)
-	VoteToSkip(ctx context.Context, roomID, userID string) (*PlaybackState, error)
-	SkipTrack(ctx context.Context, roomID string) (*PlaybackState, error)
+// AbandonnedHostProcessor defines interfaces needed for background host management
+type AbandonnedHostProcessor interface {
+	ProcessNextAbandonedHost(ctx context.Context) (*RoomHostInfo, error)
 }

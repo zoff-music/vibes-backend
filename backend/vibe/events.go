@@ -45,4 +45,5 @@ type RoomEvent struct {
 // RoomEventNotifier broadcasts events to room subscribers
 type RoomEventNotifier interface {
 	NotifyRoom(ctx context.Context, roomID string, event *RoomEvent) error
+	NotifyRoomUpdates(ctx context.Context, roomID string, events []*RoomEvent) error
 }

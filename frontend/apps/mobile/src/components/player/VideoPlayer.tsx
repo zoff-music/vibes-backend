@@ -61,6 +61,14 @@ const VideoPlayerComponent: React.FC<Props> = ({ isVisible = true, onEnded }) =>
 
             // YouTube PlayerState: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
             if (isPlaying && state !== 1 && state !== 3) {
+                // Seek to server position before playing
+                const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
+                const targetTime = actualPositionMs / 1000;
+                const currentTime = player.getCurrentTime();
+                if (Math.abs(currentTime - targetTime) > 1) {
+                    console.log('[VideoPlayer] Seeking on play:', { currentTime, targetTime });
+                    player.seekTo(targetTime, true);
+                }
                 player.playVideo();
             } else if (!isPlaying && state === 1) {
                 player.pauseVideo();

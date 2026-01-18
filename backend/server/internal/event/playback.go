@@ -2,178 +2,57 @@ package event
 
 import (
 	"context"
-	"time"
+	"fmt"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/vibe"
 )
 
-// PlaybackMonitorHandler handles playback monitoring for server-mode rooms
-type PlaybackMonitorHandler struct {
-	db  vibe.RoomActioner
+// PlaybackMonitor handles playback monitoring for server-mode rooms
+type PlaybackMonitor struct {
+	db  vibe.ExpiredPlaybackProcessor
 	ips vibe.RoomEventNotifier
 }
 
-// NewPlaybackMonitorHandler creates a new PlaybackMonitorHandler
-func NewPlaybackMonitorHandler(db vibe.RoomActioner, ips vibe.RoomEventNotifier) *PlaybackMonitorHandler {
-	return &PlaybackMonitorHandler{
-		db:  db,
-		ips: ips,
-	}
-}
-
 // Handle checks for rooms that need to auto-advance
-func (h *PlaybackMonitorHandler) Handle(ctx context.Context, data []byte) error {
-	// 1. Get rooms with active listeners (server mode only)
-	// We need to cast h.db to RoomFetcher if possible, or assume RoomActioner has it?
-	// vibe.RoomActioner interface definition is in vibe/action.go (likely).
-	// Let's assume passed DB implements RoomFetcher as well.
-
-	// Issue: GetAppEvents takes vibe.RoomActioner, but we need RoomFetcher too.
-	// Ideally we should pass an interface that combines them or the concrete implementation if lazy.
-	// But `vibe.RoomActioner` is passed.
-	// I should check `vibe/playback.go` or wherever `RoomActioner` is defined.
-	// For now, let's type assert or update interface. I'll type assert for expedience or assume it's there.
-
-	fetcher, ok := h.db.(vibe.RoomFetcher)
-	if !ok {
-		return nil // Should validation elsewhere
-	}
-
-	rooms, err := fetcher.GetRoomsWithActiveListeners(ctx, 30*time.Second) // Active within last 30s
+func (h *PlaybackMonitor) Handle(ctx context.Context, data []byte) error {
+	state, err := h.db.ProcessNextExpiredPlayback(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error processing next expired playback: %w", err)
 	}
 
-	for _, room := range rooms {
-		if err := h.checkRoomPlayback(ctx, &room); err != nil {
-			log.Errorf("error checking playback for room %s: %v", room.ID, err)
-		}
+	err = h.ips.NotifyRoomUpdates(ctx, state.RoomID, []*vibe.RoomEvent{
+		{
+			Type:    vibe.EventTypePlaybackUpdate,
+			Payload: state,
+		},
+	})
+	if err != nil {
+		log.Errorf("error notifying room %s update: %v", state.RoomID, err)
 	}
 
 	return nil
 }
 
-func (h *PlaybackMonitorHandler) checkRoomPlayback(ctx context.Context, room *vibe.Room) error {
-	// Mode-specific logic
-	if room.Mode == vibe.RoomModeHost {
-		// Host mode: check host health AND auto-advance songs when they end
-		if err := h.checkHostHealth(ctx, room); err != nil {
-			return err
-		}
-		// Also check if current song has ended and auto-advance
-		return h.checkServerPlayback(ctx, room.ID)
-	} else if room.Mode == vibe.RoomModeServer {
-		return h.checkServerPlayback(ctx, room.ID)
-	}
-	return nil
+// HostMonitor handles host health checks
+type HostMonitor struct {
+	db  vibe.AbandonnedHostProcessor
+	ips vibe.RoomEventNotifier
 }
 
-func (h *PlaybackMonitorHandler) checkHostHealth(ctx context.Context, room *vibe.Room) error {
-	participantStorage, ok := h.db.(vibe.ParticipantStorage)
-	if !ok {
-		return nil
-	}
-
-	// fetch active participants (active within 15s)
-	activeParticipants, err := participantStorage.GetActiveParticipants(ctx, room.ID, 15*time.Second)
+// Handle checks for rooms that need a new host
+func (h *HostMonitor) Handle(ctx context.Context, data []byte) error {
+	info, err := h.db.ProcessNextAbandonedHost(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error processing next abandoned host: %w", err)
 	}
 
-	hostActive := false
-	if room.HostID != "" {
-		for _, p := range activeParticipants {
-			if p.UserID == room.HostID {
-				hostActive = true
-				break
-			}
-		}
-	}
-
-	if !hostActive {
-		// Pick new host
-		if len(activeParticipants) > 0 {
-			// Just pick the first one for simplicity, or random. First one is fine (oldest active?).
-			// SQL query order isn't guaranteed unless specified. Assuming random enough.
-			newHostID := activeParticipants[0].UserID
-			err := participantStorage.SetRoomHost(ctx, room.ID, newHostID)
-			if err != nil {
-				return err
-			}
-
-			log.Infof("Room %s: Host %s inactive. New host: %s", room.ID, room.HostID, newHostID)
-
-			// Notify
-			_ = h.ips.NotifyRoom(ctx, room.ID, &vibe.RoomEvent{
-				Type:    vibe.EventTypeNewHost,
-				Payload: map[string]string{"userId": newHostID, "message": "You are now the host"},
-			})
-		} else if room.HostID != "" {
-			// No active participants, remove host
-			err := participantStorage.SetRoomHost(ctx, room.ID, "")
-			if err != nil {
-				return err
-			}
-		}
-	}
-
-	return nil
-}
-
-func (h *PlaybackMonitorHandler) checkServerPlayback(ctx context.Context, roomID string) error {
-	// Get current playback state
-	// RoomActioner has UpdatePlayback/SkipTrack/VoteToSkip/GetSongs.
-	// We need GetPlaybackState. That is in PlaybackFetcher interface.
-
-	playbackFetcher, ok := h.db.(vibe.PlaybackFetcher)
-	if !ok {
-		return nil
-	}
-
-	state, err := playbackFetcher.GetPlaybackState(ctx, roomID)
+	err = h.ips.NotifyRoom(ctx, info.RoomID, &vibe.RoomEvent{
+		Type:    vibe.EventTypeNewHost,
+		Payload: map[string]string{"userId": info.NewHostID, "message": "You are now the host"},
+	})
 	if err != nil {
-		return err
-	}
-
-	if state == nil || !state.IsPlaying {
-		return nil
-	}
-
-	// Calculate current position
-	currentPos := state.PositionMs + time.Since(state.UpdatedAt).Milliseconds()
-
-	// Need song duration. State has it?
-	// PlaybackState struct in vibe/playback.go usually has Song info or we fetch song.
-	// Let's assume state has Song duration or we can infer it.
-	// Based on typical implementation, state might just have progress.
-	// If state.CurrentSong is populated:
-	if state.CurrentSong == nil {
-		return nil
-	}
-
-	durationMs := int64(state.CurrentSong.Duration) * 1000
-
-	// If remaining time < 500ms (or ended), skip
-	// Prompt: "ending in the next 500ms or have ended"
-	if currentPos >= durationMs-500 {
-		log.Infof("Room %s: Song ended or ending (pos=%d, dur=%d). Skipping.", roomID, currentPos, durationMs)
-		_, err := h.db.SkipTrack(ctx, roomID)
-		if err != nil {
-			return err
-		}
-
-		// Notify listeners about queue change (SkipTrack usually updates playback state)
-		// We should probably broadcast PlaybackUpdate too if SkipTrack doesn't do it via this code path context.
-		// However, SkipTrack implementation updates DB.
-		// Let's perform a notify here to be safe and responsive.
-		newState, err := playbackFetcher.GetPlaybackState(ctx, roomID)
-		if err == nil {
-			_ = h.ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
-				Type:    vibe.EventTypePlaybackUpdate, // Client handles next song via playback update
-				Payload: newState,
-			})
-		}
+		log.Errorf("error notifying room %s host update: %v", info.RoomID, err)
 	}
 
 	return nil

@@ -6,12 +6,17 @@ Non-negotiable conventions. Follow strictly.
 
 - **No service/repository patterns** - no `service.*` or `repository.*` layers
 - **No `New*` constructors** - prefer struct literals
+- **No generic slice returns for workers** - worker methods must return single items or nil
+- **Atomic DB Operations** - prefer single-action DB methods over list+loop in handlers
+- **Control Flow Errors** - use `internalerror.ErrExpected{Err: internalerror.ErrNonRecoverable{...}}` for no-op
+- **NO Error Constructors** - always use struct literals for errors
 - **No inline error assignment** - never `if err := ...; err != nil {}`
 - **Never return `nil, nil`** from `(*T, error)` functions
 - **All errors wrapped** with context: `fmt.Errorf("error doing X: %w", err)`
 - **All HTTP in clients** - packages under `client/`, consumed via interfaces
 - **Domain types in `vibe/vibe.go`** - not in handlers
 - **Don't touch `monitoring/`**
+- **Separate Const Declarations** - Do not group constants in a block (e.g. `const (...)`). Declare each on its own line: `const X = "x"`.
 
 ## File Layout
 
@@ -32,6 +37,8 @@ vibe/vibe.go               # ALL domain types & interfaces
 ## Handler Pattern
 
 Handlers are functions returning `http.HandlerFunc`. Dependencies injected as interfaces.
+
+**IMPORTANT:** Do NOT create helper functions for broadcasting multiple updates (e.g. `broadcastUpdates`). Instead, use `ips.NotifyRoomUpdates` which takes a slice of events.
 
 ```go
 func GetRoom(rf vibe.RoomFetcher) http.HandlerFunc {

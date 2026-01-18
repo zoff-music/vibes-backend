@@ -23,11 +23,21 @@ const endpoints = {
     get: {
       response: roomSchema,
     },
+  },
+  '/rooms/{id}/settings': {
     patch: {
       request: roomUpdateSchema,
       response: roomSchema,
     },
+  },
+  '/rooms/{id}/skips': {
     post: {
+      response: playbackStateSchema,
+    },
+  },
+
+  '/rooms/{id}/states': {
+    put: {
       request: roomActionRequestSchema,
       response: playbackStateSchema,
     },
@@ -78,6 +88,7 @@ const endpoints = {
         playback_update: playbackStateSchema,
         songs_update: songsListSchema,
         song_added: songSchema,
+        settings_update: roomSchema,
       }
     },
   },
@@ -166,6 +177,16 @@ const wrappedClient = {
       return [await formatError(err, `PATCH ${args[0]} failed`), null] as const;
     }
     console.log('[API] PATCH', args[0], '→ success');
+    return [null, data] as const;
+  },
+
+  async put(...args: Parameters<typeof baseClient.put>) {
+    console.log('[API] PUT', args[0], args[1] ? JSON.stringify(args[1]) : '', args[2] ? JSON.stringify(args[2]) : '');
+    const [err, data] = await baseClient.put(...args);
+    if (err) {
+      return [await formatError(err, `PUT ${args[0]} failed`), null] as const;
+    }
+    console.log('[API] PUT', args[0], '→ success');
     return [null, data] as const;
   },
 

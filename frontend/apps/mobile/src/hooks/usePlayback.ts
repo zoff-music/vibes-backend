@@ -15,10 +15,16 @@ export const usePlayback = (roomId: string) => {
   }, [playback]);
 
   const performAction = useCallback(async (action: 'play' | 'pause' | 'skip' | 'vote' | 'seek', positionMs?: number) => {
-    const [err, data] = await api.post('/rooms/{id}', 
-      { id: roomId },
-      { action, positionMs }
-    );
+    let err, data;
+
+    if (action === 'play' || action === 'pause' || action === 'seek') {
+      [err, data] = await api.put('/rooms/{id}/states', 
+        { id: roomId },
+        { action, positionMs }
+      );
+    } else if (action === 'skip' || action === 'vote') {
+      [err, data] = await api.post('/rooms/{id}/skips', { id: roomId }, {});
+    }
 
     if (data) {
       playback.setPlaybackState(data);

@@ -9,7 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	log "github.com/sirupsen/logrus"
-	"github.com/zoff-music/vibes/server/internal/middleware"
+	"github.com/zoff-music/vibes/server/internal/helper"
 	"github.com/zoff-music/vibes/vibe"
 )
 
@@ -18,13 +18,7 @@ import (
 // RoomEvents handles GET /api/v1/rooms/:id/events (SSE)
 func RoomEvents(
 	ips vibe.Subscriber,
-	db vibe.RoomActioner, // Combined interface with ParticipantStorage methods if added? Or separate?
-	// Let's use RoomActioner + ParticipantStorage.
-	// We need to define ParticipantStorage usage.
-	// The s.DB passed in router.go implements both. we can just accept vibe.RoomActioner if we extend it,
-	// or accept a new interface `vibe.RoomEventHandlerDependencies`.
-	// For simplicity, let's just use `db interface { vibe.PlaybackFetcher; vibe.ParticipantStorage }` inline or check type.
-	// But `vibe.ParticipantStorage` is clean.
+	db vibe.PlaybackFetcher,
 	participants vibe.ParticipantStorage,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -36,7 +30,7 @@ func RoomEvents(
 		// Vibes uses cookie session middleware?
 		// Check action.go: middleware.SessionKey.
 		userID := ""
-		session, ok := ctx.Value(middleware.SessionKey).(middleware.SessionPayload)
+		session, ok := helper.GetSessionFromContext(ctx)
 		if ok {
 			userID = session.UserID
 		}

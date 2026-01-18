@@ -232,14 +232,27 @@ func (c *Client) VoteToSkip(ctx context.Context, roomID, userID string) (*vibe.P
 		return nil, fmt.Errorf("error fetching skip votes count: %w", err)
 	}
 
-	userCount, err := c.CountUsersInRoom(ctx, roomID)
+	// Count active participants for threshold (anyone connected to SSE)
+	activeParticipants, err := c.GetActiveParticipants(ctx, roomID, 60*time.Second)
 	if err != nil {
-		return nil, fmt.Errorf("error counting users in room: %w", err)
+		return nil, fmt.Errorf("error counting active participants: %w", err)
+	}
+	participantCount := len(activeParticipants)
+
+	voteCount := len(votes)
+	requiredVotes := int(float64(participantCount) * room.Settings.SkipVoteThreshold)
+
+	// If there is only 1 participant, allow them to skip alone
+	if participantCount == 1 {
+		requiredVotes = 1
+	} else if requiredVotes < 2 {
+		// Otherwise, enforce minimum 2 votes to prevent single-vote skips in groups
+		requiredVotes = 2
 	}
 
-	if float64(len(votes)) >= float64(userCount)*room.Settings.SkipVoteThreshold {
+	if voteCount >= requiredVotes {
 		// Threshold met, skip the track
-		newState, err := c.SkipTrack(ctx, roomID)
+		newState, err := c.skipTrack(ctx, roomID)
 		if err != nil {
 			return nil, fmt.Errorf("error skipping track after vote: %w", err)
 		}
