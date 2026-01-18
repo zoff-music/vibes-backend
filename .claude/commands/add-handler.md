@@ -20,13 +20,9 @@ func {HandlerName}(
     return func(w http.ResponseWriter, r *http.Request) {
         ctx := r.Context()
 
-        // Parse request
-        id := r.PathValue("id")
-        if id == "" {
-            handleError(w, http.StatusBadRequest,
-                fmt.Errorf("error missing id path param"), true)
-            return
-        }
+        // Parse path params (gorilla/mux)
+        vars := mux.Vars(r)
+        id := vars["id"]
 
         // Call dependency
         result, err := {dep}.{Method}(ctx, id)
