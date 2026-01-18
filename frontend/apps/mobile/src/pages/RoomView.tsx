@@ -39,10 +39,11 @@ export default function RoomView() {
         return (
             <div className="min-h-screen flex items-center justify-center">
                 <div className="text-center animate-fade-in">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl glass-elevated mb-4">
-                        <div className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white border-4 border-ink/20 shadow-retro mb-5">
+                        <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
                     </div>
-                    <p className="text-text-muted">Loading session...</p>
+                    <p className="text-ink/60 font-medium">Loading session...</p>
+                    <p className="text-sm jp-art text-ink/40 mt-1">読み込み中</p>
                 </div>
             </div>
         );
@@ -52,16 +53,16 @@ export default function RoomView() {
         return (
             <div className="min-h-screen flex flex-col items-center justify-center px-4">
                 <div className="max-w-md w-full text-center animate-scale-in">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl glass-elevated mb-4">
-                        <svg className="w-8 h-8 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white border-4 border-error shadow-retro mb-5">
+                        <svg className="w-10 h-10 text-error" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                         </svg>
                     </div>
-                    <h2 className="text-xl font-bold mb-2">Connection Failed</h2>
-                    <p className="text-text-muted mb-6">{error.message}</p>
+                    <h2 className="text-2xl font-black mb-2 text-ink" style={{ fontFamily: 'Poppins' }}>Connection Failed</h2>
+                    <p className="text-ink/60 mb-6 font-medium">{error.message}</p>
                     <button
                         onClick={() => fetchRoom()}
-                        className="glass-elevated px-6 py-3 rounded-lg hover:bg-surfaceHover transition-colors"
+                        className="glass-elevated px-8 py-3.5 rounded-xl hover:shadow-retro transition-all font-bold text-ink border-2 border-ink/10"
                     >
                         Try Again
                     </button>
@@ -73,31 +74,31 @@ export default function RoomView() {
     return (
         <div className="min-h-screen flex flex-col animate-fade-in">
             {/* Header */}
-            <div className="px-4 py-6 backdrop-blur-xl bg-background/80 border-b border-border sticky top-0 z-20">
+            <div className="px-4 py-5 backdrop-blur-lg bg-white/95 border-b-4 border-ink/10 sticky top-0 z-20 shadow-retro">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <button
                         onClick={() => navigate(-1)}
-                        className="inline-flex items-center gap-2 text-text-muted hover:text-white transition-colors group"
+                        className="inline-flex items-center gap-2 text-ink/60 hover:text-ink transition-colors group"
                     >
-                        <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                         </svg>
-                        <span className="text-sm font-medium">Leave</span>
+                        <span className="text-sm font-bold tracking-wide">Leave</span>
                     </button>
 
                     <button
                         onClick={() => setShowRoomInfo(!showRoomInfo)}
-                        className="flex-1 mx-4 flex items-center justify-center gap-2 hover:opacity-80 transition-opacity"
+                        className="flex-1 mx-4 flex items-center justify-center gap-2 hover:opacity-70 transition-opacity"
                     >
-                        <h1 className="text-lg font-semibold truncate">{room?.name || 'Loading...'}</h1>
-                        <svg className={`w-4 h-4 text-text-subtle transition-transform ${showRoomInfo ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        <h1 className="text-lg font-black truncate text-ink" style={{ fontFamily: 'Poppins' }}>{room?.name || 'Loading...'}</h1>
+                        <svg className={`w-4 h-4 text-ink/50 transition-transform ${showRoomInfo ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
 
                     <div className="flex items-center gap-1">
                         {users && users.length > 0 && (
-                            <div className="flex items-center gap-1.5 glass rounded-full px-3 py-1.5">
+                            <div className="flex items-center gap-1.5 glass rounded-full px-3 py-1.5 border-2 border-ink/10">
                                 <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
                                 <span className="text-xs font-medium">{users.length}</span>
                             </div>
@@ -107,34 +108,34 @@ export default function RoomView() {
 
                 {/* Room info dropdown */}
                 {showRoomInfo && (
-                    <div className="mt-4 glass-elevated rounded-xl p-4 animate-slide-down">
-                        <div className="space-y-3">
+                    <div className="mt-4 glass-elevated rounded-2xl p-5 animate-slide-down border-2 border-ink/10">
+                        <div className="space-y-4">
                             <div>
-                                <p className="text-xs text-text-subtle uppercase tracking-wider mb-1">Room Code</p>
+                                <p className="text-xs text-ink/60 uppercase tracking-widest mb-2 font-bold">Room Code</p>
                                 <div className="flex items-center gap-2">
-                                    <code className="text-sm font-mono text-white bg-surfaceElevated px-3 py-1.5 rounded-lg">{id}</code>
+                                    <code className="text-sm font-mono text-ink font-bold bg-surface px-4 py-2 rounded-xl border-2 border-ink/20">{id}</code>
                                     <button
                                         onClick={() => navigator.clipboard.writeText(id || '')}
-                                        className="p-1.5 hover:bg-surfaceHover rounded-lg transition-colors"
+                                        className="p-2 hover:bg-ink/5 rounded-lg transition-colors border-2 border-transparent hover:border-ink/10"
                                         title="Copy code"
                                     >
-                                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                        <svg className="w-5 h-5 text-ink/60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
                                         </svg>
                                     </button>
                                 </div>
                             </div>
                             {users && users.length > 0 && (
                                 <div>
-                                    <p className="text-xs text-text-subtle uppercase tracking-wider mb-2">Listeners ({users.length})</p>
+                                    <p className="text-xs text-ink/60 uppercase tracking-widest mb-2 font-bold">Listeners ({users.length})</p>
                                     <div className="flex flex-wrap gap-2">
                                         {users.slice(0, 8).map((user) => (
-                                            <div key={user.id} className="text-xs bg-surfaceElevated px-2.5 py-1 rounded-full text-text-muted">
+                                            <div key={user.id} className="text-xs bg-sakura/30 px-3 py-1.5 rounded-full text-ink/70 font-medium border border-sakura/50">
                                                 {user.nickname || `User ${user.id.slice(0, 4)}`}
                                             </div>
                                         ))}
                                         {users.length > 8 && (
-                                            <div className="text-xs bg-surfaceElevated px-2.5 py-1 rounded-full text-text-subtle">
+                                            <div className="text-xs bg-ink/10 px-3 py-1.5 rounded-full text-ink/50 font-medium">
                                                 +{users.length - 8} more
                                             </div>
                                         )}
@@ -157,38 +158,42 @@ export default function RoomView() {
                         </div>
 
                         {/* Now Playing Card */}
-                        <div className="glass-elevated rounded-2xl p-8 relative overflow-hidden animate-scale-in">
+                        <div className="glass-elevated rounded-3xl p-8 relative overflow-hidden animate-scale-in border-4 border-ink/10 shadow-retro-pink">
                             {/* Playing indicator glow */}
                             {isPlaying && (
-                                <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-secondary/10 animate-glow-pulse pointer-events-none" />
+                                <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 pointer-events-none" />
                             )}
 
                             <div className="relative">
                                 <div className="flex items-center gap-2 mb-6">
-                                    <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-success animate-pulse' : 'bg-text-subtle'}`} />
-                                    <span className="text-xs text-text-subtle uppercase tracking-wider">
+                                    <div className={`w-3 h-3 rounded-full ${isPlaying ? 'bg-matcha animate-pulse shadow-neon-pink' : 'bg-ink/30'}`} />
+                                    <span className="text-xs text-ink/60 uppercase tracking-widest font-bold">
                                         {isPlaying ? 'Now Playing' : 'Paused'}
+                                    </span>
+                                    <span className="text-xs jp-art text-ink/40">
+                                        {isPlaying ? '再生中' : '一時停止'}
                                     </span>
                                 </div>
 
                                 {currentSong ? (
                                     <div className="text-center mb-6">
-                                        <h2 className="text-3xl font-bold mb-2 line-clamp-2">
+                                        <h2 className="text-3xl font-black mb-3 line-clamp-2 text-ink" style={{ fontFamily: 'Poppins' }}>
                                             {currentSong.title}
                                         </h2>
-                                        <p className="text-lg text-text-muted">
+                                        <p className="text-lg text-ink/60 font-medium">
                                             {currentSong.artist || 'Unknown Artist'}
                                         </p>
                                     </div>
                                 ) : (
                                     <div className="text-center mb-6 py-8">
-                                        <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-surfaceElevated mb-4">
-                                            <svg className="w-8 h-8 text-text-subtle" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
+                                        <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl bg-white border-4 border-ink/20 shadow-retro mb-5">
+                                            <svg className="w-10 h-10 text-ink/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M9 19V6l12-3v13M9 19c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zm12-3c0 1.105-1.343 2-3 2s-3-.895-3-2 1.343-2 3-2 3 .895 3 2zM9 10l12-3" />
                                             </svg>
                                         </div>
-                                        <h3 className="text-xl font-semibold mb-2">No song playing</h3>
-                                        <p className="text-text-muted">Add a song to get started</p>
+                                        <h3 className="text-2xl font-black mb-2 text-ink" style={{ fontFamily: 'Poppins' }}>No song playing</h3>
+                                        <p className="text-ink/60 mb-2 font-medium">Add a song to get started</p>
+                                        <p className="text-sm jp-art text-ink/40">曲を追加してください</p>
                                     </div>
                                 )}
 
@@ -200,21 +205,22 @@ export default function RoomView() {
 
                     {/* Queue Section */}
                     <div>
-                        <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center justify-between mb-5">
                             <div>
-                                <h2 className="text-xl font-bold">Up Next</h2>
-                                <p className="text-sm text-text-muted mt-0.5">
+                                <h2 className="text-2xl font-black text-ink" style={{ fontFamily: 'Poppins' }}>Up Next</h2>
+                                <p className="text-sm text-ink/60 mt-1 font-medium">
                                     {songs.length} {songs.length === 1 ? 'song' : 'songs'} in queue
                                 </p>
+                                <p className="text-xs jp-art text-ink/40 mt-0.5">次の曲</p>
                             </div>
                             <button
                                 onClick={() => setIsAddModalVisible(true)}
-                                className="glass-elevated px-5 py-2.5 rounded-xl hover:bg-surfaceHover transition-all hover:scale-105 active:scale-95 flex items-center gap-2 group"
+                                className="glass-elevated px-5 py-3 rounded-2xl hover:shadow-retro-pink transition-all hover:scale-105 active:scale-95 flex items-center gap-2 group border-2 border-ink/10"
                             >
-                                <svg className="w-5 h-5 text-primary group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                <svg className="w-5 h-5 text-primary group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                                 </svg>
-                                <span className="font-medium">Add Song</span>
+                                <span className="font-black text-ink tracking-wide">Add Song</span>
                             </button>
                         </div>
 
