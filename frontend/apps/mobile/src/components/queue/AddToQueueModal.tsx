@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, Modal, TouchableOpacity, Image } from 'react-native';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import { Text } from '../ui/Text';
@@ -78,112 +77,74 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
         }
     };
 
+    if (!isVisible) return null;
+
     return (
-        <Modal
-            visible={isVisible}
-            transparent
-            animationType="fade"
-            onRequestClose={onClose}
+        <div
+            className="fixed inset-0 bg-black/80 flex items-center justify-center p-6 z-50"
+            onClick={onClose}
         >
-            <TouchableOpacity
-                style={styles.overlay}
-                activeOpacity={1}
-                onPress={onClose}
+            <div
+                className="bg-background rounded-2xl p-6 border border-surfaceElevated max-w-md w-full"
+                onClick={(e) => e.stopPropagation()}
             >
-                <TouchableOpacity
-                    style={styles.container}
-                    activeOpacity={1}
-                    onPress={(e) => e.stopPropagation()}
-                >
-                    <View style={styles.header}>
-                        <Text size="lg" bold>Add Song</Text>
-                        <TouchableOpacity onPress={onClose}>
-                            <Text color="muted">Cancel</Text>
-                        </TouchableOpacity>
-                    </View>
+                <div className="flex items-center justify-between mb-6">
+                    <Text size="lg" bold>Add Song</Text>
+                    <button
+                        onClick={onClose}
+                        className="text-text-muted hover:text-text transition-colors"
+                    >
+                        Cancel
+                    </button>
+                </div>
 
-                    <Input
-                        label="YouTube URL"
-                        placeholder="https://www.youtube.com/watch?v=..."
-                        value={url}
-                        onChangeText={setUrl}
-                        error={error || undefined}
-                        autoFocus
-                    />
+                <Input
+                    label="YouTube URL"
+                    placeholder="https://www.youtube.com/watch?v=..."
+                    value={url}
+                    onChange={(e) => setUrl(e.target.value)}
+                    error={error || undefined}
+                    autoFocus
+                />
 
-                    <View style={styles.tips}>
-                        <Text size="xs" color="muted">Tip: Paste a YouTube link to add it to the queue.</Text>
-                    </View>
+                <div className="mb-6">
+                    <Text size="xs" color="muted">
+                        Tip: Paste a YouTube link to add it to the queue.
+                    </Text>
+                </div>
 
-                    <Button
-                        title="Search"
-                        onPress={handlePreview}
-                        loading={isLoading && !previewVideo}
-                        disabled={!url || (isLoading && !previewVideo)}
-                        variant="secondary"
-                        style={{ marginBottom: 16 }}
-                    />
+                <Button
+                    title="Search"
+                    onClick={handlePreview}
+                    loading={isLoading && !previewVideo}
+                    disabled={!url || (isLoading && !previewVideo)}
+                    variant="secondary"
+                    className="mb-4"
+                />
 
-                    {previewVideo && (
-                        <View style={styles.previewContainer}>
-                            <Image source={{ uri: previewVideo.thumbnailUrl }} style={styles.thumbnail} />
-                            <View style={styles.previewInfo}>
-                                <Text bold numberOfLines={2}>{previewVideo.title}</Text>
-                                <Text size="xs" color="muted">{previewVideo.channelTitle} • {formatDuration(parseISODuration(previewVideo.duration))}</Text>
-                            </View>
-                        </View>
-                    )}
+                {previewVideo && (
+                    <div className="flex bg-surfaceElevated rounded-lg p-2 mb-6 items-center">
+                        <img
+                            src={previewVideo.thumbnailUrl}
+                            alt={previewVideo.title}
+                            className="w-20 h-15 rounded object-cover mr-3"
+                        />
+                        <div className="flex-1 min-w-0">
+                            <Text bold className="line-clamp-2">{previewVideo.title}</Text>
+                            <Text size="xs" color="muted" className="mt-0.5">
+                                {previewVideo.channelTitle} • {formatDuration(parseISODuration(previewVideo.duration))}
+                            </Text>
+                        </div>
+                    </div>
+                )}
 
-                    <Button
-                        title="Add to Queue"
-                        onPress={handleAdd}
-                        loading={isLoading && !!previewVideo}
-                        disabled={!previewVideo}
-                    />
-                </TouchableOpacity>
-            </TouchableOpacity>
-        </Modal>
+                <Button
+                    title="Add to Queue"
+                    onClick={handleAdd}
+                    loading={isLoading && !!previewVideo}
+                    disabled={!previewVideo}
+                />
+            </div>
+        </div>
     );
 };
-
-const styles = StyleSheet.create({
-    overlay: {
-        flex: 1,
-        backgroundColor: 'rgba(0,0,0,0.8)',
-        justifyContent: 'center',
-        padding: 24,
-    },
-    container: {
-        backgroundColor: '#0a0a0a',
-        borderRadius: 16,
-        padding: 24,
-        borderWidth: 1,
-        borderColor: '#1c1c1c',
-    },
-    header: {
-        flexDirection: 'row',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: 24,
-    },
-    tips: {
-        marginBottom: 24,
-    },
-    previewContainer: {
-        flexDirection: 'row',
-        backgroundColor: '#1c1c1c',
-        borderRadius: 8,
-        padding: 8,
-        marginBottom: 24,
-        alignItems: 'center',
-    },
-    thumbnail: {
-        width: 80,
-        height: 60,
-        borderRadius: 4,
-        marginRight: 12,
-    },
-    previewInfo: {
-        flex: 1,
-    }
-});

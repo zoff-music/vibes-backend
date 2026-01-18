@@ -4,7 +4,7 @@ import { useQueueStore } from '../stores/queueStore';
 import { usePlaybackStore } from '../stores/playbackStore';
 import { Room, Song, PlaybackState, RoomUser, SSEEvent } from '@vibez/shared';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:42069';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
 export const useSSE = (roomId: string | undefined) => {
   const { setRoom, setUsers } = useRoomStore();
