@@ -21,43 +21,37 @@ export const PlayerControls: React.FC<Props> = ({ roomId }) => {
         <div className="w-full space-y-6">
             {/* Progress Bar */}
             <div>
-                <div className="relative h-2 bg-surfaceElevated rounded-full overflow-hidden">
+                <div className="relative h-3 bg-ink/10 rounded-full overflow-hidden border-2 border-ink/20">
                     <div
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-secondary transition-all duration-200 ease-out"
-                        style={{ width: `${progress * 100}%` }}
-                    />
-                    {/* Glow effect */}
-                    <div
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-secondary opacity-50 blur-sm transition-all duration-200 ease-out"
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary via-secondary to-accent transition-all duration-200 ease-out"
                         style={{ width: `${progress * 100}%` }}
                     />
                 </div>
                 <div className="flex justify-between mt-3 px-1">
-                    <span className="text-xs font-medium text-text-muted tabular-nums">
+                    <span className="text-xs font-bold text-ink/70 tabular-nums tracking-wider">
                         {formatTime(actualPositionMs)}
                     </span>
-                    <span className="text-xs font-medium text-text-subtle tabular-nums">
+                    <span className="text-xs font-bold text-ink/50 tabular-nums tracking-wider">
                         {currentSong ? formatTime(currentSong.duration * 1000) : '0:00'}
                     </span>
                 </div>
             </div>
 
             {/* Main Controls */}
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center justify-center gap-5">
                 {/* Play/Pause Button */}
                 <button
                     onClick={isPlaying ? pause : play}
                     disabled={!currentSong}
-                    className="relative group disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="relative group disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full blur-xl opacity-30 group-hover:opacity-50 transition-opacity" />
-                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-glow">
+                    <div className="relative w-20 h-20 rounded-2xl bg-primary flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-retro-pink hover:shadow-neon-pink border-4 border-white">
                         {isPlaying ? (
-                            <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-9 h-9 text-white" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
                             </svg>
                         ) : (
-                            <svg className="w-7 h-7 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                            <svg className="w-9 h-9 text-white ml-1" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M8 5v14l11-7z" />
                             </svg>
                         )}
@@ -68,11 +62,11 @@ export const PlayerControls: React.FC<Props> = ({ roomId }) => {
                 <button
                     onClick={skip}
                     disabled={!currentSong}
-                    className="glass p-3.5 rounded-full hover:bg-surfaceHover active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed group"
+                    className="glass p-4 rounded-xl hover:shadow-retro active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed group border-2 border-ink/10"
                     title="Skip"
                 >
-                    <svg className="w-5 h-5 text-text-muted group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                    <svg className="w-6 h-6 text-ink/60 group-hover:text-primary transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                     </svg>
                 </button>
             </div>
