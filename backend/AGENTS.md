@@ -39,12 +39,9 @@ func GetRoom(rf vibe.RoomFetcher) http.HandlerFunc {
         ctx := r.Context()
         // NO tracing here - middleware handles it
 
-        id := r.PathValue("id")
-        if id == "" {
-            handleError(w, http.StatusBadRequest,
-                fmt.Errorf("error missing id path param"), true)
-            return
-        }
+        // Path params via gorilla/mux
+        vars := mux.Vars(r)
+        id := vars["id"]
 
         room, err := rf.GetRoom(ctx, id)
         if err != nil {
