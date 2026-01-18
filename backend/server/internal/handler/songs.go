@@ -34,6 +34,7 @@ func GetSongs(
 // AddSong handles POST /api/v1/rooms/:id/songs
 func AddSong(
 	sm vibe.SongsModifier,
+	eb vibe.RoomEventBroadcaster,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -75,6 +76,21 @@ func AddSong(
 			return
 		}
 
+		// Broadcast both song_added and songs_update
+		// song_added can be used for notifications, songs_update for refreshing the queue
+		eb.BroadcastToRoom(ctx, roomID, &vibe.RoomEvent{
+			Type:    vibe.EventTypeSongAdded,
+			Payload: created,
+		})
+
+		songs, err := sm.GetSongs(ctx, roomID)
+		if err == nil {
+			eb.BroadcastToRoom(ctx, roomID, &vibe.RoomEvent{
+				Type:    vibe.EventTypeQueueReordered, // Or we could add a generic EventTypeSongsUpdate
+				Payload: songs,
+			})
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(created)
@@ -84,6 +100,7 @@ func AddSong(
 // RemoveSong handles DELETE /api/v1/rooms/:id/songs/:songId
 func RemoveSong(
 	sm vibe.SongsModifier,
+	eb vibe.RoomEventBroadcaster,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -97,6 +114,14 @@ func RemoveSong(
 			return
 		}
 
+		songs, err := sm.GetSongs(ctx, roomID)
+		if err == nil {
+			eb.BroadcastToRoom(ctx, roomID, &vibe.RoomEvent{
+				Type:    vibe.EventTypeQueueReordered,
+				Payload: songs,
+			})
+		}
+
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
@@ -104,6 +129,7 @@ func RemoveSong(
 // ReorderSongs handles PATCH /api/v1/rooms/:id/songs/reorder/:songId
 func ReorderSongs(
 	sm vibe.SongsModifier,
+	eb vibe.RoomEventBroadcaster,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -122,6 +148,14 @@ func ReorderSongs(
 		if err != nil {
 			handleError(w, fmt.Errorf("failed to reorder songs: %w", err), http.StatusInternalServerError, true)
 			return
+		}
+
+		songs, err := sm.GetSongs(ctx, roomID)
+		if err == nil {
+			eb.BroadcastToRoom(ctx, roomID, &vibe.RoomEvent{
+				Type:    vibe.EventTypeQueueReordered,
+				Payload: songs,
+			})
 		}
 
 		w.WriteHeader(http.StatusNoContent)

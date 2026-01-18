@@ -61,7 +61,7 @@ func RoomAction(
 		case vibe.RoomActionSkip:
 			err = skipToNextSong(ctx, roomID, state, ra, ra)
 		case vibe.RoomActionVote:
-			err = handleVote(ctx, roomID, userID, state, ra, ra, ra, ra, ra, ra)
+			err = handleVote(ctx, roomID, userID, state, ra)
 		default:
 			handleError(w, fmt.Errorf("invalid action: %s", req.Action), http.StatusBadRequest, false)
 			return
@@ -80,24 +80,37 @@ func RoomAction(
 			Payload: state,
 		})
 
+		// If the action was skip or vote, the queue likely changed
+		if req.Action == vibe.RoomActionSkip || req.Action == vibe.RoomActionVote || req.Action == vibe.RoomActionPlay {
+			// Fetch and broadcast updated queue
+			// Note: ra (RoomActioner) includes SongsModifier which now has GetSongs
+			songs, err := ra.GetSongs(ctx, roomID)
+			if err == nil {
+				eb.BroadcastToRoom(ctx, roomID, &vibe.RoomEvent{
+					Type:    vibe.EventTypeQueueReordered,
+					Payload: songs,
+				})
+			}
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(state)
 	}
 }
 
-func skipToNextSong(ctx context.Context, roomID string, state *vibe.PlaybackState, sm vibe.SongsModifier, pc vibe.PlaybackController) error {
+func skipToNextSong(ctx context.Context, roomID string, state *vibe.PlaybackState, ra vibe.RoomActioner, pc vibe.PlaybackController) error {
 	currentPosition := -1
 	if state.CurrentSong != nil {
 		currentPosition = state.CurrentSong.Position
 	} else if state.CurrentSongID != nil {
 		// If we only have ID, fetch the song to get its position
-		song, err := sm.GetSong(ctx, roomID, *state.CurrentSongID)
+		song, err := ra.GetSong(ctx, roomID, *state.CurrentSongID)
 		if err == nil && !song.IsEmpty() {
 			currentPosition = song.Position
 		}
 	}
 
-	nextSong, err := sm.GetNextSong(ctx, roomID, currentPosition)
+	nextSong, err := ra.GetNextSong(ctx, roomID, currentPosition)
 	if err != nil {
 		return fmt.Errorf("failed to get next song: %w", err)
 	}
@@ -110,6 +123,12 @@ func skipToNextSong(ctx context.Context, roomID string, state *vibe.PlaybackStat
 		state.CurrentSongID = &nextSong.ID
 		state.CurrentSong = nextSong
 		state.IsPlaying = true
+
+		// Check room settings for removeOnPlay
+		room, err := ra.GetRoom(ctx, roomID)
+		if err == nil && room.Settings.RemoveOnPlay {
+			_ = ra.RemoveSong(ctx, roomID, nextSong.ID)
+		}
 	}
 
 	state.PositionMs = 0
@@ -118,14 +137,14 @@ func skipToNextSong(ctx context.Context, roomID string, state *vibe.PlaybackStat
 	return pc.UpsertPlaybackState(ctx, state)
 }
 
-func handleVote(ctx context.Context, roomID, userID string, state *vibe.PlaybackState, rf vibe.RoomFetcher, svf vibe.SkipVoteFetcher, svm vibe.SkipVoteManager, sm vibe.SongsModifier, pc vibe.PlaybackController, uf vibe.UserFetcher) error {
+func handleVote(ctx context.Context, roomID, userID string, state *vibe.PlaybackState, ra vibe.RoomActioner) error {
 	if state.CurrentSongID == nil || userID == "" {
 		return nil
 	}
 
 	songID := *state.CurrentSongID
 
-	voted, err := svf.HasUserVoted(ctx, roomID, songID, userID)
+	voted, err := ra.HasUserVoted(ctx, roomID, songID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to check vote: %w", err)
 	}
@@ -134,33 +153,33 @@ func handleVote(ctx context.Context, roomID, userID string, state *vibe.Playback
 		return nil // Already voted
 	}
 
-	err = svm.AddSkipVote(ctx, roomID, songID, userID)
+	err = ra.AddSkipVote(ctx, roomID, songID, userID)
 	if err != nil {
 		return fmt.Errorf("failed to add vote: %w", err)
 	}
 
 	// Check if threshold reached
-	room, err := rf.GetRoom(ctx, roomID)
+	room, err := ra.GetRoom(ctx, roomID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch room: %w", err)
 	}
 
-	votes, err := svf.GetSkipVotes(ctx, roomID, songID)
+	votes, err := ra.GetSkipVotes(ctx, roomID, songID)
 	if err != nil {
 		return fmt.Errorf("failed to fetch votes: %w", err)
 	}
 
-	userCount, err := uf.CountUsersInRoom(ctx, roomID)
+	userCount, err := ra.CountUsersInRoom(ctx, roomID)
 	if err != nil {
 		return fmt.Errorf("failed to count users: %w", err)
 	}
 
 	if float64(len(votes)) >= float64(userCount)*room.Settings.SkipVoteThreshold {
-		err = skipToNextSong(ctx, roomID, state, sm, pc)
+		err = skipToNextSong(ctx, roomID, state, ra, ra)
 		if err != nil {
 			return fmt.Errorf("failed to skip after vote: %w", err)
 		}
-		_ = svm.ClearSkipVotes(ctx, roomID, songID)
+		_ = ra.ClearSkipVotes(ctx, roomID, songID)
 	}
 
 	return nil
