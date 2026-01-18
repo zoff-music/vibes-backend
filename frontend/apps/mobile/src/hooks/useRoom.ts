@@ -40,7 +40,7 @@ export const useRoom = (roomId: string) => {
     }
 
     if (data) {
-      setSession(data.userId, data.isAdmin, data.nickname);
+      setSession(data.userId, data.isAdmin, data.nickname as any);
       setRoom(data.room);
       setIsLoading(false);
       return data;
@@ -54,6 +54,23 @@ export const useRoom = (roomId: string) => {
     reset();
   }, [reset]);
 
+  const updateRoomSettings = useCallback(async (settings: any) => {
+    setIsLoading(true);
+    const [err, data] = await api.patch('/rooms/{id}', { id: roomId }, { settings } as any);
+    setIsLoading(false);
+
+    if (err) {
+      setError(err);
+      return null;
+    }
+
+    if (data) {
+      setRoom(data);
+      return data;
+    }
+    return null;
+  }, [roomId, setRoom]);
+
   return {
     room,
     users,
@@ -62,6 +79,7 @@ export const useRoom = (roomId: string) => {
     error,
     fetchRoom,
     joinRoom,
+    updateRoomSettings,
     leaveRoom,
   };
 };

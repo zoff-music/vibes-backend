@@ -9,16 +9,20 @@ import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { QueueList } from '../components/queue/QueueList';
 import { Toast } from '../components/ui/Toast';
 import { Song } from '@vibez/shared';
+import { AnimatePresence, motion } from 'framer-motion';
+import { QRCodeSVG } from 'qrcode.react';
 
 export default function RoomView() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { currentSong, skip, isPlaying } = usePlayback(id || '');
     const { songs, fetchQueue } = useQueue(id || '');
-    const { room, fetchRoom, isLoading, error, joinRoom, userId, users } = useRoom(id || '');
+    const { room, fetchRoom, isLoading, error, joinRoom, userId, users, updateRoomSettings } = useRoom(id || '');
 
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
     const [showRoomInfo, setShowRoomInfo] = useState(false);
+    const [showShare, setShowShare] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
     const [toasts, setToasts] = useState<{ id: string; message: string; type: 'success' | 'info' }[]>([]);
 
     useEffect(() => {
@@ -27,6 +31,16 @@ export default function RoomView() {
             fetchQueue();
         }
     }, [id, fetchRoom, fetchQueue]);
+
+    const formatTime = (ms: number) => {
+        const seconds = Math.floor(ms / 1000);
+        const m = Math.floor(seconds / 60);
+        const s = seconds % 60;
+        return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
+    const { actualPositionMs } = usePlayback(id || '');
+    const progress = currentSong ? actualPositionMs / (currentSong.duration * 1000) : 0;
 
     useEffect(() => {
         const handleSongAdded = (e: any) => {
@@ -114,13 +128,150 @@ export default function RoomView() {
                         </svg>
                     </button>
 
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-2">
                         {users && users.length > 0 && (
-                            <div className="flex items-center gap-1.5 glass rounded-full px-3 py-1.5 border-2 border-ink/10">
+                            <div className="flex items-center gap-1.5 glass rounded-full px-3 py-1.5 border-2 border-ink/10 mr-2">
                                 <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
                                 <span className="text-xs font-medium">{users.length}</span>
                             </div>
                         )}
+
+                        <div className="relative">
+                            <button
+                                onClick={() => setShowShare(!showShare)}
+                                className={`p-2.5 rounded-xl transition-all border-2 ${showShare ? 'bg-ink text-white border-ink' : 'text-ink/60 hover:text-ink border-ink/10 hover:border-ink/20'}`}
+                                title="Share Room"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                                </svg>
+                            </button>
+
+                            <AnimatePresence>
+                                {showShare && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute right-0 mt-3 p-4 bg-white rounded-3xl shadow-2xl border-4 border-ink z-50 w-72"
+                                    >
+                                        <div className="text-center space-y-4">
+                                            <div className="p-4 bg-sakura/20 rounded-2xl inline-block ring-2 ring-ink/5">
+                                                <QRCodeSVG
+                                                    value={window.location.href}
+                                                    size={180}
+                                                    bgColor="#fff0f2"
+                                                    fgColor="#2d3142"
+                                                    level="H"
+                                                />
+                                            </div>
+                                            <div>
+                                                <p className="font-black text-sm text-ink mb-1">Invite Friends</p>
+                                                <div className="flex items-center gap-2 bg-ink/5 p-2 rounded-xl">
+                                                    <p className="text-[10px] text-ink/60 truncate font-mono flex-1 text-left">{window.location.href}</p>
+                                                    <button
+                                                        onClick={() => {
+                                                            navigator.clipboard.writeText(window.location.href);
+                                                            setToasts(prev => [...prev, {
+                                                                id: Math.random().toString(36).substr(2, 9),
+                                                                message: 'Link copied!',
+                                                                type: 'success'
+                                                            }]);
+                                                            setShowShare(false);
+                                                        }}
+                                                        className="p-1 px-2 bg-ink text-white rounded-lg text-[10px] font-bold hover:scale-105 active:scale-95 transition-all"
+                                                    >
+                                                        Copy
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
+
+                        <div className="relative ml-1">
+                            <button
+                                onClick={() => setShowSettings(!showSettings)}
+                                className={`p-2.5 rounded-xl transition-all border-2 ${showSettings ? 'bg-ink text-white border-ink' : 'text-ink/60 hover:text-ink border-ink/10 hover:border-ink/20'}`}
+                                title="Room Settings"
+                            >
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                </svg>
+                            </button>
+
+                            <AnimatePresence>
+                                {showSettings && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        className="absolute right-0 mt-3 p-5 bg-white rounded-3xl shadow-2xl border-4 border-ink z-50 w-72"
+                                    >
+                                        <div className="space-y-4">
+                                            <h4 className="font-black text-ink border-b-2 border-ink/5 pb-2 text-sm uppercase tracking-wider">Room Control</h4>
+
+                                            <div className="flex items-center justify-between group">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-ink">Allow Skip</span>
+                                                    <span className="text-[10px] text-ink/40">Anyone can skip</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => room && updateRoomSettings({ ...room.settings, skipAllowed: !room.settings.skipAllowed })}
+                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink ${room?.settings.skipAllowed ? 'bg-primary' : 'bg-ink/5 opacity-50'}`}
+                                                >
+                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.skipAllowed ? 'right-1.5' : 'left-1.5'}`} />
+                                                </button>
+                                            </div>
+
+                                            <div className="flex items-center justify-between group">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-ink">Democratic Skip</span>
+                                                    <span className="text-[10px] text-ink/40">Require votes</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => room && updateRoomSettings({ ...room.settings, democraticSkip: !room.settings.democraticSkip })}
+                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink ${room?.settings.democraticSkip ? 'bg-primary' : 'bg-ink/5 opacity-50'}`}
+                                                >
+                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.democraticSkip ? 'right-1.5' : 'left-1.5'}`} />
+                                                </button>
+                                            </div>
+
+                                            <div className="flex items-center justify-between group">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-ink">Loop Queue</span>
+                                                    <span className="text-[10px] text-ink/40">Cycled back to end</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => room && updateRoomSettings({ ...room.settings, loopQueue: !room.settings.loopQueue })}
+                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink ${room?.settings.loopQueue ? 'bg-primary' : 'bg-ink/5 opacity-50'}`}
+                                                >
+                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.loopQueue ? 'right-1.5' : 'left-1.5'}`} />
+                                                </button>
+                                            </div>
+
+                                            <div className="flex items-center justify-between group">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-ink">Remove Played</span>
+                                                    <span className="text-[10px] text-ink/40">Removed after play</span>
+                                                </div>
+                                                <button
+                                                    onClick={() => room && updateRoomSettings({ ...room.settings, removeOnPlay: !room.settings.removeOnPlay })}
+                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink ${room?.settings.removeOnPlay ? 'bg-ink' : 'bg-ink/5 opacity-50'}`}
+                                                >
+                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.removeOnPlay ? 'right-1.5' : 'left-1.5'}`} />
+                                                </button>
+                                            </div>
+
+                                            <p className="text-[10px] text-ink/30 text-center pt-2 font-black italic">Settings sync enabled</p>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </div>
                 </div>
 
@@ -174,55 +325,64 @@ export default function RoomView() {
                         <VideoPlayer onEnded={skip} isVisible={true} />
 
                         {/* Controls (always below video) */}
-                        <PlayerControls roomId={id || ''} hasSongsInQueue={songs && songs.length > 0} />
+                        <PlayerControls
+                            roomId={id || ''}
+                            hasSongsInQueue={songs && songs.length > 0}
+                            onAddSong={() => setIsAddModalVisible(true)}
+                        />
                     </div>
 
                     {/* Queue & Now Playing Section */}
                     <div className="mt-8 lg:mt-0 space-y-8">
                         <div>
-                            <div className="flex items-center justify-between mb-6">
-                                <div>
-                                    <h2 className="text-2xl font-black text-ink" style={{ fontFamily: 'Poppins' }}>Queue</h2>
-                                    <p className="text-xs jp-art text-ink/40">キュー</p>
-                                </div>
-                                <button
-                                    onClick={() => setIsAddModalVisible(true)}
-                                    className="glass-elevated px-5 py-3 rounded-2xl hover:shadow-retro-pink transition-all hover:scale-105 active:scale-95 flex items-center gap-2 group border-2 border-ink/10"
-                                >
-                                    <svg className="w-5 h-5 text-primary group-hover:rotate-90 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
-                                    </svg>
-                                    <span className="font-black text-ink tracking-wide">Add Song</span>
-                                </button>
-                            </div>
-
                             {/* Now Playing (Integrated into list style) */}
-                            {currentSong && (
-                                <div className="mb-8">
-                                    <div className="flex items-center gap-2 mb-3">
-                                        <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-matcha animate-pulse shadow-neon-pink' : 'bg-ink/30'}`} />
-                                        <span className="text-[10px] text-ink/60 uppercase tracking-[0.2em] font-black">
-                                            {isPlaying ? 'Now Playing' : 'Paused'}
-                                        </span>
-                                    </div>
-
-                                    <div className="glass-elevated rounded-2xl p-4 border-2 border-primary/20 bg-primary/5 flex gap-4 items-center">
-                                        {currentSong.thumbnailUrl && (
-                                            <img
-                                                src={currentSong.thumbnailUrl}
-                                                alt=""
-                                                className="w-16 h-16 rounded-xl object-cover border-2 border-ink/10 shadow-sm"
-                                            />
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                            <h3 className="font-bold text-ink truncate text-sm">{currentSong.title}</h3>
-                                            <p className="text-xs text-ink/60 truncate font-medium">{currentSong.artist || 'Unknown Artist'}</p>
+                            <AnimatePresence mode="wait">
+                                {currentSong && (
+                                    <motion.div
+                                        key={currentSong.id}
+                                        initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                                        exit={{ opacity: 0, scale: 1.05, y: -10 }}
+                                        transition={{ duration: 0.3 }}
+                                        className="mb-8"
+                                    >
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-matcha animate-pulse shadow-neon-pink' : 'bg-ink/30'}`} />
+                                            <span className="text-[10px] text-ink/60 uppercase tracking-[0.2em] font-black">
+                                                {isPlaying ? 'Now Playing' : 'Paused'}
+                                            </span>
                                         </div>
-                                    </div>
 
-                                    <div className="h-px bg-ink/10 mt-8 mb-4" />
-                                </div>
-                            )}
+                                        <div className="relative glass-elevated rounded-2xl p-4 border-2 border-primary/20 overflow-hidden flex gap-4 items-center shadow-retro-pink/20 bg-white/40 backdrop-blur-sm group/card">
+                                            {/* Progress Background */}
+                                            <motion.div
+                                                className="absolute inset-y-0 left-0 bg-primary/10 pointer-events-none"
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${progress * 100}%` }}
+                                                transition={{ duration: 0.1, ease: 'linear' }}
+                                            />
+
+                                            {currentSong.thumbnailUrl && (
+                                                <div className="relative z-10 flex-shrink-0">
+                                                    <img
+                                                        src={currentSong.thumbnailUrl}
+                                                        alt=""
+                                                        className="w-16 h-16 rounded-xl object-cover border-2 border-ink/10 shadow-sm transition-transform group-hover/card:scale-105"
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="relative z-10 flex-1 min-w-0">
+                                                <h3 className="font-bold text-ink truncate text-sm">{currentSong.title}</h3>
+                                                <p className="text-xs text-ink/60 truncate font-medium">
+                                                    {currentSong.artist || 'Unknown Artist'} • {formatTime(currentSong.duration * 1000)}
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="h-px bg-ink/10 mt-8 mb-4" />
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
 
                             {/* Up Next List */}
                             <div>

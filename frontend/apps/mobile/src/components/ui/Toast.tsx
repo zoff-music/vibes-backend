@@ -17,7 +17,7 @@ export const Toast = ({ message, type = 'info', duration = 3000, onClose }: Toas
         }, duration);
 
         return () => clearTimeout(timer);
-    }, [duration, onClose]);
+    }, [duration]); // Removed onClose to prevent timer reset during parent re-renders
 
     const bgColors = {
         success: 'bg-matcha border-matcha/20 text-ink',
