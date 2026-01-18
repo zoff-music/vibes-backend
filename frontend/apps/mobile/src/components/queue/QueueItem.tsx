@@ -1,5 +1,6 @@
 import React from 'react';
 import { Song } from '@vibez/shared';
+import { motion } from 'framer-motion';
 
 interface Props {
     song: Song;
@@ -16,9 +17,19 @@ export const QueueItem: React.FC<Props> = ({ song, position, onRemove, isAdmin }
     };
 
     return (
-        <div
-            className="group glass rounded-2xl p-4 hover:shadow-retro transition-all animate-slide-up border-2 border-ink/10"
-            style={{ animationDelay: `${position * 0.05}s` }}
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+            transition={{
+                type: "spring",
+                stiffness: 500,
+                damping: 30,
+                mass: 1,
+                opacity: { duration: 0.2 }
+            }}
+            className="group glass rounded-2xl p-4 hover:shadow-retro transition-shadow border-2 border-ink/10 bg-white/50 backdrop-blur-sm"
         >
             <div className="flex items-center gap-4">
                 {/* Position number */}
@@ -63,6 +74,6 @@ export const QueueItem: React.FC<Props> = ({ song, position, onRemove, isAdmin }
                     )}
                 </div>
             </div>
-        </div>
+        </motion.div>
     );
 };

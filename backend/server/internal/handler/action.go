@@ -99,22 +99,57 @@ func RoomAction(
 }
 
 func skipToNextSong(ctx context.Context, roomID string, state *vibe.PlaybackState, ra vibe.RoomActioner, pc vibe.PlaybackController) error {
+	// 1. Identify the song we are leaving (the currently playing one)
+	var currentSongID *string
 	currentPosition := -1
-	if state.CurrentSong != nil {
-		currentPosition = state.CurrentSong.Position
-	} else if state.CurrentSongID != nil {
-		// If we only have ID, fetch the song to get its position
-		song, err := ra.GetSong(ctx, roomID, *state.CurrentSongID)
-		if err == nil && !song.IsEmpty() {
-			currentPosition = song.Position
+
+	if state.CurrentSongID != nil {
+		currentSongID = state.CurrentSongID
+		if state.CurrentSong != nil {
+			currentPosition = state.CurrentSong.Position
+		} else {
+			// Fetch it if we only have the ID
+			song, err := ra.GetSong(ctx, roomID, *currentSongID)
+			if err == nil && !song.IsEmpty() {
+				currentPosition = song.Position
+			}
 		}
 	}
 
+	// 2. Handle the old song (Remove or Loop)
+	if currentSongID != nil {
+		room, err := ra.GetRoom(ctx, roomID)
+		if err == nil {
+			if room.Settings.RemoveOnPlay {
+				_ = ra.RemoveSong(ctx, roomID, *currentSongID)
+			} else if room.Settings.LoopQueue {
+				// Move to the end of the queue
+				maxPos, err := ra.GetMaxPosition(ctx, roomID)
+				if err == nil {
+					_ = ra.ReorderSongs(ctx, roomID, *currentSongID, maxPos+1)
+				}
+			}
+		}
+	}
+
+	// 3. Get the next song.
 	nextSong, err := ra.GetNextSong(ctx, roomID, currentPosition)
 	if err != nil {
 		return fmt.Errorf("failed to get next song: %w", err)
 	}
 
+	// 4. If we reached the end of the queue and looping is enabled, wrap around
+	if nextSong.IsEmpty() {
+		room, err := ra.GetRoom(ctx, roomID)
+		if err == nil && room.Settings.LoopQueue {
+			firstSong, err := ra.GetNextSong(ctx, roomID, -1)
+			if err == nil && !firstSong.IsEmpty() {
+				nextSong = firstSong
+			}
+		}
+	}
+
+	// 5. Update state
 	if nextSong.IsEmpty() {
 		state.CurrentSongID = nil
 		state.CurrentSong = nil
@@ -123,12 +158,6 @@ func skipToNextSong(ctx context.Context, roomID string, state *vibe.PlaybackStat
 		state.CurrentSongID = &nextSong.ID
 		state.CurrentSong = nextSong
 		state.IsPlaying = true
-
-		// Check room settings for removeOnPlay
-		room, err := ra.GetRoom(ctx, roomID)
-		if err == nil && room.Settings.RemoveOnPlay {
-			_ = ra.RemoveSong(ctx, roomID, nextSong.ID)
-		}
 	}
 
 	state.PositionMs = 0

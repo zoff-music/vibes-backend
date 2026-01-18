@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"html"
 	"net/http"
 	"net/url"
 
@@ -171,8 +172,8 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 				tracks = append(tracks, vibe.MusicTrack{
 					ID:           item.ID.VideoID,
 					Source:       vibe.SourceTypeYouTube,
-					Title:        item.Snippet.Title,
-					ChannelTitle: item.Snippet.ChannelTitle,
+					Title:        html.UnescapeString(item.Snippet.Title),
+					ChannelTitle: html.UnescapeString(item.Snippet.ChannelTitle),
 					ThumbnailURL: thmb,
 					Duration:     durations[item.ID.VideoID],
 				})
@@ -198,8 +199,8 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		tracks = append(tracks, vibe.MusicTrack{
 			ID:           item.ID.VideoID,
 			Source:       vibe.SourceTypeYouTube,
-			Title:        item.Snippet.Title,
-			ChannelTitle: item.Snippet.ChannelTitle,
+			Title:        html.UnescapeString(item.Snippet.Title),
+			ChannelTitle: html.UnescapeString(item.Snippet.ChannelTitle),
 			ThumbnailURL: thmb,
 		})
 	}
@@ -248,8 +249,8 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	return &vibe.MusicTrack{
 		ID:           item.ID,
 		Source:       vibe.SourceTypeYouTube,
-		Title:        item.Snippet.Title,
-		ChannelTitle: item.Snippet.ChannelTitle,
+		Title:        html.UnescapeString(item.Snippet.Title),
+		ChannelTitle: html.UnescapeString(item.Snippet.ChannelTitle),
 		ThumbnailURL: item.Snippet.Thumbnails.Medium.URL,
 		Duration:     item.ContentDetails.Duration,
 	}, nil
