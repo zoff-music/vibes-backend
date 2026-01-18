@@ -14,10 +14,12 @@ import (
 // prepareGetSongsStmt prepares the GetSongsStatement.
 func (c *Client) prepareGetSongsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT id, room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position
-		FROM songs
-		WHERE room_id = ?1
-		ORDER BY position ASC
+		SELECT s.id, s.room_id, s.source_type, s.source_id, s.title, s.artist, s.thumbnail_url, s.duration, s.added_by, s.added_by_nickname, s.added_at, s.position, COUNT(sv.user_id) as vote_count
+		FROM songs s
+		LEFT JOIN song_votes sv ON s.id = sv.song_id AND s.room_id = sv.room_id
+		WHERE s.room_id = ?1
+		GROUP BY s.id
+		ORDER BY s.position ASC
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSongsStatement: %w", err)
@@ -81,6 +83,7 @@ type songRow struct {
 	AddedByNickname sql.NullString
 	AddedAt         sql.NullTime
 	Position        sql.NullInt64
+	VoteCount       sql.NullInt64
 }
 
 func (r *songRow) scanRows(rows *sql.Rows) error {
@@ -97,6 +100,7 @@ func (r *songRow) scanRows(rows *sql.Rows) error {
 		&r.AddedByNickname,
 		&r.AddedAt,
 		&r.Position,
+		&r.VoteCount,
 	)
 }
 
@@ -114,6 +118,7 @@ func (r *songRow) scan(row *sql.Row) error {
 		&r.AddedByNickname,
 		&r.AddedAt,
 		&r.Position,
+		&r.VoteCount,
 	)
 }
 
@@ -142,6 +147,11 @@ func (r *songRow) toSong() (*vibe.Song, error) {
 		position = int(r.Position.Int64)
 	}
 
+	voteCount := 0
+	if r.VoteCount.Valid {
+		voteCount = int(r.VoteCount.Int64)
+	}
+
 	return &vibe.Song{
 		ID:              r.ID.String,
 		RoomID:          r.RoomID.String,
@@ -155,15 +165,18 @@ func (r *songRow) toSong() (*vibe.Song, error) {
 		AddedByNickname: addedByNickname,
 		AddedAt:         r.AddedAt.Time,
 		Position:        position,
+		VoteCount:       voteCount,
 	}, nil
 }
 
 // prepareGetSongStmt prepares the GetSongStatement.
 func (c *Client) prepareGetSongStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT id, room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position
-		FROM songs
-		WHERE room_id = ?1 AND id = ?2
+		SELECT s.id, s.room_id, s.source_type, s.source_id, s.title, s.artist, s.thumbnail_url, s.duration, s.added_by, s.added_by_nickname, s.added_at, s.position, COUNT(sv.user_id) as vote_count
+		FROM songs s
+		LEFT JOIN song_votes sv ON s.id = sv.song_id AND s.room_id = sv.room_id
+		WHERE s.room_id = ?1 AND s.id = ?2
+		GROUP BY s.id
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSongStatement: %w", err)
@@ -205,9 +218,17 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 
 // prepareAddSongStmt prepares the AddSongStatement.
 func (c *Client) prepareAddSongStmt() error {
+	// Try to insert song.
+	// If conflict, we want the ID.
+	// SQLite 3.35+ supports RETURNING.
+	// On conflict do nothing returning id returns NOTHING.
+	// So we use the update trick to ensure ID is returned?
+	// DO UPDATE SET room_id=room_id RETURNING id
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO songs (room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position)
 		VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+		ON CONFLICT(room_id, source_type, source_id) DO UPDATE SET
+			room_id = excluded.room_id
 		RETURNING id
 	`)
 	if err != nil {
@@ -227,9 +248,9 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	// 1. Insert Song (idempotent, returns ID)
 	var returnedID string
 	err := c.AddSongStatement.QueryRowContext(cctx,
-		// song.ID is removed
 		song.RoomID,
 		string(song.SourceType),
 		song.SourceID,
@@ -243,12 +264,29 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 		song.Position,
 	).Scan(&returnedID)
 	if err != nil {
-		return nil, fmt.Errorf("error adding song: %w", err)
+		return nil, fmt.Errorf("error inserting song: %w", err)
 	}
 
 	song.ID = returnedID
 
-	return song, nil
+	// 2. Insert Vote
+	// We use raw execution here as strict prepared statement struct modification is hard without seeing client.go
+	_, err = c.DB.ExecContext(cctx, `
+        INSERT INTO song_votes (room_id, song_id, user_id)
+        VALUES (?1, ?2, ?3)
+        ON CONFLICT(room_id, song_id, user_id) DO NOTHING
+    `, song.RoomID, song.ID, song.AddedBy)
+	if err != nil {
+		return nil, fmt.Errorf("error inserting vote: %w", err)
+	}
+
+	// 3. Fetch full song details to get accurate vote count
+	updatedSong, err := c.GetSong(ctx, song.RoomID, song.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching updated song: %w", err)
+	}
+
+	return updatedSong, nil
 }
 
 // prepareRemoveSongStmt prepares the RemoveSongStatement.
@@ -285,7 +323,7 @@ func (c *Client) RemoveSong(ctx context.Context, roomID, songID string) error {
 // prepareGetMaxPositionStmt prepares the GetMaxPositionStatement.
 func (c *Client) prepareGetMaxPositionStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT COALESCE(MAX(position), -1) FROM songs WHERE room_id = ?1
+		SELECT COALESCE(MAX(position), 0) FROM songs WHERE room_id = ?1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetMaxPositionStatement: %w", err)
@@ -411,10 +449,12 @@ func (c *Client) ReorderSongs(ctx context.Context, roomID, songID string, newPos
 // prepareGetNextSongStmt prepares the GetNextSongStatement.
 func (c *Client) prepareGetNextSongStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT id, room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position
-		FROM songs
-		WHERE room_id = ?1 AND position > ?2
-		ORDER BY position ASC
+		SELECT s.id, s.room_id, s.source_type, s.source_id, s.title, s.artist, s.thumbnail_url, s.duration, s.added_by, s.added_by_nickname, s.added_at, s.position, COUNT(sv.user_id) as vote_count
+		FROM songs s
+		LEFT JOIN song_votes sv ON s.id = sv.song_id AND s.room_id = sv.room_id
+		WHERE s.room_id = ?1 AND s.position > ?2
+		GROUP BY s.id
+		ORDER BY s.position ASC
 		LIMIT 1
 	`)
 	if err != nil {

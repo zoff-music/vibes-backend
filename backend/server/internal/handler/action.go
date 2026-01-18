@@ -78,6 +78,22 @@ func RoomAction(
 		// Update server time for response
 		state.ServerTimeMs = time.Now().UnixMilli()
 
+		// Handle skip or vote actions
+		if req.Action == vibe.RoomActionSkip || req.Action == vibe.RoomActionVote {
+			// If skip was requested, we broadcast the playback update
+			// but also potentially queue update if loop/remove logic is handled in SkipTrack
+			// The current SkipTrack implementation in playback.go handles queue modification.
+			// So we should broadcast queue update as well.
+			// Vote might invoke SkipTrack internally if threshold is met.
+			songs, err := db.GetSongs(ctx, roomID)
+			if err == nil {
+				_ = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
+					Type:    vibe.EventTypeQueueReordered,
+					Payload: songs,
+				})
+			}
+		}
+
 		err = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
 			Type:    vibe.EventTypePlaybackUpdate,
 			Payload: state,

@@ -19,6 +19,7 @@ type Song struct {
 	AddedByNickname *string    `json:"addedByNickname,omitempty"`
 	AddedAt         time.Time  `json:"addedAt"`
 	Position        int        `json:"position"`
+	VoteCount       int        `json:"voteCount"`
 }
 
 // AddSongRequest is the request payload for adding a song.
@@ -50,8 +51,17 @@ type SongsFetcher interface {
 
 // SongsModifier modifies the song queue
 type SongsModifier interface {
+	GetSongs(ctx context.Context, roomID string) ([]Song, error)
+	GetSong(ctx context.Context, roomID, songID string) (*Song, error)
 	AddSong(ctx context.Context, song *Song) (*Song, error)
 	RemoveSong(ctx context.Context, roomID, songID string) error
 	ReorderSongs(ctx context.Context, roomID, songID string, newPosition int) error
 	GetNextSong(ctx context.Context, roomID string, currentPosition int) (*Song, error)
+	GetMaxPosition(ctx context.Context, roomID string) (int, error)
+}
+
+// SongController controls songs and playback
+type SongController interface {
+	SongsModifier
+	UpsertPlaybackState(ctx context.Context, state *PlaybackState) error
 }

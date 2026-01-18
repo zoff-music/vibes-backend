@@ -36,9 +36,10 @@ func GetSongs(
 	}
 }
 
-// AddSong handles POST /api/v1/rooms/:id/songs
+// AddSong handles the addition of a new song to the room
 func AddSong(
-	db vibe.SongsModifier,
+	db vibe.SongController,
+	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -57,6 +58,13 @@ func AddSong(
 			return
 		}
 
+		// Get the max position to append new song at end of queue
+		maxPosition, err := db.GetMaxPosition(ctx, roomID)
+		if err != nil {
+			handleError(w, fmt.Errorf("failed to get max position: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+
 		artist := req.Artist
 		song := &vibe.Song{
 			ID:           uuid.New().String(),
@@ -69,6 +77,7 @@ func AddSong(
 			Duration:     req.Duration,
 			AddedBy:      req.AddedBy,
 			AddedAt:      time.Now(),
+			Position:     maxPosition + 1,
 		}
 
 		created, err := db.AddSong(ctx, song)
@@ -82,15 +91,49 @@ func AddSong(
 			return
 		}
 
+		// Broadcast queue update
+		songs, err := db.GetSongs(ctx, roomID)
+		if err == nil {
+			_ = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
+				Type:    vibe.EventTypeQueueReordered,
+				Payload: songs,
+			})
+		}
+
+		// Auto-play if this is the first song
+		if created.Position == 1 {
+			playbackState := &vibe.PlaybackState{
+				RoomID:        roomID,
+				CurrentSongID: &created.ID,
+				CurrentSong:   created,
+				IsPlaying:     true,
+				PositionMs:    0,
+				UpdatedAt:     time.Now(),
+				ServerTimeMs:  time.Now().UnixMilli(),
+			}
+
+			if err := db.UpsertPlaybackState(ctx, playbackState); err != nil {
+				// Log error but don't fail the request completely
+				fmt.Printf("failed to auto-play first song: %v\n", err)
+			} else {
+				// Notify room about playback update
+				_ = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
+					Type:    vibe.EventTypePlaybackUpdate,
+					Payload: playbackState,
+				})
+			}
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		_ = json.NewEncoder(w).Encode(created)
 	}
 }
 
-// RemoveSong handles DELETE /api/v1/rooms/:id/songs/:songId
+// RemoveSong handles the removal of a song from the room
 func RemoveSong(
 	db vibe.SongsModifier,
+	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -109,13 +152,23 @@ func RemoveSong(
 			return
 		}
 
-		w.WriteHeader(http.StatusNoContent)
+		// Broadcast queue update
+		songs, err := db.GetSongs(ctx, roomID)
+		if err == nil {
+			_ = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
+				Type:    vibe.EventTypeQueueReordered,
+				Payload: songs,
+			})
+		}
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
 
-// ReorderSongs handles PATCH /api/v1/rooms/:id/songs/reorder/:songId
+// ReorderSongs handles the reordering of songs in the room
 func ReorderSongs(
 	db vibe.SongsModifier,
+	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -146,6 +199,15 @@ func ReorderSongs(
 			return
 		}
 
-		w.WriteHeader(http.StatusNoContent)
+		// Broadcast queue update
+		songs, err := db.GetSongs(ctx, roomID)
+		if err == nil {
+			_ = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
+				Type:    vibe.EventTypeQueueReordered,
+				Payload: songs,
+			})
+		}
+
+		w.WriteHeader(http.StatusOK)
 	}
 }

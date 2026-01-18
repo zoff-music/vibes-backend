@@ -1,16 +1,15 @@
 import React from 'react';
-import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
 import { Song } from '@vibez/shared';
-import { Text } from '../ui/Text';
-import { Ionicons } from '@expo/vector-icons';
+import { motion } from 'framer-motion';
 
 interface Props {
     song: Song;
+    position: number;
     onRemove?: (id: string) => void;
     isAdmin?: boolean;
 }
 
-export const QueueItem: React.FC<Props> = ({ song, onRemove, isAdmin }) => {
+export const QueueItem: React.FC<Props> = ({ song, position, onRemove, isAdmin }) => {
     const formatDuration = (seconds: number) => {
         const min = Math.floor(seconds / 60);
         const sec = seconds % 60;
@@ -18,54 +17,63 @@ export const QueueItem: React.FC<Props> = ({ song, onRemove, isAdmin }) => {
     };
 
     return (
-        <View style={styles.container}>
-            <Image source={{ uri: song.thumbnailUrl }} style={styles.thumbnail} />
+        <motion.div
+            layout
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+            transition={{
+                type: "spring",
+                stiffness: 500,
+                damping: 30,
+                mass: 1,
+                opacity: { duration: 0.2 }
+            }}
+            className="group glass rounded-2xl p-4 hover:shadow-retro transition-shadow border-2 border-ink/10 bg-white/50 backdrop-blur-sm"
+        >
+            <div className="flex items-center gap-4">
+                {/* Position number */}
+                <div className="flex-shrink-0 w-8 text-center">
+                    <span className="text-ink/50 font-black text-lg">{position}</span>
+                </div>
 
-            <View style={styles.content}>
-                <Text bold numberOfLines={1}>{song.title}</Text>
-                <Text size="sm" color="muted" numberOfLines={1}>
-                    {song.artist || 'Unknown Artist'} • {formatDuration(song.duration)}
-                </Text>
-            </View>
+                {/* Thumbnail */}
+                <div className="flex-shrink-0 relative">
+                    <img
+                        src={song.thumbnailUrl}
+                        alt={song.title}
+                        className="w-16 h-16 rounded-xl object-cover bg-surface ring-2 ring-ink/20"
+                        loading="lazy"
+                    />
+                </div>
 
-            <View style={styles.actions}>
-                {isAdmin && (
-                    <TouchableOpacity onPress={() => onRemove?.(song.id)} style={styles.actionButton}>
-                        <Ionicons name="trash-outline" size={20} color="#ef4444" />
-                    </TouchableOpacity>
-                )}
-                <Ionicons name="menu-outline" size={20} color="#a1a1aa" />
-            </View>
-        </View>
+                {/* Song info */}
+                <div className="flex-1 min-w-0">
+                    <h4 className="font-bold truncate mb-1 group-hover:text-primary transition-colors text-ink">
+                        {song.title}
+                    </h4>
+                    <div className="flex items-center gap-2 text-sm text-ink/60 font-medium">
+                        <span className="truncate">{song.artist || 'Unknown Artist'}</span>
+                        <span className="text-ink/40">•</span>
+                        <span className="flex-shrink-0 font-mono text-xs">{formatDuration(song.duration)}</span>
+                    </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                    {isAdmin && (
+                        <button
+                            onClick={() => onRemove?.(song.id)}
+                            className="p-2.5 text-ink/40 hover:text-error hover:bg-error/10 rounded-lg transition-all border-2 border-transparent hover:border-error/20"
+                            title="Remove from queue"
+                        >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    )}
+                </div>
+            </div>
+        </motion.div>
     );
 };
-
-const styles = StyleSheet.create({
-    container: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        padding: 12,
-        backgroundColor: '#141414',
-        borderRadius: 12,
-        marginBottom: 8,
-    },
-    thumbnail: {
-        width: 48,
-        height: 48,
-        borderRadius: 6,
-        backgroundColor: '#333',
-    },
-    content: {
-        flex: 1,
-        marginLeft: 12,
-    },
-    actions: {
-        flexDirection: 'row',
-        alignItems: 'center',
-        marginLeft: 12,
-    },
-    actionButton: {
-        padding: 8,
-        marginRight: 4,
-    },
-});

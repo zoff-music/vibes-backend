@@ -3,10 +3,10 @@ import { createRoomRequestSchema, roomSchema, roomUpdateSchema } from './schemas
 import { addSongRequestSchema, songSchema, songsListSchema, reorderSongsRequestSchema } from './schemas/songs';
 import { playbackStateSchema, roomActionRequestSchema } from './schemas/playback';
 import { sessionResponseSchema, createSessionRequestSchema } from './schemas/session';
-import { emptyObjectSchema } from './schemas/common';
-import { youTubeSearchResponseSchema, youTubeVideoSchema } from './schemas/youtube';
+import { emptyObjectSchema, connectedSchema } from './schemas/common';
+import { youTubeSearchResponseSchema, youTubeVideoSchema, youTubeSearchQuerySchema } from './schemas/youtube';
 
-const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const API_BASE_PATH = '/api/v1';
 const URL = API_URL + API_BASE_PATH
 
@@ -62,12 +62,23 @@ const endpoints = {
   },
   '/youtube/search': {
     get: {
+      $search: youTubeSearchQuerySchema,
       response: youTubeSearchResponseSchema,
     },
   },
   '/youtube/videos/{id}': {
     get: {
       response: youTubeVideoSchema,
+    },
+  },
+  '/rooms/{id}/events': {
+    sse: {
+      events: {
+        connected: connectedSchema,
+        playback_update: playbackStateSchema,
+        songs_update: songsListSchema,
+        song_added: songSchema,
+      }
     },
   },
 } satisfies RequestDefinitions;
@@ -77,6 +88,9 @@ const baseClient = new RequestClient({
   baseUrl: URL,
   endpoints,
   validation: true,
+  fetchOpts: {
+    credentials: 'include',
+  },
 });
 
 // Helper to extract full error details from wiretyped errors

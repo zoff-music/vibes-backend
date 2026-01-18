@@ -13,6 +13,18 @@ build:
 	GOARCH=amd64 \
 	go build -a -ldflags '-w -s' -o main cmd/server/main.go
 
+## build-migrator: builds the migrator
+build-migrator:
+	cd migrator && go build -a -ldflags '-w -s' -o ../backend/migrator-bin main.go
+
+## migrate-up: Runs all up migrations
+migrate-up:
+	cd migrator && go run main.go -db ../backend/data/vibes.db
+
+## migrate-down: Runs one down migration step by default (use STEPS=N for more)
+migrate-down:
+	cd migrator && go run main.go -db ../backend/data/vibes.db -down -steps $(if $(STEPS),$(STEPS),1)
+
 ## install: fetches go modules
 install:
 	cd $(BACKEND_DIR) && \
@@ -52,9 +64,9 @@ frontend:
 
 ## local-dev: Runs backend + frontend locally with env ports set
 local-dev:
-	PORT=8080 EXPO_PUBLIC_API_URL=http://localhost:8080 \
-	sh -c 'cd backend && go run cmd/server/main.go' & \
-	PORT=8080 EXPO_PUBLIC_API_URL=http://localhost:8080 \
+	PORT=8080 \
+	sh -c 'cd migrator && go run main.go -db ../backend/data/vibes.db && cd ../backend && go run cmd/server/main.go' & \
+	PORT=3000 \
 	sh -c 'cd frontend && bun install && bun dev' & \
 	wait
 

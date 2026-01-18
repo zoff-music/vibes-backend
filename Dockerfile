@@ -11,6 +11,13 @@ WORKDIR /go/src/github.com/zoff-music/vibes/backend
 EXPOSE 8080
 CMD ["go", "run", "cmd/server/main.go"]
 
+FROM golang:1.25.5 AS migrator-builder
+WORKDIR /go/src/github.com/zoff-music/vibes/migrator
+COPY migrator/go.mod migrator/go.sum ./
+RUN go mod download
+COPY migrator .
+RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -ldflags '-w -s' -o migrator-bin main.go
+
 FROM golang:1.25.5 AS backend-builder
 
 # See https://stackoverflow.com/a/55757473/12429735
@@ -72,11 +79,16 @@ COPY --from=backend-builder /etc/passwd /etc/passwd
 COPY --from=backend-builder /etc/group /etc/group
 
 # Copy binary from builder
+
+# Copy binary from builder
 COPY --from=backend-builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
+COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrator-bin /app/migrator-bin
+COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrations /app/migrations
 
 USER appuser:appuser
 
 EXPOSE 8080
 
 WORKDIR /app
-ENTRYPOINT [ "/app/main" ]
+# We use a shell to run multiple commands: migrate then start app
+ENTRYPOINT [ "/bin/sh", "-c", "/app/migrator-bin -db /app/data/vibes.db && /app/main" ]

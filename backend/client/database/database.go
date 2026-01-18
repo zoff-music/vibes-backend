@@ -116,11 +116,6 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 
 	c.DB = db
 
-	err = c.migrateSchema(ctx)
-	if err != nil {
-		return fmt.Errorf("error in db: migrate schema: %w", err)
-	}
-
 	err = c.prepareGetRoomStmt()
 	if err != nil {
 		return err

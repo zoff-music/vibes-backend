@@ -16,9 +16,14 @@ export const useQueueStore = create<QueueState>((set) => ({
 
   setSongs: (songs) => set({ songs: [...songs].sort((a, b) => a.position - b.position) }),
   
-  addSong: (song) => set((state) => ({ 
-    songs: [...state.songs, song].sort((a, b) => a.position - b.position) 
-  })),
+  addSong: (song) => set((state) => {
+    if (state.songs.some(s => s.id === song.id)) {
+      return state;
+    }
+    return { 
+      songs: [...state.songs, song].sort((a, b) => a.position - b.position) 
+    };
+  }),
   
   removeSong: (songId) => set((state) => ({ 
     songs: state.songs.filter((s) => s.id !== songId) 

@@ -4,7 +4,6 @@
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
     "dev": "bun --filter @vibez/mobile dev",
-    "dev:web": "bun --filter @vibez/mobile dev:web",
     "build": "bun --filter @vibez/mobile build",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "bun run --filter '*' lint"
