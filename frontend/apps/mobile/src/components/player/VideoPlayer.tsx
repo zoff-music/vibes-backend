@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Platform } from 'react-native';
 import YoutubePlayer, { YoutubeIframeRef } from 'react-native-youtube-iframe';
+import ReactPlayer from 'react-player';
 import { usePlaybackStore } from '../../stores/playbackStore';
 
 interface Props {
@@ -10,15 +11,17 @@ interface Props {
 
 export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
     const { currentSong, isPlaying } = usePlaybackStore();
-    const playerRef = useRef<YoutubeIframeRef>(null);
+    const nativePlayerRef = useRef<YoutubeIframeRef>(null);
+    const webPlayerRef = useRef<any>(null);
     const [isReady, setIsReady] = useState(false);
     const [layout, setLayout] = useState({ width: 0, height: 0 });
 
     // Sync position check loop (every 1s)
     useEffect(() => {
         const interval = setInterval(() => {
-            if (isReady && playerRef.current && isPlaying) {
+            if (isReady && isPlaying) {
                 const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
+                const targetTime = actualPositionMs / 1000;
 
                 playerRef.current.getCurrentTime().then((currentPlayerTime: number) => {
                     const targetTime = actualPositionMs / 1000;
@@ -27,7 +30,14 @@ export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
                     if (drift > 2) {
                         playerRef.current?.seekTo(targetTime, true);
                     }
-                }).catch(() => { });
+                } else if (Platform.OS !== 'web' && nativePlayerRef.current) {
+                    nativePlayerRef.current.getCurrentTime().then((currentPlayerTime) => {
+                        const drift = Math.abs(currentPlayerTime - targetTime);
+                        if (drift > 2) {
+                            nativePlayerRef.current?.seekTo(targetTime, true);
+                        }
+                    }).catch(() => { });
+                }
             }
         }, 1000);
 
