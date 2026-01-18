@@ -65,7 +65,7 @@ export const PlayerControls: React.FC<Props> = ({ roomId, hasSongsInQueue = fals
                     className={`${btnClass} text-primary hover:border-primary/30 gap-2 px-6 ml-auto`}
                     title="Add Song"
                 >
-                    <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                    <svg className="w-5 h-5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
                     </svg>
                     <span className="font-black text-ink tracking-wide text-sm whitespace-nowrap">Add Song</span>

@@ -121,7 +121,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({ isOpen, onClose 
                   `}
                 >
                   <div className="flex items-center space-x-3">
-                    <div className="flex-shrink-0">
+                    <div className="shrink-0">
                       {device.type === 'chromecast' ? (
                         <svg className="w-6 h-6 text-gray-600" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
@@ -137,7 +137,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({ isOpen, onClose 
                       <div className="text-sm text-gray-500 capitalize">{device.type}</div>
                     </div>
                     {isConnecting === device.id && (
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
                         <svg className="w-4 h-4 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -145,7 +145,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({ isOpen, onClose 
                       </div>
                     )}
                     {isConnected && currentSession?.deviceId === device.id && (
-                      <div className="flex-shrink-0">
+                      <div className="shrink-0">
                         <svg className="w-4 h-4 text-blue-600" fill="currentColor" viewBox="0 0 24 24">
                           <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/>
                         </svg>

@@ -88,7 +88,7 @@ export default function CreateRoom() {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-                            className="w-full bg-surface rounded-xl px-4 py-4 text-base text-ink placeholder:text-ink/40 border-2 border-ink/20 focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] transition-all"
+                            className="w-full bg-surface rounded-xl px-4 py-4 text-base text-ink placeholder:text-ink/40 border-2 border-ink/20 focus:outline-hidden focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] transition-all"
                             autoFocus
                         />
                     </div>
@@ -136,7 +136,7 @@ export default function CreateRoom() {
                             placeholder="For room control"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            className="w-full bg-surface rounded-xl px-4 py-4 text-base text-ink placeholder:text-ink/40 border-2 border-ink/20 focus:outline-none focus:border-secondary focus:shadow-[0_0_0_3px_rgba(0,217,255,0.1)] transition-all"
+                            className="w-full bg-surface rounded-xl px-4 py-4 text-base text-ink placeholder:text-ink/40 border-2 border-ink/20 focus:outline-hidden focus:border-secondary focus:shadow-[0_0_0_3px_rgba(0,217,255,0.1)] transition-all"
                         />
                         <p className="text-xs text-ink/50 mt-3 font-medium">
                             Leave empty to allow anyone to control playback
@@ -163,7 +163,7 @@ export default function CreateRoom() {
                                     onChange={(e) => updateSetting('skipAllowed', e.target.checked)}
                                     className="sr-only peer"
                                 />
-                                <div className="w-12 h-7 bg-ink/10 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink/60 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary peer-checked:after:bg-white shadow-retro"></div>
+                                <div className="w-12 h-7 bg-ink/10 peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink/60 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary peer-checked:after:bg-white shadow-retro"></div>
                             </label>
                         </div>
 
@@ -181,7 +181,7 @@ export default function CreateRoom() {
                                     onChange={(e) => updateSetting('democraticSkip', e.target.checked)}
                                     className="sr-only peer"
                                 />
-                                <div className="w-12 h-7 bg-ink/10 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink/60 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary peer-checked:after:bg-white shadow-retro"></div>
+                                <div className="w-12 h-7 bg-ink/10 peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink/60 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary peer-checked:after:bg-white shadow-retro"></div>
                             </label>
                         </div>
 
@@ -199,7 +199,7 @@ export default function CreateRoom() {
                                     onChange={(e) => updateSetting('loopQueue', e.target.checked)}
                                     className="sr-only peer"
                                 />
-                                <div className="w-12 h-7 bg-ink/10 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink/60 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary peer-checked:after:bg-white shadow-retro"></div>
+                                <div className="w-12 h-7 bg-ink/10 peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-ink/60 after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-primary peer-checked:after:bg-white shadow-retro"></div>
                             </label>
                         </div>
                     </div>
@@ -209,7 +209,7 @@ export default function CreateRoom() {
                 {error && (
                     <div className="mt-6 glass-elevated rounded-2xl p-5 border-2 border-error/30 animate-scale-in">
                         <div className="flex items-start gap-3">
-                            <svg className="w-5 h-5 text-error mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <svg className="w-5 h-5 text-error mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <p className="text-error text-sm flex-1 font-medium">{error}</p>

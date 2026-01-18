@@ -35,12 +35,12 @@ export const QueueItem: React.FC<Props> = ({ song, position, onRemove, onVote, i
         >
             <div className="flex items-center gap-4">
                 {/* Position number */}
-                <div className="flex-shrink-0 w-8 text-center">
+                <div className="shrink-0 w-8 text-center">
                     <span className="text-ink/50 dark:text-dark-text-subtle font-black text-lg">{position}</span>
                 </div>
 
                 {/* Thumbnail */}
-                <div className="flex-shrink-0 relative">
+                <div className="shrink-0 relative">
                     <img
                         src={song.thumbnailUrl}
                         alt={song.title}
@@ -57,7 +57,7 @@ export const QueueItem: React.FC<Props> = ({ song, position, onRemove, onVote, i
                     <div className="flex items-center gap-2 text-sm text-ink/60 dark:text-dark-text-muted font-medium">
                         <span className="truncate">{song.artist || 'Unknown Artist'}</span>
                         <span className="text-ink/40 dark:text-dark-text-subtle">•</span>
-                        <span className="flex-shrink-0 font-mono text-xs">{formatDuration(song.duration)}</span>
+                        <span className="shrink-0 font-mono text-xs">{formatDuration(song.duration)}</span>
                         {(song.voteCount || 0) > 0 && (
                             <>
                                 <span className="text-ink/40 dark:text-dark-text-subtle">•</span>
@@ -73,7 +73,7 @@ export const QueueItem: React.FC<Props> = ({ song, position, onRemove, onVote, i
                 </div>
 
                 {/* Actions */}
-                <div className="flex items-center gap-1 flex-shrink-0">
+                <div className="flex items-center gap-1 shrink-0">
                     {isAdmin && (
                         <button
                             onClick={(e) => {
