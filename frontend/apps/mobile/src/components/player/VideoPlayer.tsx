@@ -20,7 +20,7 @@ export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
             if (isReady && playerRef.current && isPlaying) {
                 const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
 
-                playerRef.current.getCurrentTime().then((currentPlayerTime) => {
+                playerRef.current.getCurrentTime().then((currentPlayerTime: number) => {
                     const targetTime = actualPositionMs / 1000;
 
                     const drift = Math.abs(currentPlayerTime - targetTime);
@@ -59,11 +59,6 @@ export const VideoPlayer: React.FC<Props> = ({ isVisible = true, onEnded }) => {
 
     return (
         <View style={[styles.container, !isVisible && styles.hidden]} onLayout={onLayout}>
-            {!isReady && (
-                <View style={styles.loader}>
-                    <ActivityIndicator size="large" color="#a855f7" />
-                </View>
-            )}
             <YoutubePlayer
                 ref={playerRef}
                 height={layout.height || 220}
