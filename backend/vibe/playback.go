@@ -47,6 +47,7 @@ type PlaybackFetcher interface {
 // PlaybackController controls playback
 type PlaybackController interface {
 	UpsertPlaybackState(ctx context.Context, state *PlaybackState) error
+	SkipTrack(ctx context.Context, roomID string, state *PlaybackState) error
 }
 
 // SkipVoteFetcher fetches skip votes
@@ -59,15 +60,14 @@ type SkipVoteFetcher interface {
 type SkipVoteManager interface {
 	AddSkipVote(ctx context.Context, roomID, songID, userID string) error
 	ClearSkipVotes(ctx context.Context, roomID, songID string) error
+	VoteToSkip(ctx context.Context, roomID, userID string, state *PlaybackState) (bool, error)
 }
 
 // RoomActioner performs room actions and related state updates.
 type RoomActioner interface {
 	RoomFetcher
-	PlaybackController
-	PlaybackFetcher
-	SongsModifier
-	SkipVoteFetcher
-	SkipVoteManager
-	UserFetcher
+	GetPlaybackState(ctx context.Context, roomID string) (*PlaybackState, error)
+	UpdatePlayback(ctx context.Context, roomID string, action RoomAction, positionMs int64) (*PlaybackState, error)
+	VoteToSkip(ctx context.Context, roomID, userID string) (*PlaybackState, error)
+	SkipTrack(ctx context.Context, roomID string) (*PlaybackState, error)
 }
