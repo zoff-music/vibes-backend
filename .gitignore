@@ -171,3 +171,4 @@ vendor/
 .DS_Store
 
 /tag-state
+test-youtube-search.sh

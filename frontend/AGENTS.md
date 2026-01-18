@@ -1,33 +1,102 @@
-# Frontend AGENTS
+# Frontend Coding Rules
 
-This document defines strict conventions for frontend work in this repo. Follow it.
+Non-negotiable conventions. Follow strictly.
 
----
+## Critical Rules
 
-## 0) Tooling (strict)
+- **No `any` type** - use explicit types, compose when needed
+- **No `@ts-ignore` or `@ts-nocheck`** - fix the type
+- **No `try/catch`** - use `safeWrap`/`safeWrapAsync` from `src/utils/wrap.ts`
+- **Use wiretyped + yup** for all API calls - no raw `fetch`
 
-- Makefiles are the source of truth for initialization and common workflows; prefer `make` targets over ad hoc commands.
-- Docker/Compose is how we run the project; keep scripts and docs aligned with Docker usage.
+## File Layout
 
----
+```
+src/
+├── api/
+│   ├── client.ts          # wiretyped client
+│   └── schemas/           # yup schemas
+├── components/
+│   ├── ui/                # Button, Input, Card, etc.
+│   ├── player/            # VideoPlayer, PlayerControls
+│   └── queue/             # QueueItem, QueueList
+├── hooks/
+│   ├── useRoom.ts
+│   ├── useQueue.ts
+│   ├── usePlayback.ts
+│   └── useSSE.ts
+├── stores/                # Zustand stores
+│   ├── roomStore.ts
+│   ├── queueStore.ts
+│   └── playbackStore.ts
+├── pages/                 # Route components
+└── utils/
+    └── wrap.ts            # Error handling utilities
+```
 
-## 1) TypeScript rules (strict)
+## Error Handling
 
-- Do not use the `any` type. Prefer explicit, accurate types and compose them when needed.
-- Do not use `@ts-ignore` or `@ts-nocheck`. Fix the type error or adjust types instead.
-- Do not use `try {}`/`catch {}`. Use `safeWrap`/`safeWrapAsync` from `frontend/src/utils/wrap.ts` for error capture and propagation.
+Never use try/catch. Use the wrap utilities:
 
----
+```typescript
+import { safeWrap, safeWrapAsync } from '@/utils/wrap';
 
-## 2) Networking & schema validation (strict)
+// Sync
+const [result, error] = safeWrap(() => JSON.parse(data));
 
-- Use `wiretyped` instead of raw `fetch` and `EventSource`.
-- When using `wiretyped`, always provide full schema validation with `yup`.
+// Async
+const [data, error] = await safeWrapAsync(api.get('/rooms'));
+if (error) {
+  // handle error
+  return;
+}
+// use data
+```
 
----
+## API Calls
 
-## 3) Support & help (general)
+Always use wiretyped with yup validation:
 
-- Long-running tooling must use explicit timeouts or non-interactive/batch mode.
+```typescript
+import { api } from '@/api/client';
 
----
+// Typed and validated
+const room = await api.post('/rooms', { name: 'My Room' });
+```
+
+## Styling
+
+Use Tailwind CSS. No inline styles or CSS-in-JS.
+
+```tsx
+// Good
+<button className="bg-primary text-white px-4 py-2 rounded-lg">
+
+// Bad
+<button style={{ backgroundColor: 'purple' }}>
+```
+
+## Component Guidelines
+
+- Props interfaces defined above component
+- Destructure props in function signature
+- Export named components (not default)
+
+```typescript
+interface ButtonProps {
+  variant: 'primary' | 'secondary';
+  children: React.ReactNode;
+  onClick?: () => void;
+}
+
+export function Button({ variant, children, onClick }: ButtonProps) {
+  return (
+    <button
+      className={variant === 'primary' ? 'bg-primary' : 'bg-surface'}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
+}
+```

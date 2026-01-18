@@ -1,0 +1,126 @@
+-- Rooms table
+CREATE TABLE IF NOT EXISTS rooms (
+	id TEXT PRIMARY KEY DEFAULT (LOWER(HEX(RANDOMBLOB(4))) || '-' || LOWER(HEX(RANDOMBLOB(2))) || '-4' || SUBSTR(LOWER(HEX(RANDOMBLOB(2))),2) || '-' || SUBSTR('89ab',ABS(RANDOM()) % 4 + 1, 1) || SUBSTR(LOWER(HEX(RANDOMBLOB(2))),2) || '-' || LOWER(HEX(RANDOMBLOB(6)))),
+	name TEXT NOT NULL,
+	admin_password_hash TEXT,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Room settings table
+CREATE TABLE IF NOT EXISTS room_settings (
+	room_id TEXT PRIMARY KEY,
+	skip_allowed INTEGER NOT NULL DEFAULT 1,
+	democratic_skip INTEGER NOT NULL DEFAULT 1,
+	skip_vote_threshold REAL NOT NULL DEFAULT 0.5,
+	max_continuous_adds INTEGER NOT NULL DEFAULT 3,
+	remove_on_play INTEGER NOT NULL DEFAULT 1,
+	loop_queue INTEGER NOT NULL DEFAULT 0,
+	allow_duplicates INTEGER NOT NULL DEFAULT 0,
+	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+);
+
+-- Songs table (queue items)
+CREATE TABLE IF NOT EXISTS songs (
+	id TEXT PRIMARY KEY DEFAULT (LOWER(HEX(RANDOMBLOB(4))) || '-' || LOWER(HEX(RANDOMBLOB(2))) || '-4' || SUBSTR(LOWER(HEX(RANDOMBLOB(2))),2) || '-' || SUBSTR('89ab',ABS(RANDOM()) % 4 + 1, 1) || SUBSTR(LOWER(HEX(RANDOMBLOB(2))),2) || '-' || LOWER(HEX(RANDOMBLOB(6)))),
+	room_id TEXT NOT NULL,
+	source_type TEXT NOT NULL,
+	source_id TEXT NOT NULL,
+	title TEXT NOT NULL,
+	artist TEXT,
+	thumbnail_url TEXT NOT NULL,
+	duration INTEGER NOT NULL,
+	added_by TEXT NOT NULL,
+	added_by_nickname TEXT,
+	added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	position INTEGER NOT NULL,
+	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_songs_room_id ON songs(room_id);
+CREATE INDEX IF NOT EXISTS idx_songs_room_position ON songs(room_id, position);
+
+-- Playback state table
+CREATE TABLE IF NOT EXISTS playback_state (
+	room_id TEXT PRIMARY KEY,
+	current_song_id TEXT,
+	is_playing INTEGER DEFAULT 0,
+	position_ms INTEGER DEFAULT 0,
+	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+);
+
+-- Room users table (session tracking)
+CREATE TABLE IF NOT EXISTS room_users (
+	id TEXT PRIMARY KEY DEFAULT (LOWER(HEX(RANDOMBLOB(4))) || '-' || LOWER(HEX(RANDOMBLOB(2))) || '-4' || SUBSTR(LOWER(HEX(RANDOMBLOB(2))),2) || '-' || SUBSTR('89ab',ABS(RANDOM()) % 4 + 1, 1) || SUBSTR(LOWER(HEX(RANDOMBLOB(2))),2) || '-' || LOWER(HEX(RANDOMBLOB(6)))),
+	room_id TEXT NOT NULL,
+	nickname TEXT,
+	is_admin INTEGER DEFAULT 0,
+	joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_room_users_room_id ON room_users(room_id);
+CREATE INDEX IF NOT EXISTS idx_room_users_last_seen ON room_users(last_seen_at);
+
+-- Skip votes table
+CREATE TABLE IF NOT EXISTS skip_votes (
+	room_id TEXT NOT NULL,
+	song_id TEXT NOT NULL,
+	user_id TEXT NOT NULL,
+	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	PRIMARY KEY (room_id, song_id, user_id),
+	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
+	FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
+);
+
+
+CREATE INDEX IF NOT EXISTS idx_skip_votes_song ON skip_votes(room_id, song_id);
+
+-- Rooms View for atomic writes
+CREATE VIEW IF NOT EXISTS rooms_view AS
+SELECT
+    r.id,
+    r.name,
+    r.admin_password_hash,
+    r.created_at,
+    rs.skip_allowed,
+    rs.democratic_skip,
+    rs.skip_vote_threshold,
+    rs.max_continuous_adds,
+    rs.remove_on_play,
+    rs.loop_queue,
+    rs.allow_duplicates
+FROM rooms r
+JOIN room_settings rs ON r.id = rs.room_id;
+
+-- Trigger for atomic room creation
+CREATE TRIGGER IF NOT EXISTS rooms_view_insert
+INSTEAD OF INSERT ON rooms_view
+BEGIN
+    INSERT INTO rooms (id, name, admin_password_hash, created_at)
+    VALUES (NEW.id, NEW.name, NEW.admin_password_hash, NEW.created_at);
+
+    INSERT INTO room_settings (room_id, skip_allowed, democratic_skip, skip_vote_threshold, max_continuous_adds, remove_on_play, loop_queue, allow_duplicates)
+    VALUES (NEW.id, NEW.skip_allowed, NEW.democratic_skip, NEW.skip_vote_threshold, NEW.max_continuous_adds, NEW.remove_on_play, NEW.loop_queue, NEW.allow_duplicates);
+END;
+
+-- Trigger for atomic room updates
+CREATE TRIGGER IF NOT EXISTS rooms_view_update
+INSTEAD OF UPDATE ON rooms_view
+BEGIN
+    UPDATE rooms
+    SET name = NEW.name,
+        admin_password_hash = NEW.admin_password_hash
+    WHERE id = OLD.id;
+
+    UPDATE room_settings
+    SET skip_allowed = NEW.skip_allowed,
+        democratic_skip = NEW.democratic_skip,
+        skip_vote_threshold = NEW.skip_vote_threshold,
+        max_continuous_adds = NEW.max_continuous_adds,
+        remove_on_play = NEW.remove_on_play,
+        loop_queue = NEW.loop_queue,
+        allow_duplicates = NEW.allow_duplicates
+    WHERE room_id = OLD.id;
+END;

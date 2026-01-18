@@ -9,7 +9,7 @@ import (
 type PlaybackState struct {
 	RoomID        string    `json:"-"`
 	CurrentSongID *string   `json:"currentSongId"`
-	CurrentSong   *Song     `json:"currentSong,omitempty"`
+	CurrentSong   *Song     `json:"currentSong"`
 	IsPlaying     bool      `json:"isPlaying"`
 	PositionMs    int64     `json:"positionMs"`
 	UpdatedAt     time.Time `json:"updatedAt"`
@@ -20,11 +20,11 @@ type PlaybackState struct {
 type RoomAction string
 
 const (
-	RoomActionPlay  RoomAction = "play"
-	RoomActionPause RoomAction = "pause"
-	RoomActionSeek  RoomAction = "seek"
-	RoomActionSkip  RoomAction = "skip"
-	RoomActionVote  RoomAction = "vote"
+	RoomActionPlay  = "play"
+	RoomActionPause = "pause"
+	RoomActionSeek  = "seek"
+	RoomActionSkip  = "skip"
+	RoomActionVote  = "vote"
 )
 
 // RoomActionRequest is the request payload for room actions.
@@ -66,6 +66,7 @@ type SkipVoteManager interface {
 // RoomActioner performs room actions and related state updates.
 type RoomActioner interface {
 	RoomFetcher
+	SongsFetcher
 	GetPlaybackState(ctx context.Context, roomID string) (*PlaybackState, error)
 	UpdatePlayback(ctx context.Context, roomID string, action RoomAction, positionMs int64) (*PlaybackState, error)
 	VoteToSkip(ctx context.Context, roomID, userID string) (*PlaybackState, error)

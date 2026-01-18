@@ -1,4 +1,6 @@
-export function parseISODuration(duration: string): number {
+export function parseISODuration(duration?: string): number {
+  if (!duration) return 0;
+
   const match = duration.match(/P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?/);
   if (!match) return 0;
 

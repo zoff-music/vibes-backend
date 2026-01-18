@@ -26,7 +26,6 @@ func RoomEvents(
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		topicName := fmt.Sprintf("room:%s", roomID)
 		container, err := ips.Subscribe(topicName)
@@ -100,7 +99,13 @@ func RoomEvents(
 					continue
 				}
 
-				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, data)
+				payloadData, err := json.Marshal(event.Payload)
+				if err != nil {
+					log.Errorf("failed to marshal event payload: %v", err)
+					continue
+				}
+
+				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, payloadData)
 				flusher.Flush()
 			}
 		}

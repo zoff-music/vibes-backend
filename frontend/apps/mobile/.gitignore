@@ -3,30 +3,26 @@
 # dependencies
 node_modules/
 
-# Expo
-.expo/
+# Vite
 dist/
-web-build/
-expo-env.d.ts
-
-# Native
-.kotlin/
-*.orig.*
-*.jks
-*.p8
-*.p12
-*.key
-*.mobileprovision
-
-# Metro
-.metro-health-check*
+dist-ssr/
+*.local
 
 # debug
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+pnpm-debug.*
 
-# macOS
+# editor
+.vscode/*
+!.vscode/extensions.json
+.idea
+*.swp
+*.swo
+*~
+
+# OS
 .DS_Store
 *.pem
 
@@ -36,8 +32,5 @@ yarn-error.*
 # typescript
 *.tsbuildinfo
 
-app-example
-
-# generated native folders
-/ios
-/android
+# build
+build/

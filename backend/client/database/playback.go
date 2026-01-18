@@ -98,7 +98,7 @@ func (r *playbackStateRow) scan(row *sql.Row) error {
 
 func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
 	var currentSongID *string
-	if r.CurrentSongID.Valid {
+	if r.CurrentSongID.Valid && r.CurrentSongID.String != "" {
 		currentSongID = &r.CurrentSongID.String
 	}
 
@@ -114,6 +114,7 @@ func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
 	return &vibe.PlaybackState{
 		RoomID:        r.RoomID.String,
 		CurrentSongID: currentSongID,
+		CurrentSong:   nil,
 		IsPlaying:     r.IsPlaying.Valid && r.IsPlaying.Int64 == 1,
 		PositionMs:    positionMs,
 		UpdatedAt:     r.UpdatedAt.Time,
@@ -224,6 +225,15 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, action vibe.
 
 	switch action {
 	case vibe.RoomActionPlay:
+		if state.CurrentSongID == nil {
+			// If no song is selected, try to play the first one
+			firstSong, err := c.GetNextSong(ctx, roomID, 0)
+			if err == nil && !firstSong.IsEmpty() {
+				state.CurrentSongID = &firstSong.ID
+				state.CurrentSong = firstSong
+				state.PositionMs = 0
+			}
+		}
 		state.IsPlaying = true
 	case vibe.RoomActionPause:
 		state.IsPlaying = false

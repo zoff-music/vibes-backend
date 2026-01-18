@@ -29,7 +29,7 @@ const (
 	EventTypePlaybackUpdate EventType = "playback_update"
 	EventTypeSongAdded      EventType = "song_added"
 	EventTypeSongRemoved    EventType = "song_removed"
-	EventTypeQueueReordered EventType = "queue_reordered"
+	EventTypeQueueReordered EventType = "songs_update"
 	EventTypeUserJoined     EventType = "user_joined"
 	EventTypeUserLeft       EventType = "user_left"
 	EventTypeSettingsUpdate EventType = "settings_update"

@@ -121,11 +121,12 @@ export type RoomActionResponse =
 
 // SSE Event types
 export type SSEEventType =
-  | 'room:state'
-  | 'songs:update'
-  | 'playback:sync'
-  | 'users:update'
-  | 'skip:vote';
+  | 'room_state'
+  | 'songs_update'
+  | 'playback_update'
+  | 'users_update'
+  | 'song_added'
+  | 'skip_vote';
 
 export interface SSEEvent<T = unknown> {
   type: SSEEventType;
@@ -133,24 +134,28 @@ export interface SSEEvent<T = unknown> {
 }
 
 export interface RoomStateEvent extends SSEEvent<Room> {
-  type: 'room:state';
+  type: 'room_state';
 }
 
 export interface SongsUpdateEvent extends SSEEvent<Song[]> {
-  type: 'songs:update';
+  type: 'songs_update';
 }
 
-export interface PlaybackSyncEvent extends SSEEvent<PlaybackState> {
-  type: 'playback:sync';
+export interface PlaybackUpdateEvent extends SSEEvent<PlaybackState> {
+  type: 'playback_update';
 }
 
 export interface UsersUpdateEvent extends SSEEvent<RoomUser[]> {
-  type: 'users:update';
+  type: 'users_update';
 }
 
 export interface SkipVoteEvent
   extends SSEEvent<{ userId: string; songId: string }> {
-  type: 'skip:vote';
+  type: 'skip_vote';
+}
+
+export interface SongAddedEvent extends SSEEvent<Song> {
+  type: 'song_added';
 }
 
 // API Error types

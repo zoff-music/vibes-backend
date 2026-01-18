@@ -13,9 +13,6 @@ const v1API string = "/api/v1"
 
 // setupRoutes - the root route function.
 func (s *Server) setupRoutes() {
-	// Add CORS middleware to handle cross-origin requests
-	s.Router.Use(middleware.CORSMiddleware)
-
 	s.Router.Handle("/metrics", promhttp.Handler()).Name("Metrics")
 	s.Router.HandleFunc("/_healthz", handler.Healthz).Methods(http.MethodGet).Name("Health")
 
@@ -29,9 +26,9 @@ func (s *Server) setupRoutes() {
 
 	// Song routes
 	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions)
-	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB)).Methods(http.MethodPost, http.MethodOptions)
-	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB)).Methods(http.MethodDelete, http.MethodOptions)
-	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.ReorderSongs(s.DB)).Methods(http.MethodPatch, http.MethodOptions)
+	s.Router.HandleFunc("/api/v1/rooms/{id}/songs", handler.AddSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost)
+	s.Router.HandleFunc("/api/v1/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.InternalPubSub)).Methods(http.MethodDelete)
+	s.Router.HandleFunc("/api/v1/rooms/{id}/songs/reorder/{songId}", handler.ReorderSongs(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions)
 
 	// Action route
 	api.HandleFunc("/rooms/{id}/action", handler.RoomAction(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions)
@@ -45,6 +42,7 @@ func (s *Server) setupRoutes() {
 
 	s.addSessionMiddleware(api)
 	s.addTracingAndMetrics(api)
+	s.addCORSMiddleware(s.Router)
 }
 
 func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
@@ -60,5 +58,11 @@ func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
 	for _, r := range routers {
 		r.Use(tm.TraceMiddleware)
 		r.Use(tm.MetricsMiddleware)
+	}
+}
+
+func (s *Server) addCORSMiddleware(routers ...*mux.Router) {
+	for _, r := range routers {
+		r.Use(middleware.CORSMiddleware)
 	}
 }
