@@ -30,6 +30,7 @@ const (
 	EventTypeSongAdded      EventType = "song_added"
 	EventTypeSongRemoved    EventType = "song_removed"
 	EventTypeQueueReordered EventType = "songs_update"
+	EventTypeNewHost        EventType = "new_host"
 	EventTypeUserJoined     EventType = "user_joined"
 	EventTypeUserLeft       EventType = "user_left"
 	EventTypeSettingsUpdate EventType = "settings_update"

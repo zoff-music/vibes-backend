@@ -97,9 +97,15 @@ func CreateRoom(
 			return
 		}
 
+		mode := req.Mode
+		if mode == "" {
+			mode = vibe.RoomModeServer
+		}
+
 		room := &vibe.Room{
 			ID:                slug,
 			Name:              req.Name,
+			Mode:              mode,
 			AdminPasswordHash: passwordHash,
 			HasPassword:       passwordHash != "",
 			Settings:          vibe.DefaultRoomSettings(),
@@ -202,6 +208,9 @@ func UpdateRoom(
 		}
 
 		room.Settings = req.Settings
+		if req.Mode != "" {
+			room.Mode = req.Mode
+		}
 		updated, err := db.UpdateRoom(ctx, room)
 		if err != nil {
 			handleError(

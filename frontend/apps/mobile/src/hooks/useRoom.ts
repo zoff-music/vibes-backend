@@ -54,9 +54,10 @@ export const useRoom = (roomId: string) => {
     reset();
   }, [reset]);
 
-  const updateRoomSettings = useCallback(async (settings: any) => {
+  const updateRoom = useCallback(async (updates: any) => {
     setIsLoading(true);
-    const [err, data] = await api.patch('/rooms/{id}', { id: roomId }, { settings } as any);
+    // updates can contain { settings: {...} } or { mode: '...' } etc.
+    const [err, data] = await api.patch('/rooms/{id}', { id: roomId }, updates);
     setIsLoading(false);
 
     if (err) {
@@ -70,6 +71,9 @@ export const useRoom = (roomId: string) => {
     }
     return null;
   }, [roomId, setRoom]);
+  
+  // Keep backward compatibility if needed, or just update usages.
+  const updateRoomSettings = useCallback((settings: any) => updateRoom({ settings }), [updateRoom]);
 
   return {
     room,
@@ -80,6 +84,7 @@ export const useRoom = (roomId: string) => {
     fetchRoom,
     joinRoom,
     updateRoomSettings,
+    updateRoom,
     leaveRoom,
   };
 };

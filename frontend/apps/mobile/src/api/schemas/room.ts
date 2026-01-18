@@ -13,6 +13,11 @@ export const roomSettingsSchema = yup.object({
 export const roomSchema = yup.object({
   id: yup.string().required(),
   name: yup.string().required(),
+  mode: yup.string()
+    .transform((value) => (!value ? 'server' : value))
+    .oneOf(['server', 'host'])
+    .default('server'),
+  hostId: yup.string().nullable().optional(),
   createdAt: yup.string().required(),
   hasPassword: yup.boolean().required(),
   settings: roomSettingsSchema.required(),
@@ -21,7 +26,12 @@ export const roomSchema = yup.object({
 
 export const createRoomRequestSchema = yup.object({
   name: yup.string().required(),
+  mode: yup.string().oneOf(['server', 'host']).optional(),
   password: yup.string().optional(),
 });
 
-export const roomUpdateSchema = createRoomRequestSchema.pick(['name']).partial();
+export const roomUpdateSchema = yup.object({
+  name: yup.string().optional(),
+  mode: yup.string().oneOf(['server', 'host']).optional(),
+  settings: roomSettingsSchema.partial().optional(),
+});

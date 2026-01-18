@@ -33,6 +33,8 @@ func DefaultRoomSettings() RoomSettings {
 type Room struct {
 	ID                string       `json:"id"`
 	Name              string       `json:"name"`
+	Mode              string       `json:"mode"`
+	HostID            string       `json:"hostId,omitempty"`
 	AdminPasswordHash string       `json:"-"`
 	HasPassword       bool         `json:"hasPassword"`
 	Settings          RoomSettings `json:"settings"`
@@ -40,14 +42,23 @@ type Room struct {
 	UserCount         int          `json:"userCount,omitempty"`
 }
 
+const (
+	// RoomModeServer is the mode where the server controls playback
+	RoomModeServer = "server"
+	// RoomModeHost is the mode where a host controls playback
+	RoomModeHost = "host"
+)
+
 // CreateRoomRequest is the request payload for creating a room.
 type CreateRoomRequest struct {
 	Name     string `json:"name"`
+	Mode     string `json:"mode,omitempty"`
 	Password string `json:"password,omitempty"`
 }
 
 // UpdateRoomRequest is the request payload for updating a room.
 type UpdateRoomRequest struct {
+	Mode     string       `json:"mode,omitempty"`
 	Settings RoomSettings `json:"settings"`
 }
 
@@ -60,6 +71,7 @@ func (r *Room) IsEmpty() bool {
 type RoomFetcher interface {
 	GetRoom(ctx context.Context, id string) (*Room, error)
 	GetRoomByName(ctx context.Context, name string) (*Room, error)
+	GetRoomsWithActiveListeners(ctx context.Context, activeWithin time.Duration) ([]Room, error)
 }
 
 // RoomCreator creates rooms

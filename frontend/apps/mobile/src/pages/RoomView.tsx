@@ -17,7 +17,7 @@ export default function RoomView() {
     const navigate = useNavigate();
     const { currentSong, skip, isPlaying } = usePlayback(id || '');
     const { songs, fetchQueue, voteSong } = useQueue(id || '');
-    const { room, fetchRoom, isLoading, error, joinRoom, userId, users, updateRoomSettings } = useRoom(id || '');
+    const { room, fetchRoom, isLoading, error, joinRoom, userId, users, updateRoomSettings, updateRoom } = useRoom(id || '');
 
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
     const [showRoomInfo, setShowRoomInfo] = useState(false);
@@ -264,6 +264,27 @@ export default function RoomView() {
                                                 >
                                                     <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.removeOnPlay ? 'right-1.5' : 'left-1.5'}`} />
                                                 </button>
+                                            </div>
+
+                                            <div className="flex items-center justify-between group mt-6 pt-4 border-t-2 border-ink/5">
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-ink">Room Mode</span>
+                                                    <span className="text-[10px] text-ink/40">{room?.mode === 'host' ? 'Host Controls Playback' : 'Auto-Play Server'}</span>
+                                                </div>
+                                                <div className="flex bg-ink/5 p-1 rounded-lg border border-ink/10">
+                                                    <button
+                                                        onClick={() => room && updateRoom({ mode: 'server' })}
+                                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${room?.mode === 'server' ? 'bg-white shadow-sm text-ink' : 'text-ink/40 hover:text-ink/60'}`}
+                                                    >
+                                                        Server
+                                                    </button>
+                                                    <button
+                                                        onClick={() => room && updateRoom({ mode: 'host' })}
+                                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${room?.mode === 'host' ? 'bg-white shadow-sm text-ink' : 'text-ink/40 hover:text-ink/60'}`}
+                                                    >
+                                                        Host
+                                                    </button>
+                                                </div>
                                             </div>
 
                                             <p className="text-[10px] text-ink/30 text-center pt-2 font-black italic">Settings sync enabled</p>

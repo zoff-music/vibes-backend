@@ -10,6 +10,7 @@ const DEFAULT_SETTINGS = {
 
 export default function CreateRoom() {
     const [name, setName] = useState('');
+    const [mode, setMode] = useState<'server' | 'host'>('server');
     const [password, setPassword] = useState('');
     const [settings, setSettings] = useState(DEFAULT_SETTINGS);
     const [isLoading, setIsLoading] = useState(false);
@@ -25,6 +26,7 @@ export default function CreateRoom() {
         const [err, room] = await api.post('/rooms', null, {
             name: name.trim(),
             password: password || undefined,
+            mode,
         });
 
         if (err) {
@@ -89,6 +91,39 @@ export default function CreateRoom() {
                             className="w-full bg-surface rounded-xl px-4 py-4 text-base text-ink placeholder:text-ink/40 border-2 border-ink/20 focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] transition-all"
                             autoFocus
                         />
+                    </div>
+
+                    {/* Room Mode */}
+                    <div className="glass rounded-2xl p-6 border-2 border-ink/10">
+                        <label className="text-sm font-bold text-ink/80 mb-3 block tracking-wide">
+                            Room Mode
+                        </label>
+                        <div className="grid grid-cols-2 gap-4">
+                            <button
+                                type="button"
+                                onClick={() => setMode('server')}
+                                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                                    mode === 'server' 
+                                        ? 'bg-primary/10 border-primary text-ink' 
+                                        : 'bg-surface border-ink/10 text-ink/60 hover:border-ink/20'
+                                }`}
+                            >
+                                <div className="font-bold mb-1">Server Mode</div>
+                                <div className="text-xs opacity-70">Auto-play music 24/7. Perfect for radio stations.</div>
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setMode('host')}
+                                className={`p-4 rounded-xl border-2 text-left transition-all ${
+                                    mode === 'host' 
+                                        ? 'bg-secondary/10 border-secondary text-ink' 
+                                        : 'bg-surface border-ink/10 text-ink/60 hover:border-ink/20'
+                                }`}
+                            >
+                                <div className="font-bold mb-1">Host Mode</div>
+                                <div className="text-xs opacity-70">Host controls playback. Great for parties.</div>
+                            </button>
+                        </div>
                     </div>
 
                     {/* Optional password */}
