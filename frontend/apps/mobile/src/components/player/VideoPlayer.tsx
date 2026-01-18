@@ -16,10 +16,12 @@ const VideoPlayerComponent: React.FC<Props> = ({ isVisible = true, onEnded }) =>
     const [isReady, setIsReady] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Reset ready state when song ID changes
+    // Reset ready state and player ref when song ID changes
     useEffect(() => {
         setIsReady(false);
         setError(null);
+        // Clear the player ref when song changes to prevent stale API calls
+        playerRef.current = null;
     }, [currentSong?.id]);
 
     // Sync position check loop (every 1s)
@@ -36,7 +38,7 @@ const VideoPlayerComponent: React.FC<Props> = ({ isVisible = true, onEnded }) =>
 
                 const currentTime = player.getCurrentTime();
                 const drift = Math.abs(currentTime - targetTime);
-                
+
                 if (drift > 2) {
                     console.log('[VideoPlayer] Seeking due to drift:', { currentTime, targetTime, drift });
                     player.seekTo(targetTime, true);
@@ -56,9 +58,9 @@ const VideoPlayerComponent: React.FC<Props> = ({ isVisible = true, onEnded }) =>
         try {
             const player = playerRef.current;
             const state = player.getPlayerState();
-            
+
             // YouTube PlayerState: -1 (unstarted), 0 (ended), 1 (playing), 2 (paused), 3 (buffering), 5 (cued)
-            if (isPlaying && state !== 1) {
+            if (isPlaying && state !== 1 && state !== 3) {
                 player.playVideo();
             } else if (!isPlaying && state === 1) {
                 player.pauseVideo();
@@ -127,9 +129,9 @@ const VideoPlayerComponent: React.FC<Props> = ({ isVisible = true, onEnded }) =>
     };
 
     return (
-        <div 
+        <div
             className={`w-full bg-black rounded-xl overflow-hidden relative ${!isVisible ? 'hidden' : ''}`}
-            style={{ 
+            style={{
                 aspectRatio: '16/9',
                 minHeight: '200px',
             }}

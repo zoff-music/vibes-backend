@@ -3,9 +3,10 @@ import { usePlayback } from '../../hooks/usePlayback';
 
 interface Props {
     roomId: string;
+    hasSongsInQueue?: boolean;
 }
 
-export const PlayerControls: React.FC<Props> = ({ roomId }) => {
+export const PlayerControls: React.FC<Props> = ({ roomId, hasSongsInQueue = false }) => {
     const { isPlaying, play, pause, skip, actualPositionMs, currentSong } = usePlayback(roomId);
 
     const formatTime = (ms: number) => {
@@ -42,7 +43,7 @@ export const PlayerControls: React.FC<Props> = ({ roomId }) => {
                 {/* Play/Pause Button */}
                 <button
                     onClick={isPlaying ? pause : play}
-                    disabled={!currentSong}
+                    disabled={!currentSong && !hasSongsInQueue}
                     className="relative group disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                     <div className="relative w-20 h-20 rounded-2xl bg-primary flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-retro-pink hover:shadow-neon-pink border-4 border-white">
