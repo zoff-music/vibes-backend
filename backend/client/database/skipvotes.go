@@ -212,13 +212,11 @@ func (c *Client) VoteToSkip(ctx context.Context, roomID, userID string) (*vibe.P
 		return nil, fmt.Errorf("error checking if user voted: %w", err)
 	}
 
-	if voted {
-		return state, nil // Already voted
-	}
-
-	err = c.AddSkipVote(ctx, roomID, songID, userID)
-	if err != nil {
-		return nil, fmt.Errorf("error adding skip vote: %w", err)
+	if !voted {
+		err = c.AddSkipVote(ctx, roomID, songID, userID)
+		if err != nil {
+			return nil, fmt.Errorf("error adding skip vote: %w", err)
+		}
 	}
 
 	// Check threshold
@@ -242,6 +240,8 @@ func (c *Client) VoteToSkip(ctx context.Context, roomID, userID string) (*vibe.P
 	voteCount := len(votes)
 	requiredVotes := int(float64(participantCount) * room.Settings.SkipVoteThreshold)
 
+	fmt.Printf("[DEBUG-VOTE] Room: %s, Participants: %d, Votes: %d, Threshold: %f, Required: %d\n", roomID, participantCount, voteCount, room.Settings.SkipVoteThreshold, requiredVotes)
+
 	// If there is only 1 participant, allow them to skip alone
 	if participantCount == 1 {
 		requiredVotes = 1
@@ -252,6 +252,7 @@ func (c *Client) VoteToSkip(ctx context.Context, roomID, userID string) (*vibe.P
 
 	if voteCount >= requiredVotes {
 		// Threshold met, skip the track
+		fmt.Printf("[DEBUG-VOTE] Room: %s, Threshold met. Skipping.\n", roomID)
 		newState, err := c.skipTrack(ctx, roomID)
 		if err != nil {
 			return nil, fmt.Errorf("error skipping track after vote: %w", err)

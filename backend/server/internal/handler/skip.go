@@ -57,7 +57,10 @@ func SkipSong(
 
 		skipFunc := db.VoteToSkip
 		if shouldForce {
+			log.Infof("Room %s: User %s force skipping", roomID, userID)
 			skipFunc = db.SkipTrack
+		} else {
+			log.Infof("Room %s: User %s voting to skip", roomID, userID)
 		}
 
 		state, err = skipFunc(ctx, roomID, userID)
