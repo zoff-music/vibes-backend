@@ -16,20 +16,28 @@ type Handler interface {
 }
 
 // GetAppEvents describes all the app events to listen to.
-func GetAppEvents(db vibe.RoomActioner, ips vibe.RoomEventNotifier, ps vibe.ParticipantStorage) AppEvents {
-	appEvents := AppEvents{}
-
-	appEvents = append(appEvents, AppEvent{
-		Name:    "ReviewRoomPlayback",
-		Rate:    500 * time.Millisecond,
-		Handler: NewPlaybackMonitorHandler(db, ips),
-	})
-
-	appEvents = append(appEvents, AppEvent{
-		Name:    "CleanupInactiveParticipants",
-		Rate:    5 * time.Minute,
-		Handler: NewCleanupHandler(ps),
-	})
-
-	return appEvents
+func GetAppEvents(pa vibe.ExpiredPlaybackProcessor, hm vibe.AbandonnedHostProcessor, ips vibe.RoomEventNotifier, ps vibe.ParticipantStorage) AppEvents {
+	return AppEvents{
+		{
+			Name: "ReviewRoomPlayback",
+			Rate: 500 * time.Millisecond,
+			Handler: &PlaybackMonitor{
+				db:  pa,
+				ips: ips,
+			},
+		},
+		{
+			Name: "ReviewHostHealth",
+			Rate: 500 * time.Millisecond,
+			Handler: &HostMonitor{
+				db:  hm,
+				ips: ips,
+			},
+		},
+		{
+			Name:    "CleanupInactiveParticipants",
+			Rate:    5 * time.Minute,
+			Handler: &CleanupHandler{DB: ps},
+		},
+	}
 }

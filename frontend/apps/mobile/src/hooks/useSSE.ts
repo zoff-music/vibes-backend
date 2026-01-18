@@ -61,6 +61,14 @@ export const useSSE = (roomId: string | undefined) => {
                 console.error('Failed to parse song_added event', err);
               }
               break;
+            case 'settings_update':
+              try {
+                console.log('[SSE] settings_update received:', message.data);
+                setRoom(message.data as any);
+              } catch (err) {
+                console.error('Failed to parse settings_update event', err);
+              }
+              break;
           }
         }
       );

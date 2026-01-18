@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/zoff-music/vibes/internalerror"
 	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"github.com/zoff-music/vibes/vibe"
 )
@@ -25,6 +26,58 @@ func (c *Client) prepareGetPlaybackStateStmt() error {
 	c.GetPlaybackStateStatement = stmt
 
 	return nil
+}
+
+// prepareProcessNextExpiredPlaybackStmt prepares the ProcessNextExpiredPlaybackStatement.
+func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT ps.room_id
+		FROM playback_state ps
+		JOIN songs s ON ps.current_song_id = s.id
+		JOIN rooms r ON ps.room_id = r.id
+		WHERE ps.is_playing = 1
+		  AND (r.mode = 'server' OR r.mode = 'host')
+		  AND ((unixepoch('now') - unixepoch(ps.updated_at)) * 1000 + ps.position_ms) >= (s.duration * 1000 - 2000)
+		LIMIT 1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ProcessNextExpiredPlaybackStatement: %w", err)
+	}
+
+	c.ProcessNextExpiredPlaybackStatement = stmt
+
+	return nil
+}
+
+// ProcessNextExpiredPlayback checks for an expired song, skips it, and returns the new state.
+func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackState, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "ProcessNextExpiredPlayback")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var roomID string
+	err := c.ProcessNextExpiredPlaybackStatement.QueryRowContext(cctx).Scan(&roomID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, internalerror.ErrExpected{
+				Err: internalerror.ErrNonRecoverable{
+					Err: fmt.Errorf("no expired playback found"),
+				},
+			}
+		}
+		return nil, fmt.Errorf("error finding expired playback: %w", err)
+	}
+
+	// Skip the track
+	// skipTrack is internal and doesn't check permissions, which is what we want here
+	newState, err := c.skipTrack(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("error skipping track for room %s: %w", roomID, err)
+	}
+
+	return newState, nil
 }
 
 // GetPlaybackState fetches the playback state for a room.
@@ -169,9 +222,9 @@ func (c *Client) UpsertPlaybackState(ctx context.Context, state *vibe.PlaybackSt
 	return nil
 }
 
-// SkipTrack skips the current track to the next one in the queue.
-func (c *Client) SkipTrack(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SkipTrack")
+// skipTrack skips the current track to the next one in the queue (internal).
+func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "skipTrack")
 	defer span.Finish()
 
 	state, err := c.GetPlaybackState(ctx, roomID)
@@ -213,10 +266,28 @@ func (c *Client) SkipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 	return state, nil
 }
 
+// SkipTrack skips the current track to the next one in the queue.
+func (c *Client) SkipTrack(ctx context.Context, roomID string, userID string) (*vibe.PlaybackState, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SkipTrack")
+	defer span.Finish()
+
+	err := c.checkHostPermissions(ctx, roomID, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.skipTrack(ctx, roomID)
+}
+
 // UpdatePlayback updates the playback state based on the action (play/pause/seek).
-func (c *Client) UpdatePlayback(ctx context.Context, roomID string, action vibe.RoomAction, positionMs int64) (*vibe.PlaybackState, error) {
+func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID string, action vibe.RoomAction, positionMs int64) (*vibe.PlaybackState, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "UpdatePlayback")
 	defer span.Finish()
+
+	err := c.checkHostPermissions(ctx, roomID, userID)
+	if err != nil {
+		return nil, err
+	}
 
 	state, err := c.GetPlaybackState(ctx, roomID)
 	if err != nil {
@@ -236,6 +307,11 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, action vibe.
 		}
 		state.IsPlaying = true
 	case vibe.RoomActionPause:
+		// Calculate projected position before pausing
+		if state.IsPlaying {
+			elapsed := time.Since(state.UpdatedAt).Milliseconds()
+			state.PositionMs = state.PositionMs + elapsed
+		}
 		state.IsPlaying = false
 	case vibe.RoomActionSeek:
 		state.PositionMs = positionMs
@@ -251,4 +327,60 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, action vibe.
 	}
 
 	return state, nil
+}
+
+func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string) error {
+	if userID == "" {
+		return nil
+	}
+
+	// Register user as active participant
+	_ = c.UpdateParticipant(ctx, roomID, userID, true)
+
+	room, err := c.GetRoom(ctx, roomID)
+	if err != nil {
+		return fmt.Errorf("failed to fetch room: %w", err)
+	}
+
+	if room.Mode != vibe.RoomModeHost {
+		return nil
+	}
+
+	if room.HostID == "" {
+		// Claim host
+		err := c.SetRoomHost(ctx, roomID, userID)
+		if err != nil {
+			return fmt.Errorf("failed to set room host: %w", err)
+		}
+		return nil
+	}
+
+	if room.HostID == userID {
+		return nil
+	}
+
+	// Check if current host is still active
+	activeParticipants, err := c.GetActiveParticipants(ctx, roomID, 30*time.Second)
+	if err != nil {
+		return fmt.Errorf("failed to get active participants: %w", err)
+	}
+
+	hostStillActive := false
+	for _, p := range activeParticipants {
+		if p.UserID == room.HostID {
+			hostStillActive = true
+			break
+		}
+	}
+
+	if !hostStillActive {
+		// Previous host inactive, claim host
+		err := c.SetRoomHost(ctx, roomID, userID)
+		if err != nil {
+			return fmt.Errorf("failed to set room host: %w", err)
+		}
+		return nil
+	}
+
+	return fmt.Errorf("only the host can perform this action")
 }

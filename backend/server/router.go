@@ -21,8 +21,9 @@ func (s *Server) setupRoutes() {
 	// Room routes
 	api.HandleFunc("/rooms", handler.CreateRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
 	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoom")
-	api.HandleFunc("/rooms/{id}", handler.UpdateRoom(s.DB)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoom")
-	api.HandleFunc("/rooms/{id}", handler.RoomAction(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("RoomAction")
+	api.HandleFunc("/rooms/{id}/settings", handler.UpdateRoomSettings(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoomSettings")
+	api.HandleFunc("/rooms/{id}/skips", handler.SkipSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("SkipSong")
+	api.HandleFunc("/rooms/{id}/states", handler.UpdatePlaybackState(s.DB, s.InternalPubSub)).Methods(http.MethodPut, http.MethodOptions).Name("UpdatePlaybackState")
 	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
 
 	// Song routes
@@ -40,6 +41,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetMusicTrack")
 
 	s.addSessionMiddleware(api)
+	s.addAuthMiddleware(api)
 	s.addTracingAndMetrics(api)
 	s.addCORSMiddleware(s.Router)
 }
@@ -63,5 +65,18 @@ func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
 func (s *Server) addCORSMiddleware(routers ...*mux.Router) {
 	for _, r := range routers {
 		r.Use(middleware.CORSMiddleware)
+	}
+}
+
+func (s *Server) addAuthMiddleware(routers ...*mux.Router) {
+	am := middleware.AuthMiddleware{
+		Provider: s.DB,
+		ProtectedRoutes: map[string]bool{
+			"UpdateRoomSettings": true,
+		},
+	}
+
+	for _, r := range routers {
+		r.Use(am.Middleware)
 	}
 }

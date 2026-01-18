@@ -7,9 +7,89 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/zoff-music/vibes/internalerror"
 	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"github.com/zoff-music/vibes/vibe"
 )
+
+// prepareProcessNextAbandonedHostStmt prepares the ProcessNextAbandonedHostStatement.
+func (c *Client) prepareProcessNextAbandonedHostStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT r.id
+		FROM rooms r
+		LEFT JOIN room_users ru ON r.host_id = ru.id
+		WHERE r.mode = 'host'
+		  AND r.host_id IS NOT NULL AND r.host_id != ''
+		  AND (ru.last_seen_at IS NULL OR ru.last_seen_at < datetime('now', '-15 seconds'))
+		LIMIT 1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ProcessNextAbandonedHostStatement: %w", err)
+	}
+
+	c.ProcessNextAbandonedHostStatement = stmt
+
+	return nil
+}
+
+// ProcessNextAbandonedHost finds a room with an inactive host, elects a new one, and returns info.
+func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostInfo, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "ProcessNextAbandonedHost")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var roomID string
+	err := c.ProcessNextAbandonedHostStatement.QueryRowContext(cctx).Scan(&roomID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, internalerror.ErrExpected{
+				Err: internalerror.ErrNonRecoverable{
+					Err: fmt.Errorf("no abandoned host found"),
+				},
+			}
+		}
+		return nil, fmt.Errorf("error finding abandoned host: %w", err)
+	}
+
+	// Helper to find next candidate
+	// We do this via standard query as it's not pre-prepared in this specific unique flow usually,
+	// but better to prepare it or use existing one. GetActiveParticipants is generic.
+	// We'll use a direct query here for speed/conciseness or use a new prepared stmt?
+	// Let's use direct query for now or reuse GetUsersInRoom logic if available.
+	// Actually we need one that orders by join time filter by activity.
+	// "GetActiveParticipants" typically does this.
+
+	// Let's define the query for election inside this method or helper.
+	// Since we can't easily add a new generic method in this Replace block without breaking flow,
+	// I'll execute the query directly.
+
+	var newHostID string
+	err = c.DB.QueryRowContext(cctx, `
+		SELECT id FROM room_users 
+		WHERE room_id = ? 
+		  AND last_seen_at >= datetime('now', '-15 seconds')
+		ORDER BY joined_at ASC -- Oldest active user promotes
+		LIMIT 1
+	`, roomID).Scan(&newHostID)
+
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return nil, fmt.Errorf("error electing new host: %w", err)
+	}
+	// if ErrNoRows, newHostID is "", which is fine (no host)
+
+	// Update the room
+	err = c.SetRoomHost(ctx, roomID, newHostID)
+	if err != nil {
+		return nil, fmt.Errorf("error setting room host: %w", err)
+	}
+
+	return &vibe.RoomHostInfo{
+		RoomID:    roomID,
+		NewHostID: newHostID,
+	}, nil
+}
 
 // prepareGetRoomStmt prepares the GetRoomStatement.
 func (c *Client) prepareGetRoomStmt() error {

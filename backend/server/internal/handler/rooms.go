@@ -9,7 +9,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes/server/internal/helper"
-	"github.com/zoff-music/vibes/server/internal/middleware"
 	"github.com/zoff-music/vibes/vibe"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -177,33 +176,46 @@ func GetRoom(
 	}
 }
 
-// UpdateRoom handles PATCH /api/v1/rooms/:id
-func UpdateRoom(
+// UpdateRoomSettings handles PATCH /rooms/{id}/settings
+func UpdateRoomSettings(
 	db vibe.RoomUpdater,
+	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		vars := mux.Vars(r)
 		roomID := vars["id"]
 
-		// TODO: Implement admin authorization check
-		// For now, we assume the user is authorized if they are an admin in their session
-
 		var req vibe.UpdateRoomRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
+			handleError(
+				w,
+				fmt.Errorf("error invalid request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
 			return
 		}
 
 		room, err := db.GetRoom(ctx, roomID)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error failed to fetch room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		if room.IsEmpty() {
-			handleError(w, fmt.Errorf("room not found"), http.StatusNotFound, false)
+			handleError(
+				w,
+				fmt.Errorf("error room not found"),
+				http.StatusNotFound,
+				false,
+			)
 			return
 		}
 
@@ -215,7 +227,7 @@ func UpdateRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to update room: %w", err),
+				fmt.Errorf("error failed to update room: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -226,7 +238,22 @@ func UpdateRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		// Broadcast room update to all connected clients
+		err = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
+			Type:    vibe.EventTypeSettingsUpdate,
+			Payload: updated,
+		})
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error failed to notify room: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -256,7 +283,7 @@ func CreateSession(
 		}
 
 		// Check if user already has a valid session - don't create a new one
-		session, hasSession := ctx.Value(middleware.SessionKey).(middleware.SessionPayload)
+		session, hasSession := helper.GetSessionFromContext(ctx)
 		if hasSession && session.UserID != "" {
 			// User already has a session, just return existing info
 			room, err := db.GetRoom(ctx, roomID)
@@ -325,7 +352,7 @@ func CreateSession(
 			Room:     room,
 		}
 
-		sessionPayload := middleware.SessionPayload{
+		sessionPayload := helper.SessionPayload{
 			UserID: createdUser.ID,
 		}
 		sessionJSON, _ := json.Marshal(sessionPayload)

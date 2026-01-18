@@ -42,6 +42,12 @@ type Room struct {
 	UserCount         int          `json:"userCount,omitempty"`
 }
 
+// RoomHostInfo holds info about a host update
+type RoomHostInfo struct {
+	RoomID    string
+	NewHostID string
+}
+
 const (
 	// RoomModeServer is the mode where the server controls playback
 	RoomModeServer = "server"

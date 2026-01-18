@@ -9,7 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes/server/internal/middleware"
+	"github.com/zoff-music/vibes/server/internal/helper"
 	"github.com/zoff-music/vibes/vibe"
 )
 
@@ -248,7 +248,7 @@ func VoteSong(
 		roomID := vars["id"]
 		songID := vars["songId"]
 
-		session, ok := ctx.Value(middleware.SessionKey).(middleware.SessionPayload)
+		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
