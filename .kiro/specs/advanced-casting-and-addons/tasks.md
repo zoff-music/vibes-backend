@@ -9,7 +9,7 @@ The implementation follows a layered approach: foundational casting interfaces f
 ## Tasks
 
 - [ ] 1. Set up foundational casting interfaces using existing data structures
-  - [-] 1.1 Extend existing Room model in backend/vibe/vibe.go for casting
+  - [ ] 1.1 Extend existing Room model in backend/vibe/vibe.go for casting
     - Add casting-related fields to existing Room struct
     - Add CastSession and CastDevice types to vibe.go
     - Use existing database patterns without new tables
@@ -19,6 +19,7 @@ The implementation follows a layered approach: foundational casting interfaces f
     - Create CastManager, CastDevice, and CastSession interfaces
     - Add casting types to existing API schemas
     - Extend existing Zustand stores for casting state
+    - Ensure dark mode compatibility for all casting UI components
     - _Requirements: 1.1, 1.2_
 
 - [ ] 2. Implement Google Cast integration
@@ -35,9 +36,9 @@ The implementation follows a layered approach: foundational casting interfaces f
     - _Requirements: 1.3, 3.1, 3.2_
 
   - [~] 2.3 Implement Cast UI components for sender application
-    - Create cast button and device selection UI
-    - Build cast status display and controls
-    - Implement queue display for cast devices
+    - Create cast button and device selection UI with dark mode support
+    - Build cast status display and controls using Tailwind CSS v4
+    - Implement queue display for cast devices with responsive design
     - _Requirements: 1.3, 3.1, 3.2_
 
 - [ ] 3. Implement AirPlay integration
@@ -132,4 +133,6 @@ The implementation follows a layered approach: foundational casting interfaces f
 - Focus on casting functionality only - addon system deferred
 - Maintains strict backward compatibility with existing functionality
 - Uses existing backend patterns (vibe.go types, client interfaces, handler patterns)
-- Uses existing frontend patterns (Zustand stores, wiretyped API, Tailwind CSS)
+- Uses existing frontend patterns (Zustand stores, wiretyped API, Tailwind CSS v4)
+- Implements dark mode support for all casting UI components
+- Follows mobile-first responsive design principles
