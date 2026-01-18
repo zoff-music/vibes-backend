@@ -11,6 +11,8 @@ Key architectural principles:
 - **Progressive Enhancement**: Features gracefully degrade when not available
 - **Extensible Design**: Plugin architecture supports unlimited addon types
 - **Real-time Synchronization**: All features maintain sub-200ms synchronization across devices
+- **Dark Mode Support**: Full dark mode implementation with Tailwind CSS v4
+- **Responsive Design**: Mobile-first approach with casting UI optimized for all screen sizes
 
 ## Architecture
 

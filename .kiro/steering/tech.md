@@ -17,12 +17,13 @@
 
 - **Framework**: React 19 with TypeScript
 - **Build Tool**: Vite
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS v4 with dark mode support
 - **State Management**: Zustand stores
 - **API Client**: wiretyped with Yup schema validation
 - **Package Manager**: Bun
 - **Animation**: Framer Motion
 - **Video Player**: react-player, react-youtube
+- **Theme**: Dark mode enabled with system preference detection
 
 ## Development Tools
 
@@ -30,6 +31,14 @@
 - **Reverse Proxy**: Caddy
 - **Database Migrations**: Custom Go migrator tool
 - **Security**: gosec, govulncheck
+
+## Styling & Theming
+
+- **CSS Framework**: Tailwind CSS v4
+- **Dark Mode**: Enabled with automatic system preference detection
+- **Theme Toggle**: Available for manual light/dark mode switching
+- **Color Scheme**: Custom design system with dark mode variants
+- **Responsive Design**: Mobile-first approach with responsive breakpoints
 
 ## Common Commands
 

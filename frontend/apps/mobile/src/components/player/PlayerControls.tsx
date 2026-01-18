@@ -1,5 +1,7 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { usePlayback } from '../../hooks/usePlayback';
+import { CastButton } from '../cast/CastButton';
+import { DeviceSelector } from '../cast/DeviceSelector';
 
 interface Props {
     roomId: string;
@@ -9,6 +11,7 @@ interface Props {
 
 export const PlayerControls: React.FC<Props> = ({ roomId, hasSongsInQueue = false, onAddSong }) => {
     const { isPlaying, play, pause, skip, currentSong } = usePlayback(roomId);
+    const [showDeviceSelector, setShowDeviceSelector] = useState(false);
 
     const btnClass = "glass p-4 rounded-xl hover:shadow-retro active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed group border-2 border-ink/10 flex items-center justify-center h-14";
 
@@ -45,6 +48,17 @@ export const PlayerControls: React.FC<Props> = ({ roomId, hasSongsInQueue = fals
                     </svg>
                 </button>
 
+                {/* Cast Button */}
+                <button
+                    onClick={() => setShowDeviceSelector(true)}
+                    className={`${btnClass} w-14`}
+                    title="Cast"
+                >
+                    <svg className="w-6 h-6 text-ink/60 group-hover:text-primary transition-colors" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/>
+                    </svg>
+                </button>
+
                 {/* Add Song Button */}
                 <button
                     onClick={onAddSong}
@@ -57,6 +71,12 @@ export const PlayerControls: React.FC<Props> = ({ roomId, hasSongsInQueue = fals
                     <span className="font-black text-ink tracking-wide text-sm whitespace-nowrap">Add Song</span>
                 </button>
             </div>
+
+            {/* Device Selector Modal */}
+            <DeviceSelector 
+                isOpen={showDeviceSelector} 
+                onClose={() => setShowDeviceSelector(false)} 
+            />
         </div>
     );
 };
