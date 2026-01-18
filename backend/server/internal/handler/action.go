@@ -47,13 +47,36 @@ func RoomAction(
 		userID := session.UserID
 
 		var state *vibe.PlaybackState
+		// Fetch room to check mode
+		room, err := db.GetRoom(ctx, roomID)
+		if err != nil {
+			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
+			return
+		}
 
 		switch req.Action {
-		case vibe.RoomActionPlay, vibe.RoomActionPause, vibe.RoomActionSeek:
-			state, err = db.UpdatePlayback(ctx, roomID, req.Action, req.PositionMs)
-		case vibe.RoomActionSkip:
-			state, err = db.SkipTrack(ctx, roomID)
+		case vibe.RoomActionPlay, vibe.RoomActionPause, vibe.RoomActionSeek, vibe.RoomActionSkip:
+			// Enforce host permissions for these actions in Host Mode
+			if room.Mode == vibe.RoomModeHost && room.HostID != userID {
+				handleError(w, fmt.Errorf("only the host can perform this action"), http.StatusForbidden, false)
+				return
+			}
+
+			if req.Action == vibe.RoomActionSkip {
+				state, err = db.SkipTrack(ctx, roomID)
+			} else {
+				state, err = db.UpdatePlayback(ctx, roomID, req.Action, req.PositionMs)
+			}
 		case vibe.RoomActionVote:
+			// Vote is allowed for everyone?
+			// Prompt: "Host mode is when... actions are reflected... Admin pauses... Everyone... eligible to become host"
+			// Doesn't explicitly say normal users can't vote to skip.
+			// Usually voting is democratic. But skipping (force skip) is host action.
+			// Let's assume Vote is allowed, but Skip (force) is host only.
+			// My switch block handles Skip and Vote separately.
+			// The host check above blocks ALL actions including Vote if I place it here.
+			// I should probably allow Vote.
+			// Let's move the check inside the switch or before relevant cases.
 			state, err = db.VoteToSkip(ctx, roomID, userID)
 		default:
 			handleError(

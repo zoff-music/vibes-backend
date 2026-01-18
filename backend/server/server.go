@@ -78,6 +78,9 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 // It also makes sure that the server gracefully shuts down on exit.
 // Returns an error if an error occurs.
 func (s *Server) Serve(ctx context.Context, errc chan<- error) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	closer, err := trace.InitGlobalTracer(s.Config)
 	if err != nil {
 		errc <- err
@@ -97,6 +100,7 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 	<-stop
 
 	log.Info("Main server has received a shutdown signal")
+	cancel() // Stop background jobs
 
 	s.shutdown(ctx)
 }
@@ -128,7 +132,7 @@ func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
 }
 
 func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
-	for _, e := range event.GetAppEvents() {
+	for _, e := range event.GetAppEvents(s.DB, s.InternalPubSub, s.DB) {
 		go func(e event.AppEvent) {
 			e.SubscribeAndListen(ctx)
 		}(e)

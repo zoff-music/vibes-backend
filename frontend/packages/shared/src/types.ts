@@ -2,6 +2,8 @@
 export interface Room {
   id: string;
   name: string;
+  mode: 'server' | 'host';
+  hostId?: string | null;
   createdAt: string;
   hasPassword: boolean;
   settings: RoomSettings;

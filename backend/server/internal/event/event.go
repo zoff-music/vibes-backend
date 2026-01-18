@@ -5,6 +5,9 @@ package event
 
 import (
 	"context"
+	"time"
+
+	"github.com/zoff-music/vibes/vibe"
 )
 
 // Handler is an interface that all event handles must implement.
@@ -13,8 +16,20 @@ type Handler interface {
 }
 
 // GetAppEvents describes all the app events to listen to.
-func GetAppEvents() AppEvents {
+func GetAppEvents(db vibe.RoomActioner, ips vibe.RoomEventNotifier, ps vibe.ParticipantStorage) AppEvents {
 	appEvents := AppEvents{}
+
+	appEvents = append(appEvents, AppEvent{
+		Name:    "ReviewRoomPlayback",
+		Rate:    500 * time.Millisecond,
+		Handler: NewPlaybackMonitorHandler(db, ips),
+	})
+
+	appEvents = append(appEvents, AppEvent{
+		Name:    "CleanupInactiveParticipants",
+		Rate:    1 * time.Hour,
+		Handler: NewCleanupHandler(ps),
+	})
 
 	return appEvents
 }

@@ -17,6 +17,8 @@ func (c *Client) prepareGetRoomStmt() error {
 		SELECT
 			rooms.id,
 			rooms.name,
+			rooms.mode,
+			rooms.host_id,
 			rooms.admin_password_hash,
 			rooms.created_at,
 			room_settings.skip_allowed,
@@ -45,6 +47,8 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 		SELECT
 			rooms.id,
 			rooms.name,
+			rooms.mode,
+			rooms.host_id,
 			rooms.admin_password_hash,
 			rooms.created_at,
 			room_settings.skip_allowed,
@@ -128,6 +132,8 @@ func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
 type roomRow struct {
 	ID                sql.NullString
 	Name              sql.NullString
+	Mode              sql.NullString
+	HostID            sql.NullString
 	AdminPasswordHash sql.NullString
 	CreatedAt         sql.NullTime
 	SkipAllowed       sql.NullInt64
@@ -139,10 +145,16 @@ type roomRow struct {
 	AllowDuplicates   sql.NullInt64
 }
 
-func (r *roomRow) scan(row *sql.Row) error {
+type Scanner interface {
+	Scan(dest ...interface{}) error
+}
+
+func (r *roomRow) scan(row Scanner) error {
 	return row.Scan(
 		&r.ID,
 		&r.Name,
+		&r.Mode,
+		&r.HostID,
 		&r.AdminPasswordHash,
 		&r.CreatedAt,
 		&r.SkipAllowed,
@@ -168,6 +180,8 @@ func (r *roomRow) toRoom() (*vibe.Room, error) {
 	return &vibe.Room{
 		ID:                r.ID.String,
 		Name:              r.Name.String,
+		Mode:              r.Mode.String,
+		HostID:            r.HostID.String,
 		AdminPasswordHash: r.AdminPasswordHash.String,
 		HasPassword:       r.AdminPasswordHash.Valid && r.AdminPasswordHash.String != "",
 		Settings:          settings,
@@ -221,6 +235,7 @@ func (c *Client) prepareCreateRoomStmt() error {
 		INSERT INTO rooms_view (
 			id,
 			name,
+			mode,
 			admin_password_hash,
 			created_at,
 			skip_allowed,
@@ -230,7 +245,7 @@ func (c *Client) prepareCreateRoomStmt() error {
 			remove_on_play,
 			loop_queue,
 			allow_duplicates
-		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
+		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
 		RETURNING id
 	`)
 	if err != nil {
@@ -254,6 +269,7 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	row := c.CreateRoomStatement.QueryRowContext(cctx,
 		room.ID,
 		room.Name,
+		room.Mode,
 		room.AdminPasswordHash,
 		room.CreatedAt,
 		boolToInt(room.Settings.SkipAllowed),
@@ -289,6 +305,8 @@ func (c *Client) prepareUpdateRoomStmt() error {
 		SET
 			name = ?1,
 			admin_password_hash = ?2,
+			mode = ?11,
+			host_id = ?12,
 			skip_allowed = ?4,
 			democratic_skip = ?5,
 			skip_vote_threshold = ?6,
@@ -326,6 +344,8 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		boolToInt(room.Settings.RemoveOnPlay),
 		boolToInt(room.Settings.LoopQueue),
 		boolToInt(room.Settings.AllowDuplicates),
+		room.Mode,
+		room.HostID,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error updating room: %w", err)

@@ -22,16 +22,24 @@ type AppEvent struct {
 
 // SubscribeAndListen subscribes to an AppEvent.
 func (e *AppEvent) SubscribeAndListen(ctx context.Context) {
-	for t := range time.Tick(e.Rate) {
-		go func(t time.Time) {
-			span, ctx := opentracing.StartSpanFromContext(context.Background(), e.Name)
-			defer span.Finish()
+	ticker := time.NewTicker(e.Rate)
+	defer ticker.Stop()
 
-			var errExpected internalerror.ErrExpected
-			err := e.Handler.Handle(ctx, nil)
-			if err != nil && !errors.As(err, &errExpected) {
-				log.Error(t, err.Error())
-			}
-		}(t)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case t := <-ticker.C:
+			go func(t time.Time) {
+				span, ctx := opentracing.StartSpanFromContext(ctx, e.Name)
+				defer span.Finish()
+
+				var errExpected internalerror.ErrExpected
+				err := e.Handler.Handle(ctx, nil)
+				if err != nil && !errors.As(err, &errExpected) {
+					log.Error(t, err.Error())
+				}
+			}(t)
+		}
 	}
 }
