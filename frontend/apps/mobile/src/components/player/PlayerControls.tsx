@@ -18,92 +18,61 @@ export const PlayerControls: React.FC<Props> = ({ roomId }) => {
     const progress = currentSong ? (actualPositionMs / (currentSong.duration * 1000)) : 0;
 
     return (
-        <div className="w-full px-5 py-2.5">
+        <div className="w-full space-y-6">
             {/* Progress Bar */}
-            <div className="mb-5">
-                <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
+            <div>
+                <div className="relative h-2 bg-surfaceElevated rounded-full overflow-hidden">
                     <div
-                        className="h-full bg-primary transition-all"
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-secondary transition-all duration-200 ease-out"
+                        style={{ width: `${progress * 100}%` }}
+                    />
+                    {/* Glow effect */}
+                    <div
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary to-secondary opacity-50 blur-sm transition-all duration-200 ease-out"
                         style={{ width: `${progress * 100}%` }}
                     />
                 </div>
-                <div className="flex justify-between mt-2">
-                    <span className="text-xs text-text-muted">{formatTime(actualPositionMs)}</span>
-                    <span className="text-xs text-text-muted">
+                <div className="flex justify-between mt-3 px-1">
+                    <span className="text-xs font-medium text-text-muted tabular-nums">
+                        {formatTime(actualPositionMs)}
+                    </span>
+                    <span className="text-xs font-medium text-text-subtle tabular-nums">
                         {currentSong ? formatTime(currentSong.duration * 1000) : '0:00'}
                     </span>
                 </div>
             </div>
 
             {/* Main Controls */}
-            <div className="flex items-center justify-between px-10">
-                <button className="p-2.5 text-text-muted hover:text-text transition-colors">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-6 w-6"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"
-                        />
-                    </svg>
-                </button>
-
-                <div className="flex items-center">
-                    <button
-                        onClick={isPlaying ? pause : play}
-                        className="w-16 h-16 rounded-full bg-primary flex items-center justify-center hover:opacity-90 transition-opacity shadow-lg shadow-primary/30"
-                    >
+            <div className="flex items-center justify-center gap-4">
+                {/* Play/Pause Button */}
+                <button
+                    onClick={isPlaying ? pause : play}
+                    disabled={!currentSong}
+                    className="relative group disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary to-secondary rounded-full blur-xl opacity-30 group-hover:opacity-50 transition-opacity" />
+                    <div className="relative w-16 h-16 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center hover:scale-105 active:scale-95 transition-transform shadow-glow">
                         {isPlaying ? (
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-8 w-8 text-white"
-                                fill="currentColor"
-                                viewBox="0 0 24 24"
-                            >
+                            <svg className="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
                             </svg>
                         ) : (
-                            <svg
-                                xmlns="http://www.w3.org/2000/svg"
-                                className="h-8 w-8 text-white ml-1"
-                                fill="currentColor"
-                                viewBox="0 0 24 24"
-                            >
+                            <svg className="w-7 h-7 text-white ml-0.5" fill="currentColor" viewBox="0 0 24 24">
                                 <path d="M8 5v14l11-7z" />
                             </svg>
                         )}
-                    </button>
-                </div>
+                    </div>
+                </button>
 
+                {/* Skip Button */}
                 <button
                     onClick={skip}
-                    className="p-2.5 text-text hover:text-primary transition-colors"
+                    disabled={!currentSong}
+                    className="glass p-3.5 rounded-full hover:bg-surfaceHover active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed group"
+                    title="Skip"
                 >
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        className="h-6 w-6"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                    >
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M9 5l7 7-7 7"
-                        />
-                        <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            strokeWidth={2}
-                            d="M16 5l7 7-7 7"
-                        />
+                    <svg className="w-5 h-5 text-text-muted group-hover:text-white transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                     </svg>
                 </button>
             </div>
