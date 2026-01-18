@@ -24,8 +24,8 @@ func (c *Client) Init() error {
 	return nil
 }
 
-func (c *Client) PublishToInternalSubscription(ctx context.Context, topicName string, data []byte) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "PublishToInternalSubscription")
+func (c *Client) NotifyTopic(ctx context.Context, topicName string, data []byte) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyTopic")
 	defer span.Finish()
 
 	topic := c.getTopic(topicName)
@@ -34,8 +34,8 @@ func (c *Client) PublishToInternalSubscription(ctx context.Context, topicName st
 	return nil
 }
 
-func (c *Client) BroadcastToRoom(ctx context.Context, roomID string, event *vibe.RoomEvent) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "BroadcastToRoom")
+func (c *Client) NotifyRoom(ctx context.Context, roomID string, event *vibe.RoomEvent) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyRoom")
 	defer span.Finish()
 
 	data, err := json.Marshal(event)
@@ -44,7 +44,7 @@ func (c *Client) BroadcastToRoom(ctx context.Context, roomID string, event *vibe
 	}
 
 	topicName := fmt.Sprintf("room:%s", roomID)
-	return c.PublishToInternalSubscription(ctx, topicName, data)
+	return c.NotifyTopic(ctx, topicName, data)
 }
 
 func (c *Client) Subscribe(topicName string) (*vibe.SubscriptionContainer, error) {

@@ -191,3 +191,66 @@ func (c *Client) ClearSkipVotes(ctx context.Context, roomID, songID string) erro
 
 	return nil
 }
+
+// VoteToSkip adds a user's vote to skip the current track and skips if threshold is met.
+func (c *Client) VoteToSkip(ctx context.Context, roomID, userID string) (*vibe.PlaybackState, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "VoteToSkip")
+	defer span.Finish()
+
+	state, err := c.GetPlaybackState(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("vote to skip: get playback state: %w", err)
+	}
+
+	if state.CurrentSongID == nil {
+		return state, nil
+	}
+	songID := *state.CurrentSongID
+
+	voted, err := c.HasUserVoted(ctx, roomID, songID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error checking if user voted: %w", err)
+	}
+
+	if voted {
+		return state, nil // Already voted
+	}
+
+	err = c.AddSkipVote(ctx, roomID, songID, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error adding skip vote: %w", err)
+	}
+
+	// Check threshold
+	room, err := c.GetRoom(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching room for threshold: %w", err)
+	}
+
+	votes, err := c.GetSkipVotes(ctx, roomID, songID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching skip votes count: %w", err)
+	}
+
+	userCount, err := c.CountUsersInRoom(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("error counting users in room: %w", err)
+	}
+
+	if float64(len(votes)) >= float64(userCount)*room.Settings.SkipVoteThreshold {
+		// Threshold met, skip the track
+		newState, err := c.SkipTrack(ctx, roomID)
+		if err != nil {
+			return nil, fmt.Errorf("error skipping track after vote: %w", err)
+		}
+
+		err = c.ClearSkipVotes(ctx, roomID, songID)
+		if err != nil {
+			// Log error but don't fail operation as skip already happened
+		}
+
+		return newState, nil
+	}
+
+	return state, nil
+}

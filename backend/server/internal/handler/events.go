@@ -14,8 +14,8 @@ import (
 // RoomEvents handles GET /api/v1/rooms/:id/events (SSE)
 // RoomEvents handles GET /api/v1/rooms/:id/events (SSE)
 func RoomEvents(
-	sb vibe.Subscriber,
-	pf vibe.PlaybackFetcher,
+	ips vibe.Subscriber,
+	db vibe.PlaybackFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -29,16 +29,26 @@ func RoomEvents(
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 
 		topicName := fmt.Sprintf("room:%s", roomID)
-		container, err := sb.Subscribe(topicName)
+		container, err := ips.Subscribe(topicName)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to subscribe to room events: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to subscribe to room events: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 		defer container.Subscription.Destroy()
 
 		flusher, ok := w.(http.Flusher)
 		if !ok {
-			handleError(w, fmt.Errorf("streaming not supported"), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("streaming not supported"),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -47,8 +57,12 @@ func RoomEvents(
 		flusher.Flush()
 
 		// Send initial playback state
-		state, err := pf.GetPlaybackState(ctx, roomID)
-		if err == nil {
+		state, err := db.GetPlaybackState(ctx, roomID)
+		if err != nil {
+			log.Errorf("failed to fetch initial playback state: %v", err)
+		}
+
+		if state != nil {
 			// Project position to current time if playing
 			if state.IsPlaying && state.UpdatedAt.Before(time.Now()) {
 				state.PositionMs += time.Since(state.UpdatedAt).Milliseconds()

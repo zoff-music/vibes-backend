@@ -41,7 +41,7 @@ type RoomEvent struct {
 	Payload interface{} `json:"payload"`
 }
 
-// RoomEventBroadcaster broadcasts events to room subscribers
-type RoomEventBroadcaster interface {
-	BroadcastToRoom(ctx context.Context, roomID string, event *RoomEvent) error
+// RoomEventNotifier broadcasts events to room subscribers
+type RoomEventNotifier interface {
+	NotifyRoom(ctx context.Context, roomID string, event *RoomEvent) error
 }

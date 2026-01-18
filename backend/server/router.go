@@ -40,11 +40,17 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions)
 
 	// YouTube routes
-	// YouTube routes
 	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)
 	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)
 
+	s.addSessionMiddleware(api)
 	s.addTracingAndMetrics(api)
+}
+
+func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
+	for _, r := range routers {
+		r.Use(middleware.SessionMiddleware)
+	}
 }
 
 // addTracingAndMetrics - Adds tracing and metrics to a router.

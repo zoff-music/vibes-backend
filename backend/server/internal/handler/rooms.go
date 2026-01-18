@@ -1,34 +1,18 @@
 package handler
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
-	"regexp"
-	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes/server/internal/helper"
+	"github.com/zoff-music/vibes/server/internal/middleware"
 	"github.com/zoff-music/vibes/vibe"
 	"golang.org/x/crypto/bcrypt"
 )
-
-// slugify creates a URL-safe slug from a string
-func slugify(s string) string {
-	// Convert to lowercase
-	s = strings.ToLower(s)
-	// Replace spaces with dashes
-	s = strings.ReplaceAll(s, " ", "-")
-	// Remove non-alphanumeric characters (except dashes)
-	reg := regexp.MustCompile("[^a-z0-9-]+")
-	s = reg.ReplaceAllString(s, "")
-	// Remove multiple dashes
-	reg = regexp.MustCompile("-+")
-	s = reg.ReplaceAllString(s, "-")
-	// Trim dashes
-	s = strings.Trim(s, "-")
-	return s
-}
 
 // CreateRoom handles POST /api/v1/rooms
 func CreateRoom(
@@ -45,17 +29,43 @@ func CreateRoom(
 		}
 
 		if req.Name == "" {
-			handleError(w, fmt.Errorf("room name is required"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("room name is required"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
 		// Check if room already exists
 		existingRoom, err := db.GetRoomByName(ctx, req.Name)
-		if err == nil && !existingRoom.IsEmpty() {
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("failed to check existing room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		if !existingRoom.IsEmpty() {
 			// Room exists, return it with 200 OK
+			body, err := json.Marshal(existingRoom)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("marshal response: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			_ = json.NewEncoder(w).Encode(existingRoom)
+			_, _ = w.Write(body)
 			return
 		}
 
@@ -63,17 +73,27 @@ func CreateRoom(
 		if req.Password != "" {
 			hash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 			if err != nil {
-				handleError(w, fmt.Errorf("failed to hash password: %w", err), http.StatusInternalServerError, true)
+				handleError(
+					w,
+					fmt.Errorf("failed to hash password: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
 				return
 			}
 			passwordHash = string(hash)
 		}
 
 		// Generate slug from name
-		slug := slugify(req.Name)
+		slug := helper.Slugify(req.Name)
 		if slug == "" {
 			// Fallback if slugify results in empty string (e.g. "   ")
-			handleError(w, fmt.Errorf("invalid room name"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("invalid room name"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
@@ -88,13 +108,29 @@ func CreateRoom(
 
 		created, err := db.CreateRoom(ctx, room)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to create room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to create room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		body, err := json.Marshal(created)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(created)
+		_, _ = w.Write(body)
 	}
 }
 
@@ -118,8 +154,20 @@ func GetRoom(
 			return
 		}
 
+		body, err := json.Marshal(room)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(room)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
 	}
 }
 
@@ -156,12 +204,29 @@ func UpdateRoom(
 		room.Settings = req.Settings
 		updated, err := db.UpdateRoom(ctx, room)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to update room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to update room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		body, err := json.Marshal(updated)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		_ = json.NewEncoder(w).Encode(updated)
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
 	}
 }
 
@@ -188,16 +253,19 @@ func CreateSession(
 		}
 
 		if room.IsEmpty() {
-			handleError(w, fmt.Errorf("room not found"), http.StatusNotFound, false)
+			handleError(
+				w,
+				fmt.Errorf("room not found"),
+				http.StatusNotFound,
+				false,
+			)
 			return
 		}
 
 		isAdmin := false
 		if req.Password != "" && room.AdminPasswordHash != "" {
 			err = bcrypt.CompareHashAndPassword([]byte(room.AdminPasswordHash), []byte(req.Password))
-			if err == nil {
-				isAdmin = true
-			}
+			isAdmin = err == nil
 		}
 
 		user := &vibe.User{
@@ -211,7 +279,12 @@ func CreateSession(
 
 		createdUser, err := db.CreateUser(ctx, user)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to create session: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to create session: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -222,8 +295,34 @@ func CreateSession(
 			Room:     room,
 		}
 
+		sessionPayload := middleware.SessionPayload{
+			UserID: createdUser.ID,
+		}
+		sessionJSON, _ := json.Marshal(sessionPayload)
+		sessionEncoded := base64.StdEncoding.EncodeToString(sessionJSON)
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session",
+			Value:    sessionEncoded,
+			Path:     "/",
+			HttpOnly: true,
+			// Secure:   true, // TODO: Enable in production
+			SameSite: http.SameSiteStrictMode,
+		})
+
+		body, err := json.Marshal(resp)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
-		_ = json.NewEncoder(w).Encode(resp)
+		_, _ = w.Write(body)
 	}
 }

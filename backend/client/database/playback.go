@@ -167,3 +167,78 @@ func (c *Client) UpsertPlaybackState(ctx context.Context, state *vibe.PlaybackSt
 
 	return nil
 }
+
+// SkipTrack skips the current track to the next one in the queue.
+func (c *Client) SkipTrack(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SkipTrack")
+	defer span.Finish()
+
+	state, err := c.GetPlaybackState(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("skip track: get playback state: %w", err)
+	}
+
+	currentPosition := -1
+	if state.CurrentSong != nil {
+		currentPosition = state.CurrentSong.Position
+	} else if state.CurrentSongID != nil {
+		// If we only have ID, we might need to fetch it to know position,
+		// but typically state has CurrentSong populated if ID is present.
+	}
+
+	nextSong, err := c.GetNextSong(ctx, roomID, currentPosition)
+	if err != nil {
+		return nil, fmt.Errorf("skip track: get next song: %w", err)
+	}
+
+	if nextSong.IsEmpty() {
+		state.CurrentSongID = nil
+		state.CurrentSong = nil
+		state.IsPlaying = false
+	} else {
+		state.CurrentSongID = &nextSong.ID
+		state.CurrentSong = nextSong
+		state.IsPlaying = true
+	}
+
+	state.PositionMs = 0
+	state.UpdatedAt = time.Now()
+
+	err = c.UpsertPlaybackState(ctx, state)
+	if err != nil {
+		return nil, fmt.Errorf("skip track: upsert playback state: %w", err)
+	}
+
+	return state, nil
+}
+
+// UpdatePlayback updates the playback state based on the action (play/pause/seek).
+func (c *Client) UpdatePlayback(ctx context.Context, roomID string, action vibe.RoomAction, positionMs int64) (*vibe.PlaybackState, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "UpdatePlayback")
+	defer span.Finish()
+
+	state, err := c.GetPlaybackState(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("update playback: get playback state: %w", err)
+	}
+
+	switch action {
+	case vibe.RoomActionPlay:
+		state.IsPlaying = true
+	case vibe.RoomActionPause:
+		state.IsPlaying = false
+	case vibe.RoomActionSeek:
+		state.PositionMs = positionMs
+	default:
+		return nil, fmt.Errorf("update playback: invalid action: %s", action)
+	}
+
+	state.UpdatedAt = time.Now()
+
+	err = c.UpsertPlaybackState(ctx, state)
+	if err != nil {
+		return nil, fmt.Errorf("update playback: upsert playback state: %w", err)
+	}
+
+	return state, nil
+}

@@ -13,16 +13,21 @@ import (
 
 // GetSongs handles GET /api/v1/rooms/:id/songs
 func GetSongs(
-	sf vibe.SongsFetcher,
+	db vibe.SongsFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		vars := mux.Vars(r)
 		roomID := vars["id"]
 
-		songs, err := sf.GetSongs(ctx, roomID)
+		songs, err := db.GetSongs(ctx, roomID)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to fetch songs: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to fetch songs: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -33,7 +38,7 @@ func GetSongs(
 
 // AddSong handles POST /api/v1/rooms/:id/songs
 func AddSong(
-	sm vibe.SongsModifier,
+	db vibe.SongsModifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -43,7 +48,12 @@ func AddSong(
 		var req vibe.AddSongRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
+			handleError(
+				w,
+				fmt.Errorf("invalid request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
 			return
 		}
 
@@ -61,9 +71,14 @@ func AddSong(
 			AddedAt:      time.Now(),
 		}
 
-		created, err := sm.AddSong(ctx, song)
+		created, err := db.AddSong(ctx, song)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to add song: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to add song: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -75,7 +90,7 @@ func AddSong(
 
 // RemoveSong handles DELETE /api/v1/rooms/:id/songs/:songId
 func RemoveSong(
-	sm vibe.SongsModifier,
+	db vibe.SongsModifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -83,9 +98,14 @@ func RemoveSong(
 		roomID := vars["id"]
 		songID := vars["songId"]
 
-		err := sm.RemoveSong(ctx, roomID, songID)
+		err := db.RemoveSong(ctx, roomID, songID)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to remove song: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to remove song: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -95,7 +115,7 @@ func RemoveSong(
 
 // ReorderSongs handles PATCH /api/v1/rooms/:id/songs/reorder/:songId
 func ReorderSongs(
-	sm vibe.SongsModifier,
+	db vibe.SongsModifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -106,13 +126,23 @@ func ReorderSongs(
 		var req vibe.ReorderSongsRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
+			handleError(
+				w,
+				fmt.Errorf("invalid request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
 			return
 		}
 
-		err = sm.ReorderSongs(ctx, roomID, songID, req.NewPosition)
+		err = db.ReorderSongs(ctx, roomID, songID, req.NewPosition)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to reorder songs: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to reorder songs: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
