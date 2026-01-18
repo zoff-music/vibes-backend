@@ -255,6 +255,27 @@ func CreateSession(
 			return
 		}
 
+		// Check if user already has a valid session - don't create a new one
+		session, hasSession := ctx.Value(middleware.SessionKey).(middleware.SessionPayload)
+		if hasSession && session.UserID != "" {
+			// User already has a session, just return existing info
+			room, err := db.GetRoom(ctx, roomID)
+			if err == nil && !room.IsEmpty() {
+				resp := vibe.SessionResponse{
+					UserID:   session.UserID,
+					Nickname: nil,   // Frontend will use stored value
+					IsAdmin:  false, // Will be updated if they re-auth
+					Room:     room,
+				}
+
+				body, _ := json.Marshal(resp)
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write(body)
+				return
+			}
+		}
+
 		room, err := db.GetRoom(ctx, roomID)
 		if err != nil {
 			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
@@ -316,7 +337,7 @@ func CreateSession(
 			Path:     "/",
 			HttpOnly: true,
 			// Secure:   true, // TODO: Enable in production
-			SameSite: http.SameSiteStrictMode,
+			SameSite: http.SameSiteLaxMode,
 		})
 
 		body, err := json.Marshal(resp)

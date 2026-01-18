@@ -57,7 +57,12 @@ func (h *PlaybackMonitorHandler) Handle(ctx context.Context, data []byte) error 
 func (h *PlaybackMonitorHandler) checkRoomPlayback(ctx context.Context, room *vibe.Room) error {
 	// Mode-specific logic
 	if room.Mode == vibe.RoomModeHost {
-		return h.checkHostHealth(ctx, room)
+		// Host mode: check host health AND auto-advance songs when they end
+		if err := h.checkHostHealth(ctx, room); err != nil {
+			return err
+		}
+		// Also check if current song has ended and auto-advance
+		return h.checkServerPlayback(ctx, room.ID)
 	} else if room.Mode == vibe.RoomModeServer {
 		return h.checkServerPlayback(ctx, room.ID)
 	}

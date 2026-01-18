@@ -21,6 +21,8 @@ type ParticipantStorage interface {
 	GetActiveParticipants(ctx context.Context, roomID string, activeWithin time.Duration) ([]Participant, error)
 	// SetRoomHost updates the host for a room
 	SetRoomHost(ctx context.Context, roomID, userID string) error
+	// RemoveParticipant removes a participant from a room
+	RemoveParticipant(ctx context.Context, roomID, userID string) error
 	// DeleteInactiveParticipants removes participants who haven't been seen within the duration
 	DeleteInactiveParticipants(ctx context.Context, olderThan time.Duration) (int64, error)
 }

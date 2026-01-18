@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"os"
 
 	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/config"
@@ -12,6 +13,11 @@ func main() {
 	log.SetFormatter(&log.TextFormatter{
 		FullTimestamp: true,
 	})
+
+	// Enable debug logging if DEBUG=TRUE
+	if os.Getenv("DEBUG") == "TRUE" || os.Getenv("DEBUG") == "true" {
+		log.SetLevel(log.DebugLevel)
+	}
 
 	log.Info("Starting ...")
 

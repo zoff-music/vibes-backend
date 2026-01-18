@@ -43,6 +43,7 @@ func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activ
 		SELECT room_id, user_id, last_seen_at
 		FROM room_participants
 		WHERE room_id = ?1 AND last_seen_at > ?2
+		ORDER BY last_seen_at DESC
 	`, roomID, cutoff)
 	if err != nil {
 		return nil, fmt.Errorf("error querying active participants: %w", err)
@@ -82,6 +83,24 @@ func (c *Client) SetRoomHost(ctx context.Context, roomID, userID string) error {
 	`, hostID, roomID)
 	if err != nil {
 		return fmt.Errorf("error setting room host: %w", err)
+	}
+
+	return nil
+}
+
+// RemoveParticipant removes a participant from a room
+func (c *Client) RemoveParticipant(ctx context.Context, roomID, userID string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "RemoveParticipant")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := c.DB.ExecContext(cctx, `
+		DELETE FROM room_participants WHERE room_id = ?1 AND user_id = ?2
+	`, roomID, userID)
+	if err != nil {
+		return fmt.Errorf("error removing participant: %w", err)
 	}
 
 	return nil
