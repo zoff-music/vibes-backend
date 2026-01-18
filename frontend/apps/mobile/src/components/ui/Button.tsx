@@ -3,7 +3,7 @@ import React from 'react';
 interface Props {
     title: string;
     onClick: () => void;
-    variant?: 'primary' | 'secondary' | 'outline' | 'ghost';
+    variant?: 'primary' | 'secondary' | 'outline-solid' | 'ghost';
     size?: 'sm' | 'md' | 'lg';
     loading?: boolean;
     disabled?: boolean;

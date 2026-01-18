@@ -83,7 +83,7 @@ export default function Home() {
                                     value={roomCode}
                                     onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
                                     onKeyDown={(e) => e.key === 'Enter' && handleJoinRoom()}
-                                    className="w-full bg-surface rounded-xl px-4 py-4 text-base text-ink placeholder:text-ink/40 border-2 border-ink/20 focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] transition-all font-mono tracking-wider"
+                                    className="w-full bg-surface rounded-xl px-4 py-4 text-base text-ink placeholder:text-ink/40 border-2 border-ink/20 focus:outline-hidden focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] transition-all font-mono tracking-wider"
                                     maxLength={20}
                                 />
                                 {roomCode && (

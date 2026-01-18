@@ -201,7 +201,7 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
                             value={searchQuery}
                             onChange={(e) => handleSearchChange(e.target.value)}
                             onKeyDown={handleKeyDown}
-                            className="w-full bg-surface rounded-xl pl-12 pr-12 py-4 text-base text-ink placeholder:text-ink/40 border-2 border-ink/20 focus:outline-none focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] transition-all font-medium"
+                            className="w-full bg-surface rounded-xl pl-12 pr-12 py-4 text-base text-ink placeholder:text-ink/40 border-2 border-ink/20 focus:outline-hidden focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] transition-all font-medium"
                             autoFocus
                         />
                         {searchQuery && (
@@ -218,7 +218,7 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
 
                     {error && (
                         <div className="mt-3 flex items-start gap-2 text-error text-sm animate-slide-down font-medium">
-                            <svg className="w-4 h-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                                 <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                             <span>{error}</span>
@@ -234,7 +234,7 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
                                     onClick={() => handleSelectResult(result)}
                                     className={`w-full flex gap-3 p-4 hover:bg-sakura/20 transition-all text-left ${index > 0 ? 'border-t-2 border-ink/10' : ''}`}
                                 >
-                                    <div className="relative flex-shrink-0">
+                                    <div className="relative shrink-0">
                                         <img
                                             src={result.thumbnailUrl}
                                             alt={result.title}
@@ -274,7 +274,7 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
                 {previewVideo && !justAdded && (
                     <div className="glass rounded-2xl p-4 mb-6 animate-scale-in border-2 border-ink/10">
                         <div className="flex gap-4">
-                            <div className="relative flex-shrink-0">
+                            <div className="relative shrink-0">
                                 <img
                                     src={previewVideo.thumbnailUrl}
                                     alt={previewVideo.title}

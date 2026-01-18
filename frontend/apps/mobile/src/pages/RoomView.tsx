@@ -245,7 +245,7 @@ export default function RoomView() {
                                                     onClick={() => room && updateRoomSettings({ ...room.settings, skipAllowed: !room.settings.skipAllowed })}
                                                     className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink dark:border-primary ${room?.settings.skipAllowed ? 'bg-primary' : 'bg-ink/5 dark:bg-dark-surfaceElevated opacity-50'}`}
                                                 >
-                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.skipAllowed ? 'right-1.5' : 'left-1.5'}`} />
+                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.skipAllowed ? 'right-1.5' : 'left-1.5'}`} />
                                                 </button>
                                             </div>
 
@@ -258,7 +258,7 @@ export default function RoomView() {
                                                     onClick={() => room && updateRoomSettings({ ...room.settings, democraticSkip: !room.settings.democraticSkip })}
                                                     className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink dark:border-primary ${room?.settings.democraticSkip ? 'bg-primary' : 'bg-ink/5 dark:bg-dark-surfaceElevated opacity-50'}`}
                                                 >
-                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.democraticSkip ? 'right-1.5' : 'left-1.5'}`} />
+                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.democraticSkip ? 'right-1.5' : 'left-1.5'}`} />
                                                 </button>
                                             </div>
 
@@ -271,7 +271,7 @@ export default function RoomView() {
                                                     onClick={() => room && updateRoomSettings({ ...room.settings, loopQueue: !room.settings.loopQueue })}
                                                     className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink dark:border-primary ${room?.settings.loopQueue ? 'bg-primary' : 'bg-ink/5 dark:bg-dark-surfaceElevated opacity-50'}`}
                                                 >
-                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.loopQueue ? 'right-1.5' : 'left-1.5'}`} />
+                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.loopQueue ? 'right-1.5' : 'left-1.5'}`} />
                                                 </button>
                                             </div>
 
@@ -284,7 +284,7 @@ export default function RoomView() {
                                                     onClick={() => room && updateRoomSettings({ ...room.settings, removeOnPlay: !room.settings.removeOnPlay })}
                                                     className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink dark:border-primary ${room?.settings.removeOnPlay ? 'bg-ink dark:bg-primary' : 'bg-ink/5 dark:bg-dark-surfaceElevated opacity-50'}`}
                                                 >
-                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.removeOnPlay ? 'right-1.5' : 'left-1.5'}`} />
+                                                    <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.removeOnPlay ? 'right-1.5' : 'left-1.5'}`} />
                                                 </button>
                                             </div>
 
@@ -296,13 +296,13 @@ export default function RoomView() {
                                                 <div className="flex bg-ink/5 dark:bg-dark-surfaceElevated p-1 rounded-lg border border-ink/10 dark:border-primary/20">
                                                     <button
                                                         onClick={() => room && updateRoom({ mode: 'server' })}
-                                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${room?.mode === 'server' ? 'bg-white dark:bg-dark-paper shadow-sm text-ink dark:text-dark-text' : 'text-ink/40 dark:text-dark-text-muted hover:text-ink/60 dark:hover:text-dark-text-muted'}`}
+                                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${room?.mode === 'server' ? 'bg-white dark:bg-dark-paper shadow-xs text-ink dark:text-dark-text' : 'text-ink/40 dark:text-dark-text-muted hover:text-ink/60 dark:hover:text-dark-text-muted'}`}
                                                     >
                                                         Server
                                                     </button>
                                                     <button
                                                         onClick={() => room && updateRoom({ mode: 'host' })}
-                                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${room?.mode === 'host' ? 'bg-white dark:bg-dark-paper shadow-sm text-ink dark:text-dark-text' : 'text-ink/40 dark:text-dark-text-muted hover:text-ink/60 dark:hover:text-dark-text-muted'}`}
+                                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${room?.mode === 'host' ? 'bg-white dark:bg-dark-paper shadow-xs text-ink dark:text-dark-text' : 'text-ink/40 dark:text-dark-text-muted hover:text-ink/60 dark:hover:text-dark-text-muted'}`}
                                                     >
                                                         Host
                                                     </button>
@@ -361,7 +361,7 @@ export default function RoomView() {
 
             {/* Main content */}
             <div className="flex-1 overflow-y-auto">
-                <div className="max-w-7xl mx-auto px-4 py-8 lg:grid lg:grid-cols-[1fr,400px] lg:gap-12 items-start">
+                <div className="max-w-7xl mx-auto px-4 py-8 lg:grid lg:grid-cols-[1fr_400px] lg:gap-12 items-start">
                     {/* Player Section */}
                     <div className="space-y-6">
                         {/* Video Player */}
@@ -406,11 +406,11 @@ export default function RoomView() {
                                             />
 
                                             {currentSong.thumbnailUrl && (
-                                                <div className="relative z-10 flex-shrink-0">
+                                                <div className="relative z-10 shrink-0">
                                                     <img
                                                         src={currentSong.thumbnailUrl}
                                                         alt=""
-                                                        className="w-16 h-16 rounded-xl object-cover border-2 border-ink/10 dark:border-primary/20 shadow-sm transition-transform group-hover/card:scale-105"
+                                                        className="w-16 h-16 rounded-xl object-cover border-2 border-ink/10 dark:border-primary/20 shadow-xs transition-transform group-hover/card:scale-105"
                                                     />
                                                 </div>
                                             )}

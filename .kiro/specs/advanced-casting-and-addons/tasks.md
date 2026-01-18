@@ -9,7 +9,7 @@ The implementation follows a layered approach: foundational casting interfaces f
 ## Tasks
 
 - [ ] 1. Set up foundational casting interfaces using existing data structures
-  - [ ] 1.1 Extend existing Room model in backend/vibe/vibe.go for casting
+  - [x] 1.1 Extend existing Room model in backend/vibe/vibe.go for casting
     - Add casting-related fields to existing Room struct
     - Add CastSession and CastDevice types to vibe.go
     - Use existing database patterns without new tables

@@ -44,15 +44,15 @@ This document specifies the requirements for enhancing the Vibez collaborative m
 
 ### Requirement 3: Advanced Casting User Interface
 
-**User Story:** As a participant, I want to see an enhanced casting interface, so that I can view queue information and media details on cast devices.
+**User Story:** As a participant, I want to see an enhanced casting interface with dark mode support, so that I can view queue information and media details on cast devices in any lighting condition.
 
 #### Acceptance Criteria
 
-1. WHEN casting is active, THE Cast_UI SHALL display the current song title, artist, and album artwork
-2. WHEN displaying the queue, THE Cast_UI SHALL show the next 3-5 upcoming songs with contributor information
+1. WHEN casting is active, THE Cast_UI SHALL display the current song title, artist, and album artwork with proper dark mode styling
+2. WHEN displaying the queue, THE Cast_UI SHALL show the next 3-5 upcoming songs with contributor information using responsive design
 3. WHEN a song is skipped or changed, THE Cast_UI SHALL update the display within 500ms to maintain synchronization
-4. WHEN no video content is available, THE Cast_UI SHALL display audio visualizations or album artwork
-5. WHEN participants vote to skip, THE Cast_UI SHALL show real-time voting progress and results
+4. WHEN no video content is available, THE Cast_UI SHALL display audio visualizations or album artwork with dark mode compatibility
+5. WHEN participants vote to skip, THE Cast_UI SHALL show real-time voting progress and results with accessible color schemes in both light and dark modes
 
 ### Requirement 4: Plugin Architecture Foundation
 
