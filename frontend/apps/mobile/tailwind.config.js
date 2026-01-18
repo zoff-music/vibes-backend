@@ -4,6 +4,7 @@ export default {
     "./index.html",
     "./src/**/*.{js,ts,jsx,tsx}",
   ],
+  darkMode: 'class',
   theme: {
     extend: {
       colors: {
@@ -14,6 +15,22 @@ export default {
         surfaceElevated: '#ffffff',
         surfaceHover: '#f0f0f8',
         border: '#e5e5f0',
+
+        // Dark mode palette - sleek dark grey with pink accent
+        dark: {
+          background: '#0d0d0f', // Near-black with slight cool tint
+          paper: '#141416',      // Dark charcoal
+          surface: '#1a1a1e',    // Surface grey
+          surfaceElevated: '#222226', // Elevated surface
+          surfaceHover: '#2a2a30',    // Hover state
+          border: '#2a2a30',          // Border color
+          text: {
+            DEFAULT: '#f5f5f7',       // Clean white
+            muted: '#a1a1a8',         // Muted grey
+            subtle: '#6b6b73',        // Subtle grey
+            inverse: '#0d0d0f',       // Inverse text
+          },
+        },
 
         // Synthwave Palette
         primary: {

@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useRoom } from '../hooks/useRoom';
 import { usePlayback } from '../hooks/usePlayback';
 import { useQueue } from '../hooks/useQueue';
+import { useThemeStore } from '../stores/themeStore';
 import { VideoPlayer } from '../components/player/VideoPlayer';
 import { PlayerControls } from '../components/player/PlayerControls';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
@@ -18,6 +19,7 @@ export default function RoomView() {
     const { currentSong, skip, isPlaying } = usePlayback(id || '');
     const { songs, fetchQueue, voteSong } = useQueue(id || '');
     const { room, fetchRoom, isLoading, error, joinRoom, userId, users, updateRoomSettings, updateRoom } = useRoom(id || '');
+    const { isDarkMode, toggleDarkMode } = useThemeStore();
 
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
     const [showRoomInfo, setShowRoomInfo] = useState(false);
@@ -106,11 +108,11 @@ export default function RoomView() {
     return (
         <div className="min-h-screen flex flex-col animate-fade-in">
             {/* Header */}
-            <div className="px-4 py-5 backdrop-blur-lg bg-white/95 border-b-4 border-ink/10 sticky top-0 z-20 shadow-retro">
+            <div className="px-4 py-5 backdrop-blur-lg bg-white/95 dark:bg-dark-paper/95 border-b-4 border-ink/10 dark:border-primary/20 sticky top-0 z-20 shadow-retro transition-colors duration-300">
                 <div className="max-w-7xl mx-auto flex items-center justify-between">
                     <button
                         onClick={() => navigate(-1)}
-                        className="inline-flex items-center gap-2 text-ink/60 hover:text-ink transition-colors group"
+                        className="inline-flex items-center gap-2 text-ink/60 dark:text-dark-text-muted hover:text-ink dark:hover:text-dark-text transition-colors group"
                     >
                         <svg className="w-5 h-5 group-hover:-translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
@@ -122,24 +124,44 @@ export default function RoomView() {
                         onClick={() => setShowRoomInfo(!showRoomInfo)}
                         className="flex-1 mx-4 flex items-center justify-center gap-2 hover:opacity-70 transition-opacity"
                     >
-                        <h1 className="text-lg font-black truncate text-ink" style={{ fontFamily: 'Poppins' }}>{room?.name || 'Loading...'}</h1>
-                        <svg className={`w-4 h-4 text-ink/50 transition-transform ${showRoomInfo ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <h1 className="text-lg font-black truncate text-ink dark:text-dark-text" style={{ fontFamily: 'Poppins' }}>{room?.name || 'Loading...'}</h1>
+                        <svg className={`w-4 h-4 text-ink/50 dark:text-dark-text-muted transition-transform ${showRoomInfo ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                         </svg>
                     </button>
 
                     <div className="flex items-center gap-2">
                         {users && users.length > 0 && (
-                            <div className="flex items-center gap-1.5 glass rounded-full px-3 py-1.5 border-2 border-ink/10 mr-2">
+                            <div className="flex items-center gap-1.5 glass rounded-full px-3 py-1.5 border-2 border-ink/10 dark:border-primary/20 mr-2">
                                 <div className="w-2 h-2 bg-success rounded-full animate-pulse" />
-                                <span className="text-xs font-medium">{users.length}</span>
+                                <span className="text-xs font-medium dark:text-dark-text">{users.length}</span>
                             </div>
                         )}
+
+                        {/* Dark Mode Toggle */}
+                        <button
+                            onClick={toggleDarkMode}
+                            className={`p-2.5 rounded-xl transition-all border-2 ${isDarkMode
+                                ? 'bg-primary text-white border-primary shadow-neon-pink'
+                                : 'text-ink/60 hover:text-ink border-ink/10 hover:border-ink/20 dark:text-dark-text-muted dark:hover:text-dark-text dark:border-primary/20'
+                                }`}
+                            title={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+                        >
+                            {isDarkMode ? (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                            ) : (
+                                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                                </svg>
+                            )}
+                        </button>
 
                         <div className="relative">
                             <button
                                 onClick={() => setShowShare(!showShare)}
-                                className={`p-2.5 rounded-xl transition-all border-2 ${showShare ? 'bg-ink text-white border-ink' : 'text-ink/60 hover:text-ink border-ink/10 hover:border-ink/20'}`}
+                                className={`p-2.5 rounded-xl transition-all border-2 ${showShare ? 'bg-ink dark:bg-primary text-white border-ink dark:border-primary' : 'text-ink/60 hover:text-ink border-ink/10 hover:border-ink/20 dark:text-dark-text-muted dark:hover:text-dark-text dark:border-primary/20'}`}
                                 title="Share Room"
                             >
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -153,7 +175,7 @@ export default function RoomView() {
                                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                        className="absolute right-0 mt-3 p-4 bg-white rounded-3xl shadow-2xl border-4 border-ink z-50 w-72"
+                                        className="absolute right-0 mt-3 p-4 bg-white dark:bg-dark-surface rounded-3xl shadow-2xl border-4 border-ink dark:border-primary z-50 w-72"
                                     >
                                         <div className="text-center space-y-4">
                                             <div className="p-4 bg-sakura/20 rounded-2xl inline-block ring-2 ring-ink/5">
@@ -166,9 +188,9 @@ export default function RoomView() {
                                                 />
                                             </div>
                                             <div>
-                                                <p className="font-black text-sm text-ink mb-1">Invite Friends</p>
-                                                <div className="flex items-center gap-2 bg-ink/5 p-2 rounded-xl">
-                                                    <p className="text-[10px] text-ink/60 truncate font-mono flex-1 text-left">{window.location.href}</p>
+                                                <p className="font-black text-sm text-ink dark:text-dark-text mb-1">Invite Friends</p>
+                                                <div className="flex items-center gap-2 bg-ink/5 dark:bg-dark-surfaceElevated p-2 rounded-xl">
+                                                    <p className="text-[10px] text-ink/60 dark:text-dark-text-muted truncate font-mono flex-1 text-left">{window.location.href}</p>
                                                     <button
                                                         onClick={() => {
                                                             navigator.clipboard.writeText(window.location.href);
@@ -179,7 +201,7 @@ export default function RoomView() {
                                                             }]);
                                                             setShowShare(false);
                                                         }}
-                                                        className="p-1 px-2 bg-ink text-white rounded-lg text-[10px] font-bold hover:scale-105 active:scale-95 transition-all"
+                                                        className="p-1 px-2 bg-ink dark:bg-primary text-white rounded-lg text-[10px] font-bold hover:scale-105 active:scale-95 transition-all"
                                                     >
                                                         Copy
                                                     </button>
@@ -194,7 +216,7 @@ export default function RoomView() {
                         <div className="relative ml-1">
                             <button
                                 onClick={() => setShowSettings(!showSettings)}
-                                className={`p-2.5 rounded-xl transition-all border-2 ${showSettings ? 'bg-ink text-white border-ink' : 'text-ink/60 hover:text-ink border-ink/10 hover:border-ink/20'}`}
+                                className={`p-2.5 rounded-xl transition-all border-2 ${showSettings ? 'bg-ink dark:bg-primary text-white border-ink dark:border-primary' : 'text-ink/60 hover:text-ink border-ink/10 hover:border-ink/20 dark:text-dark-text-muted dark:hover:text-dark-text dark:border-primary/20'}`}
                                 title="Room Settings"
                             >
                                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -209,19 +231,19 @@ export default function RoomView() {
                                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                                        className="absolute right-0 mt-3 p-5 bg-white rounded-3xl shadow-2xl border-4 border-ink z-50 w-72"
+                                        className="absolute right-0 mt-3 p-5 bg-white dark:bg-dark-surface rounded-3xl shadow-2xl border-4 border-ink dark:border-primary z-50 w-72"
                                     >
                                         <div className="space-y-4">
-                                            <h4 className="font-black text-ink border-b-2 border-ink/5 pb-2 text-sm uppercase tracking-wider">Room Control</h4>
+                                            <h4 className="font-black text-ink dark:text-dark-text border-b-2 border-ink/5 dark:border-primary/20 pb-2 text-sm uppercase tracking-wider">Room Control</h4>
 
                                             <div className="flex items-center justify-between group">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-ink">Allow Skip</span>
-                                                    <span className="text-[10px] text-ink/40">Anyone can skip</span>
+                                                    <span className="text-sm font-bold text-ink dark:text-dark-text">Allow Skip</span>
+                                                    <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">Anyone can skip</span>
                                                 </div>
                                                 <button
                                                     onClick={() => room && updateRoomSettings({ ...room.settings, skipAllowed: !room.settings.skipAllowed })}
-                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink ${room?.settings.skipAllowed ? 'bg-primary' : 'bg-ink/5 opacity-50'}`}
+                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink dark:border-primary ${room?.settings.skipAllowed ? 'bg-primary' : 'bg-ink/5 dark:bg-dark-surfaceElevated opacity-50'}`}
                                                 >
                                                     <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.skipAllowed ? 'right-1.5' : 'left-1.5'}`} />
                                                 </button>
@@ -229,12 +251,12 @@ export default function RoomView() {
 
                                             <div className="flex items-center justify-between group">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-ink">Democratic Skip</span>
-                                                    <span className="text-[10px] text-ink/40">Require votes</span>
+                                                    <span className="text-sm font-bold text-ink dark:text-dark-text">Democratic Skip</span>
+                                                    <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">Require votes</span>
                                                 </div>
                                                 <button
                                                     onClick={() => room && updateRoomSettings({ ...room.settings, democraticSkip: !room.settings.democraticSkip })}
-                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink ${room?.settings.democraticSkip ? 'bg-primary' : 'bg-ink/5 opacity-50'}`}
+                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink dark:border-primary ${room?.settings.democraticSkip ? 'bg-primary' : 'bg-ink/5 dark:bg-dark-surfaceElevated opacity-50'}`}
                                                 >
                                                     <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.democraticSkip ? 'right-1.5' : 'left-1.5'}`} />
                                                 </button>
@@ -242,12 +264,12 @@ export default function RoomView() {
 
                                             <div className="flex items-center justify-between group">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-ink">Loop Queue</span>
-                                                    <span className="text-[10px] text-ink/40">Cycled back to end</span>
+                                                    <span className="text-sm font-bold text-ink dark:text-dark-text">Loop Queue</span>
+                                                    <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">Cycled back to end</span>
                                                 </div>
                                                 <button
                                                     onClick={() => room && updateRoomSettings({ ...room.settings, loopQueue: !room.settings.loopQueue })}
-                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink ${room?.settings.loopQueue ? 'bg-primary' : 'bg-ink/5 opacity-50'}`}
+                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink dark:border-primary ${room?.settings.loopQueue ? 'bg-primary' : 'bg-ink/5 dark:bg-dark-surfaceElevated opacity-50'}`}
                                                 >
                                                     <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.loopQueue ? 'right-1.5' : 'left-1.5'}`} />
                                                 </button>
@@ -255,39 +277,39 @@ export default function RoomView() {
 
                                             <div className="flex items-center justify-between group">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-ink">Remove Played</span>
-                                                    <span className="text-[10px] text-ink/40">Removed after play</span>
+                                                    <span className="text-sm font-bold text-ink dark:text-dark-text">Remove Played</span>
+                                                    <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">Removed after play</span>
                                                 </div>
                                                 <button
                                                     onClick={() => room && updateRoomSettings({ ...room.settings, removeOnPlay: !room.settings.removeOnPlay })}
-                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink ${room?.settings.removeOnPlay ? 'bg-ink' : 'bg-ink/5 opacity-50'}`}
+                                                    className={`w-12 h-6 rounded-full relative transition-colors border-2 border-ink dark:border-primary ${room?.settings.removeOnPlay ? 'bg-ink dark:bg-primary' : 'bg-ink/5 dark:bg-dark-surfaceElevated opacity-50'}`}
                                                 >
                                                     <div className={`absolute top-1 w-2 h-2 rounded-full bg-white shadow-sm transition-all ${room?.settings.removeOnPlay ? 'right-1.5' : 'left-1.5'}`} />
                                                 </button>
                                             </div>
 
-                                            <div className="flex items-center justify-between group mt-6 pt-4 border-t-2 border-ink/5">
+                                            <div className="flex items-center justify-between group mt-6 pt-4 border-t-2 border-ink/5 dark:border-primary/20">
                                                 <div className="flex flex-col">
-                                                    <span className="text-sm font-bold text-ink">Room Mode</span>
-                                                    <span className="text-[10px] text-ink/40">{room?.mode === 'host' ? 'Host Controls Playback' : 'Auto-Play Server'}</span>
+                                                    <span className="text-sm font-bold text-ink dark:text-dark-text">Room Mode</span>
+                                                    <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">{room?.mode === 'host' ? 'Host Controls Playback' : 'Auto-Play Server'}</span>
                                                 </div>
-                                                <div className="flex bg-ink/5 p-1 rounded-lg border border-ink/10">
+                                                <div className="flex bg-ink/5 dark:bg-dark-surfaceElevated p-1 rounded-lg border border-ink/10 dark:border-primary/20">
                                                     <button
                                                         onClick={() => room && updateRoom({ mode: 'server' })}
-                                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${room?.mode === 'server' ? 'bg-white shadow-sm text-ink' : 'text-ink/40 hover:text-ink/60'}`}
+                                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${room?.mode === 'server' ? 'bg-white dark:bg-dark-paper shadow-sm text-ink dark:text-dark-text' : 'text-ink/40 dark:text-dark-text-muted hover:text-ink/60 dark:hover:text-dark-text-muted'}`}
                                                     >
                                                         Server
                                                     </button>
                                                     <button
                                                         onClick={() => room && updateRoom({ mode: 'host' })}
-                                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${room?.mode === 'host' ? 'bg-white shadow-sm text-ink' : 'text-ink/40 hover:text-ink/60'}`}
+                                                        className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${room?.mode === 'host' ? 'bg-white dark:bg-dark-paper shadow-sm text-ink dark:text-dark-text' : 'text-ink/40 dark:text-dark-text-muted hover:text-ink/60 dark:hover:text-dark-text-muted'}`}
                                                     >
                                                         Host
                                                     </button>
                                                 </div>
                                             </div>
 
-                                            <p className="text-[10px] text-ink/30 text-center pt-2 font-black italic">Settings sync enabled</p>
+                                            <p className="text-[10px] text-ink/30 dark:text-dark-text-subtle text-center pt-2 font-black italic">Settings sync enabled</p>
                                         </div>
                                     </motion.div>
                                 )}
@@ -298,12 +320,12 @@ export default function RoomView() {
 
                 {/* Room info dropdown */}
                 {showRoomInfo && (
-                    <div className="mt-4 glass-elevated rounded-2xl p-5 animate-slide-down border-2 border-ink/10">
+                    <div className="mt-4 glass-elevated rounded-2xl p-5 animate-slide-down border-2 border-ink/10 dark:border-primary/20">
                         <div className="space-y-4">
                             <div>
-                                <p className="text-xs text-ink/60 uppercase tracking-widest mb-2 font-bold">Room Code</p>
+                                <p className="text-xs text-ink/60 dark:text-dark-text-muted uppercase tracking-widest mb-2 font-bold">Room Code</p>
                                 <div className="flex items-center gap-2">
-                                    <code className="text-sm font-mono text-ink font-bold bg-surface px-4 py-2 rounded-xl border-2 border-ink/20">{id}</code>
+                                    <code className="text-sm font-mono text-ink dark:text-dark-text font-bold bg-surface dark:bg-dark-surfaceElevated px-4 py-2 rounded-xl border-2 border-ink/20 dark:border-primary/20">{id}</code>
                                     <button
                                         onClick={() => navigator.clipboard.writeText(id || '')}
                                         className="p-2 hover:bg-ink/5 rounded-lg transition-colors border-2 border-transparent hover:border-ink/10"
@@ -369,15 +391,15 @@ export default function RoomView() {
                                     >
                                         <div className="flex items-center gap-2 mb-3">
                                             <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-matcha animate-pulse shadow-neon-pink' : 'bg-ink/30'}`} />
-                                            <span className="text-[10px] text-ink/60 uppercase tracking-[0.2em] font-black">
+                                            <span className="text-[10px] text-ink/60 dark:text-dark-text-muted uppercase tracking-[0.2em] font-black">
                                                 {isPlaying ? 'Now Playing' : 'Paused'}
                                             </span>
                                         </div>
 
-                                        <div className="relative glass-elevated rounded-2xl p-4 border-2 border-primary/20 overflow-hidden flex gap-4 items-center shadow-retro-pink/20 bg-white/40 backdrop-blur-sm group/card">
+                                        <div className="relative glass-elevated rounded-2xl p-4 border-2 border-primary/20 overflow-hidden flex gap-4 items-center shadow-retro-pink/20 bg-white/40 dark:bg-dark-surface/60 backdrop-blur-sm group/card">
                                             {/* Progress Background */}
                                             <motion.div
-                                                className="absolute inset-y-0 left-0 bg-primary/10 pointer-events-none"
+                                                className="absolute inset-y-0 left-0 bg-primary/10 dark:bg-primary/20 pointer-events-none"
                                                 initial={{ width: 0 }}
                                                 animate={{ width: `${progress * 100}%` }}
                                                 transition={{ duration: 0.1, ease: 'linear' }}
@@ -388,31 +410,31 @@ export default function RoomView() {
                                                     <img
                                                         src={currentSong.thumbnailUrl}
                                                         alt=""
-                                                        className="w-16 h-16 rounded-xl object-cover border-2 border-ink/10 shadow-sm transition-transform group-hover/card:scale-105"
+                                                        className="w-16 h-16 rounded-xl object-cover border-2 border-ink/10 dark:border-primary/20 shadow-sm transition-transform group-hover/card:scale-105"
                                                     />
                                                 </div>
                                             )}
                                             <div className="relative z-10 flex-1 min-w-0">
-                                                <h3 className="font-bold text-ink truncate text-sm">{currentSong.title}</h3>
-                                                <p className="text-xs text-ink/60 truncate font-medium">
+                                                <h3 className="font-bold text-ink dark:text-dark-text truncate text-sm">{currentSong.title}</h3>
+                                                <p className="text-xs text-ink/60 dark:text-dark-text-muted truncate font-medium">
                                                     {currentSong.artist || 'Unknown Artist'} • {formatTime(currentSong.duration * 1000)}
                                                 </p>
                                             </div>
                                         </div>
 
-                                        <div className="h-px bg-ink/10 mt-8 mb-4" />
+                                        <div className="h-px bg-ink/10 dark:bg-primary/20 mt-8 mb-4" />
                                     </motion.div>
                                 )}
                             </AnimatePresence>
 
                             {/* Up Next List */}
                             <div>
-                                <h3 className="text-[10px] text-ink/60 uppercase tracking-[0.2em] font-black mb-4">
+                                <h3 className="text-[10px] text-ink/60 dark:text-dark-text-muted uppercase tracking-[0.2em] font-black mb-4">
                                     Up Next ({songs.filter(s => s.position > 0 && s.id !== currentSong?.id).length})
                                 </h3>
-                                <QueueList 
-                                    songs={songs.filter(s => s.id !== currentSong?.id)} 
-                                    roomId={id || ''} 
+                                <QueueList
+                                    songs={songs.filter(s => s.id !== currentSong?.id)}
+                                    roomId={id || ''}
                                     onVote={async (songId) => {
                                         const result = await voteSong(songId);
                                         if (result === 'success') {
@@ -431,9 +453,9 @@ export default function RoomView() {
                                     }}
                                 />
                                 {songs.filter(s => s.position > 0 && s.id !== currentSong?.id).length === 0 && !currentSong && (
-                                    <div className="text-center py-12 glass rounded-2xl border-2 border-dashed border-ink/10">
-                                        <p className="text-ink/40 font-bold">Queue is empty</p>
-                                        <p className="text-[10px] jp-art text-ink/20">キューは空です</p>
+                                    <div className="text-center py-12 glass rounded-2xl border-2 border-dashed border-ink/10 dark:border-primary/20">
+                                        <p className="text-ink/40 dark:text-dark-text-muted font-bold">Queue is empty</p>
+                                        <p className="text-[10px] jp-art text-ink/20 dark:text-dark-text-subtle">キューは空です</p>
                                     </div>
                                 )}
                             </div>

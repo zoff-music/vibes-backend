@@ -4,22 +4,117 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * THEME SYSTEM
+ * ============
+ * To add a new theme:
+ * 1. Add a new theme class (e.g., .theme-sunset) 
+ * 2. Define all --theme-* CSS variables within it
+ * 3. Add the theme to the themes object in themeStore.ts
+ */
+
 @layer base {
+  /* ===== THEME VARIABLES ===== */
+  :root {
+    /* Background colors */
+    --theme-bg: #fefefe;
+    --theme-bg-paper: #ffffff;
+    --theme-bg-surface: #f8f8fb;
+    --theme-bg-elevated: #ffffff;
+    --theme-bg-hover: #f0f0f8;
+    
+    /* Text colors */
+    --theme-text: #2d3142;
+    --theme-text-muted: #6b7280;
+    --theme-text-subtle: #9ca3af;
+    
+    /* Brand/accent colors */
+    --theme-primary: #ff2e97;
+    --theme-primary-muted: #ff1493;
+    --theme-primary-light: #ffb3e6;
+    
+    /* Border colors */
+    --theme-border: rgba(45, 49, 66, 0.1);
+    --theme-border-strong: rgba(45, 49, 66, 0.15);
+    
+    /* Shadow colors */
+    --theme-shadow: rgba(0, 0, 0, 0.08);
+    --theme-shadow-accent: rgba(255, 46, 151, 0.15);
+    
+    /* Glass effect */
+    --theme-glass-bg: #ffffff;
+    --theme-glass-border: rgba(45, 49, 66, 0.1);
+  }
+
+  /* ===== DARK THEME ===== */
+  .dark {
+    --theme-bg: #0d0d0f;
+    --theme-bg-paper: #141416;
+    --theme-bg-surface: #1a1a1e;
+    --theme-bg-elevated: #222226;
+    --theme-bg-hover: #2a2a30;
+    
+    --theme-text: #f5f5f7;
+    --theme-text-muted: #a1a1a8;
+    --theme-text-subtle: #6b6b73;
+    
+    --theme-primary: #ff2e97;
+    --theme-primary-muted: #ff1493;
+    --theme-primary-light: #ff6bb3;
+    
+    --theme-border: rgba(255, 46, 151, 0.12);
+    --theme-border-strong: rgba(255, 46, 151, 0.18);
+    
+    --theme-shadow: rgba(0, 0, 0, 0.4);
+    --theme-shadow-accent: rgba(255, 46, 151, 0.12);
+    
+    --theme-glass-bg: #1a1a1e;
+    --theme-glass-border: rgba(255, 46, 151, 0.12);
+  }
+
+  /* ===== EXAMPLE: Add more themes like this =====
+  .theme-sunset {
+    --theme-bg: #1a1215;
+    --theme-bg-paper: #22181c;
+    --theme-bg-surface: #2d2024;
+    --theme-bg-elevated: #392830;
+    --theme-bg-hover: #45323c;
+    
+    --theme-text: #fff5f7;
+    --theme-text-muted: #d4a5b0;
+    --theme-text-subtle: #8c6570;
+    
+    --theme-primary: #ff6b35;
+    --theme-primary-muted: #e85d2c;
+    --theme-primary-light: #ff9f7a;
+    
+    --theme-border: rgba(255, 107, 53, 0.15);
+    --theme-border-strong: rgba(255, 107, 53, 0.25);
+    
+    --theme-shadow: rgba(0, 0, 0, 0.4);
+    --theme-shadow-accent: rgba(255, 107, 53, 0.15);
+    
+    --theme-glass-bg: #2d2024;
+    --theme-glass-border: rgba(255, 107, 53, 0.15);
+  }
+  */
+
   * {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
 
   body {
-    @apply bg-background;
-    color: #2d3142;
+    background-color: var(--theme-bg);
+    color: var(--theme-text);
     font-family: 'Inter', 'Noto Sans JP', system-ui, -apple-system, sans-serif;
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  /* Subtle synthwave accent gradient */
+  /* Subtle accent gradient */
   body::before {
     content: '';
     position: fixed;
@@ -32,6 +127,13 @@
                 radial-gradient(circle at 50% 50%, rgba(255, 215, 0, 0.02) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
+    transition: background 0.3s ease;
+  }
+
+  .dark body::before {
+    background: radial-gradient(circle at 20% 80%, rgba(255, 46, 151, 0.08) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 46, 151, 0.04) 0%, transparent 50%),
+                radial-gradient(circle at 50% 100%, rgba(255, 46, 151, 0.06) 0%, transparent 40%);
   }
 
   #root {
@@ -41,33 +143,41 @@
 }
 
 @layer components {
-  /* Retro paper surface */
+  /* Glass surfaces - now using CSS variables */
   .glass {
-    background-color: #ffffff;
-    border-width: 1px;
-    border-style: solid;
-    border-color: rgba(45, 49, 66, 0.1);
-    box-shadow: 4px 4px 0px 0px rgba(0, 0, 0, 0.08);
+    background-color: var(--theme-glass-bg);
+    border: 1px solid var(--theme-glass-border);
+    box-shadow: 4px 4px 0px 0px var(--theme-shadow);
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   }
 
   .glass-elevated {
-    background-color: #ffffff;
-    border-width: 1px;
-    border-style: solid;
-    border-color: rgba(45, 49, 66, 0.15);
-    box-shadow: 6px 6px 0px 0px rgba(255, 46, 151, 0.15),
-                0 4px 20px rgba(0, 0, 0, 0.05);
+    background-color: var(--theme-bg-elevated);
+    border: 1px solid var(--theme-border-strong);
+    box-shadow: 6px 6px 0px 0px var(--theme-shadow-accent),
+                0 4px 20px var(--theme-shadow);
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
   }
 
-  /* Neon accents for interactive elements */
+  /* Neon accents */
   .neon-pink {
     box-shadow: 0 0 10px rgba(255, 46, 151, 0.3),
                 0 0 20px rgba(255, 46, 151, 0.15);
   }
 
+  .dark .neon-pink {
+    box-shadow: 0 0 15px rgba(255, 46, 151, 0.5),
+                0 0 30px rgba(255, 46, 151, 0.25);
+  }
+
   .neon-cyan {
     box-shadow: 0 0 10px rgba(0, 217, 255, 0.3),
                 0 0 20px rgba(0, 217, 255, 0.15);
+  }
+
+  .dark .neon-cyan {
+    box-shadow: 0 0 15px rgba(0, 217, 255, 0.5),
+                0 0 30px rgba(0, 217, 255, 0.25);
   }
 
   /* Smooth transitions */
@@ -79,5 +189,34 @@
   .jp-art {
     font-family: 'Noto Sans JP', sans-serif;
     letter-spacing: 0.1em;
+  }
+  
+  /* Theme-aware text utilities */
+  .text-theme {
+    color: var(--theme-text);
+  }
+  
+  .text-theme-muted {
+    color: var(--theme-text-muted);
+  }
+  
+  .text-theme-subtle {
+    color: var(--theme-text-subtle);
+  }
+  
+  .bg-theme {
+    background-color: var(--theme-bg);
+  }
+  
+  .bg-theme-surface {
+    background-color: var(--theme-bg-surface);
+  }
+  
+  .bg-theme-elevated {
+    background-color: var(--theme-bg-elevated);
+  }
+  
+  .border-theme {
+    border-color: var(--theme-border);
   }
 }
