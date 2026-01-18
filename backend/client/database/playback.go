@@ -98,7 +98,7 @@ func (r *playbackStateRow) scan(row *sql.Row) error {
 
 func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
 	var currentSongID *string
-	if r.CurrentSongID.Valid {
+	if r.CurrentSongID.Valid && r.CurrentSongID.String != "" {
 		currentSongID = &r.CurrentSongID.String
 	}
 
@@ -114,6 +114,7 @@ func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
 	return &vibe.PlaybackState{
 		RoomID:        r.RoomID.String,
 		CurrentSongID: currentSongID,
+		CurrentSong:   nil,
 		IsPlaying:     r.IsPlaying.Valid && r.IsPlaying.Int64 == 1,
 		PositionMs:    positionMs,
 		UpdatedAt:     r.UpdatedAt.Time,

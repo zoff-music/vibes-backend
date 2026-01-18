@@ -173,10 +173,8 @@ export default function RoomView() {
                         {/* Video Player */}
                         <VideoPlayer onEnded={skip} isVisible={true} />
 
-                        {/* Controls (kept below video for better accessibility) */}
-                        <div className="hidden lg:block">
-                            <PlayerControls roomId={id || ''} hasSongsInQueue={songs && songs.length > 0} />
-                        </div>
+                        {/* Controls (always below video) */}
+                        <PlayerControls roomId={id || ''} hasSongsInQueue={songs && songs.length > 0} />
                     </div>
 
                     {/* Queue & Now Playing Section */}
@@ -241,10 +239,6 @@ export default function RoomView() {
                             </div>
                         </div>
 
-                        {/* Controls (mobile layout) */}
-                        <div className="lg:hidden">
-                            <PlayerControls roomId={id || ''} hasSongsInQueue={songs && songs.length > 0} />
-                        </div>
                     </div>
                 </div>
             </div>

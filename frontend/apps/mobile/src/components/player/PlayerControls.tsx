@@ -20,24 +20,6 @@ export const PlayerControls: React.FC<Props> = ({ roomId, hasSongsInQueue = fals
 
     return (
         <div className="w-full space-y-6">
-            {/* Progress Bar */}
-            <div>
-                <div className="relative h-3 bg-ink/10 rounded-full overflow-hidden border-2 border-ink/20">
-                    <div
-                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary via-secondary to-accent transition-all duration-200 ease-out"
-                        style={{ width: `${progress * 100}%` }}
-                    />
-                </div>
-                <div className="flex justify-between mt-3 px-1">
-                    <span className="text-xs font-bold text-ink/70 tabular-nums tracking-wider">
-                        {formatTime(actualPositionMs)}
-                    </span>
-                    <span className="text-xs font-bold text-ink/50 tabular-nums tracking-wider">
-                        {currentSong ? formatTime(currentSong.duration * 1000) : '0:00'}
-                    </span>
-                </div>
-            </div>
-
             {/* Main Controls */}
             <div className="flex items-center justify-center gap-5">
                 {/* Play/Pause Button */}
@@ -70,6 +52,24 @@ export const PlayerControls: React.FC<Props> = ({ roomId, hasSongsInQueue = fals
                         <path strokeLinecap="round" strokeLinejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
                     </svg>
                 </button>
+            </div>
+
+            {/* Progress Bar */}
+            <div>
+                <div className="relative h-3 bg-ink/10 rounded-full overflow-hidden border-2 border-ink/20">
+                    <div
+                        className="absolute inset-y-0 left-0 bg-gradient-to-r from-primary via-secondary to-accent transition-all duration-200 ease-out"
+                        style={{ width: `${progress * 100}%` }}
+                    />
+                </div>
+                <div className="flex justify-between mt-3 px-1">
+                    <span className="text-xs font-bold text-ink/70 tabular-nums tracking-wider">
+                        {formatTime(actualPositionMs)}
+                    </span>
+                    <span className="text-xs font-bold text-ink/50 tabular-nums tracking-wider">
+                        {currentSong ? formatTime(currentSong.duration * 1000) : '0:00'}
+                    </span>
+                </div>
             </div>
         </div>
     );
