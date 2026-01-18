@@ -90,10 +90,11 @@ func skipToNextSong(ctx context.Context, roomID string, state *vibe.PlaybackStat
 	if state.CurrentSong != nil {
 		currentPosition = state.CurrentSong.Position
 	} else if state.CurrentSongID != nil {
-		// If we only have ID, we'd need to fetch the song to get position,
-		// but typically state should have enough info or we can assume sequential
-		// For now let's just assume we need to fetch if currentPosition is -1
-		// Actually GetNextSong takes currentPosition.
+		// If we only have ID, fetch the song to get its position
+		song, err := sm.GetSong(ctx, roomID, *state.CurrentSongID)
+		if err == nil && !song.IsEmpty() {
+			currentPosition = song.Position
+		}
 	}
 
 	nextSong, err := sm.GetNextSong(ctx, roomID, currentPosition)

@@ -50,6 +50,7 @@ type SongsFetcher interface {
 
 // SongsModifier modifies the song queue
 type SongsModifier interface {
+	GetSong(ctx context.Context, roomID, songID string) (*Song, error)
 	AddSong(ctx context.Context, song *Song) (*Song, error)
 	RemoveSong(ctx context.Context, roomID, songID string) error
 	ReorderSongs(ctx context.Context, roomID, songID string, newPosition int) error

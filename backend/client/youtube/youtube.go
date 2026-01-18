@@ -115,8 +115,74 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	}
 
 	tracks := make([]vibe.MusicTrack, 0, len(result.Items))
+	if len(result.Items) == 0 {
+		return tracks, nil
+	}
+
+	// Fetch durations for all videos in one call
+	ids := ""
+	for i, item := range result.Items {
+		if i > 0 {
+			ids += ","
+		}
+		ids += item.ID.VideoID
+	}
+
+	vidUrl, _ := url.Parse(baseURL + "/videos")
+	vq := vidUrl.Query()
+	vq.Set("part", "contentDetails")
+	vq.Set("id", ids)
+	vq.Set("key", c.apiKey)
+	vidUrl.RawQuery = vq.Encode()
+
+	vreq, err := http.NewRequestWithContext(ctx, "GET", vidUrl.String(), nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create videos request: %w", err)
+	}
+
+	vresp, err := c.client.Do(vreq)
+	if err != nil {
+		return nil, fmt.Errorf("videos request failed: %w", err)
+	}
+	defer vresp.Body.Close()
+
+	if vresp.StatusCode == http.StatusOK {
+		var vresult videoResponse
+		if err := json.NewDecoder(vresp.Body).Decode(&vresult); err == nil {
+			durations := make(map[string]string)
+			for _, vitem := range vresult.Items {
+				durations[vitem.ID] = vitem.ContentDetails.Duration
+			}
+
+			// Map durations back to search items
+			for _, item := range result.Items {
+				if item.ID.VideoID == "" {
+					continue
+				}
+
+				thmb := item.Snippet.Thumbnails.High.URL
+				if thmb == "" {
+					thmb = item.Snippet.Thumbnails.Medium.URL
+				}
+				if thmb == "" {
+					thmb = item.Snippet.Thumbnails.Default.URL
+				}
+
+				tracks = append(tracks, vibe.MusicTrack{
+					ID:           item.ID.VideoID,
+					Source:       vibe.SourceTypeYouTube,
+					Title:        item.Snippet.Title,
+					ChannelTitle: item.Snippet.ChannelTitle,
+					ThumbnailURL: thmb,
+					Duration:     durations[item.ID.VideoID],
+				})
+			}
+			return tracks, nil
+		}
+	}
+
+	// Fallback if video details fetch fails
 	for _, item := range result.Items {
-		// Only include items with a video ID (safety check, though type=video should ensure this)
 		if item.ID.VideoID == "" {
 			continue
 		}
