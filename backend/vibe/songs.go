@@ -2,8 +2,12 @@ package vibe
 
 import (
 	"context"
+	"errors"
 	"time"
 )
+
+// ErrAlreadyVoted is returned when a user tries to vote for a song they have already voted for
+var ErrAlreadyVoted = errors.New("already voted")
 
 // Song represents a song in the queue
 type Song struct {

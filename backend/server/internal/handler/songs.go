@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -261,6 +262,15 @@ func VoteSong(
 
 		err := db.VoteSong(ctx, roomID, songID, userID)
 		if err != nil {
+			if errors.Is(err, vibe.ErrAlreadyVoted) {
+				handleError(
+					w,
+					fmt.Errorf("already voted"),
+					http.StatusConflict,
+					false,
+				)
+				return
+			}
 			handleError(
 				w,
 				fmt.Errorf("failed to vote for song: %w", err),

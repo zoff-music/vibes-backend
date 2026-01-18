@@ -116,8 +116,14 @@ export const useQueue = (roomId: string) => {
     );
     
     if (err) {
+        // Check for 409 Conflict or "already voted" message
+        if (err.message.includes('409') || err.message.includes('already voted')) {
+            return 'already_voted' as const;
+        }
         console.error('[Queue] Failed to vote for song:', err);
+        return 'error' as const;
     }
+    return 'success' as const;
   }, [roomId]);
 
   return {

@@ -43,6 +43,7 @@ export interface Song {
   addedByNickname?: string;
   addedAt: string;
   position: number;
+  voteCount?: number;
 }
 
 // Playback types

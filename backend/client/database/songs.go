@@ -470,9 +470,18 @@ func (c *Client) VoteSong(ctx context.Context, roomID, songID, userID string) er
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.VoteSongStatement.ExecContext(cctx, roomID, songID, userID)
+	res, err := c.VoteSongStatement.ExecContext(cctx, roomID, songID, userID)
 	if err != nil {
 		return fmt.Errorf("error voting for song: %w", err)
+	}
+
+	rows, err := res.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error getting rows affected: %w", err)
+	}
+
+	if rows == 0 {
+		return vibe.ErrAlreadyVoted
 	}
 
 	return nil

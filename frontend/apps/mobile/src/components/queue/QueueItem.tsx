@@ -58,6 +58,17 @@ export const QueueItem: React.FC<Props> = ({ song, position, onRemove, onVote, i
                         <span className="truncate">{song.artist || 'Unknown Artist'}</span>
                         <span className="text-ink/40">•</span>
                         <span className="flex-shrink-0 font-mono text-xs">{formatDuration(song.duration)}</span>
+                        {(song.voteCount || 0) > 0 && (
+                            <>
+                                <span className="text-ink/40">•</span>
+                                <span className="flex items-center gap-1 text-xs text-primary font-bold">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v7.333l-2.62 1.53M6 14a1 1 0 011-1h1v1H7a1 1 0 01-1-1z" />
+                                    </svg>
+                                    {song.voteCount}
+                                </span>
+                            </>
+                        )}
                     </div>
                 </div>
 
