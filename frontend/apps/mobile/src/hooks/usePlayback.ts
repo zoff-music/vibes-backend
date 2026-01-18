@@ -15,7 +15,7 @@ export const usePlayback = (roomId: string) => {
   }, [playback]);
 
   const performAction = useCallback(async (action: 'play' | 'pause' | 'skip' | 'vote' | 'seek', positionMs?: number) => {
-    const [err, data] = await api.post('/rooms/{id}/action', 
+    const [err, data] = await api.post('/rooms/{id}', 
       { id: roomId },
       { action, positionMs }
     );

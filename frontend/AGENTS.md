@@ -7,12 +7,13 @@ Non-negotiable conventions. Follow strictly.
 - **No `any` type** - use explicit types, compose when needed
 - **No `@ts-ignore` or `@ts-nocheck`** - fix the type
 - **No `try/catch`** - use `safeWrap`/`safeWrapAsync` from `src/utils/wrap.ts`
-- **Use wiretyped + yup** for all API calls - no raw `fetch`
+- **Use wiretyped + yup** for ALL API calls / SSE.
+- **NEVER use `fetch()` or `new EventSource()`**. Only `wiretyped` clients.
 
 ## File Layout
 
 ```
-src/
+apps/mobile/src/
 ├── api/
 │   ├── client.ts          # wiretyped client
 │   └── schemas/           # yup schemas

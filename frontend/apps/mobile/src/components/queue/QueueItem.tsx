@@ -6,10 +6,11 @@ interface Props {
     song: Song;
     position: number;
     onRemove?: (id: string) => void;
+    onVote?: (id: string) => void;
     isAdmin?: boolean;
 }
 
-export const QueueItem: React.FC<Props> = ({ song, position, onRemove, isAdmin }) => {
+export const QueueItem: React.FC<Props> = ({ song, position, onRemove, onVote, isAdmin }) => {
     const formatDuration = (seconds: number) => {
         const min = Math.floor(seconds / 60);
         const sec = seconds % 60;
@@ -29,7 +30,8 @@ export const QueueItem: React.FC<Props> = ({ song, position, onRemove, isAdmin }
                 mass: 1,
                 opacity: { duration: 0.2 }
             }}
-            className="group glass rounded-2xl p-4 hover:shadow-retro transition-shadow border-2 border-ink/10 bg-white/50 backdrop-blur-sm"
+            onClick={() => onVote?.(song.id)}
+            className="group glass rounded-2xl p-4 hover:shadow-retro transition-shadow border-2 border-ink/10 bg-white/50 backdrop-blur-sm cursor-pointer"
         >
             <div className="flex items-center gap-4">
                 {/* Position number */}
@@ -63,7 +65,10 @@ export const QueueItem: React.FC<Props> = ({ song, position, onRemove, isAdmin }
                 <div className="flex items-center gap-1 flex-shrink-0">
                     {isAdmin && (
                         <button
-                            onClick={() => onRemove?.(song.id)}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onRemove?.(song.id);
+                            }}
                             className="p-2.5 text-ink/40 hover:text-error hover:bg-error/10 rounded-lg transition-all border-2 border-transparent hover:border-error/20"
                             title="Remove from queue"
                         >

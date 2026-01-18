@@ -36,6 +36,7 @@ type Client struct {
 	UpdateSongPositionStatement *sql.Stmt
 	GetNextSongStatement        *sql.Stmt
 	ReorderSongsStatement       *sql.Stmt
+	VoteSongStatement           *sql.Stmt
 
 	// Playback statements
 	GetPlaybackStateStatement    *sql.Stmt
@@ -176,6 +177,11 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		return err
 	}
 
+	err = c.prepareVoteSongStmt()
+	if err != nil {
+		return err
+	}
+
 	err = c.prepareGetPlaybackStateStmt()
 	if err != nil {
 		return err
@@ -259,6 +265,7 @@ func (c *Client) Close() error {
 		c.UpdateSongPositionStatement,
 		c.GetNextSongStatement,
 		c.ReorderSongsStatement,
+		c.VoteSongStatement,
 		c.GetPlaybackStateStatement,
 		c.UpsertPlaybackStateStatement,
 		c.GetUserStatement,

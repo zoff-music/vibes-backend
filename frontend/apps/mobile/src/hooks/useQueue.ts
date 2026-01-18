@@ -59,7 +59,7 @@ export const useQueue = (roomId: string) => {
       addSong(data);
 
       if (shouldAutoPlay) {
-        const [playErr, playback] = await api.post('/rooms/{id}/action', 
+        const [playErr, playback] = await api.post('/rooms/{id}', 
           { id: roomId },
           { action: 'play' }
         );
@@ -95,7 +95,7 @@ export const useQueue = (roomId: string) => {
     // Optimistic update
     reorderSongs(songId, newPosition);
 
-    const [err, _] = await api.patch('/rooms/{id}/songs/reorder/{songId}', 
+    const [err, _] = await api.patch('/rooms/{id}/songs/{songId}', 
       { id: roomId, songId },
       { newPosition }
     );
@@ -105,6 +105,20 @@ export const useQueue = (roomId: string) => {
       fetchQueue();
     }
   }, [roomId, reorderSongs, fetchQueue]);
+  
+  const voteSong = useCallback(async (songId: string) => {
+    // Optimistic update could happen here if store supports it
+    // For now we rely on the server event to update the order
+    
+    const [err, _] = await api.post('/rooms/{id}/songs/{songId}', 
+        { id: roomId, songId },
+        {}
+    );
+    
+    if (err) {
+        console.error('[Queue] Failed to vote for song:', err);
+    }
+  }, [roomId]);
 
   return {
     songs,
@@ -112,6 +126,7 @@ export const useQueue = (roomId: string) => {
     addToQueue,
     removeFromQueue,
     moveInQueue,
+    voteSong,
   };
 };
 

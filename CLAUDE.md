@@ -10,6 +10,9 @@ cd backend && go build ./cmd/server && ./server
 
 # Frontend
 cd frontend && bun install && bun dev
+
+# Migrator
+cd migrator && go run main.go
 ```
 
 ## Stack
@@ -18,6 +21,7 @@ cd frontend && bun install && bun dev
 |-------|------|
 | Frontend | React 19 + Vite + Tailwind + TypeScript |
 | Backend | Go + SQLite (`modernc.org/sqlite`) |
+| Migrator | Go + SQLite |
 | Real-time | Server-Sent Events |
 | Package Manager | Bun |
 
@@ -31,11 +35,16 @@ backend/
 ├── server/internal/handler/   # HTTP handlers
 └── vibe/vibe.go           # ALL domain types
 
-frontend/apps/mobile/      # React web app
-├── src/api/               # wiretyped client + yup schemas
-├── src/components/        # UI components
-├── src/hooks/             # useRoom, useQueue, usePlayback, useSSE
-└── src/stores/            # Zustand stores
+frontend/
+├── apps/mobile/           # React web app (Main)
+│   ├── src/api/           # wiretyped client + yup schemas
+│   ├── src/components/    # UI components
+│   └── src/stores/        # Zustand stores
+└── packages/              # Shared packages
+
+migrator/                  # Database migration tool
+├── main.go                # Entrypoint
+└── migrations/            # SQL migration files
 ```
 
 ## API

@@ -16,7 +16,7 @@ export default function RoomView() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { currentSong, skip, isPlaying } = usePlayback(id || '');
-    const { songs, fetchQueue } = useQueue(id || '');
+    const { songs, fetchQueue, voteSong } = useQueue(id || '');
     const { room, fetchRoom, isLoading, error, joinRoom, userId, users, updateRoomSettings } = useRoom(id || '');
 
     const [isAddModalVisible, setIsAddModalVisible] = useState(false);
@@ -387,10 +387,14 @@ export default function RoomView() {
                             {/* Up Next List */}
                             <div>
                                 <h3 className="text-[10px] text-ink/60 uppercase tracking-[0.2em] font-black mb-4">
-                                    Up Next ({songs.length})
+                                    Up Next ({songs.filter(s => s.position > 0 && s.id !== currentSong?.id).length})
                                 </h3>
-                                <QueueList songs={songs} roomId={id || ''} />
-                                {songs.length === 0 && !currentSong && (
+                                <QueueList 
+                                    songs={songs.filter(s => s.id !== currentSong?.id)} 
+                                    roomId={id || ''} 
+                                    onVote={voteSong}
+                                />
+                                {songs.filter(s => s.position > 0 && s.id !== currentSong?.id).length === 0 && !currentSong && (
                                     <div className="text-center py-12 glass rounded-2xl border-2 border-dashed border-ink/10">
                                         <p className="text-ink/40 font-bold">Queue is empty</p>
                                         <p className="text-[10px] jp-art text-ink/20">キューは空です</p>

@@ -19,26 +19,25 @@ func (s *Server) setupRoutes() {
 	api := s.Router.PathPrefix(v1API).Subrouter()
 
 	// Room routes
-	api.HandleFunc("/rooms", handler.CreateRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions)
-	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions)
-	api.HandleFunc("/rooms/{id}", handler.UpdateRoom(s.DB)).Methods(http.MethodPatch, http.MethodOptions)
-	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB)).Methods(http.MethodPost, http.MethodOptions)
+	api.HandleFunc("/rooms", handler.CreateRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
+	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoom")
+	api.HandleFunc("/rooms/{id}", handler.UpdateRoom(s.DB)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoom")
+	api.HandleFunc("/rooms/{id}", handler.RoomAction(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("RoomAction")
+	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
 
 	// Song routes
-	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions)
-	s.Router.HandleFunc("/api/v1/rooms/{id}/songs", handler.AddSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost)
-	s.Router.HandleFunc("/api/v1/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.InternalPubSub)).Methods(http.MethodDelete)
-	s.Router.HandleFunc("/api/v1/rooms/{id}/songs/reorder/{songId}", handler.ReorderSongs(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions)
-
-	// Action route
-	api.HandleFunc("/rooms/{id}/action", handler.RoomAction(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions)
+	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSongs")
+	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("AddSong")
+	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions).Name("RemoveSong")
+	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.VoteSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("VoteSong")
+	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.ReorderSongs(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("ReorderSongs")
 
 	// SSE route
-	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions)
+	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
 
 	// YouTube routes
-	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)
-	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube)).Methods(http.MethodGet, http.MethodOptions)
+	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
+	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetMusicTrack")
 
 	s.addSessionMiddleware(api)
 	s.addTracingAndMetrics(api)
