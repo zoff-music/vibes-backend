@@ -8,7 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "lint": "biome lint src",
+    "lint": "biome check src",
     "test:e2e": "playwright test",
     "test": "vitest"
   },

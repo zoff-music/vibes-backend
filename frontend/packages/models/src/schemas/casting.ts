@@ -1,8 +1,14 @@
 import * as yup from 'yup';
 
 // Enums / Unions
-export const castDeviceTypeSchema = yup.string().oneOf(['chromecast', 'airplay', 'dlna']).required();
-export const castSessionStateSchema = yup.string().oneOf(['connecting', 'connected', 'syncing', 'error', 'disconnected']).required();
+export const castDeviceTypeSchema = yup
+  .string()
+  .oneOf(['chromecast', 'airplay', 'dlna'])
+  .required();
+export const castSessionStateSchema = yup
+  .string()
+  .oneOf(['connecting', 'connected', 'syncing', 'error', 'disconnected'])
+  .required();
 
 // Schemas
 export const castDeviceSchema = yup.object({
@@ -29,17 +35,26 @@ export const mediaInfoSchema = yup.object({
   contentId: yup.string().required(),
   contentType: yup.string().required(),
   streamType: yup.string().oneOf(['BUFFERED', 'LIVE']).required(),
-  metadata: yup.object({
-    title: yup.string().required(),
-    artist: yup.string().optional(),
-    albumArtist: yup.string().optional(),
-    albumName: yup.string().optional(),
-    images: yup.array().of(yup.object({
-      url: yup.string().required(),
-      height: yup.number().optional(),
-      width: yup.number().optional(),
-    }).required()).optional(),
-  }).required(),
+  metadata: yup
+    .object({
+      title: yup.string().required(),
+      artist: yup.string().optional(),
+      albumArtist: yup.string().optional(),
+      albumName: yup.string().optional(),
+      images: yup
+        .array()
+        .of(
+          yup
+            .object({
+              url: yup.string().required(),
+              height: yup.number().optional(),
+              width: yup.number().optional(),
+            })
+            .required(),
+        )
+        .optional(),
+    })
+    .required(),
   duration: yup.number().optional(),
 });
 

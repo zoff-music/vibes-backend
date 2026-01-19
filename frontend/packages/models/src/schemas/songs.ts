@@ -1,6 +1,9 @@
 import * as yup from 'yup';
 
-export const sourceTypeSchema = yup.string().oneOf(['youtube', 'spotify', 'soundcloud']).required();
+export const sourceTypeSchema = yup
+  .string()
+  .oneOf(['youtube', 'spotify', 'soundcloud'])
+  .required();
 export type SourceType = yup.InferType<typeof sourceTypeSchema>;
 
 export const songSchema = yup.object({
@@ -36,4 +39,6 @@ export type SongsList = yup.InferType<typeof songsListSchema>;
 export const reorderSongsRequestSchema = yup.object({
   newPosition: yup.number().required(),
 });
-export type ReorderSongsRequest = yup.InferType<typeof reorderSongsRequestSchema>;
+export type ReorderSongsRequest = yup.InferType<
+  typeof reorderSongsRequestSchema
+>;
