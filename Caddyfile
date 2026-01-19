@@ -13,19 +13,30 @@ localhost, 127.0.0.1 {
 	handle /api/v1/rooms/*/events {
 		reverse_proxy localhost:8080 {
 			flush_interval -1
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
 		}
 	}
 
 	handle /api/* {
-		reverse_proxy localhost:8080
+		reverse_proxy localhost:8080 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
 	}
 
 	handle /metrics {
-		reverse_proxy localhost:8080
+		reverse_proxy localhost:8080 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
 	}
 
 	handle /_healthz {
-		reverse_proxy localhost:8080
+		reverse_proxy localhost:8080 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
 	}
 
 	handle {

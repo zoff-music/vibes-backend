@@ -9,8 +9,11 @@ export default function Callback() {
     const status = searchParams.get('status');
 
     if (window.opener && status === 'success' && provider) {
+      console.log('[Callback] Sending oauth-success for provider:', provider);
       window.opener.postMessage({ type: 'oauth-success', provider }, '*');
       window.close();
+    } else {
+        console.warn('[Callback] Missing parameters or opener', { opener: !!window.opener, status, provider });
     }
   }, [searchParams]);
 

@@ -47,14 +47,18 @@ func (s *Server) setupRoutes() {
 	// Spotify search routes
 	api.HandleFunc("/spotify/search", handler.SearchSpotify(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSpotify")
 	api.HandleFunc("/spotify/tracks/{id}", handler.GetSpotifyTrack(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyTrack")
-	api.HandleFunc("/authorizations/spotify/token", handler.GetSpotifyToken(s.DB, s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyToken")
+	api.HandleFunc("/tokens/spotify", handler.GetToken(s.DB, s.DB, s.Spotify, "spotify")).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyToken")
+	api.HandleFunc("/tokens/soundcloud", handler.GetToken(s.DB, s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudToken")
+	api.HandleFunc("/tokens/youtube", handler.GetToken(s.DB, s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubeToken")
 
 	// Authorization routes
-	api.HandleFunc("/authorizations", handler.GetAuthorizations(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetAuthorizations")
-	api.HandleFunc("/authorizations/spotify", handler.AuthorizeProvider(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("AuthorizeSpotify")
-	api.HandleFunc("/authorizations/youtube", handler.AuthorizeProvider(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("AuthorizeYouTube")
-	api.HandleFunc("/authorizations/soundcloud", handler.AuthorizeProvider(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("AuthorizeSoundCloud")
-	api.HandleFunc("/callbacks/{provider}", handler.OAuthCallback(s.DB, s.Config.FrontendURL)).Methods(http.MethodGet, http.MethodOptions).Name("OAuthCallback")
+	api.HandleFunc("/authorizations/spotify", handler.Authorize(s.DB, s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
+	api.HandleFunc("/authorizations/soundcloud", handler.Authorize(s.DB, s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
+	api.HandleFunc("/authorizations/youtube", handler.Authorize(s.DB, s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
+	// Callbacks
+	api.HandleFunc("/callbacks/spotify", handler.OAuthCallback(s.DB, s.Spotify, "spotify")).Methods(http.MethodGet, http.MethodOptions).Name("SpotifyCallback")
+	api.HandleFunc("/callbacks/soundcloud", handler.OAuthCallback(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("SoundCloudCallback")
+	api.HandleFunc("/callbacks/youtube", handler.OAuthCallback(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("YouTubeCallback")
 
 	// Config routes
 	api.HandleFunc("/providers", handler.GetProviders(s.Config)).Methods(http.MethodGet, http.MethodOptions).Name("GetProviders")

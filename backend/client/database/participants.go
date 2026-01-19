@@ -10,6 +10,19 @@ import (
 	"github.com/zoff-music/vibes/vibe"
 )
 
+func (c *Client) prepareUpdateParticipantStmt() error {
+	stmt, err := c.DB.Prepare(`
+		INSERT INTO room_participants (room_id, user_id, last_seen_at, is_active_listener)
+		VALUES (?1, ?2, ?3, ?4)
+		ON CONFLICT(room_id, user_id) DO UPDATE SET last_seen_at = ?3, is_active_listener = ?4
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing UpdateParticipantStatement: %w", err)
+	}
+	c.UpdateParticipantStatement = stmt
+	return nil
+}
+
 // UpdateParticipant updates the last seen time for a participant
 func (c *Client) UpdateParticipant(ctx context.Context, roomID, userID string, isActiveListener bool) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "UpdateParticipant")
@@ -18,15 +31,25 @@ func (c *Client) UpdateParticipant(ctx context.Context, roomID, userID string, i
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.DB.ExecContext(cctx, `
-		INSERT INTO room_participants (room_id, user_id, last_seen_at, is_active_listener)
-		VALUES (?1, ?2, ?3, ?4)
-		ON CONFLICT(room_id, user_id) DO UPDATE SET last_seen_at = ?3, is_active_listener = ?4
-	`, roomID, userID, time.Now(), isActiveListener)
+	_, err := c.UpdateParticipantStatement.ExecContext(cctx, roomID, userID, time.Now(), isActiveListener)
 	if err != nil {
 		return fmt.Errorf("error updating participant: %w", err)
 	}
 
+	return nil
+}
+
+func (c *Client) prepareGetActiveParticipantsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT room_id, user_id, last_seen_at
+		FROM room_participants
+		WHERE room_id = ?1 AND last_seen_at > ?2
+		ORDER BY last_seen_at DESC
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetActiveParticipantsStatement: %w", err)
+	}
+	c.GetActiveParticipantsStatement = stmt
 	return nil
 }
 
@@ -40,12 +63,7 @@ func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activ
 
 	cutoff := time.Now().Add(-activeWithin)
 
-	rows, err := c.DB.QueryContext(cctx, `
-		SELECT room_id, user_id, last_seen_at
-		FROM room_participants
-		WHERE room_id = ?1 AND last_seen_at > ?2
-		ORDER BY last_seen_at DESC
-	`, roomID, cutoff)
+	rows, err := c.GetActiveParticipantsStatement.QueryContext(cctx, roomID, cutoff)
 	if err != nil {
 		return nil, fmt.Errorf("error querying active participants: %w", err)
 	}
@@ -64,6 +82,17 @@ func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activ
 	return participants, nil
 }
 
+func (c *Client) prepareSetRoomHostStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE rooms SET host_id = ?1 WHERE id = ?2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing SetRoomHostStatement: %w", err)
+	}
+	c.SetRoomHostStatement = stmt
+	return nil
+}
+
 // SetRoomHost updates the host for a room
 func (c *Client) SetRoomHost(ctx context.Context, roomID, userID string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SetRoomHost")
@@ -77,13 +106,22 @@ func (c *Client) SetRoomHost(ctx context.Context, roomID, userID string) error {
 		Valid:  userID != "",
 	}
 
-	_, err := c.DB.ExecContext(cctx, `
-		UPDATE rooms SET host_id = ?1 WHERE id = ?2
-	`, hostID, roomID)
+	_, err := c.SetRoomHostStatement.ExecContext(cctx, hostID, roomID)
 	if err != nil {
 		return fmt.Errorf("error setting room host: %w", err)
 	}
 
+	return nil
+}
+
+func (c *Client) prepareRemoveParticipantStmt() error {
+	stmt, err := c.DB.Prepare(`
+		DELETE FROM room_participants WHERE room_id = ?1 AND user_id = ?2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing RemoveParticipantStatement: %w", err)
+	}
+	c.RemoveParticipantStatement = stmt
 	return nil
 }
 
@@ -95,13 +133,22 @@ func (c *Client) RemoveParticipant(ctx context.Context, roomID, userID string) e
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.DB.ExecContext(cctx, `
-		DELETE FROM room_participants WHERE room_id = ?1 AND user_id = ?2
-	`, roomID, userID)
+	_, err := c.RemoveParticipantStatement.ExecContext(cctx, roomID, userID)
 	if err != nil {
 		return fmt.Errorf("error removing participant: %w", err)
 	}
 
+	return nil
+}
+
+func (c *Client) prepareDeleteInactiveParticipantsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		DELETE FROM room_participants WHERE last_seen_at < ?1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing DeleteInactiveParticipantsStatement: %w", err)
+	}
+	c.DeleteInactiveParticipantsStatement = stmt
 	return nil
 }
 
@@ -115,9 +162,7 @@ func (c *Client) DeleteInactiveParticipants(ctx context.Context, olderThan time.
 
 	cutoff := time.Now().Add(-olderThan)
 
-	result, err := c.DB.ExecContext(cctx, `
-		DELETE FROM room_participants WHERE last_seen_at < ?1
-	`, cutoff)
+	result, err := c.DeleteInactiveParticipantsStatement.ExecContext(cctx, cutoff)
 	if err != nil {
 		return 0, fmt.Errorf("error deleting inactive participants: %w", err)
 	}

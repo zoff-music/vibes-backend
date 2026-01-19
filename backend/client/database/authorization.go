@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -9,10 +10,10 @@ import (
 	"github.com/zoff-music/vibes/vibe"
 )
 
-func (c *Client) prepareUpsertExternalAuthStmt() error {
+func (c *Client) prepareUpsertAuthTokenStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO external_auth (user_id, provider, code, state, expires_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+		INSERT INTO auth_tokens (user_id, provider, code, state, expires_at, updated_at)
+		VALUES (?1, ?2, ?3, ?4, ?5, CURRENT_TIMESTAMP)
 		ON CONFLICT(user_id, provider) DO UPDATE SET
 			code = excluded.code,
 			state = excluded.state,
@@ -20,31 +21,40 @@ func (c *Client) prepareUpsertExternalAuthStmt() error {
 			updated_at = CURRENT_TIMESTAMP
 	`)
 	if err != nil {
-		return fmt.Errorf("error in db: prepare upsert external auth statement: %w", err)
+		return fmt.Errorf("error in db: prepare upsert auth token statement: %w", err)
 	}
-	c.UpsertExternalAuthStatement = stmt
+	c.UpsertAuthTokenStatement = stmt
 	return nil
 }
 
-// UpsertExternalAuth stores or updates external authentication data for a user.
-func (c *Client) UpsertExternalAuth(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error {
-	_, err := c.UpsertExternalAuthStatement.ExecContext(ctx, userID, provider, code, state, expiresAt)
+// UpsertAuthToken stores or updates initial auth token data (code/state) for a user.
+func (c *Client) UpsertAuthToken(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error {
+	_, err := c.UpsertAuthTokenStatement.ExecContext(ctx, userID, provider, code, state, expiresAt)
 	if err != nil {
-		return fmt.Errorf("error in db: upsert external auth: %w", err)
+		return fmt.Errorf("error in db: upsert auth token: %w", err)
 	}
 	return nil
 }
 
-// GetExternalAuths retrieves a list of providers the user has authorized.
-func (c *Client) GetExternalAuths(ctx context.Context, userID string) ([]string, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetExternalAuths")
+func (c *Client) prepareGetAuthProvidersStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT provider FROM access_tokens WHERE user_id = ?1 AND refresh_expires_at > CURRENT_TIMESTAMP
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetAuthProvidersStatement: %w", err)
+	}
+	c.GetAuthProvidersStatement = stmt
+	return nil
+}
+
+// GetAuthProviders retrieves a list of providers the user has authorized.
+func (c *Client) GetAuthProviders(ctx context.Context, userID string) ([]string, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "GetAuthProviders")
 	defer span.Finish()
 
-	rows, err := c.DB.QueryContext(ctx, `
-		SELECT provider FROM external_auth WHERE user_id = ?
-	`, userID)
+	rows, err := c.GetAuthProvidersStatement.QueryContext(ctx, userID)
 	if err != nil {
-		return nil, fmt.Errorf("error in db: get external auths: %w", err)
+		return nil, fmt.Errorf("error in db: get auth providers: %w", err)
 	}
 	defer rows.Close()
 
@@ -52,31 +62,228 @@ func (c *Client) GetExternalAuths(ctx context.Context, userID string) ([]string,
 	for rows.Next() {
 		var provider string
 		if err := rows.Scan(&provider); err != nil {
-			return nil, fmt.Errorf("error in db: scan external auth provider: %w", err)
+			return nil, fmt.Errorf("error in db: scan auth provider: %w", err)
 		}
 		providers = append(providers, provider)
 	}
 
 	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error in db: iterate external auth providers: %w", err)
+		return nil, fmt.Errorf("error in db: iterate auth providers: %w", err)
 	}
 
 	return providers, nil
 }
 
-// GetExternalAuth retrieves a specific provider auth for a user.
-func (c *Client) GetExternalAuth(ctx context.Context, userID, provider string) (*vibe.ExternalAuth, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetExternalAuth")
+func (c *Client) prepareUpsertAccessTokenStmt() error {
+	stmt, err := c.DB.Prepare(`
+		INSERT INTO access_tokens (user_id, provider, access_token, refresh_token, expires_at, refresh_expires_at, updated_at)
+		VALUES (?1, ?2, ?3, ?4, ?5, ?6, CURRENT_TIMESTAMP)
+		ON CONFLICT(user_id, provider) DO UPDATE SET
+			access_token = excluded.access_token,
+			refresh_token = excluded.refresh_token,
+			expires_at = excluded.expires_at,
+			refresh_expires_at = excluded.refresh_expires_at,
+			updated_at = CURRENT_TIMESTAMP
+	`)
+	if err != nil {
+		return fmt.Errorf("error in db: prepare upsert access token statement: %w", err)
+	}
+	c.UpsertAccessTokenStatement = stmt
+	return nil
+}
+
+// UpsertAccessToken stores or updates access token data for a user.
+func (c *Client) UpsertAccessToken(ctx context.Context, userID, provider, accessToken, refreshToken string, expiresAt, refreshExpiresAt time.Time) error {
+	_, err := c.UpsertAccessTokenStatement.ExecContext(ctx, userID, provider, accessToken, refreshToken, expiresAt, refreshExpiresAt)
+	if err != nil {
+		return fmt.Errorf("error in db: upsert access token: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) prepareGetAccessTokenStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT user_id, provider, access_token, refresh_token, expires_at, refresh_expires_at
+		FROM access_tokens
+		WHERE user_id = ?1 AND provider = ?2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetAccessTokenStatement: %w", err)
+	}
+	c.GetAccessTokenStatement = stmt
+	return nil
+}
+
+// GetAccessToken retrieves specific access tokens for a user.
+func (c *Client) GetAccessToken(ctx context.Context, userID, provider string) (*vibe.AccessToken, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "GetAccessToken")
 	defer span.Finish()
 
-	var auth vibe.ExternalAuth
-	err := c.DB.QueryRowContext(ctx, `
-		SELECT user_id, provider, code, state, expires_at
-		FROM external_auth
-		WHERE user_id = ? AND provider = ?
-	`, userID, provider).Scan(&auth.UserID, &auth.Provider, &auth.Code, &auth.State, &auth.ExpiresAt)
+	var token vibe.AccessToken
+	err := c.GetAccessTokenStatement.QueryRowContext(ctx, userID, provider).Scan(&token.UserID, &token.Provider, &token.AccessToken, &token.RefreshToken, &token.ExpiresAt, &token.RefreshExpiresAt)
 	if err != nil {
-		return nil, fmt.Errorf("error in db: get external auth: %w", err)
+		return nil, fmt.Errorf("error in db: get access token: %w", err)
 	}
-	return &auth, nil
+	return &token, nil
+}
+
+func (c *Client) prepareDeleteExpiredAuthTokensStmt() error {
+	stmt, err := c.DB.Prepare(`
+		DELETE FROM auth_tokens WHERE expires_at <= CURRENT_TIMESTAMP
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing DeleteExpiredAuthTokensStatement: %w", err)
+	}
+	c.DeleteExpiredAuthTokensStatement = stmt
+	return nil
+}
+
+// DeleteExpiredAuthTokens removes all expired auth tokens records from the database.
+func (c *Client) DeleteExpiredAuthTokens(ctx context.Context) (int64, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "DeleteExpiredAuthTokens")
+	defer span.Finish()
+
+	result, err := c.DeleteExpiredAuthTokensStatement.ExecContext(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("error in db: delete expired auth tokens: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("error in db: get rows affected: %w", err)
+	}
+
+	return rowsAffected, nil
+}
+
+func (c *Client) prepareDeleteExpiredAccessTokensStmt() error {
+	stmt, err := c.DB.Prepare(`
+		DELETE FROM access_tokens WHERE refresh_expires_at <= CURRENT_TIMESTAMP
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing DeleteExpiredAccessTokensStatement: %w", err)
+	}
+	c.DeleteExpiredAccessTokensStatement = stmt
+	return nil
+}
+
+// DeleteExpiredAccessTokens removes all expired access tokens records from the database.
+func (c *Client) DeleteExpiredAccessTokens(ctx context.Context) (int64, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "DeleteExpiredAccessTokens")
+	defer span.Finish()
+
+	result, err := c.DeleteExpiredAccessTokensStatement.ExecContext(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("error in db: delete expired access tokens: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("error in db: get rows affected: %w", err)
+	}
+
+	return rowsAffected, nil
+}
+
+func (c *Client) prepareSavePendingOAuthStateStmt() error {
+	stmt, err := c.DB.Prepare(`
+		INSERT INTO pending_oauth_state (user_id, state, expires_at)
+		VALUES (?1, ?2, ?3)
+		ON CONFLICT(user_id, state) DO UPDATE SET
+			expires_at = excluded.expires_at
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing SavePendingOAuthStateStatement: %w", err)
+	}
+	c.SavePendingOAuthStateStatement = stmt
+	return nil
+}
+
+// SavePendingOAuthState stores a pending OAuth state for a user.
+func (c *Client) SavePendingOAuthState(ctx context.Context, userID, state string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "SavePendingOAuthState")
+	defer span.Finish()
+
+	expiresAt := time.Now().Add(10 * time.Minute)
+	_, err := c.SavePendingOAuthStateStatement.ExecContext(ctx, userID, state, expiresAt)
+	if err != nil {
+		return fmt.Errorf("error in db: save pending oauth state: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) prepareValidateAndDeletePendingOAuthStateStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT user_id FROM pending_oauth_state 
+		WHERE state = ?1 AND expires_at > CURRENT_TIMESTAMP
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ValidateAndDeletePendingOAuthStateStatement (Select): %w", err)
+	}
+	c.ValidateAndDeletePendingOAuthStateStatement = stmt
+	return nil
+}
+
+// ValidateAndDeletePendingOAuthState checks if the state exists and is valid, then deletes it.
+func (c *Client) ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (string, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "ValidateAndDeletePendingOAuthState")
+	defer span.Finish()
+
+	// 1. Find UserID
+	var userID string
+	err := c.ValidateAndDeletePendingOAuthStateStatement.QueryRowContext(ctx, state).Scan(&userID)
+	if err == sql.ErrNoRows {
+		return "", nil // Valid = false (empty user ID)
+	}
+	if err != nil {
+		return "", fmt.Errorf("error in db: validate pending oauth state: %w", err)
+	}
+
+	// 2. Delete state
+	_, err = c.DeletePendingOAuthStateStatement.ExecContext(ctx, userID, state)
+	if err != nil {
+		return "", fmt.Errorf("error in db: delete pending oauth state: %w", err)
+	}
+
+	return userID, nil
+}
+
+func (c *Client) prepareDeletePendingOAuthStateStmt() error {
+	stmt, err := c.DB.Prepare(`
+		DELETE FROM pending_oauth_state WHERE user_id = ?1 AND state = ?2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing DeletePendingOAuthStateStatement: %w", err)
+	}
+	c.DeletePendingOAuthStateStatement = stmt
+	return nil
+}
+
+func (c *Client) prepareDeleteExpiredPendingOAuthStatesStmt() error {
+	stmt, err := c.DB.Prepare(`
+		DELETE FROM pending_oauth_state WHERE expires_at <= CURRENT_TIMESTAMP
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing DeleteExpiredPendingOAuthStatesStatement: %w", err)
+	}
+	c.DeleteExpiredPendingOAuthStatesStatement = stmt
+	return nil
+}
+
+// DeleteExpiredPendingOAuthStates removes all expired pending oauth states from the database.
+func (c *Client) DeleteExpiredPendingOAuthStates(ctx context.Context) (int64, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "DeleteExpiredPendingOAuthStates")
+	defer span.Finish()
+
+	result, err := c.DeleteExpiredPendingOAuthStatesStatement.ExecContext(ctx)
+	if err != nil {
+		return 0, fmt.Errorf("error in db: delete expired pending oauth states: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("error in db: get rows affected: %w", err)
+	}
+
+	return rowsAffected, nil
 }

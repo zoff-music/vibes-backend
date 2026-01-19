@@ -19,7 +19,7 @@ type Handler interface {
 func GetAppEvents(pa vibe.ExpiredPlaybackProcessor, hm vibe.AbandonnedHostProcessor, ips interface {
 	vibe.RoomEventNotifier
 	vibe.RoomBatchEventNotifier
-}, ps vibe.ParticipantStorage,
+}, ps vibe.ParticipantStorage, eac vibe.AuthTokenCleaner,
 ) AppEvents {
 	return AppEvents{
 		{
@@ -42,6 +42,11 @@ func GetAppEvents(pa vibe.ExpiredPlaybackProcessor, hm vibe.AbandonnedHostProces
 			Name:    "CleanupInactiveParticipants",
 			Rate:    5 * time.Minute,
 			Handler: &CleanupHandler{DB: ps},
+		},
+		{
+			Name:    "CleanupExpiredTokens",
+			Rate:    5 * time.Minute,
+			Handler: &ExpiredTokenCleanupHandler{DB: eac},
 		},
 	}
 }

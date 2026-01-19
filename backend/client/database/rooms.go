@@ -53,27 +53,8 @@ func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostIn
 		return nil, fmt.Errorf("error finding abandoned host: %w", err)
 	}
 
-	// Helper to find next candidate
-	// We do this via standard query as it's not pre-prepared in this specific unique flow usually,
-	// but better to prepare it or use existing one. GetActiveParticipants is generic.
-	// We'll use a direct query here for speed/conciseness or use a new prepared stmt?
-	// Let's use direct query for now or reuse GetUsersInRoom logic if available.
-	// Actually we need one that orders by join time filter by activity.
-	// "GetActiveParticipants" typically does this.
-
-	// Let's define the query for election inside this method or helper.
-	// Since we can't easily add a new generic method in this Replace block without breaking flow,
-	// I'll execute the query directly.
-
 	var newHostID string
-	err = c.DB.QueryRowContext(cctx, `
-		SELECT id FROM room_users 
-		WHERE room_id = ? 
-		  AND last_seen_at >= datetime('now', '-15 seconds')
-		ORDER BY joined_at ASC -- Oldest active user promotes
-		LIMIT 1
-	`, roomID).Scan(&newHostID)
-
+	err = c.ElectNewHostStatement.QueryRowContext(cctx, roomID).Scan(&newHostID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("error electing new host: %w", err)
 	}
@@ -89,6 +70,21 @@ func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostIn
 		RoomID:    roomID,
 		NewHostID: newHostID,
 	}, nil
+}
+
+func (c *Client) prepareElectNewHostStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT id FROM room_users 
+		WHERE room_id = ?1 
+		  AND last_seen_at >= datetime('now', '-15 seconds')
+		ORDER BY joined_at ASC
+		LIMIT 1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ElectNewHostStatement: %w", err)
+	}
+	c.ElectNewHostStatement = stmt
+	return nil
 }
 
 // prepareGetRoomStmt prepares the GetRoomStatement.
@@ -184,10 +180,19 @@ func (c *Client) GetRoomByName(ctx context.Context, name string) (*vibe.Room, er
 	return room, nil
 }
 
+func (c *Client) prepareGetActiveSourcesStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT DISTINCT source_type FROM songs WHERE room_id = ?1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetActiveSourcesStatement: %w", err)
+	}
+	c.GetActiveSourcesStatement = stmt
+	return nil
+}
+
 func (c *Client) fillActiveSources(ctx context.Context, room *vibe.Room) error {
-	rows, err := c.DB.QueryContext(ctx, `
-		SELECT DISTINCT source_type FROM songs WHERE room_id = ?
-	`, room.ID)
+	rows, err := c.GetActiveSourcesStatement.QueryContext(ctx, room.ID)
 	if err != nil {
 		return fmt.Errorf("error in db: get active sources: %w", err)
 	}

@@ -1,15 +1,18 @@
 import { Song } from '@vibez/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import AuthPrompt from '../components/AuthPrompt';
+
 import { PlayerControls } from '../components/player/PlayerControls';
+import { SoundCloudPlayer } from '../components/player/SoundCloudPlayer';
+import { SpotifyPlayer } from '../components/player/SpotifyPlayer';
 import { VideoPlayer } from '../components/player/VideoPlayer';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { QueueList } from '../components/queue/QueueList';
 import { Toast } from '../components/ui/Toast';
 import { usePlayback } from '../hooks/usePlayback';
+import { useProviderToken } from '../hooks/useProviderToken';
 import { useQueue } from '../hooks/useQueue';
 import { useRoom } from '../hooks/useRoom';
 import { useThemeStore } from '../stores/themeStore';
@@ -124,6 +127,55 @@ export default function RoomView() {
     },
     [voteSong],
   );
+
+  /* Spotify Proactive Auth Logic */
+  const { token: spotifyToken, fetchToken: fetchSpotifyToken } = useProviderToken();
+
+  const hasSpotifySongs = useMemo(() => 
+    songs.some(s => s.sourceType === 'spotify'), 
+    [songs]
+  );
+
+  useEffect(() => {
+    if (hasSpotifySongs) {
+      // Check auth status if we have Spotify songs
+      fetchSpotifyToken('spotify');
+    }
+  }, [hasSpotifySongs, fetchSpotifyToken]);
+
+  const handleConnectSpotify = useCallback(() => {
+    const width = 600;
+    const height = 800;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    
+    const popup = window.open(
+      '/api/v1/authorizations/spotify',
+      'SpotifyAuth',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    const handleMessage = (event: MessageEvent) => {
+      if (
+        event.data?.type === 'oauth-success' &&
+        event.data?.provider === 'spotify'
+      ) {
+         fetchSpotifyToken('spotify', true);
+         popup?.close();
+         window.removeEventListener('message', handleMessage);
+      }
+    };
+    
+    window.addEventListener('message', handleMessage);
+    
+    const timer = setInterval(() => {
+        if (popup?.closed) {
+            window.removeEventListener('message', handleMessage);
+            clearInterval(timer);
+            fetchSpotifyToken('spotify', true);
+        }
+    }, 1000);
+  }, [fetchSpotifyToken]);
 
   return (
     <div className="flex min-h-screen animate-fade-in flex-col">
@@ -591,17 +643,31 @@ export default function RoomView() {
           <div className="mx-auto max-w-7xl items-start px-4 py-8 lg:grid lg:grid-cols-[1fr_400px] lg:gap-12">
             {/* Player Section */}
             <div className="space-y-6">
-              {/* Video Player - only send skip in host mode, server mode backend handles it */}
-              <VideoPlayer
-                onEnded={room?.mode === 'host' ? skip : undefined}
-                isVisible={true}
-              />
+              {/* Player - only send skip in host mode, server mode backend handles it */}
+              {currentSong?.sourceType === 'spotify' ? (
+                <SpotifyPlayer
+                  onEnded={room?.mode === 'host' ? skip : undefined}
+                  isVisible={true}
+                />
+              ) : currentSong?.sourceType === 'soundcloud' ? (
+                <SoundCloudPlayer
+                  onEnded={room?.mode === 'host' ? skip : undefined}
+                  isVisible={true}
+                />
+              ) : (
+                <VideoPlayer
+                  onEnded={room?.mode === 'host' ? skip : undefined}
+                  isVisible={true}
+                />
+              )}
 
               {/* Controls (always below video) */}
               <PlayerControls
                 roomId={id || ''}
                 hasSongsInQueue={songs && songs.length > 0}
                 onAddSong={handleAddSong}
+                showSpotifyConnect={hasSpotifySongs && !spotifyToken}
+                onConnectSpotify={handleConnectSpotify}
               />
             </div>
 
@@ -717,8 +783,7 @@ export default function RoomView() {
         onClose={() => setIsAddModalVisible(false)}
       />
 
-      {/* Auth Prompt */}
-      <AuthPrompt activeSources={room?.activeSources} />
+
     </div>
   );
 }

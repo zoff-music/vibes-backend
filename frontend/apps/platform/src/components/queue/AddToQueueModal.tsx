@@ -36,14 +36,12 @@ export const AddToQueueModal: React.FC<Props> = ({
   const [justAdded, setJustAdded] = useState(false);
   const { addToQueue } = useQueue(roomId);
 
-  const { providers, authorizations, fetchProviders, fetchAuthorizations } =
-    useAuthCache();
+  const { providers, fetchProviders } = useAuthCache();
   const providerList = providers || [];
-  const authorizationList = authorizations || [];
 
   const [selectedProvider, setSelectedProvider] = useState<string>('youtube');
 
-  const { room } = useRoom(roomId);
+  useRoom(roomId);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -68,7 +66,7 @@ export const AddToQueueModal: React.FC<Props> = ({
         // keep youtube
       }
 
-      await fetchAuthorizations();
+
     };
     loadData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -299,37 +297,7 @@ export const AddToQueueModal: React.FC<Props> = ({
         {/* Search Input */}
         <div className="relative mb-6">
           <div className="relative">
-            {/* Auth Check Logic */}
-            {(() => {
-              const isYoutube = selectedProvider === 'youtube'; // YouTube basically always allowed via Key
-              const isAuthorized = authorizationList.includes(selectedProvider);
-              const isActiveSource =
-                room?.activeSources?.includes(selectedProvider);
-              const canSearch = isYoutube || isAuthorized || isActiveSource;
-
-              if (!canSearch) {
-                return (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-surface/90 p-4 text-center backdrop-blur-sm">
-                    <p className="mb-2 font-bold text-ink">
-                      Connect {selectedProvider} to Search
-                    </p>
-                    <button
-                      onClick={() =>
-                        window.open(
-                          `/api/v1/authorizations/${selectedProvider}`,
-                          'Login',
-                          'width=500,height=600',
-                        )
-                      }
-                      className="rounded-lg bg-primary px-4 py-2 font-bold text-sm text-white shadow-retro-pink transition-colors hover:bg-primary-muted"
-                    >
-                      Connect Now
-                    </button>
-                  </div>
-                );
-              }
-              return null;
-            })()}
+            {/* Auth Check Logic Removed: searching allowed without prior active source check */}
 
             <div className="absolute top-1/2 left-4 -translate-y-1/2 text-ink/40">
               {isSearching ? (

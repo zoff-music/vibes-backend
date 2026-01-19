@@ -151,12 +151,22 @@ func GetRoom(
 
 		room, err := db.GetRoom(ctx, roomID)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to fetch room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		if room.IsEmpty() {
-			handleError(w, fmt.Errorf("room not found"), http.StatusNotFound, false)
+			handleError(
+				w,
+				fmt.Errorf("room not found"),
+				http.StatusNotFound,
+				false,
+			)
 			return
 		}
 
@@ -282,7 +292,12 @@ func CreateSession(
 		var req vibe.CreateSessionRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
+			handleError(
+				w,
+				fmt.Errorf("invalid request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
 			return
 		}
 
@@ -309,7 +324,12 @@ func CreateSession(
 
 		room, err := db.GetRoom(ctx, roomID)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to fetch room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
