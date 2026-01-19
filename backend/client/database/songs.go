@@ -240,6 +240,19 @@ func (c *Client) prepareAddSongStmt() error {
 	return nil
 }
 
+func (c *Client) prepareInsertSongVoteStmt() error {
+	stmt, err := c.DB.Prepare(`
+		INSERT INTO song_votes (room_id, song_id, user_id)
+		VALUES (?1, ?2, ?3)
+		ON CONFLICT(room_id, song_id, user_id) DO NOTHING
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing InsertSongVoteStatement: %w", err)
+	}
+	c.InsertSongVoteStatement = stmt
+	return nil
+}
+
 // AddSong adds a song to the queue.
 func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "AddSong")
@@ -270,12 +283,7 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 	song.ID = returnedID
 
 	// 2. Insert Vote
-	// We use raw execution here as strict prepared statement struct modification is hard without seeing client.go
-	_, err = c.DB.ExecContext(cctx, `
-        INSERT INTO song_votes (room_id, song_id, user_id)
-        VALUES (?1, ?2, ?3)
-        ON CONFLICT(room_id, song_id, user_id) DO NOTHING
-    `, song.RoomID, song.ID, song.AddedBy)
+	_, err = c.InsertSongVoteStatement.ExecContext(cctx, song.RoomID, song.ID, song.AddedBy)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting vote: %w", err)
 	}
@@ -482,6 +490,35 @@ func (c *Client) VoteSong(ctx context.Context, roomID, songID, userID string) er
 
 	if rows == 0 {
 		return vibe.ErrAlreadyVoted
+	}
+
+	return nil
+}
+
+func (c *Client) prepareClearVotesSongStmt() error {
+	stmt, err := c.DB.Prepare(`
+		DELETE FROM song_votes WHERE room_id = ?1 AND song_id = ?2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ClearVotesSongStatement: %w", err)
+	}
+
+	c.ClearVotesSongStatement = stmt
+
+	return nil
+}
+
+// clearVotesSong clears all votes for a song.
+func (c *Client) clearVotesSong(ctx context.Context, roomID, songID string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "clearVotesSong")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := c.ClearVotesSongStatement.ExecContext(cctx, roomID, songID)
+	if err != nil {
+		return fmt.Errorf("error clearing votes for song: %w", err)
 	}
 
 	return nil

@@ -176,9 +176,9 @@ func (c *Client) prepareClearSkipVotesStmt() error {
 	return nil
 }
 
-// ClearSkipVotes clears all skip votes for a song.
-func (c *Client) ClearSkipVotes(ctx context.Context, roomID, songID string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "ClearSkipVotes")
+// clearSkipVotes clears all skip votes for a song.
+func (c *Client) clearSkipVotes(ctx context.Context, roomID, songID string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "clearSkipVotes")
 	defer span.Finish()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -270,14 +270,20 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 	if voteCount >= requiredVotes {
 		// Threshold met, skip the track
 		fmt.Printf("[DEBUG-SKIP] Room: %s, Threshold met. Skipping.\n", roomID)
+
+		err = c.clearSkipVotes(ctx, roomID, songID)
+		if err != nil {
+			return nil, fmt.Errorf("error clearing skip votes: %w", err)
+		}
+
+		err = c.clearVotesSong(ctx, roomID, songID)
+		if err != nil {
+			return nil, fmt.Errorf("error clearing votes for song: %w", err)
+		}
+
 		newState, err := c.skipTrack(ctx, roomID)
 		if err != nil {
 			return nil, fmt.Errorf("error skipping track after vote: %w", err)
-		}
-
-		err = c.ClearSkipVotes(ctx, roomID, songID)
-		if err != nil {
-			// Log error but don't fail operation as skip already happened
 		}
 
 		return newState, nil

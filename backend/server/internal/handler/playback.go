@@ -25,7 +25,12 @@ func UpdatePlaybackState(
 		var req vibe.RoomActionRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
+			handleError(
+				w,
+				fmt.Errorf("invalid request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
 			return
 		}
 
@@ -33,20 +38,35 @@ func UpdatePlaybackState(
 		case vibe.RoomActionPlay, vibe.RoomActionPause, vibe.RoomActionSeek:
 			// Allowed actions
 		default:
-			handleError(w, fmt.Errorf("invalid action for state update: %s", req.Action), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("invalid action for state update: %s", req.Action),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
-			handleError(w, fmt.Errorf("unauthorized"), http.StatusUnauthorized, false)
+			handleError(
+				w,
+				fmt.Errorf("unauthorized"),
+				http.StatusUnauthorized,
+				false,
+			)
 			return
 		}
 		userID := session.UserID
 
 		room, err := db.GetRoom(ctx, roomID)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to fetch room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -54,7 +74,12 @@ func UpdatePlaybackState(
 
 		state, err := db.UpdatePlayback(ctx, roomID, userID, req.Action, req.PositionMs)
 		if err != nil {
-			handleError(w, fmt.Errorf("action %s failed: %w", req.Action, err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("action %s failed: %w", req.Action, err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -79,7 +104,12 @@ func UpdatePlaybackState(
 
 		body, err := json.Marshal(state)
 		if err != nil {
-			handleError(w, fmt.Errorf("marshal response: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 

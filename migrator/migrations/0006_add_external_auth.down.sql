@@ -1,1 +1,1 @@
-DROP TABLE IF EXISTS external_auth;
+DROP TABLE IF EXISTS auth_tokens;

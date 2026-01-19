@@ -46,7 +46,12 @@ func SkipSong(
 
 		songs, err := db.GetSongs(ctx, roomID)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to fetch songs: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("failed to fetch songs: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -82,7 +87,12 @@ func SkipSong(
 
 		body, err := json.Marshal(state)
 		if err != nil {
-			handleError(w, fmt.Errorf("marshal response: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 

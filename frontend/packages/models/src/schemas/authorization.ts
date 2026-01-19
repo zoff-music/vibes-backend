@@ -13,3 +13,9 @@ export const spotifyTokenSchema = yup.object({
   refresh_token: yup.string().optional(),
 });
 export type SpotifyToken = yup.InferType<typeof spotifyTokenSchema>;
+
+export const providerTokenSchema = yup.object({
+  accessToken: yup.string().required(),
+  expiresAt: yup.string().required(),
+});
+export type ProviderToken = yup.InferType<typeof providerTokenSchema>;

@@ -28,21 +28,22 @@ type Config struct {
 	YouTubeClientSecret string `envconfig:"YOUTUBE_CLIENT_SECRET" default:""`
 	YouTubeRedirectURI  string `envconfig:"YOUTUBE_REDIRECT_URI" default:"https://localhost/api/v1/callbacks/youtube"`
 
+	// SoundCloud configuration
 	SoundCloudAPIKey       string `envconfig:"SOUNDCLOUD_API_KEY" default:""`
 	SoundCloudEndpoint     string `envconfig:"SOUNDCLOUD_ENDPOINT" default:"https://api.soundcloud.com"`
 	SoundCloudClientID     string `envconfig:"SOUNDCLOUD_CLIENT_ID" default:""`
 	SoundCloudClientSecret string `envconfig:"SOUNDCLOUD_CLIENT_SECRET" default:""`
 	SoundCloudRedirectURI  string `envconfig:"SOUNDCLOUD_REDIRECT_URI" default:"https://localhost/api/v1/callbacks/soundcloud"`
-	SpotifyClientID        string `envconfig:"SPOTIFY_CLIENT_ID" default:""`
-	SpotifyClientSecret    string `envconfig:"SPOTIFY_CLIENT_SECRET" default:""`
-	SpotifyEndpoint        string `envconfig:"SPOTIFY_ENDPOINT" default:"https://api.spotify.com/v1"`
-	SpotifyTokenURL        string `envconfig:"SPOTIFY_TOKEN_URL" default:"https://accounts.spotify.com/api/token"`
-	SpotifyRedirectURI     string `envconfig:"SPOTIFY_REDIRECT_URI" default:"https://127.0.0.1/api/v1/callbacks/spotify"`
+
+	// Spotify configuration
+	SpotifyClientID     string `envconfig:"SPOTIFY_CLIENT_ID" default:""`
+	SpotifyClientSecret string `envconfig:"SPOTIFY_CLIENT_SECRET" default:""`
+	SpotifyEndpoint     string `envconfig:"SPOTIFY_ENDPOINT" default:"https://api.spotify.com/v1"`
+	SpotifyTokenURL     string `envconfig:"SPOTIFY_TOKEN_URL" default:"https://accounts.spotify.com/api/token"`
+	SpotifyRedirectURI  string `envconfig:"SPOTIFY_REDIRECT_URI" default:"https://127.0.0.1/api/v1/callbacks/spotify"`
 
 	// User session settings
 	UserInactivityTimeout time.Duration `envconfig:"USER_INACTIVITY_TIMEOUT" default:"30m"`
-
-	FrontendURL string `envconfig:"FRONTEND_URL" default:"http://localhost:5173"`
 }
 
 // LoadConfig reads environment variables and populates Config.

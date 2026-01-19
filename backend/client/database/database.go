@@ -38,6 +38,7 @@ type Client struct {
 	GetNextSongStatement        *sql.Stmt
 	ReorderSongsStatement       *sql.Stmt
 	VoteSongStatement           *sql.Stmt
+	ClearVotesSongStatement     *sql.Stmt
 
 	// Playback statements
 	GetPlaybackStateStatement           *sql.Stmt
@@ -60,14 +61,36 @@ type Client struct {
 	AddSkipVoteStatement    *sql.Stmt
 	ClearSkipVotesStatement *sql.Stmt
 
-	// External auth statements
-	UpsertExternalAuthStatement *sql.Stmt
-}
+	// Auth token statements
+	UpsertAuthTokenStatement         *sql.Stmt
+	GetAuthProvidersStatement        *sql.Stmt
+	DeleteExpiredAuthTokensStatement *sql.Stmt
 
-// ... (Init function is unchanged, but I need to make sure I don't overwrite it in ReplaceContent)
-// Wait, I can't just replace the struct and the method in one go if they are far apart.
-// I will do two chunks using multi_replace_file_content since the tool call above is replace_file_content.
-// Actually, I can just use multi_replace for this.
+	// Access token statements
+	UpsertAccessTokenStatement         *sql.Stmt
+	GetAccessTokenStatement            *sql.Stmt
+	DeleteExpiredAccessTokensStatement *sql.Stmt
+
+	// Pending OAuth state statements
+	SavePendingOAuthStateStatement              *sql.Stmt
+	ValidateAndDeletePendingOAuthStateStatement *sql.Stmt
+	DeletePendingOAuthStateStatement            *sql.Stmt
+	DeleteExpiredPendingOAuthStatesStatement    *sql.Stmt
+
+	// Participant statements
+	UpdateParticipantStatement          *sql.Stmt
+	GetActiveParticipantsStatement      *sql.Stmt
+	SetRoomHostStatement                *sql.Stmt
+	RemoveParticipantStatement          *sql.Stmt
+	DeleteInactiveParticipantsStatement *sql.Stmt
+
+	// Additional room statements
+	ElectNewHostStatement     *sql.Stmt
+	GetActiveSourcesStatement *sql.Stmt
+
+	// Additional song statements
+	InsertSongVoteStatement *sql.Stmt
+}
 
 // Init sets up a new database client.
 func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
@@ -123,153 +146,69 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 
 	c.DB = db
 
-	err = c.prepareGetRoomStmt()
-	if err != nil {
-		return err
+	prepareStatements := []func() error{
+		// Room statements
+		c.prepareGetRoomStmt,
+		c.prepareGetRoomByNameStmt,
+		c.prepareCreateRoomStmt,
+		c.prepareUpdateRoomStmt,
+		c.prepareProcessNextAbandonedHostStmt,
+		c.prepareElectNewHostStmt,
+		c.prepareGetActiveSourcesStmt,
+		// Song statements
+		c.prepareGetSongsStmt,
+		c.prepareGetSongStmt,
+		c.prepareAddSongStmt,
+		c.prepareRemoveSongStmt,
+		c.prepareGetMaxPositionStmt,
+		c.prepareUpdateSongPositionStmt,
+		c.prepareGetNextSongStmt,
+		c.prepareReorderSongsStmt,
+		c.prepareVoteSongStmt,
+		c.prepareInsertSongVoteStmt,
+		c.prepareClearVotesSongStmt,
+		// Playback statements
+		c.prepareGetPlaybackStateStmt,
+		c.prepareUpsertPlaybackStateStmt,
+		c.prepareProcessNextExpiredPlaybackStmt,
+		c.prepareStartPlaybackIfIdleStmt,
+		// User statements
+		c.prepareGetUserStmt,
+		c.prepareGetUsersInRoomStmt,
+		c.prepareCountUsersInRoomStmt,
+		c.prepareCreateUserStmt,
+		c.prepareUpdateUserLastSeenStmt,
+		c.prepareRemoveUserStmt,
+		c.prepareCleanupInactiveUsersStmt,
+		// Skip vote statements
+		c.prepareGetSkipVotesStmt,
+		c.prepareHasUserVotedStmt,
+		c.prepareAddSkipVoteStmt,
+		c.prepareClearSkipVotesStmt,
+		// Auth token statements
+		c.prepareUpsertAuthTokenStmt,
+		c.prepareGetAuthProvidersStmt,
+		c.prepareDeleteExpiredAuthTokensStmt,
+		// Access token statements
+		c.prepareUpsertAccessTokenStmt,
+		c.prepareGetAccessTokenStmt,
+		c.prepareDeleteExpiredAccessTokensStmt,
+		c.prepareSavePendingOAuthStateStmt,
+		c.prepareValidateAndDeletePendingOAuthStateStmt,
+		c.prepareDeletePendingOAuthStateStmt,
+		c.prepareDeleteExpiredPendingOAuthStatesStmt,
+		// Participant statements
+		c.prepareUpdateParticipantStmt,
+		c.prepareGetActiveParticipantsStmt,
+		c.prepareSetRoomHostStmt,
+		c.prepareRemoveParticipantStmt,
+		c.prepareDeleteInactiveParticipantsStmt,
 	}
 
-	err = c.prepareGetRoomByNameStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareCreateRoomStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareUpdateRoomStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareProcessNextAbandonedHostStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareGetSongsStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareGetSongStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareAddSongStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareRemoveSongStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareGetMaxPositionStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareUpdateSongPositionStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareGetNextSongStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareReorderSongsStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareVoteSongStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareGetPlaybackStateStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareUpsertPlaybackStateStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareProcessNextExpiredPlaybackStmt()
-	if err != nil {
-		return err
-	}
-	err = c.prepareStartPlaybackIfIdleStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareGetUserStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareGetUsersInRoomStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareCountUsersInRoomStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareCreateUserStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareUpdateUserLastSeenStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareRemoveUserStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareCleanupInactiveUsersStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareGetSkipVotesStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareHasUserVotedStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareAddSkipVoteStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareClearSkipVotesStmt()
-	if err != nil {
-		return err
-	}
-
-	err = c.prepareUpsertExternalAuthStmt()
-	if err != nil {
-		return err
+	for _, prepareStmt := range prepareStatements {
+		if err := prepareStmt(); err != nil {
+			return fmt.Errorf("failed to prepare statements: %w", err)
+		}
 	}
 
 	return nil
@@ -292,6 +231,7 @@ func (c *Client) Close() error {
 		c.GetNextSongStatement,
 		c.ReorderSongsStatement,
 		c.VoteSongStatement,
+		c.ClearVotesSongStatement,
 		c.GetPlaybackStateStatement,
 		c.UpsertPlaybackStateStatement,
 		c.ProcessNextExpiredPlaybackStatement,
@@ -307,7 +247,24 @@ func (c *Client) Close() error {
 		c.HasUserVotedStatement,
 		c.AddSkipVoteStatement,
 		c.ClearSkipVotesStatement,
-		c.UpsertExternalAuthStatement,
+		c.UpsertAuthTokenStatement,
+		c.GetAuthProvidersStatement,
+		c.DeleteExpiredAuthTokensStatement,
+		c.UpsertAccessTokenStatement,
+		c.GetAccessTokenStatement,
+		c.DeleteExpiredAccessTokensStatement,
+		c.SavePendingOAuthStateStatement,
+		c.ValidateAndDeletePendingOAuthStateStatement,
+		c.DeletePendingOAuthStateStatement,
+		c.DeleteExpiredPendingOAuthStatesStatement,
+		c.UpdateParticipantStatement,
+		c.GetActiveParticipantsStatement,
+		c.SetRoomHostStatement,
+		c.RemoveParticipantStatement,
+		c.DeleteInactiveParticipantsStatement,
+		c.ElectNewHostStatement,
+		c.GetActiveSourcesStatement,
+		c.InsertSongVoteStatement,
 	}
 
 	for _, stmt := range statements {

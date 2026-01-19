@@ -10,31 +10,34 @@ type OAuthAuthorizer interface {
 	GetOAuthURL(state string) string
 }
 
-// ExternalAuthUpserter handles storing external authentication data.
-type ExternalAuthUpserter interface {
-	UpsertExternalAuth(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error
+// AuthTokenUpserter handles storing auth token data (code/state).
+type AuthTokenUpserter interface {
+	UpsertAuthToken(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error
 }
 
-// ExternalAuthLister handles listing external authentication data.
-type ExternalAuthLister interface {
-	GetExternalAuths(ctx context.Context, userID string) ([]string, error)
+// AccessTokenUpserter handles storing access token data.
+type AccessTokenUpserter interface {
+	UpsertAccessToken(ctx context.Context, userID, provider, accessToken, refreshToken string, expiresAt, refreshExpiresAt time.Time) error
 }
 
-// ExternalAuthGetter handles retrieving external authentication data.
-type ExternalAuthGetter interface {
-	GetExternalAuth(ctx context.Context, userID, provider string) (*ExternalAuth, error)
+// AuthTokenLister handles listing auth providers.
+type AuthTokenLister interface {
+	GetAuthProviders(ctx context.Context, userID string) ([]string, error)
 }
 
-// ExternalAuthStorage handles storing external authentication data.
-// Deprecated: Use ExternalAuthUpserter, ExternalAuthLister, or ExternalAuthGetter instead.
-type ExternalAuthStorage interface {
-	ExternalAuthUpserter
-	ExternalAuthLister
-	ExternalAuthGetter
+// AccessTokenGetter handles retrieving access token data.
+type AccessTokenGetter interface {
+	GetAccessToken(ctx context.Context, userID, provider string) (*AccessToken, error)
 }
 
-// ExternalAuth represents a user's authorization with an external provider
-type ExternalAuth struct {
+// AuthTokenCleaner handles cleaning up expired auth and access tokens.
+type AuthTokenCleaner interface {
+	DeleteExpiredAuthTokens(ctx context.Context) (int64, error)
+	DeleteExpiredAccessTokens(ctx context.Context) (int64, error)
+}
+
+// AuthToken represents a user's initial auth code/state
+type AuthToken struct {
 	UserID    string    `json:"userId"`
 	Provider  string    `json:"provider"`
 	Code      string    `json:"-"`
@@ -42,16 +45,24 @@ type ExternalAuth struct {
 	ExpiresAt time.Time `json:"expiresAt"`
 }
 
-// TokenResponse represents the token response from a provider
-type TokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	TokenType    string `json:"token_type"`
-	Scope        string `json:"scope"`
-	ExpiresIn    int    `json:"expires_in"`
-	RefreshToken string `json:"refresh_token"`
+// AccessToken represents a user's OAuth tokens
+type AccessToken struct {
+	UserID           string    `json:"userId"`
+	Provider         string    `json:"provider"`
+	AccessToken      string    `json:"-"`
+	RefreshToken     string    `json:"-"`
+	ExpiresAt        time.Time `json:"expiresAt"`
+	RefreshExpiresAt time.Time `json:"-"`
 }
 
-// TokenExchanger handles exchanging auth codes for tokens
-type TokenExchanger interface {
-	ExchangeCode(ctx context.Context, code string) (*TokenResponse, error)
+// PendingOAuthStateSaver handles saving pending OAuth state
+type PendingOAuthStateSaver interface {
+	SavePendingOAuthState(ctx context.Context, userID, state string) error
+}
+
+// OAuthCallbackDB handles database operations for OAuth callbacks
+type OAuthCallbackDB interface {
+	ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (string, error)
+	UpsertAuthToken(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error
+	UpsertAccessToken(ctx context.Context, userID, provider, accessToken, refreshToken string, expiresAt, refreshExpiresAt time.Time) error
 }

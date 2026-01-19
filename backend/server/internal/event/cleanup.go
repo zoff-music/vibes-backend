@@ -26,3 +26,28 @@ func (h *CleanupHandler) Handle(ctx context.Context, data []byte) error {
 
 	return nil
 }
+
+// ExpiredTokenCleanupHandler cleans up expired external auth records
+type ExpiredTokenCleanupHandler struct {
+	DB vibe.AuthTokenCleaner
+}
+
+// Handle deletes expired external auth tokens
+func (h *ExpiredTokenCleanupHandler) Handle(ctx context.Context, data []byte) error {
+	deletedAuth, err := h.DB.DeleteExpiredAuthTokens(ctx)
+	if err != nil {
+		return err
+	}
+
+	deletedAccess, err := h.DB.DeleteExpiredAccessTokens(ctx)
+	if err != nil {
+		return err
+	}
+
+	totalDeleted := deletedAuth + deletedAccess
+	if totalDeleted > 0 {
+		log.Printf("Cleaned up %d expired auth tokens and %d expired access tokens", deletedAuth, deletedAccess)
+	}
+
+	return nil
+}

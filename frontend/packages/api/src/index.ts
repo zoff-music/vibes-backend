@@ -1,12 +1,13 @@
 import {
   addSongRequestSchema,
-  authorizationsListSchema,
+
   connectedSchema,
   createRoomRequestSchema,
   createSessionRequestSchema,
   emptyObjectSchema,
   messageResponseSchema,
   playbackStateSchema,
+  providerTokenSchema,
   providersSchema,
   reorderSongsRequestSchema,
   roomActionRequestSchema,
@@ -58,9 +59,9 @@ const getApiUrl = () => {
 };
 
 const API_URL = getApiUrl();
-const FULL_API_URL = `${API_URL}${API_BASE_PATH}`.replace(/([^:]\/)\/+/g, '$1'); // Remove double slashes except after protocol
+export const API_BASE_URL = `${API_URL}${API_BASE_PATH}`.replace(/([^:]\/)\/+/g, '$1'); // Remove double slashes except after protocol
 
-console.log('[API] Initialized with base URL:', FULL_API_URL);
+console.log('[API] Initialized with base URL:', API_BASE_URL);
 
 const endpoints = {
   '/rooms': {
@@ -146,9 +147,10 @@ const endpoints = {
       },
     },
   },
-  '/authorizations': {
+
+  '/tokens/{provider}': {
     get: {
-      response: authorizationsListSchema,
+      response: providerTokenSchema,
     },
   },
   '/authorizations/spotify/token': {
@@ -191,8 +193,8 @@ const endpoints = {
 } satisfies RequestDefinitions;
 
 const baseClient = new RequestClient({
-  hostname: FULL_API_URL,
-  baseUrl: FULL_API_URL,
+  hostname: API_BASE_URL,
+  baseUrl: API_BASE_URL,
   endpoints,
   validation: true,
   fetchOpts: {

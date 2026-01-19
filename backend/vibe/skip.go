@@ -17,7 +17,6 @@ type SkipVoteFetcher interface {
 // SkipVoteManager manages skip votes
 type SkipVoteManager interface {
 	AddSkipVote(ctx context.Context, roomID, songID, userID string) error
-	ClearSkipVotes(ctx context.Context, roomID, songID string) error
 }
 
 // RoomSkipper defines actions related to skipping tracks

@@ -8,69 +8,15 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes/server/internal/helper"
 	"github.com/zoff-music/vibes/vibe"
 )
 
-// AuthorizeProvider redirects the user to the provider for authentication
-func AuthorizeProvider(oa vibe.OAuthAuthorizer) http.HandlerFunc {
+// Authorize redirects the user to the provider for authentication
+func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
 		state := generateRandomString(32)
-
-		// Store state in a cookie for validation when provider redirects back
-		helper.SetOAuthStateCookie(w, state)
-
-		redirectURL := oa.GetOAuthURL(state)
-		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
-	}
-}
-
-// GetAuthorizations handles GET /api/v1/authorizations
-func GetAuthorizations(db vibe.ExternalAuthLister) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		session, ok := helper.GetSessionFromContext(ctx)
-		if !ok || session.UserID == "" {
-			handleError(w, fmt.Errorf("error user not authenticated"), http.StatusUnauthorized, true)
-			return
-		}
-
-		auths, err := db.GetExternalAuths(ctx, session.UserID)
-		if err != nil {
-			handleError(w, fmt.Errorf("error getting authorizations: %w", err), http.StatusInternalServerError, true)
-			return
-		}
-
-		body, err := json.Marshal(auths)
-		if err != nil {
-			handleError(w, fmt.Errorf("error marshaling authorizations: %w", err), http.StatusInternalServerError, true)
-			return
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(body)
-	}
-}
-
-// OAuthCallback handles GET /api/v1/callbacks/{provider}
-func OAuthCallback(db vibe.ExternalAuthUpserter, frontendURL string) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-		vars := mux.Vars(r)
-		provider := vars["provider"]
-
-		query := r.URL.Query()
-		code := query.Get("code")
-		state := query.Get("state")
-
-		// Validate state
-		cookieState, err := helper.GetOAuthStateCookie(r)
-		if err != nil || cookieState != state {
-			handleError(w, fmt.Errorf("invalid state parameter"), http.StatusBadRequest, true)
-			return
-		}
 
 		// Get user ID from session
 		session, ok := helper.GetSessionFromContext(ctx)
@@ -79,52 +25,159 @@ func OAuthCallback(db vibe.ExternalAuthUpserter, frontendURL string) http.Handle
 			return
 		}
 
-		// Calculate expiration
-		expiresAt := time.Now().Add(1 * time.Hour)
+		// Store state in database
+		if err := db.SavePendingOAuthState(ctx, session.UserID, state); err != nil {
+			handleError(w, fmt.Errorf("error saving pending oauth state: %w", err), http.StatusInternalServerError, true)
+			return
+		}
 
-		err = db.UpsertExternalAuth(ctx, session.UserID, provider, code, state, expiresAt)
+		fmt.Printf("DEBUG: Authorize - UserID: %s, State: %s\n", session.UserID, state)
+
+		redirectURL := oa.GetOAuthURL(state)
+		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+	}
+}
+
+// OAuthCallback handles GET /api/v1/callbacks/{provider}
+func OAuthCallback(db vibe.OAuthCallbackDB, provider vibe.OAuthProvider, providerName string) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		query := r.URL.Query()
+		code := query.Get("code")
+		state := query.Get("state")
+
+		// Validate state from database (stateless check to handle cross-domain cookies)
+		userID, err := db.ValidateAndDeletePendingOAuthState(ctx, state)
 		if err != nil {
-			handleError(w, fmt.Errorf("error storing external auth: %w", err), http.StatusInternalServerError, true)
+			handleError(w, fmt.Errorf("error validating state: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+
+		if userID == "" {
+			handleError(w, fmt.Errorf("invalid state parameter"), http.StatusBadRequest, true)
+			return
+		}
+
+		// Exchange code for tokens
+		tokenResp, err := provider.ExchangeCode(ctx, code)
+		if err != nil {
+			handleError(w, fmt.Errorf("error exchanging code for token: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+
+		// Calculate expiration
+		expiresAt := time.Now().UTC().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+		refreshExpiresAt := time.Now().UTC().Add(30 * 24 * time.Hour) // Default 30 days specific for refresh token if not provided.
+
+		// Store initial auth token info
+		authExpiresAt := time.Now().UTC().Add(24 * time.Hour)
+		err = db.UpsertAuthToken(ctx, userID, providerName, code, state, authExpiresAt)
+		if err != nil {
+			handleError(w, fmt.Errorf("error storing auth token: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+
+		// Store access tokens
+		err = db.UpsertAccessToken(ctx, userID, providerName, tokenResp.AccessToken, tokenResp.RefreshToken, expiresAt, refreshExpiresAt)
+		if err != nil {
+			handleError(w, fmt.Errorf("error storing access token: %w", err), http.StatusInternalServerError, true)
 			return
 		}
 
 		// Redirect to frontend callback page
-		http.Redirect(w, r, fmt.Sprintf("%s/callback?status=success&provider=%s", frontendURL, provider), http.StatusTemporaryRedirect)
+		http.Redirect(
+			w,
+			r,
+			fmt.Sprintf("/callback?status=success&provider=%s", providerName),
+			http.StatusTemporaryRedirect,
+		)
 	}
 }
 
-// GetSpotifyToken handles GET /api/v1/authorizations/spotify/token
-func GetSpotifyToken(db vibe.ExternalAuthGetter, te vibe.TokenExchanger) http.HandlerFunc {
+// GetToken handles GET /api/v1/authorizations/{provider}/token
+func GetToken(db vibe.AccessTokenUpserter, getter vibe.AccessTokenGetter, provider vibe.OAuthProvider, providerName string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
 			handleError(w, fmt.Errorf("error user not authenticated"), http.StatusUnauthorized, true)
 			return
 		}
 
-		auth, err := db.GetExternalAuth(ctx, session.UserID, "spotify")
+		// Get current access token
+		token, err := getter.GetAccessToken(ctx, session.UserID, providerName)
 		if err != nil {
-			handleError(w, fmt.Errorf("authorization not found"), http.StatusNotFound, true)
+			// If not found or error, return 403
+			handleError(w, fmt.Errorf("error getting access token: %w", err), http.StatusForbidden, false)
 			return
 		}
 
-		if auth.Code == "" {
-			handleError(w, fmt.Errorf("error no auth code found"), http.StatusNotFound, true)
+		// Check if access token is valid
+		if token.ExpiresAt.After(time.Now().UTC().Add(1 * time.Minute)) {
+			resp := vibe.ProviderTokenResponse{
+				AccessToken: token.AccessToken,
+				ExpiresAt:   token.ExpiresAt,
+			}
+
+			body, err := json.Marshal(resp)
+			if err != nil {
+				handleError(w, fmt.Errorf("error marshalling response: %w", err), http.StatusInternalServerError, true)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(body)
 			return
 		}
 
-		// Exchange code for token
-		tokenResp, err := te.ExchangeCode(ctx, auth.Code)
+		// Access token expired, check refresh token
+		if token.RefreshToken == "" {
+			handleError(w, fmt.Errorf("no refresh token available"), http.StatusForbidden, false)
+			return
+		}
+
+		// Check Refresh Token expiration if we track it (optional check, provider will fail anyway)
+		if !token.RefreshExpiresAt.IsZero() && token.RefreshExpiresAt.Before(time.Now().UTC()) {
+			handleError(w, fmt.Errorf("refresh token expired"), http.StatusForbidden, false)
+			return
+		}
+
+		// Refresh token
+		tokenResp, err := provider.RefreshToken(ctx, token.RefreshToken)
 		if err != nil {
-			handleError(w, fmt.Errorf("error exchanging code: %w", err), http.StatusInternalServerError, true)
+			handleError(w, fmt.Errorf("error refreshing token: %w", err), http.StatusForbidden, false)
+			return
+		}
+
+		// Update DB
+		newExpiresAt := time.Now().UTC().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+		newRefreshToken := tokenResp.RefreshToken
+		if newRefreshToken == "" {
+			newRefreshToken = token.RefreshToken // Keep old refresh token if not rotated
+		}
+		newRefreshExpiresAt := time.Now().UTC().Add(30 * 24 * time.Hour) // Reset refresh expiration
+
+		err = db.UpsertAccessToken(ctx, token.UserID, providerName, tokenResp.AccessToken, newRefreshToken, newExpiresAt, newRefreshExpiresAt)
+		if err != nil {
+			handleError(w, fmt.Errorf("error updating access token: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+
+		resp := vibe.ProviderTokenResponse{
+			AccessToken: tokenResp.AccessToken,
+			ExpiresAt:   newExpiresAt,
+		}
+
+		body, err := json.Marshal(resp)
+		if err != nil {
+			handleError(w, fmt.Errorf("error marshalling response: %w", err), http.StatusInternalServerError, true)
 			return
 		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
-		json.NewEncoder(w).Encode(tokenResp)
+		_, _ = w.Write(body)
 	}
 }
 
