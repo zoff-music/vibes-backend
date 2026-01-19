@@ -13,7 +13,11 @@ export default function Callback() {
       window.opener.postMessage({ type: 'oauth-success', provider }, '*');
       window.close();
     } else {
-        console.warn('[Callback] Missing parameters or opener', { opener: !!window.opener, status, provider });
+      console.warn('[Callback] Missing parameters or opener', {
+        opener: !!window.opener,
+        status,
+        provider,
+      });
     }
   }, [searchParams]);
 

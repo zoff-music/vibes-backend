@@ -65,8 +65,6 @@ export const AddToQueueModal: React.FC<Props> = ({
       ) {
         // keep youtube
       }
-
-
     };
     loadData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
