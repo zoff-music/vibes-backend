@@ -219,7 +219,9 @@ func UpdateRoomSettings(
 			return
 		}
 
-		room.Settings = req.Settings
+		if req.Settings != nil {
+			room.Settings = *req.Settings
+		}
 		if req.Mode != "" {
 			room.Mode = req.Mode
 		}

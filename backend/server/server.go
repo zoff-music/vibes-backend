@@ -18,6 +18,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes/client/database"
 	"github.com/zoff-music/vibes/client/internalpubsub"
+	"github.com/zoff-music/vibes/client/soundcloud"
+	"github.com/zoff-music/vibes/client/spotify"
 	"github.com/zoff-music/vibes/client/youtube"
 	"github.com/zoff-music/vibes/config"
 	"github.com/zoff-music/vibes/monitoring/metrics"
@@ -32,6 +34,8 @@ type Server struct {
 	DB             *database.Client
 	InternalPubSub *internalpubsub.Client
 	YouTube        *youtube.Client
+	SoundCloud     *soundcloud.Client
+	Spotify        *spotify.Client
 	Router         *mux.Router
 }
 
@@ -53,15 +57,29 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	}
 
 	var youtubeClient youtube.Client
-	err = youtubeClient.Init(config.YouTubeAPIKey)
+	err = youtubeClient.Init(ctx, config)
 	if err != nil {
 		return fmt.Errorf("youtube client: %w", err)
+	}
+
+	var soundcloudClient soundcloud.Client
+	err = soundcloudClient.Init(ctx, config)
+	if err != nil {
+		return fmt.Errorf("soundcloud client: %w", err)
+	}
+
+	var spotifyClient spotify.Client
+	err = spotifyClient.Init(ctx, config)
+	if err != nil {
+		return fmt.Errorf("spotify client: %w", err)
 	}
 
 	s.Config = config
 	s.DB = &dbClient
 	s.InternalPubSub = &internalpubsubClient
 	s.YouTube = &youtubeClient
+	s.SoundCloud = &soundcloudClient
+	s.Spotify = &spotifyClient
 	s.Router = mux.NewRouter()
 	s.HTTP = &http.Server{
 		Addr:              fmt.Sprintf(":%s", s.Config.Port),

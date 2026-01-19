@@ -64,8 +64,8 @@ type CreateRoomRequest struct {
 
 // UpdateRoomRequest is the request payload for updating a room.
 type UpdateRoomRequest struct {
-	Mode     string       `json:"mode,omitempty"`
-	Settings RoomSettings `json:"settings"`
+	Mode     string        `json:"mode,omitempty"`
+	Settings *RoomSettings `json:"settings,omitempty"`
 }
 
 // IsEmpty returns true if the room is empty/not found

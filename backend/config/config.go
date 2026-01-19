@@ -19,10 +19,17 @@ type Config struct {
 	OtelBatchSize       int           `envconfig:"OTEL_BATCH_SIZE" default:"512"`
 
 	// SQLite configuration
-	DatabasePath   string `envconfig:"DATABASE_PATH" default:"./data/vibes.db"`
-	MaxNameLength  int    `envconfig:"MAX_NAME_LENGTH" default:"100"`
-	MaxQueueLength int    `envconfig:"MAX_QUEUE_LENGTH" default:"200"`
-	YouTubeAPIKey  string `envconfig:"YOUTUBE_API_KEY" default:""`
+	DatabasePath        string `envconfig:"DATABASE_PATH" default:"./data/vibes.db"`
+	MaxNameLength       int    `envconfig:"MAX_NAME_LENGTH" default:"100"`
+	MaxQueueLength      int    `envconfig:"MAX_QUEUE_LENGTH" default:"200"`
+	YouTubeAPIKey       string `envconfig:"YOUTUBE_API_KEY" default:""`
+	YouTubeEndpoint     string `envconfig:"YOUTUBE_ENDPOINT" default:"https://www.googleapis.com/youtube/v3"`
+	SoundCloudAPIKey    string `envconfig:"SOUNDCLOUD_API_KEY" default:""`
+	SoundCloudEndpoint  string `envconfig:"SOUNDCLOUD_ENDPOINT" default:"https://api.soundcloud.com"`
+	SpotifyClientID     string `envconfig:"SPOTIFY_CLIENT_ID" default:""`
+	SpotifyClientSecret string `envconfig:"SPOTIFY_CLIENT_SECRET" default:""`
+	SpotifyEndpoint     string `envconfig:"SPOTIFY_ENDPOINT" default:"https://api.spotify.com/v1"`
+	SpotifyTokenURL     string `envconfig:"SPOTIFY_TOKEN_URL" default:"https://accounts.spotify.com/api/token"`
 
 	// User session settings
 	UserInactivityTimeout time.Duration `envconfig:"USER_INACTIVITY_TIMEOUT" default:"30m"`
