@@ -24,6 +24,7 @@ export const roomSchema = yup.object({
   hasPassword: yup.boolean().required(),
   settings: roomSettingsSchema.required(),
   userCount: yup.number().optional(),
+  activeSources: yup.array(yup.string().required()).optional(),
 });
 export type Room = yup.InferType<typeof roomSchema>;
 

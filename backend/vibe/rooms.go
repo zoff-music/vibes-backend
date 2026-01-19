@@ -40,6 +40,7 @@ type Room struct {
 	Settings          RoomSettings `json:"settings"`
 	CreatedAt         time.Time    `json:"createdAt"`
 	UserCount         int          `json:"userCount,omitempty"`
+	ActiveSources     []string     `json:"activeSources"`
 }
 
 // RoomHostInfo holds info about a host update
@@ -77,7 +78,6 @@ func (r *Room) IsEmpty() bool {
 type RoomFetcher interface {
 	GetRoom(ctx context.Context, id string) (*Room, error)
 	GetRoomByName(ctx context.Context, name string) (*Room, error)
-	GetRoomsWithActiveListeners(ctx context.Context, activeWithin time.Duration) ([]Room, error)
 }
 
 // RoomCreator creates rooms

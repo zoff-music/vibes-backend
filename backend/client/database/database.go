@@ -59,6 +59,9 @@ type Client struct {
 	HasUserVotedStatement   *sql.Stmt
 	AddSkipVoteStatement    *sql.Stmt
 	ClearSkipVotesStatement *sql.Stmt
+
+	// External auth statements
+	UpsertExternalAuthStatement *sql.Stmt
 }
 
 // ... (Init function is unchanged, but I need to make sure I don't overwrite it in ReplaceContent)
@@ -264,6 +267,11 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		return err
 	}
 
+	err = c.prepareUpsertExternalAuthStmt()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -299,6 +307,7 @@ func (c *Client) Close() error {
 		c.HasUserVotedStatement,
 		c.AddSkipVoteStatement,
 		c.ClearSkipVotesStatement,
+		c.UpsertExternalAuthStatement,
 	}
 
 	for _, stmt := range statements {

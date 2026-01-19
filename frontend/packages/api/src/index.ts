@@ -1,17 +1,23 @@
 import {
   addSongRequestSchema,
+  authorizationsListSchema,
   connectedSchema,
   createRoomRequestSchema,
   createSessionRequestSchema,
   emptyObjectSchema,
+  messageResponseSchema,
   playbackStateSchema,
+  providersSchema,
   reorderSongsRequestSchema,
   roomActionRequestSchema,
   roomSchema,
   roomUpdateSchema,
+  searchQuerySchema,
+  searchResponseSchema,
   sessionResponseSchema,
   songSchema,
   songsListSchema,
+  spotifyTokenSchema,
   youTubeSearchQuerySchema,
   youTubeSearchResponseSchema,
   youTubeVideoSchema,
@@ -19,11 +25,42 @@ import {
 import { safeWrapAsync } from '@vibez/shared';
 import { RequestClient, RequestDefinitions } from 'wiretyped';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 const API_BASE_PATH = '/api/v1';
-const URL = API_URL + API_BASE_PATH;
 
-console.log('[API] Initialized with base URL:', URL);
+const getApiUrl = () => {
+  // If explicitly set via env var, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // If in a browser environment
+  if (typeof window !== 'undefined') {
+    const { protocol, hostname, origin } = window.location;
+
+    // Local development
+    if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      // If using HTTPS locally (likely via Caddy/reverse proxy)
+      // We assume the proxy handles the /api/* routing to the backend
+      if (protocol === 'https:') {
+        return origin;
+      }
+      // If using HTTP locally (likely direct dev server)
+      // We assume backend is on standard 8080
+      return 'http://localhost:8080';
+    }
+
+    // Production/Deployed: use the same origin
+    return origin;
+  }
+
+  // Fallback for non-browser environments
+  return 'http://localhost:8080';
+};
+
+const API_URL = getApiUrl();
+const FULL_API_URL = `${API_URL}${API_BASE_PATH}`.replace(/([^:]\/)\/+/g, '$1'); // Remove double slashes except after protocol
+
+console.log('[API] Initialized with base URL:', FULL_API_URL);
 
 const endpoints = {
   '/rooms': {
@@ -109,11 +146,53 @@ const endpoints = {
       },
     },
   },
+  '/authorizations': {
+    get: {
+      response: authorizationsListSchema,
+    },
+  },
+  '/authorizations/spotify/token': {
+    get: {
+      response: spotifyTokenSchema,
+    },
+  },
+  '/authorizations/spotify': {
+    get: {
+      response: messageResponseSchema,
+    },
+  },
+  '/authorizations/youtube': {
+    get: {
+      response: messageResponseSchema,
+    },
+  },
+  '/authorizations/soundcloud': {
+    get: {
+      response: messageResponseSchema,
+    },
+  },
+  '/providers': {
+    get: {
+      response: providersSchema,
+    },
+  },
+  '/spotify/search': {
+    get: {
+      $search: searchQuerySchema,
+      response: searchResponseSchema,
+    },
+  },
+  '/soundcloud/search': {
+    get: {
+      $search: searchQuerySchema,
+      response: searchResponseSchema,
+    },
+  },
 } satisfies RequestDefinitions;
 
 const baseClient = new RequestClient({
-  hostname: URL,
-  baseUrl: URL,
+  hostname: FULL_API_URL,
+  baseUrl: FULL_API_URL,
   endpoints,
   validation: true,
   fetchOpts: {

@@ -44,9 +44,20 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/soundcloud/search", handler.SearchSoundCloud(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSoundCloud")
 	api.HandleFunc("/soundcloud/tracks/{id}", handler.GetSoundCloudTrack(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudTrack")
 
-	// Spotify routes
+	// Spotify search routes
 	api.HandleFunc("/spotify/search", handler.SearchSpotify(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSpotify")
 	api.HandleFunc("/spotify/tracks/{id}", handler.GetSpotifyTrack(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyTrack")
+	api.HandleFunc("/authorizations/spotify/token", handler.GetSpotifyToken(s.DB, s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyToken")
+
+	// Authorization routes
+	api.HandleFunc("/authorizations", handler.GetAuthorizations(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetAuthorizations")
+	api.HandleFunc("/authorizations/spotify", handler.AuthorizeProvider(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("AuthorizeSpotify")
+	api.HandleFunc("/authorizations/youtube", handler.AuthorizeProvider(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("AuthorizeYouTube")
+	api.HandleFunc("/authorizations/soundcloud", handler.AuthorizeProvider(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("AuthorizeSoundCloud")
+	api.HandleFunc("/callbacks/{provider}", handler.OAuthCallback(s.DB, s.Config.FrontendURL)).Methods(http.MethodGet, http.MethodOptions).Name("OAuthCallback")
+
+	// Config routes
+	api.HandleFunc("/providers", handler.GetProviders(s.Config)).Methods(http.MethodGet, http.MethodOptions).Name("GetProviders")
 
 	s.addSessionMiddleware(api)
 	s.addPermissionMiddleware(api)

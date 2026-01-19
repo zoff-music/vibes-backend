@@ -21,6 +21,8 @@ backend/
 ├── client/            # External service clients
 │   ├── database/      # SQLite operations
 │   ├── youtube/       # YouTube API client
+│   ├── soundcloud/    # SoundCloud API client
+│   ├── spotify/       # Spotify API client
 │   └── internalpubsub/ # SSE broadcasting
 ├── server/            # HTTP server and routing
 │   ├── internal/handler/ # HTTP request handlers
@@ -44,7 +46,7 @@ backend/
 
 ```
 frontend/
-├── apps/mobile/       # Main React application
+├── apps/platform/     # Main React application
 │   ├── src/api/       # wiretyped client + Yup schemas
 │   ├── src/components/ # UI components
 │   │   ├── ui/        # Base components (Button, Input, etc.)
@@ -78,7 +80,7 @@ migrator/
 ## Configuration Files
 
 - **Backend**: `backend/go.mod`, `.env`
-- **Frontend**: `frontend/package.json`, `frontend/apps/mobile/package.json`
+- **Frontend**: `frontend/package.json`, `frontend/apps/platform/package.json`
 - **Docker**: `docker-compose.yml`, `Dockerfile`
 - **Proxy**: `Caddyfile` (routes traffic between services)
 - **Build**: `Makefile` (development and build commands)

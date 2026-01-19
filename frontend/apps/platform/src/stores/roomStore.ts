@@ -1,4 +1,5 @@
-import { Room, RoomUser } from '@vibez/shared';
+import { Room } from '@vibez/models';
+import { RoomUser } from '@vibez/shared';
 import { create } from 'zustand';
 
 interface RoomState {

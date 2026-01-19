@@ -1,8 +1,9 @@
 import { Song } from '@vibez/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import AuthPrompt from '../components/AuthPrompt';
 import { PlayerControls } from '../components/player/PlayerControls';
 import { VideoPlayer } from '../components/player/VideoPlayer';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
@@ -39,8 +40,10 @@ export default function RoomView() {
     { id: string; message: string; type: 'success' | 'info' }[]
   >([]);
 
+  const fetchAttemptedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (id) {
+    if (id && fetchAttemptedRef.current !== id) {
+      fetchAttemptedRef.current = id;
       fetchRoom();
       fetchQueue();
     }
@@ -76,66 +79,21 @@ export default function RoomView() {
     return () => window.removeEventListener('song-added', handleSongAdded);
   }, []);
 
+  const joinAttemptedRef = useRef<string | null>(null);
   useEffect(() => {
     if (!id || userId) return;
 
-    const checkJoin = async () => {
-      await joinRoom(`Guest_${Math.floor(Math.random() * 1000)}`);
-    };
+    if (joinAttemptedRef.current !== id) {
+      joinAttemptedRef.current = id;
+      const checkJoin = async () => {
+        await joinRoom(`Guest_${Math.floor(Math.random() * 1000)}`);
+      };
 
-    checkJoin();
+      checkJoin();
+    }
   }, [id, userId, joinRoom]);
 
-  if (isLoading && !room) {
-    return (
-      <div className="flex min-h-screen items-center justify-center">
-        <div className="animate-fade-in text-center">
-          <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-ink/20 bg-white shadow-retro">
-            <div className="h-8 w-8 animate-spin rounded-full border-3 border-primary/30 border-t-primary" />
-          </div>
-          <p className="font-medium text-ink/60">Loading session...</p>
-          <p className="jp-art mt-1 text-ink/40 text-sm">読み込み中</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-4">
-        <div className="w-full max-w-md animate-scale-in text-center">
-          <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-error bg-white shadow-retro">
-            <svg
-              className="h-10 w-10 text-error"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-              />
-            </svg>
-          </div>
-          <h2
-            className="mb-2 font-black text-2xl text-ink"
-            style={{ fontFamily: 'Poppins' }}
-          >
-            Connection Failed
-          </h2>
-          <p className="mb-6 font-medium text-ink/60">{error.message}</p>
-          <button
-            onClick={() => fetchRoom()}
-            className="glass-elevated rounded-xl border-2 border-ink/10 px-8 py-3.5 font-bold text-ink transition-all hover:shadow-retro"
-          >
-            Try Again
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Render logic moved inside main return
 
   return (
     <div className="flex min-h-screen animate-fade-in flex-col">
@@ -554,135 +512,182 @@ export default function RoomView() {
       </div>
 
       {/* Main content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto max-w-7xl items-start px-4 py-8 lg:grid lg:grid-cols-[1fr_400px] lg:gap-12">
-          {/* Player Section */}
-          <div className="space-y-6">
-            {/* Video Player - only send skip in host mode, server mode backend handles it */}
-            <VideoPlayer
-              onEnded={room?.mode === 'host' ? skip : undefined}
-              isVisible={true}
-            />
-
-            {/* Controls (always below video) */}
-            <PlayerControls
-              roomId={id || ''}
-              hasSongsInQueue={songs && songs.length > 0}
-              onAddSong={() => setIsAddModalVisible(true)}
-            />
+      {/* Main content - Conditionally rendered */}
+      {isLoading && !room ? (
+        <div className="flex flex-1 items-center justify-center">
+          <div className="animate-fade-in text-center">
+            <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-ink/20 bg-white shadow-retro">
+              <div className="h-8 w-8 animate-spin rounded-full border-3 border-primary/30 border-t-primary" />
+            </div>
+            <p className="font-medium text-ink/60">Loading session...</p>
+            <p className="jp-art mt-1 text-ink/40 text-sm">読み込み中</p>
           </div>
+        </div>
+      ) : error ? (
+        <div className="flex flex-1 flex-col items-center justify-center px-4">
+          <div className="w-full max-w-md animate-scale-in text-center">
+            <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-error bg-white shadow-retro">
+              <svg
+                className="h-10 w-10 text-error"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <h2
+              className="mb-2 font-black text-2xl text-ink"
+              style={{ fontFamily: 'Poppins' }}
+            >
+              Connection Failed
+            </h2>
+            <p className="mb-6 font-medium text-ink/60">{error.message}</p>
+            <button
+              onClick={() => fetchRoom()}
+              className="glass-elevated rounded-xl border-2 border-ink/10 px-8 py-3.5 font-bold text-ink transition-all hover:shadow-retro"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex-1 overflow-y-auto">
+          <div className="mx-auto max-w-7xl items-start px-4 py-8 lg:grid lg:grid-cols-[1fr_400px] lg:gap-12">
+            {/* Player Section */}
+            <div className="space-y-6">
+              {/* Video Player - only send skip in host mode, server mode backend handles it */}
+              <VideoPlayer
+                onEnded={room?.mode === 'host' ? skip : undefined}
+                isVisible={true}
+              />
 
-          {/* Queue & Now Playing Section */}
-          <div className="mt-8 space-y-8 lg:mt-0">
-            <div>
-              {/* Now Playing (Integrated into list style) */}
-              <AnimatePresence mode="wait">
-                {currentSong && (
-                  <motion.div
-                    key={currentSong.id}
-                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 1.05, y: -10 }}
-                    transition={{ duration: 0.3 }}
-                    className="mb-8"
-                  >
-                    <div className="mb-3 flex items-center gap-2">
-                      <div
-                        className={`h-2 w-2 rounded-full ${isPlaying ? 'animate-pulse bg-matcha shadow-neon-pink' : 'bg-ink/30'}`}
-                      />
-                      <span className="font-black text-[10px] text-ink/60 uppercase tracking-[0.2em] dark:text-dark-text-muted">
-                        {isPlaying ? 'Now Playing' : 'Paused'}
-                      </span>
-                    </div>
+              {/* Controls (always below video) */}
+              <PlayerControls
+                roomId={id || ''}
+                hasSongsInQueue={songs && songs.length > 0}
+                onAddSong={() => setIsAddModalVisible(true)}
+              />
+            </div>
 
-                    <div className="glass-elevated group/card relative flex items-center gap-4 overflow-hidden rounded-2xl border-2 border-primary/20 bg-white/40 p-4 shadow-retro-pink/20 backdrop-blur-sm dark:bg-dark-surface/60">
-                      {/* Progress Background */}
-                      <motion.div
-                        className="pointer-events-none absolute inset-y-0 left-0 bg-primary/10 dark:bg-primary/20"
-                        initial={{ width: 0 }}
-                        animate={{ width: `${progress * 100}%` }}
-                        transition={{ duration: 0.1, ease: 'linear' }}
-                      />
+            {/* Queue & Now Playing Section */}
+            <div className="mt-8 space-y-8 lg:mt-0">
+              <div>
+                {/* Now Playing (Integrated into list style) */}
+                <AnimatePresence mode="wait">
+                  {currentSong && (
+                    <motion.div
+                      key={currentSong.id}
+                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      exit={{ opacity: 0, scale: 1.05, y: -10 }}
+                      transition={{ duration: 0.3 }}
+                      className="mb-8"
+                    >
+                      <div className="mb-3 flex items-center gap-2">
+                        <div
+                          className={`h-2 w-2 rounded-full ${isPlaying ? 'animate-pulse bg-matcha shadow-neon-pink' : 'bg-ink/30'}`}
+                        />
+                        <span className="font-black text-[10px] text-ink/60 uppercase tracking-[0.2em] dark:text-dark-text-muted">
+                          {isPlaying ? 'Now Playing' : 'Paused'}
+                        </span>
+                      </div>
 
-                      {currentSong.thumbnailUrl && (
-                        <div className="relative z-10 shrink-0">
-                          <img
-                            src={currentSong.thumbnailUrl}
-                            alt=""
-                            className="h-16 w-16 rounded-xl border-2 border-ink/10 object-cover shadow-xs transition-transform group-hover/card:scale-105 dark:border-primary/20"
-                          />
+                      <div className="glass-elevated group/card relative flex items-center gap-4 overflow-hidden rounded-2xl border-2 border-primary/20 bg-white/40 p-4 shadow-retro-pink/20 backdrop-blur-sm dark:bg-dark-surface/60">
+                        {/* Progress Background */}
+                        <motion.div
+                          className="pointer-events-none absolute inset-y-0 left-0 bg-primary/10 dark:bg-primary/20"
+                          initial={{ width: 0 }}
+                          animate={{ width: `${progress * 100}%` }}
+                          transition={{ duration: 0.1, ease: 'linear' }}
+                        />
+
+                        {currentSong.thumbnailUrl && (
+                          <div className="relative z-10 shrink-0">
+                            <img
+                              src={currentSong.thumbnailUrl}
+                              alt=""
+                              className="h-16 w-16 rounded-xl border-2 border-ink/10 object-cover shadow-xs transition-transform group-hover/card:scale-105 dark:border-primary/20"
+                            />
+                          </div>
+                        )}
+                        <div className="relative z-10 min-w-0 flex-1">
+                          <h3 className="truncate font-bold text-ink text-sm dark:text-dark-text">
+                            {currentSong.title}
+                          </h3>
+                          <p className="truncate font-medium text-ink/60 text-xs dark:text-dark-text-muted">
+                            {currentSong.artist || 'Unknown Artist'} •{' '}
+                            {formatTime(currentSong.duration * 1000)}
+                          </p>
                         </div>
-                      )}
-                      <div className="relative z-10 min-w-0 flex-1">
-                        <h3 className="truncate font-bold text-ink text-sm dark:text-dark-text">
-                          {currentSong.title}
-                        </h3>
-                        <p className="truncate font-medium text-ink/60 text-xs dark:text-dark-text-muted">
-                          {currentSong.artist || 'Unknown Artist'} •{' '}
-                          {formatTime(currentSong.duration * 1000)}
+                      </div>
+
+                      <div className="mt-8 mb-4 h-px bg-ink/10 dark:bg-primary/20" />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Up Next List */}
+                <div>
+                  <h3 className="mb-4 font-black text-[10px] text-ink/60 uppercase tracking-[0.2em] dark:text-dark-text-muted">
+                    Up Next (
+                    {
+                      songs.filter(
+                        (s) => s.position > 0 && s.id !== currentSong?.id,
+                      ).length
+                    }
+                    )
+                  </h3>
+                  <QueueList
+                    songs={songs.filter((s) => s.id !== currentSong?.id)}
+                    roomId={id || ''}
+                    onVote={async (songId) => {
+                      const result = await voteSong(songId);
+                      if (result === 'success') {
+                        setToasts((prev) => [
+                          ...prev,
+                          {
+                            id: Math.random().toString(36).substr(2, 9),
+                            message: 'Vote recorded!',
+                            type: 'success',
+                          },
+                        ]);
+                      } else if (result === 'already_voted') {
+                        setToasts((prev) => [
+                          ...prev,
+                          {
+                            id: Math.random().toString(36).substr(2, 9),
+                            message: 'You have already voted for this song',
+                            type: 'info',
+                          },
+                        ]);
+                      }
+                    }}
+                  />
+                  {songs.filter(
+                    (s) => s.position > 0 && s.id !== currentSong?.id,
+                  ).length === 0 &&
+                    !currentSong && (
+                      <div className="glass rounded-2xl border-2 border-ink/10 border-dashed py-12 text-center dark:border-primary/20">
+                        <p className="font-bold text-ink/40 dark:text-dark-text-muted">
+                          Queue is empty
+                        </p>
+                        <p className="jp-art text-[10px] text-ink/20 dark:text-dark-text-subtle">
+                          キューは空です
                         </p>
                       </div>
-                    </div>
-
-                    <div className="mt-8 mb-4 h-px bg-ink/10 dark:bg-primary/20" />
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Up Next List */}
-              <div>
-                <h3 className="mb-4 font-black text-[10px] text-ink/60 uppercase tracking-[0.2em] dark:text-dark-text-muted">
-                  Up Next (
-                  {
-                    songs.filter(
-                      (s) => s.position > 0 && s.id !== currentSong?.id,
-                    ).length
-                  }
-                  )
-                </h3>
-                <QueueList
-                  songs={songs.filter((s) => s.id !== currentSong?.id)}
-                  roomId={id || ''}
-                  onVote={async (songId) => {
-                    const result = await voteSong(songId);
-                    if (result === 'success') {
-                      setToasts((prev) => [
-                        ...prev,
-                        {
-                          id: Math.random().toString(36).substr(2, 9),
-                          message: 'Vote recorded!',
-                          type: 'success',
-                        },
-                      ]);
-                    } else if (result === 'already_voted') {
-                      setToasts((prev) => [
-                        ...prev,
-                        {
-                          id: Math.random().toString(36).substr(2, 9),
-                          message: 'You have already voted for this song',
-                          type: 'info',
-                        },
-                      ]);
-                    }
-                  }}
-                />
-                {songs.filter((s) => s.position > 0 && s.id !== currentSong?.id)
-                  .length === 0 &&
-                  !currentSong && (
-                    <div className="glass rounded-2xl border-2 border-ink/10 border-dashed py-12 text-center dark:border-primary/20">
-                      <p className="font-bold text-ink/40 dark:text-dark-text-muted">
-                        Queue is empty
-                      </p>
-                      <p className="jp-art text-[10px] text-ink/20 dark:text-dark-text-subtle">
-                        キューは空です
-                      </p>
-                    </div>
-                  )}
+                    )}
+                </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Toasts */}
       {toasts.map((toast) => (
@@ -702,6 +707,9 @@ export default function RoomView() {
         isVisible={isAddModalVisible}
         onClose={() => setIsAddModalVisible(false)}
       />
+
+      {/* Auth Prompt */}
+      <AuthPrompt activeSources={room?.activeSources} />
     </div>
   );
 }

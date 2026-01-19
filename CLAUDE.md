@@ -1,11 +1,17 @@
 # Vibez
 
-Collaborative music queue with synchronized playback. YouTube-only for V1.
+Collaborative music queue with synchronized playback. Supports YouTube, Spotify, and SoundCloud.
 
 ## Commands
 
 ```bash
-# Backend
+# Local Development (Recommended)
+make local-dev
+# Runs backend + frontend + Caddy (HTTPS).
+# App: https://localhost
+# API: https://localhost/api
+
+# Backend Manual
 cd backend && go build ./cmd/server && ./server
 
 # Frontend
@@ -53,14 +59,27 @@ migrator/                  # Database migration tool
 ## API
 
 ```
+```
 POST   /api/v1/rooms                    # Create room
 GET    /api/v1/rooms/:id                # Get room
+PATCH  /api/v1/rooms/:id/settings       # Update settings
 POST   /api/v1/rooms/:id/sessions       # Join room
+POST   /api/v1/rooms/:id/skips          # Skip song
+PUT    /api/v1/rooms/:id/states         # Update playback state
+
 GET    /api/v1/rooms/:id/songs          # Get queue
 POST   /api/v1/rooms/:id/songs          # Add song
 DELETE /api/v1/rooms/:id/songs/:songId  # Remove song
-POST   /api/v1/rooms/:id                # Actions (play/pause/seek/skip/vote)
+POST   /api/v1/rooms/:id/songs/:songId  # Vote/Reorder
+
 GET    /api/v1/rooms/:id/events         # SSE stream
+
+# Providers & Auth
+GET    /api/v1/youtube/search           # Search YouTube
+GET    /api/v1/soundcloud/search        # Search SoundCloud
+GET    /api/v1/spotify/search           # Search Spotify
+GET    /api/v1/authorizations           # User auths
+GET    /api/v1/providers                # Configured providers
 ```
 
 Full contract: `docs/API.md`
@@ -84,5 +103,7 @@ Critical rules:
 - No `any` type, no `try/catch` (use `safeWrap`)
 - All errors wrapped with context
 - No inline error assignments (`if err := ...`)
+- No inline error assignments (`if err := ...`)
 - HTTP only through clients, consumed via interfaces
 - Domain types in `vibe/vibe.go`, not in handlers
+- **Providers**: YouTube, Spotify, SoundCloud supported for search/auth

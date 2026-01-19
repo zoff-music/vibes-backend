@@ -11,9 +11,12 @@ import (
 
 // Client implements vibe.MusicSearcher
 type Client struct {
-	apiKey     string
-	Endpoint   string
-	HTTPClient client.HTTPClient
+	apiKey       string
+	clientID     string
+	clientSecret string
+	redirectURI  string
+	Endpoint     string
+	HTTPClient   client.HTTPClient
 }
 
 // Init initializes the YouTube API client
@@ -26,6 +29,9 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	}
 	c.apiKey = cfg.YouTubeAPIKey
 	c.Endpoint = cfg.YouTubeEndpoint
+	c.clientID = cfg.YouTubeClientID
+	c.clientSecret = cfg.YouTubeClientSecret
+	c.redirectURI = cfg.YouTubeRedirectURI
 	timeout := 5 * time.Second
 	c.HTTPClient = client.NewHTTPClient(client.Parameters{
 		Timeout: &timeout,

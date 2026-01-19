@@ -109,6 +109,7 @@ func CreateRoom(
 			HasPassword:       passwordHash != "",
 			Settings:          vibe.DefaultRoomSettings(),
 			CreatedAt:         time.Now(),
+			ActiveSources:     []string{},
 		}
 
 		created, err := db.CreateRoom(ctx, room)
