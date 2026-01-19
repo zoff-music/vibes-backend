@@ -129,11 +129,12 @@ export default function RoomView() {
   );
 
   /* Spotify Proactive Auth Logic */
-  const { token: spotifyToken, fetchToken: fetchSpotifyToken } = useProviderToken();
+  const { token: spotifyToken, fetchToken: fetchSpotifyToken } =
+    useProviderToken();
 
-  const hasSpotifySongs = useMemo(() => 
-    songs.some(s => s.sourceType === 'spotify'), 
-    [songs]
+  const hasSpotifySongs = useMemo(
+    () => songs.some((s) => s.sourceType === 'spotify'),
+    [songs],
   );
 
   useEffect(() => {
@@ -148,11 +149,11 @@ export default function RoomView() {
     const height = 800;
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
-    
+
     const popup = window.open(
       '/api/v1/authorizations/spotify',
       'SpotifyAuth',
-      `width=${width},height=${height},left=${left},top=${top}`
+      `width=${width},height=${height},left=${left},top=${top}`,
     );
 
     const handleMessage = (event: MessageEvent) => {
@@ -160,20 +161,20 @@ export default function RoomView() {
         event.data?.type === 'oauth-success' &&
         event.data?.provider === 'spotify'
       ) {
-         fetchSpotifyToken('spotify', true);
-         popup?.close();
-         window.removeEventListener('message', handleMessage);
+        fetchSpotifyToken('spotify', true);
+        popup?.close();
+        window.removeEventListener('message', handleMessage);
       }
     };
-    
+
     window.addEventListener('message', handleMessage);
-    
+
     const timer = setInterval(() => {
-        if (popup?.closed) {
-            window.removeEventListener('message', handleMessage);
-            clearInterval(timer);
-            fetchSpotifyToken('spotify', true);
-        }
+      if (popup?.closed) {
+        window.removeEventListener('message', handleMessage);
+        clearInterval(timer);
+        fetchSpotifyToken('spotify', true);
+      }
     }, 1000);
   }, [fetchSpotifyToken]);
 
@@ -782,8 +783,6 @@ export default function RoomView() {
         isVisible={isAddModalVisible}
         onClose={() => setIsAddModalVisible(false)}
       />
-
-
     </div>
   );
 }

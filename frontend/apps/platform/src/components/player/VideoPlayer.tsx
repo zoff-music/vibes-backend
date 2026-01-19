@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import YouTube, { YouTubeProps } from 'react-youtube';
-import { usePlaybackStore } from '../../stores/playbackStore';
 import { useProviderToken } from '../../hooks/useProviderToken';
+import { usePlaybackStore } from '../../stores/playbackStore';
 import { AuthOverlay } from './AuthOverlay';
 
 interface Props {
@@ -33,31 +33,31 @@ const VideoPlayerComponent: React.FC<Props> = ({
     const height = 800;
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
-    
+
     const popup = window.open(
       '/api/v1/authorizations/youtube',
       'YouTubeAuth',
-      `width=${width},height=${height},left=${left},top=${top}`
+      `width=${width},height=${height},left=${left},top=${top}`,
     );
 
     let timer: ReturnType<typeof setInterval> | null = null;
-    
+
     const cleanup = () => {
       if (timer) clearInterval(timer);
       window.removeEventListener('message', handleMessage);
-      
+
       setIsVerifying(true);
       setError(null);
-      
+
       fetchToken('youtube', true).then((newToken) => {
-         setIsVerifying(false);
-         if (!newToken) {
-             setError('Failed to refresh token after authorization.');
-         }
-         // Reset player ref to force re-evaluation
-         if (playerRef.current) {
-             // force update if needed
-         }
+        setIsVerifying(false);
+        if (!newToken) {
+          setError('Failed to refresh token after authorization.');
+        }
+        // Reset player ref to force re-evaluation
+        if (playerRef.current) {
+          // force update if needed
+        }
       });
     };
 
@@ -106,7 +106,7 @@ const VideoPlayerComponent: React.FC<Props> = ({
         if (drift > 2) {
           player.seekTo(targetTime, true);
         }
-      } catch (err) {
+      } catch (_err) {
         // warn
       }
     }, 1000);
@@ -135,7 +135,7 @@ const VideoPlayerComponent: React.FC<Props> = ({
       } else if (!isPlaying && state === 1) {
         player.pauseVideo();
       }
-    } catch (err) {
+    } catch (_err) {
       // warn
     }
   }, [isReady, isPlaying]);
@@ -177,21 +177,24 @@ const VideoPlayerComponent: React.FC<Props> = ({
     onEnded?.();
   }, [onEnded]);
 
-  const handleError = useCallback(async (event: unknown) => {
-    console.error('[VideoPlayer] Player error:', event);
-    
-    // If error occurs, try fetching token to see if it fixes it (or allows AuthOverlay to show)
-    // We force a fetch here to ensure we have the latest state
-    const fetchedToken = await fetchToken('youtube');
-    
-    // If we still don't have a token, set error to trigger AuthOverlay
-    if (!fetchedToken) {
-       setError('Authorization required or video unavailable');
-    } else {
-       // If we HAVE a token and still error, it's a real error
-       setError('Failed to load video even with authorization');
-    }
-  }, [fetchToken]);
+  const handleError = useCallback(
+    async (event: unknown) => {
+      console.error('[VideoPlayer] Player error:', event);
+
+      // If error occurs, try fetching token to see if it fixes it (or allows AuthOverlay to show)
+      // We force a fetch here to ensure we have the latest state
+      const fetchedToken = await fetchToken('youtube');
+
+      // If we still don't have a token, set error to trigger AuthOverlay
+      if (!fetchedToken) {
+        setError('Authorization required or video unavailable');
+      } else {
+        // If we HAVE a token and still error, it's a real error
+        setError('Failed to load video even with authorization');
+      }
+    },
+    [fetchToken],
+  );
 
   if (!currentSong || !isVisible) {
     return null;
@@ -212,24 +215,29 @@ const VideoPlayerComponent: React.FC<Props> = ({
 
   // Check for overlay conditions: Error + No Token
   // But NOT if we are verifying
-  
+
   if (isVerifying) {
     return (
       <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-black">
         <div className="text-center">
           <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-red-500/30 border-t-red-500" />
-          <p className="font-medium text-sm text-white/70">Verifying authorization...</p>
+          <p className="font-medium text-sm text-white/70">
+            Verifying authorization...
+          </p>
         </div>
       </div>
     );
   }
 
   if (error && !token) {
-       return (
-          <div className="relative w-full overflow-hidden rounded-xl bg-black" style={{ aspectRatio: '16/9' }}>
-               <AuthOverlay provider="youtube" onAuthorize={handleAuthorize} />
-          </div>
-      );
+    return (
+      <div
+        className="relative w-full overflow-hidden rounded-xl bg-black"
+        style={{ aspectRatio: '16/9' }}
+      >
+        <AuthOverlay provider="youtube" onAuthorize={handleAuthorize} />
+      </div>
+    );
   }
 
   const opts: YouTubeProps['opts'] = {

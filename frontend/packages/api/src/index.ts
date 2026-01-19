@@ -1,14 +1,13 @@
 import {
   addSongRequestSchema,
-
   connectedSchema,
   createRoomRequestSchema,
   createSessionRequestSchema,
   emptyObjectSchema,
   messageResponseSchema,
   playbackStateSchema,
-  providerTokenSchema,
   providersSchema,
+  providerTokenSchema,
   reorderSongsRequestSchema,
   roomActionRequestSchema,
   roomSchema,
@@ -59,7 +58,10 @@ const getApiUrl = () => {
 };
 
 const API_URL = getApiUrl();
-export const API_BASE_URL = `${API_URL}${API_BASE_PATH}`.replace(/([^:]\/)\/+/g, '$1'); // Remove double slashes except after protocol
+export const API_BASE_URL = `${API_URL}${API_BASE_PATH}`.replace(
+  /([^:]\/)\/+/g,
+  '$1',
+); // Remove double slashes except after protocol
 
 console.log('[API] Initialized with base URL:', API_BASE_URL);
 
