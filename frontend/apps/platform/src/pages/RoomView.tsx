@@ -1,7 +1,7 @@
 import { Song } from '@vibez/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AuthPrompt from '../components/AuthPrompt';
 import { PlayerControls } from '../components/player/PlayerControls';
@@ -94,6 +94,33 @@ export default function RoomView() {
   }, [id, userId, joinRoom]);
 
   // Render logic moved inside main return
+
+  /* Player Controls Handlers */
+  const handleAddSong = useCallback(() => setIsAddModalVisible(true), []);
+  
+  /* Queue Handlers */
+  const handleVote = useCallback(async (songId: string) => {
+      const result = await voteSong(songId);
+      if (result === 'success') {
+        setToasts((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substr(2, 9),
+            message: 'Vote recorded!',
+            type: 'success',
+          },
+        ]);
+      } else if (result === 'already_voted') {
+        setToasts((prev) => [
+          ...prev,
+          {
+            id: Math.random().toString(36).substr(2, 9),
+            message: 'You have already voted for this song',
+            type: 'info',
+          },
+        ]);
+      }
+  }, [voteSong]);
 
   return (
     <div className="flex min-h-screen animate-fade-in flex-col">
@@ -571,7 +598,7 @@ export default function RoomView() {
               <PlayerControls
                 roomId={id || ''}
                 hasSongsInQueue={songs && songs.length > 0}
-                onAddSong={() => setIsAddModalVisible(true)}
+                onAddSong={handleAddSong}
               />
             </div>
 
@@ -646,28 +673,7 @@ export default function RoomView() {
                   <QueueList
                     songs={songs.filter((s) => s.id !== currentSong?.id)}
                     roomId={id || ''}
-                    onVote={async (songId) => {
-                      const result = await voteSong(songId);
-                      if (result === 'success') {
-                        setToasts((prev) => [
-                          ...prev,
-                          {
-                            id: Math.random().toString(36).substr(2, 9),
-                            message: 'Vote recorded!',
-                            type: 'success',
-                          },
-                        ]);
-                      } else if (result === 'already_voted') {
-                        setToasts((prev) => [
-                          ...prev,
-                          {
-                            id: Math.random().toString(36).substr(2, 9),
-                            message: 'You have already voted for this song',
-                            type: 'info',
-                          },
-                        ]);
-                      }
-                    }}
+                    onVote={handleVote}
                   />
                   {songs.filter(
                     (s) => s.position > 0 && s.id !== currentSong?.id,

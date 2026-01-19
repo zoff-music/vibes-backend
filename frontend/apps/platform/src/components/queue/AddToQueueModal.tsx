@@ -3,6 +3,7 @@ import { formatDuration, parseISODuration } from '@vibez/shared';
 import React, { useEffect, useRef, useState } from 'react';
 import { useQueue } from '../../hooks/useQueue';
 import { useRoom } from '../../hooks/useRoom';
+import { useAuthCache } from '../../hooks/useAuthCache';
 
 interface Props {
   roomId: string;
@@ -34,30 +35,32 @@ export const AddToQueueModal: React.FC<Props> = ({
   const [previewVideo, setPreviewVideo] = useState<SearchResult | null>(null);
   const [justAdded, setJustAdded] = useState(false);
   const { addToQueue } = useQueue(roomId);
-  const [providers, setProviders] = useState<string[]>([]);
+  
+  const { providers, authorizations, fetchProviders, fetchAuthorizations } = useAuthCache();
+  const providerList = providers || [];
+  const authorizationList = authorizations || [];
+
   const [selectedProvider, setSelectedProvider] = useState<string>('youtube');
-  const [authorizations, setAuthorizations] = useState<string[]>([]);
+  
   const { room } = useRoom(roomId);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    // Fetch available providers and authorizations
-    const fetchData = async () => {
-      const [, pData] = await api.get('/providers', null);
-      if (pData) {
-        setProviders(pData);
-        if (pData.includes('youtube')) setSelectedProvider('youtube');
-        else if (pData.includes('spotify')) setSelectedProvider('spotify');
-        else if (pData.length > 0) setSelectedProvider(pData[0]);
-      }
-
-      const [, aData] = await api.get('/authorizations', null);
-      if (aData) {
-        setAuthorizations(aData);
-      }
+    // Fetch available providers and authorizations via cache
+    const loadData = async () => {
+        const pData = await fetchProviders();
+        // Set default selected provider if not set or invalid
+        if (pData.length > 0 && !pData.includes(selectedProvider) && selectedProvider === 'youtube' && !pData.includes('youtube')) {
+             if (pData.includes('spotify')) setSelectedProvider('spotify');
+             else setSelectedProvider(pData[0]);
+        } else if (pData.length > 0 && selectedProvider === 'youtube' && pData.includes('youtube')) {
+            // keep youtube
+        }
+        
+        await fetchAuthorizations();
     };
-    fetchData();
+    loadData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -256,7 +259,7 @@ export const AddToQueueModal: React.FC<Props> = ({
 
           {/* Provider Tabs */}
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
-            {providers.map((p) => (
+            {providerList.map((p) => (
               <button
                 key={p}
                 onClick={() => {
@@ -283,7 +286,7 @@ export const AddToQueueModal: React.FC<Props> = ({
             {/* Auth Check Logic */}
             {(() => {
               const isYoutube = selectedProvider === 'youtube'; // YouTube basically always allowed via Key
-              const isAuthorized = authorizations.includes(selectedProvider);
+              const isAuthorized = authorizationList.includes(selectedProvider);
               const isActiveSource = room?.activeSources?.includes(selectedProvider);
               const canSearch = isYoutube || isAuthorized || isActiveSource;
 

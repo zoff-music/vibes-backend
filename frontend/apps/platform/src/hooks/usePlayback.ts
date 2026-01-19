@@ -4,6 +4,7 @@ import { usePlaybackStore } from '../stores/playbackStore';
 
 export const usePlayback = (roomId: string) => {
   const playback = usePlaybackStore();
+  const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
 
   // Update actual position every 100ms for smooth UI progress bars
   useEffect(() => {
@@ -38,10 +39,10 @@ export const usePlayback = (roomId: string) => {
       }
 
       if (data) {
-        playback.setPlaybackState(data);
+        setPlaybackState(data);
       }
     },
-    [roomId, playback],
+    [roomId, setPlaybackState],
   );
 
   const play = useCallback(() => performAction('play'), [performAction]);
