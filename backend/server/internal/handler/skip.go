@@ -52,14 +52,28 @@ func SkipSong(
 
 		state.ServerTimeMs = time.Now().UnixMilli()
 
+		// Notify room updates
+		// We have to marshal payloads manually now
+		songsPayload, err := json.Marshal(songs)
+		if err != nil {
+			log.Printf("failed to marshal songs payload: %v", err)
+			songsPayload = []byte("{}")
+		}
+
+		statePayload, err := json.Marshal(state)
+		if err != nil {
+			log.Printf("failed to marshal playback state payload: %v", err)
+			statePayload = []byte("{}")
+		}
+
 		err = ips.NotifyRoomUpdates(ctx, roomID, []vibe.RoomEvent{
 			{
 				Type:    vibe.QueueReordered,
-				Payload: songs,
+				Payload: songsPayload,
 			},
 			{
 				Type:    vibe.PlaybackUpdate,
-				Payload: state,
+				Payload: statePayload,
 			},
 		})
 		if err != nil {

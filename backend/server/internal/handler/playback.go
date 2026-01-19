@@ -62,12 +62,18 @@ func UpdatePlaybackState(
 
 		// Broadcast if in Host mode
 		if room.Mode == vibe.RoomModeHost {
-			err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
-				Type:    vibe.PlaybackUpdate,
-				Payload: state,
-			})
+			// Notify room
+			statePayload, err := json.Marshal(state)
 			if err != nil {
-				log.Printf("failed to notify room: %v", err)
+				log.Printf("failed to marshal playback state payload: %v", err)
+			} else {
+				err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+					Type:    vibe.PlaybackUpdate,
+					Payload: statePayload,
+				})
+				if err != nil {
+					log.Printf("failed to notify room: %v", err)
+				}
 			}
 		}
 

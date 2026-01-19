@@ -124,13 +124,9 @@ func RoomEvents(
 					continue
 				}
 
-				payloadData, err := json.Marshal(event.Payload)
-				if err != nil {
-					log.Printf("failed to marshal event payload: %v", err)
-					continue
-				}
-
-				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, payloadData)
+				// payloadData is already []byte (JSON), so we can just use it.
+				// However, if we print it as %s, it works.
+				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, event.Payload)
 				flusher.Flush()
 			}
 		}
