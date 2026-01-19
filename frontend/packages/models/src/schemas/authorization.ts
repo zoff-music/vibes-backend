@@ -1,6 +1,8 @@
 import * as yup from 'yup';
 
-export const authorizationsListSchema = yup.array(yup.string().required()).required();
+export const authorizationsListSchema = yup
+  .array(yup.string().required())
+  .required();
 export type AuthorizationsList = yup.InferType<typeof authorizationsListSchema>;
 
 export const spotifyTokenSchema = yup.object({

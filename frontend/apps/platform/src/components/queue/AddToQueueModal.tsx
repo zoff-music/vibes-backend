@@ -1,9 +1,9 @@
 import { api } from '@vibez/api';
 import { formatDuration, parseISODuration } from '@vibez/shared';
 import React, { useEffect, useRef, useState } from 'react';
+import { useAuthCache } from '../../hooks/useAuthCache';
 import { useQueue } from '../../hooks/useQueue';
 import { useRoom } from '../../hooks/useRoom';
-import { useAuthCache } from '../../hooks/useAuthCache';
 
 interface Props {
   roomId: string;
@@ -35,13 +35,14 @@ export const AddToQueueModal: React.FC<Props> = ({
   const [previewVideo, setPreviewVideo] = useState<SearchResult | null>(null);
   const [justAdded, setJustAdded] = useState(false);
   const { addToQueue } = useQueue(roomId);
-  
-  const { providers, authorizations, fetchProviders, fetchAuthorizations } = useAuthCache();
+
+  const { providers, authorizations, fetchProviders, fetchAuthorizations } =
+    useAuthCache();
   const providerList = providers || [];
   const authorizationList = authorizations || [];
 
   const [selectedProvider, setSelectedProvider] = useState<string>('youtube');
-  
+
   const { room } = useRoom(roomId);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,16 +50,25 @@ export const AddToQueueModal: React.FC<Props> = ({
   useEffect(() => {
     // Fetch available providers and authorizations via cache
     const loadData = async () => {
-        const pData = await fetchProviders();
-        // Set default selected provider if not set or invalid
-        if (pData.length > 0 && !pData.includes(selectedProvider) && selectedProvider === 'youtube' && !pData.includes('youtube')) {
-             if (pData.includes('spotify')) setSelectedProvider('spotify');
-             else setSelectedProvider(pData[0]);
-        } else if (pData.length > 0 && selectedProvider === 'youtube' && pData.includes('youtube')) {
-            // keep youtube
-        }
-        
-        await fetchAuthorizations();
+      const pData = await fetchProviders();
+      // Set default selected provider if not set or invalid
+      if (
+        pData.length > 0 &&
+        !pData.includes(selectedProvider) &&
+        selectedProvider === 'youtube' &&
+        !pData.includes('youtube')
+      ) {
+        if (pData.includes('spotify')) setSelectedProvider('spotify');
+        else setSelectedProvider(pData[0]);
+      } else if (
+        pData.length > 0 &&
+        selectedProvider === 'youtube' &&
+        pData.includes('youtube')
+      ) {
+        // keep youtube
+      }
+
+      await fetchAuthorizations();
     };
     loadData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -94,13 +104,19 @@ export const AddToQueueModal: React.FC<Props> = ({
     setError(null);
 
     let err, results;
-    
+
     if (selectedProvider === 'youtube') {
-      [err, results] = await api.get('/youtube/search', { $search: { q: query } });
+      [err, results] = await api.get('/youtube/search', {
+        $search: { q: query },
+      });
     } else if (selectedProvider === 'spotify') {
-      [err, results] = await api.get('/spotify/search', { $search: { q: query } });
+      [err, results] = await api.get('/spotify/search', {
+        $search: { q: query },
+      });
     } else if (selectedProvider === 'soundcloud') {
-      [err, results] = await api.get('/soundcloud/search', { $search: { q: query } });
+      [err, results] = await api.get('/soundcloud/search', {
+        $search: { q: query },
+      });
     }
 
     setIsSearching(false);
@@ -148,11 +164,11 @@ export const AddToQueueModal: React.FC<Props> = ({
         }
         // Map YouTube video to generic result
         setPreviewVideo({
-            id: video.id,
-            title: video.title,
-            artist: video.channelTitle,
-            thumbnailUrl: video.thumbnailUrl,
-            duration: video.duration,
+          id: video.id,
+          title: video.title,
+          artist: video.channelTitle,
+          thumbnailUrl: video.thumbnailUrl,
+          duration: video.duration,
         });
       });
       return;
@@ -225,7 +241,7 @@ export const AddToQueueModal: React.FC<Props> = ({
       >
         {/* Header */}
         <div className="mb-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-4 flex items-center justify-between">
             <div>
               <h2
                 className="font-black text-2xl text-ink"
@@ -258,17 +274,17 @@ export const AddToQueueModal: React.FC<Props> = ({
           </div>
 
           {/* Provider Tabs */}
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+          <div className="scrollbar-none flex gap-2 overflow-x-auto pb-2">
             {providerList.map((p) => (
               <button
                 key={p}
                 onClick={() => {
-                   setSelectedProvider(p);
-                   setSearchResults([]);
-                   setSearchQuery('');
-                   setPreviewVideo(null);
+                  setSelectedProvider(p);
+                  setSearchResults([]);
+                  setSearchQuery('');
+                  setPreviewVideo(null);
                 }}
-                className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all ${
+                className={`rounded-full px-4 py-1.5 font-bold text-sm transition-all ${
                   selectedProvider === p
                     ? 'bg-ink text-white shadow-lg'
                     : 'bg-surface text-ink/60 hover:bg-ink/5'
@@ -287,21 +303,30 @@ export const AddToQueueModal: React.FC<Props> = ({
             {(() => {
               const isYoutube = selectedProvider === 'youtube'; // YouTube basically always allowed via Key
               const isAuthorized = authorizationList.includes(selectedProvider);
-              const isActiveSource = room?.activeSources?.includes(selectedProvider);
+              const isActiveSource =
+                room?.activeSources?.includes(selectedProvider);
               const canSearch = isYoutube || isAuthorized || isActiveSource;
 
               if (!canSearch) {
                 return (
-                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-surface/90 backdrop-blur-sm text-center p-4">
-                    <p className="font-bold text-ink mb-2">Connect {selectedProvider} to Search</p>
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-surface/90 p-4 text-center backdrop-blur-sm">
+                    <p className="mb-2 font-bold text-ink">
+                      Connect {selectedProvider} to Search
+                    </p>
                     <button
-                        onClick={() => window.open(`/api/v1/authorizations/${selectedProvider}`, 'Login', 'width=500,height=600')} 
-                        className="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm shadow-retro-pink hover:bg-primary-muted transition-colors"
+                      onClick={() =>
+                        window.open(
+                          `/api/v1/authorizations/${selectedProvider}`,
+                          'Login',
+                          'width=500,height=600',
+                        )
+                      }
+                      className="rounded-lg bg-primary px-4 py-2 font-bold text-sm text-white shadow-retro-pink transition-colors hover:bg-primary-muted"
                     >
-                        Connect Now
+                      Connect Now
                     </button>
                   </div>
-                )
+                );
               }
               return null;
             })()}

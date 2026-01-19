@@ -22,6 +22,8 @@ pnpm-debug.*
 *.swo
 *~
 
+playwright-report/
+
 # OS
 .DS_Store
 *.pem

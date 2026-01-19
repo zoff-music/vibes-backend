@@ -4,7 +4,7 @@ import { create } from 'zustand';
 interface AuthCacheState {
   providers: string[] | null;
   authorizations: string[] | null;
-  
+
   fetchProviders: () => Promise<string[]>;
   fetchAuthorizations: () => Promise<string[]>;
 }
@@ -26,13 +26,13 @@ export const useAuthCache = create<AuthCacheState>((set, get) => ({
     if (providersPromise) return providersPromise;
 
     providersPromise = (async () => {
-        const [err, data] = await api.get('/providers', null);
-        providersPromise = null;
-        if (!err && data) {
-            set({ providers: data });
-            return data;
-        }
-        return [];
+      const [err, data] = await api.get('/providers', null);
+      providersPromise = null;
+      if (!err && data) {
+        set({ providers: data });
+        return data;
+      }
+      return [];
     })();
 
     return providersPromise;
@@ -45,15 +45,15 @@ export const useAuthCache = create<AuthCacheState>((set, get) => ({
     if (authPromise) return authPromise;
 
     authPromise = (async () => {
-        const [err, data] = await api.get('/authorizations', null);
-        authPromise = null;
-        if (!err && data) {
-            set({ authorizations: data });
-            return data;
-        }
-        return [];
+      const [err, data] = await api.get('/authorizations', null);
+      authPromise = null;
+      if (!err && data) {
+        set({ authorizations: data });
+        return data;
+      }
+      return [];
     })();
 
     return authPromise;
-  }
+  },
 }));

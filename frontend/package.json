@@ -1,12 +1,16 @@
 {
   "name": "vibez",
   "private": true,
-  "workspaces": ["apps/*", "packages/*"],
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "scripts": {
     "dev": "bun --filter @vibez/platform dev",
     "build": "bun --filter @vibez/platform build",
     "typecheck": "bun run --filter '*' typecheck",
-    "lint": "bun run --filter '*' lint"
+    "lint": "bun run --filter '*' lint",
+    "fix": "bun biome check --write --unsafe ."
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.11",

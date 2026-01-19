@@ -15,36 +15,36 @@ export const useRoom = (roomId: string) => {
 
   const fetchRoom = useCallback(async () => {
     if (!roomId) return;
-    
+
     setIsLoading(true);
     const key = `fetchRoom:${roomId}`;
-    
+
     try {
-        let promise = IN_FLIGHT_REQUESTS.get(key);
-        if (!promise) {
-            promise = api.get('/rooms/{id}', { id: roomId });
-            IN_FLIGHT_REQUESTS.set(key, promise);
-        }
+      let promise = IN_FLIGHT_REQUESTS.get(key);
+      if (!promise) {
+        promise = api.get('/rooms/{id}', { id: roomId });
+        IN_FLIGHT_REQUESTS.set(key, promise);
+      }
 
-        const [err, data] = await promise;
-        
-        // Only clear if it's the same promise we waited for (though simplistic for shared map)
-        // Better to clear always after done
-        IN_FLIGHT_REQUESTS.delete(key);
+      const [err, data] = await promise;
 
-        if (err) {
-            setError(err);
-            return;
-        }
+      // Only clear if it's the same promise we waited for (though simplistic for shared map)
+      // Better to clear always after done
+      IN_FLIGHT_REQUESTS.delete(key);
 
-        if (data) {
-            setRoom(data);
-        }
+      if (err) {
+        setError(err);
+        return;
+      }
+
+      if (data) {
+        setRoom(data);
+      }
     } catch (e) {
-        console.error('Unexpected error fetching room', e);
-        IN_FLIGHT_REQUESTS.delete(key);
+      console.error('Unexpected error fetching room', e);
+      IN_FLIGHT_REQUESTS.delete(key);
     } finally {
-        setIsLoading(false);
+      setIsLoading(false);
     }
   }, [roomId, setRoom]);
 
@@ -54,44 +54,44 @@ export const useRoom = (roomId: string) => {
       // This is a basic check; real logic depends on if backend session matches
       const currentUserId = useRoomStore.getState().userId;
       if (currentUserId && useRoomStore.getState().room?.id === roomId) {
-          console.log('[Room] Already joined, skipping join request');
-          return { userId: currentUserId };
+        console.log('[Room] Already joined, skipping join request');
+        return { userId: currentUserId };
       }
 
       setIsLoading(true);
       const key = `joinRoom:${roomId}`;
 
       try {
-          let promise = IN_FLIGHT_REQUESTS.get(key);
-          if (!promise) {
-              promise = api.post(
-                '/rooms/{id}/sessions',
-                { id: roomId },
-                { nickname, password },
-              );
-              IN_FLIGHT_REQUESTS.set(key, promise);
-          }
-          
-          const [err, data] = await promise;
-          IN_FLIGHT_REQUESTS.delete(key);
+        let promise = IN_FLIGHT_REQUESTS.get(key);
+        if (!promise) {
+          promise = api.post(
+            '/rooms/{id}/sessions',
+            { id: roomId },
+            { nickname, password },
+          );
+          IN_FLIGHT_REQUESTS.set(key, promise);
+        }
 
-          if (err) {
-            setError(err);
-            setIsLoading(false);
-            return null;
-          }
+        const [err, data] = await promise;
+        IN_FLIGHT_REQUESTS.delete(key);
 
-          if (data) {
-            setSession(data.userId, data.isAdmin, data.nickname as any);
-            setRoom(data.room);
-            setIsLoading(false);
-            return data;
-          }
-      } catch(e) {
-           console.error('Unexpected error joining room', e);
-           IN_FLIGHT_REQUESTS.delete(key);
+        if (err) {
+          setError(err);
+          setIsLoading(false);
+          return null;
+        }
+
+        if (data) {
+          setSession(data.userId, data.isAdmin, data.nickname as any);
+          setRoom(data.room);
+          setIsLoading(false);
+          return data;
+        }
+      } catch (e) {
+        console.error('Unexpected error joining room', e);
+        IN_FLIGHT_REQUESTS.delete(key);
       }
-      
+
       setIsLoading(false);
       return null;
     },

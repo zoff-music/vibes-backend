@@ -15,8 +15,8 @@ export default function Callback() {
   }, [searchParams]);
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-slate-950 text-white p-4">
-      <h1 className="text-2xl font-bold mb-2">Authentication Successful</h1>
+    <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-4 text-white">
+      <h1 className="mb-2 font-bold text-2xl">Authentication Successful</h1>
       <p className="text-slate-400">You can close this window now.</p>
     </div>
   );
