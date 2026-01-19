@@ -1,12 +1,13 @@
-import { useCallback, useRef } from 'react';
 import { api } from '@vibez/api';
+import { SourceType } from '@vibez/shared';
+import { useCallback, useRef } from 'react';
+import { usePlaybackStore } from '../stores/playbackStore';
 import { useQueueStore } from '../stores/queueStore';
 import { useRoomStore } from '../stores/roomStore';
-import { usePlaybackStore } from '../stores/playbackStore';
-import { SourceType } from '@vibez/shared';
 
 export const useQueue = (roomId: string) => {
-  const { songs, setSongs, addSong, removeSong, reorderSongs } = useQueueStore();
+  const { songs, setSongs, addSong, removeSong, reorderSongs } =
+    useQueueStore();
   const { userId } = useRoomStore();
   const { setPlaybackState } = usePlaybackStore();
   const lastAddTimestamp = useRef<number>(0);
@@ -14,9 +15,9 @@ export const useQueue = (roomId: string) => {
   const fetchQueue = useCallback(async () => {
     const fetchStartTime = Date.now();
     const [_err, data] = await api.get('/rooms/{id}/songs', { id: roomId });
-    
-    // If an add operation happened after we started fetching, 
-    // this fetch result is stale and should be ignored to prevent 
+
+    // If an add operation happened after we started fetching,
+    // this fetch result is stale and should be ignored to prevent
     // overwriting the optimistic update.
     if (lastAddTimestamp.current > fetchStartTime) {
       console.log('[Queue] Ignoring stale fetch queue result');
@@ -28,103 +29,126 @@ export const useQueue = (roomId: string) => {
     }
   }, [roomId, setSongs]);
 
-  const addToQueue = useCallback(async (
-    sourceType: SourceType,
-    sourceId: string,
-    title: string,
-    thumbnailUrl: string,
-    duration: number,
-    artist?: string
-  ) => {
-    if (!userId) return null;
+  const addToQueue = useCallback(
+    async (
+      sourceType: SourceType,
+      sourceId: string,
+      title: string,
+      thumbnailUrl: string,
+      duration: number,
+      artist?: string,
+    ) => {
+      if (!userId) return null;
 
-    const timestamp = Date.now();
-    lastAddTimestamp.current = timestamp;
+      const timestamp = Date.now();
+      lastAddTimestamp.current = timestamp;
 
-    const [_err, data] = await api.post('/rooms/{id}/songs', 
-      { id: roomId },
-      {
-        sourceType,
-        sourceId,
-        title,
-        thumbnailUrl,
-        duration,
-        artist,
-        addedBy: userId,
-      }
-    );
+      const [_err, data] = await api.post(
+        '/rooms/{id}/songs',
+        { id: roomId },
+        {
+          sourceType,
+          sourceId,
+          title,
+          thumbnailUrl,
+          duration,
+          artist,
+          addedBy: userId,
+        },
+      );
 
-    if (data) {
-      const shouldAutoPlay = songs.length === 0 && !usePlaybackStore.getState().currentSongId;
-      addSong(data);
+      if (data) {
+        const shouldAutoPlay =
+          songs.length === 0 && !usePlaybackStore.getState().currentSongId;
+        addSong(data);
 
-      if (shouldAutoPlay) {
-        const [playErr, playback] = await api.post('/rooms/{id}', 
-          { id: roomId },
-          { action: 'play' }
-        );
+        if (shouldAutoPlay) {
+          const [playErr, playback] = await api.post(
+            '/rooms/{id}',
+            { id: roomId },
+            { action: 'play' },
+          );
 
-        if (playErr) {
-          console.error('[Queue] Failed to auto-play after add:', playErr);
+          if (playErr) {
+            console.error('[Queue] Failed to auto-play after add:', playErr);
+          }
+
+          if (playback) {
+            setPlaybackState(playback);
+          }
         }
 
-        if (playback) {
-          setPlaybackState(playback);
-        }
+        return data;
       }
 
-      return data;
-    }
-    
-    return null;
-  }, [roomId, userId, addSong]);
+      return null;
+    },
+    [roomId, userId, addSong],
+  );
 
-  const removeFromQueue = useCallback(async (songId: string) => {
-    // Optimistic update
-    removeSong(songId);
+  const removeFromQueue = useCallback(
+    async (songId: string) => {
+      // Optimistic update
+      removeSong(songId);
 
-    const [err, _] = await api.delete('/rooms/{id}/songs/{songId}', { id: roomId, songId });
+      const [err, _] = await api.delete('/rooms/{id}/songs/{songId}', {
+        id: roomId,
+        songId,
+      });
 
-    if (err) {
-      // Rollback or re-fetch on error
-      fetchQueue();
-    }
-  }, [roomId, removeSong, fetchQueue]);
+      if (err) {
+        // Rollback or re-fetch on error
+        fetchQueue();
+      }
+    },
+    [roomId, removeSong, fetchQueue],
+  );
 
-  const moveInQueue = useCallback(async (songId: string, newPosition: number) => {
-    // Optimistic update
-    reorderSongs(songId, newPosition);
+  const moveInQueue = useCallback(
+    async (songId: string, newPosition: number) => {
+      // Optimistic update
+      reorderSongs(songId, newPosition);
 
-    const [err, _] = await api.patch('/rooms/{id}/songs/{songId}', 
-      { id: roomId, songId },
-      { newPosition }
-    );
-
-    if (err) {
-      // Rollback or re-fetch on error
-      fetchQueue();
-    }
-  }, [roomId, reorderSongs, fetchQueue]);
-  
-  const voteSong = useCallback(async (songId: string) => {
-    // Optimistic update could happen here if store supports it
-    // For now we rely on the server event to update the order
-    
-    const [err, _] = await api.post('/rooms/{id}/songs/{songId}', 
+      const [err, _] = await api.patch(
+        '/rooms/{id}/songs/{songId}',
         { id: roomId, songId },
-        {}
-    );
-    
-    if (err) {
+        { newPosition },
+      );
+
+      if (err) {
+        // Rollback or re-fetch on error
+        fetchQueue();
+      }
+    },
+    [roomId, reorderSongs, fetchQueue],
+  );
+
+  const voteSong = useCallback(
+    async (songId: string) => {
+      // Optimistic update could happen here if store supports it
+      // For now we rely on the server event to update the order
+
+      const [err, _] = await api.post(
+        '/rooms/{id}/songs/{songId}',
+        { id: roomId, songId },
+        {},
+      );
+
+      if (err) {
         // Check for 409 Conflict or "already voted" message
-        if (err.message.includes('409') || err.message.includes('already voted')) {
-            return 'already_voted' as const;
+        if (
+          err.message.includes('409') ||
+          err.message.includes('already voted')
+        ) {
+          return 'already_voted' as const;
         }
         console.error('[Queue] Failed to vote for song:', err);
         return 'error' as const;
-    }
-    return 'success' as const;
-  }, [roomId]);
+      }
+      return 'success' as const;
+    },
+    [roomId],
+  );
 
   return {
     songs,
@@ -135,4 +159,3 @@ export const useQueue = (roomId: string) => {
     voteSong,
   };
 };
-

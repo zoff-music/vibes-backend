@@ -1,11 +1,11 @@
-import { create } from 'zustand';
 import { PlaybackState } from '@vibez/shared';
+import { create } from 'zustand';
 
 interface PlaybackStoreState extends PlaybackState {
   // Client-side computed fields
   actualPositionMs: number;
   clientReferenceTime: number;
-  
+
   setPlaybackState: (state: PlaybackState) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   updateActualPosition: () => void;
@@ -22,9 +22,9 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
   clientReferenceTime: Date.now(),
 
   setPlaybackState: (state) => {
-    set({ 
+    set({
       ...state,
-      clientReferenceTime: Date.now() 
+      clientReferenceTime: Date.now(),
     });
     get().updateActualPosition();
   },
@@ -32,8 +32,14 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
   setIsPlaying: (isPlaying) => set({ isPlaying }),
 
   updateActualPosition: () => {
-    const { positionMs, updatedAt, serverTimeMs, isPlaying, clientReferenceTime } = get();
-    
+    const {
+      positionMs,
+      updatedAt,
+      serverTimeMs,
+      isPlaying,
+      clientReferenceTime,
+    } = get();
+
     if (!isPlaying) {
       set({ actualPositionMs: positionMs });
       return;
@@ -44,11 +50,11 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
     //    elapsedOnServer = serverTimeMs - updatedAt
     // 2. Calculate how much time passed on client since we received the state
     //    elapsedOnClient = Date.now() - clientReferenceTime
-    
+
     const serverUpdatedAt = new Date(updatedAt).getTime();
     const elapsedOnServer = Math.max(0, serverTimeMs - serverUpdatedAt);
     const elapsedOnClient = Math.max(0, Date.now() - clientReferenceTime);
-    
+
     set({ actualPositionMs: positionMs + elapsedOnServer + elapsedOnClient });
   },
 }));

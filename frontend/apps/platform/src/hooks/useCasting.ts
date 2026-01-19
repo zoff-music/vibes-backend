@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react';
+import { useCallback, useEffect } from 'react';
 import { useCastStore } from '../stores/castStore';
 import { usePlaybackStore } from '../stores/playbackStore';
 
@@ -15,7 +15,7 @@ export const useCasting = (_roomId: string) => {
     initialize,
     // castCurrentSong, -- unused
     syncPlaybackState,
-    clearError
+    clearError,
   } = useCastStore();
 
   const currentSong = usePlaybackStore((state) => state.currentSong);
@@ -23,7 +23,9 @@ export const useCasting = (_roomId: string) => {
 
   // Create stable callback references
   // const stableCastCurrentSong = useCallback(castCurrentSong, [castCurrentSong]);
-  const stableSyncPlaybackState = useCallback(syncPlaybackState, [syncPlaybackState]);
+  const stableSyncPlaybackState = useCallback(syncPlaybackState, [
+    syncPlaybackState,
+  ]);
 
   // Initialize casting when hook is first used
   useEffect(() => {
@@ -55,12 +57,18 @@ export const useCasting = (_roomId: string) => {
       stableSyncPlaybackState({
         isPlaying,
         positionMs: actualPositionMs,
-        currentSong
-      }).catch(error => {
+        currentSong,
+      }).catch((error) => {
         console.error('Failed to sync playback state:', error);
       });
     }
-  }, [isConnected, isPlaying, currentSong, currentSession?.mediaSessionId, stableSyncPlaybackState]);
+  }, [
+    isConnected,
+    isPlaying,
+    currentSong,
+    currentSession?.mediaSessionId,
+    stableSyncPlaybackState,
+  ]);
 
   return {
     // State
@@ -69,12 +77,12 @@ export const useCasting = (_roomId: string) => {
     currentSession,
     availableDevices,
     lastError,
-    
+
     // Actions
     clearError,
-    
+
     // Computed
     isCastingAvailable: availableDevices.length > 0,
-    castDeviceName: currentSession?.deviceName || null
+    castDeviceName: currentSession?.deviceName || null,
   };
 };

@@ -1,8 +1,8 @@
-import { Routes, Route } from 'react-router-dom';
-import Home from './pages/Home';
+import { Route, Routes } from 'react-router-dom';
 import CreateRoom from './pages/CreateRoom';
-import RoomView from './pages/RoomView';
+import Home from './pages/Home';
 import PlayerTest from './pages/PlayerTest';
+import RoomView from './pages/RoomView';
 
 export default function App() {
   return (

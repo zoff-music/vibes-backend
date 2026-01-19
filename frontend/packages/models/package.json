@@ -10,13 +10,12 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "biome lint src"
   },
   "dependencies": {
     "yup": "^1.7.1"
   },
   "devDependencies": {
-    "typescript": "^5.3.0",
-    "eslint": "^9.25.0"
+    "typescript": "^5.3.0"
   }
 }
