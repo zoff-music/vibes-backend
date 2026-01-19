@@ -8,8 +8,8 @@ Collaborative music queue with synchronized playback. Supports YouTube, Spotify,
 # Local Development (Recommended)
 make local-dev
 # Runs backend + frontend + Caddy (HTTPS).
-# App: https://localhost
-# API: https://localhost/api
+# App: https://127.0.0.1
+# API: https://127.0.0.1/api
 
 # Backend Manual
 cd backend && go build ./cmd/server && ./server
@@ -90,7 +90,7 @@ Full contract: `docs/API.md`
 PORT=8080
 DATABASE_PATH=./vibez.db
 YOUTUBE_API_KEY=required
-VITE_API_URL=http://localhost:8080
+VITE_API_URL=http://127.0.0.1:8080
 ```
 
 ## Coding Rules

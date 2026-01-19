@@ -36,7 +36,7 @@ The system now uses the **Styled Media Receiver** (App ID: `4F8B3483`) which all
 ```typescript
 // In castManager.ts
 const CAST_APPLICATION_ID = '4F8B3483'; // Styled Media Receiver
-const CUSTOM_RECEIVER_URL = 'http://localhost:5173/cast-receiver.html';
+const CUSTOM_RECEIVER_URL = 'http://127.0.0.1:5173/cast-receiver.html';
 ```
 
 ### How It Works
@@ -49,7 +49,7 @@ const CUSTOM_RECEIVER_URL = 'http://localhost:5173/cast-receiver.html';
 ## Testing the Receiver
 
 ### 1. Standalone Browser Testing
-- Open: `http://localhost:5173/cast-receiver.html`
+- Open: `http://127.0.0.1:5173/cast-receiver.html`
 - The receiver will automatically load in test mode after 3 seconds
 - Shows sample YouTube video, room info, and queue
 
@@ -159,7 +159,7 @@ Following [Google Cast Console registration process](https://developers.google.c
 
 1. **Receiver Not Loading**:
    - Ensure development server is running on port 5173
-   - Check that `http://localhost:5173/cast-receiver.html` loads in browser
+   - Check that `http://127.0.0.1:5173/cast-receiver.html` loads in browser
    - Verify Chromecast is on same network
    - Review [Google's receiver debugging guide](https://developers.google.com/cast/docs/web_receiver/debugging)
 
