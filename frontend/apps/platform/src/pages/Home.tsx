@@ -11,7 +11,8 @@ export default function Home() {
 
   const handleJoinRoom = () => {
     if (roomCode.trim()) {
-      navigate(`/room/${roomCode.trim()}`);
+      const slug = roomCode.trim().toLowerCase().replace(/\s+/g, '-');
+      navigate(`/room/${slug}`);
     }
   };
 
@@ -129,7 +130,7 @@ export default function Home() {
                   type="text"
                   placeholder="Enter code"
                   value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
+                  onChange={(e) => setRoomCode(e.target.value.toLowerCase())}
                   onKeyDown={(e) => e.key === 'Enter' && handleJoinRoom()}
                   className="w-full rounded-xl border-2 border-ink/20 bg-surface px-4 py-4 font-mono text-base text-ink tracking-wider transition-all placeholder:text-ink/40 focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] focus:outline-hidden"
                   maxLength={20}

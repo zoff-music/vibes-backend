@@ -14,11 +14,9 @@ import (
 )
 
 // RoomEvents handles GET /api/v1/rooms/:id/events (SSE)
-// RoomEvents handles GET /api/v1/rooms/:id/events (SSE)
-// RoomEvents handles GET /api/v1/rooms/:id/events (SSE)
 func RoomEvents(
 	ips vibe.Subscriber,
-	db vibe.PlaybackFetcher,
+	db vibe.PlaybackStateUpdater,
 	participants vibe.ParticipantStorage,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

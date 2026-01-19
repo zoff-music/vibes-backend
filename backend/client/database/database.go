@@ -43,6 +43,7 @@ type Client struct {
 	GetPlaybackStateStatement           *sql.Stmt
 	UpsertPlaybackStateStatement        *sql.Stmt
 	ProcessNextExpiredPlaybackStatement *sql.Stmt
+	StartPlaybackIfIdleStatement        *sql.Stmt
 
 	// User statements
 	GetUserStatement              *sql.Stmt
@@ -203,6 +204,10 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	if err != nil {
 		return err
 	}
+	err = c.prepareStartPlaybackIfIdleStmt()
+	if err != nil {
+		return err
+	}
 
 	err = c.prepareGetUserStmt()
 	if err != nil {
@@ -282,6 +287,7 @@ func (c *Client) Close() error {
 		c.GetPlaybackStateStatement,
 		c.UpsertPlaybackStateStatement,
 		c.ProcessNextExpiredPlaybackStatement,
+		c.StartPlaybackIfIdleStatement,
 		c.GetUserStatement,
 		c.GetUsersInRoomStatement,
 		c.CountUsersInRoomStatement,
