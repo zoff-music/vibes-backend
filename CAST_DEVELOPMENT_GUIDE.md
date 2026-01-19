@@ -18,7 +18,7 @@ The Vibez casting system is **fully implemented** and working with YouTube conte
 ## Quick Test Guide
 
 ### 1. Test the Custom Receiver Standalone
-Open in your browser: `http://localhost:5173/cast-receiver.html`
+Open in your browser: `http://127.0.0.1:5173/cast-receiver.html`
 
 You'll see:
 - Beautiful Vibez-branded interface
@@ -143,7 +143,7 @@ Sender App (React) → Styled Media Receiver (4F8B3483)
 
 ### Development (Current)
 - Uses Styled Media Receiver
-- Loads receiver from localhost:5173
+- Loads receiver from 127.0.0.1:5173
 - Full YouTube support working
 - All features implemented
 
@@ -171,7 +171,7 @@ Sender App (React) → Styled Media Receiver (4F8B3483)
 
 1. **Receiver not loading**:
    - Check development server is running
-   - Verify `http://localhost:5173/cast-receiver.html` loads
+   - Verify `http://127.0.0.1:5173/cast-receiver.html` loads
    - Ensure Chromecast is on same network
 
 2. **YouTube videos not playing**:

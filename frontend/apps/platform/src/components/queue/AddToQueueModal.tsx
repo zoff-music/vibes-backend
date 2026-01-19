@@ -17,6 +17,7 @@ interface SearchResult {
   thumbnailUrl: string;
   duration?: string;
   url?: string;
+  source?: string;
 }
 
 export const AddToQueueModal: React.FC<Props> = ({
@@ -113,10 +114,11 @@ export const AddToQueueModal: React.FC<Props> = ({
     const mappedResults: SearchResult[] = results.map((r: any) => ({
       id: r.id,
       title: r.title,
-      artist: r.artist || r.channelTitle || 'Unknown',
-      thumbnailUrl: r.thumbnail || r.thumbnailUrl,
+      artist: r.channelTitle || 'Unknown',
+      thumbnailUrl: r.thumbnailUrl,
       duration: r.duration,
-      url: r.url,
+      url: r.url, // Backend might not send this, but keeping it optional
+      source: r.source,
     }));
 
     setSearchResults(mappedResults);
