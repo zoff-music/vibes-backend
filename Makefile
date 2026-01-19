@@ -62,12 +62,13 @@ dev-down:
 frontend:
 	cd frontend && bun dev
 
-## local-dev: Runs backend + frontend locally with env ports set
+## local-dev: Runs backend + frontend locally with env ports set and Caddy for SSL
 local-dev:
 	PORT=8080 \
 	sh -c 'cd migrator && go run main.go -db ../backend/data/vibes.db && cd ../backend && go run cmd/server/main.go' & \
 	PORT=3000 \
 	sh -c 'cd frontend && bun install && bun dev' & \
+	caddy run --config Caddyfile & \
 	wait
 
 ## gosec: Runs gosec

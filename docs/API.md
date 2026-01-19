@@ -7,7 +7,7 @@ Complete API specification for frontend-backend communication.
 ## Base URL
 
 ```
-Development: http://localhost:8080/api/v1
+Development: https://localhost/api/v1 (via make local-dev)
 Production: https://api.vibez.app/api/v1
 ```
 
@@ -395,51 +395,38 @@ If threshold is reached:
 
 ---
 
-### YouTube Search
+### Music Providers (Search & Tracks)
 
-#### Search for Music
+#### Search
 ```
-GET /youtube/search?q=query
+GET /api/v1/{provider}/search?q=query
 ```
+**Providers**: `youtube`, `spotify`, `soundcloud`
 
-Search for YouTube videos by query string.
-
-**Query Parameters:**
-- `q` (required): Search query string
-
-**Response:** `200 OK`
-```json
-[
-  {
-    "id": "dQw4w9WgXcQ",
-    "source": "youtube",
-    "title": "Rick Astley - Never Gonna Give You Up",
-    "channelTitle": "Rick Astley",
-    "thumbnailUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg",
-    "duration": "PT3M33S"
-  }
-]
+#### Get Track Details
+```
+GET /api/v1/{provider}/tracks/{id}
+GET /api/v1/youtube/videos/{id} (YouTube legacy)
 ```
 
 ---
 
-#### Get Video Details
+### Authorization & Config
+
+#### List Authorizations
 ```
-GET /youtube/videos/:id
+GET /api/v1/authorizations
 ```
 
-Get details for a specific YouTube video by ID.
+#### Authorize Provider
+```
+GET /api/v1/authorizations/{provider}
+```
+**Providers**: `spotify`, `youtube`, `soundcloud`
 
-**Response:** `200 OK`
-```json
-{
-  "id": "dQw4w9WgXcQ",
-  "source": "youtube",
-  "title": "Rick Astley - Never Gonna Give You Up",
-  "channelTitle": "Rick Astley",
-  "thumbnailUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg",
-  "duration": "PT3M33S"
-}
+#### Get Enabled Providers
+```
+GET /api/v1/providers
 ```
 
 ---
@@ -510,187 +497,7 @@ All errors follow this structure:
 
 ---
 
-## Yup Schemas (Frontend)
+## Validation
 
-```typescript
-// schemas/room.ts
-import * as yup from 'yup';
-
-export const roomSettingsSchema = yup.object({
-  skipAllowed: yup.boolean().required(),
-  democraticSkip: yup.boolean().required(),
-  skipVoteThreshold: yup.number().min(0).max(1).required(),
-  maxContinuousAdds: yup.number().min(1).max(10).required(),
-  removeOnPlay: yup.boolean().required(),
-  loopQueue: yup.boolean().required(),
-  allowDuplicates: yup.boolean().required(),
-});
-
-export const roomSchema = yup.object({
-  id: yup.string().required(),
-  name: yup.string().required(),
-  createdAt: yup.string().required(),
-  hasPassword: yup.boolean().required(),
-  settings: roomSettingsSchema.required(),
-  userCount: yup.number().optional(),
-});
-
-export const createRoomRequestSchema = yup.object({
-  name: yup.string().min(1).max(100).required(),
-  adminPassword: yup.string().optional(),
-  settings: roomSettingsSchema.optional(),
-});
-
-// schemas/songs.ts
-export const songSchema = yup.object({
-  id: yup.string().required(),
-  sourceType: yup.string().oneOf(['youtube', 'spotify', 'soundcloud']).required(),
-  sourceId: yup.string().required(),
-  title: yup.string().required(),
-  artist: yup.string().optional(),
-  thumbnailUrl: yup.string().required(),
-  duration: yup.number().required(),
-  addedBy: yup.string().required(),
-  addedByNickname: yup.string().optional(),
-  addedAt: yup.string().required(),
-  position: yup.number().required(),
-});
-
-export const songsResponseSchema = yup.object({
-  songs: yup.array().of(songSchema).required(),
-  totalCount: yup.number().required(),
-});
-
-// schemas/playback.ts
-export const playbackStateSchema = yup.object({
-  currentSongId: yup.string().nullable(),
-  currentSong: songSchema.nullable(),
-  isPlaying: yup.boolean().required(),
-  positionMs: yup.number().required(),
-  updatedAt: yup.string().required(),
-  serverTimeMs: yup.number().required(),
-});
-```
-
----
-
-## Wiretyped Endpoint Definitions
-
-```typescript
-// api/endpoints.ts
-import { RequestDefinitions } from 'wiretyped';
-import {
-  roomSchema,
-  createRoomRequestSchema,
-  queueResponseSchema,
-  queueItemSchema,
-  playbackStateSchema,
-} from './schemas';
-
-export const endpoints: RequestDefinitions = {
-  // Rooms
-  '/rooms': {
-    post: {
-      body: createRoomRequestSchema,
-      response: roomSchema,
-    },
-  },
-  '/rooms/{id}': {
-    get: {
-      response: roomSchema,
-    },
-    patch: {
-      response: roomSchema,
-    },
-  },
-  '/rooms/{id}/sessions': {
-    post: {
-      body: yup.object({
-        nickname: yup.string().optional(),
-        password: yup.string().optional(),
-      }),
-      response: yup.object({
-        userId: yup.string().required(),
-        nickname: yup.string().optional(),
-        isAdmin: yup.boolean().required(),
-        room: roomSchema.required(),
-      }),
-    },
-  },
-
-  // Songs
-  '/rooms/{id}/songs': {
-    get: {
-      response: songsResponseSchema,
-    },
-    post: {
-      body: yup.object({
-        sourceType: yup.string().required(),
-        sourceId: yup.string().required(),
-      }),
-      response: songSchema,
-    },
-  },
-  '/rooms/{id}/songs/{songId}': {
-    delete: {
-      response: yup.object({}),
-    },
-  },
-  '/rooms/{id}/songs/reorder': {
-    patch: {
-      body: yup.object({
-        songId: yup.string().required(),
-        newPosition: yup.number().required(),
-      }),
-      response: songsResponseSchema,
-    },
-  },
-
-  // Room actions (play, pause, seek, skip, vote) - POST /rooms/{id}
-  // Action is determined by request body { action: "play" | "pause" | "seek" | "skip" | "vote" }
-  // Response varies by action - see API documentation for details
-};
-
-// Action request schemas
-export const roomActionSchema = yup.object({
-  action: yup.string().oneOf(['play', 'pause', 'seek', 'skip', 'vote']).required(),
-  positionMs: yup.number().when('action', {
-    is: 'seek',
-    then: (schema) => schema.required(),
-    otherwise: (schema) => schema.optional(),
-  }),
-});
-
-// Action response schemas (discriminated by action field)
-export const playActionResponseSchema = yup.object({
-  action: yup.string().oneOf(['play']).required(),
-  playback: playbackStateSchema.required(),
-});
-
-export const pauseActionResponseSchema = yup.object({
-  action: yup.string().oneOf(['pause']).required(),
-  playback: playbackStateSchema.required(),
-});
-
-export const seekActionResponseSchema = yup.object({
-  action: yup.string().oneOf(['seek']).required(),
-  playback: playbackStateSchema.required(),
-});
-
-export const skipActionResponseSchema = yup.object({
-  action: yup.string().oneOf(['skip']).required(),
-  skipped: yup.boolean().required(),
-  nextSong: songSchema.nullable(),
-  playback: playbackStateSchema.required(),
-});
-
-export const voteActionResponseSchema = yup.object({
-  action: yup.string().oneOf(['vote']).required(),
-  voted: yup.boolean().required(),
-  currentVotes: yup.number().required(),
-  requiredVotes: yup.number().required(),
-  skipped: yup.boolean().required(),
-  nextSong: songSchema.nullable(),
-  playback: playbackStateSchema.optional(),
-});
-```
+We use `wiretyped` and `yup` schemas for request/response validation.
+See `frontend/packages/models/src/schemas/` for the definitive schema definitions.

@@ -2,6 +2,7 @@ import { api } from '@vibez/api';
 import { formatDuration, parseISODuration } from '@vibez/shared';
 import React, { useEffect, useRef, useState } from 'react';
 import { useQueue } from '../../hooks/useQueue';
+import { useRoom } from '../../hooks/useRoom';
 
 interface Props {
   roomId: string;
@@ -12,9 +13,10 @@ interface Props {
 interface SearchResult {
   id: string;
   title: string;
-  channelTitle: string;
+  artist: string;
   thumbnailUrl: string;
   duration?: string;
+  url?: string;
 }
 
 export const AddToQueueModal: React.FC<Props> = ({
@@ -31,8 +33,31 @@ export const AddToQueueModal: React.FC<Props> = ({
   const [previewVideo, setPreviewVideo] = useState<SearchResult | null>(null);
   const [justAdded, setJustAdded] = useState(false);
   const { addToQueue } = useQueue(roomId);
+  const [providers, setProviders] = useState<string[]>([]);
+  const [selectedProvider, setSelectedProvider] = useState<string>('youtube');
+  const [authorizations, setAuthorizations] = useState<string[]>([]);
+  const { room } = useRoom(roomId);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    // Fetch available providers and authorizations
+    const fetchData = async () => {
+      const [, pData] = await api.get('/providers', null);
+      if (pData) {
+        setProviders(pData);
+        if (pData.includes('youtube')) setSelectedProvider('youtube');
+        else if (pData.includes('spotify')) setSelectedProvider('spotify');
+        else if (pData.length > 0) setSelectedProvider(pData[0]);
+      }
+
+      const [, aData] = await api.get('/authorizations', null);
+      if (aData) {
+        setAuthorizations(aData);
+      }
+    };
+    fetchData();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!isVisible) {
@@ -64,9 +89,16 @@ export const AddToQueueModal: React.FC<Props> = ({
     setIsSearching(true);
     setError(null);
 
-    const [err, results] = await api.get('/youtube/search', {
-      $search: { q: query },
-    });
+    let err, results;
+    
+    if (selectedProvider === 'youtube') {
+      [err, results] = await api.get('/youtube/search', { $search: { q: query } });
+    } else if (selectedProvider === 'spotify') {
+      [err, results] = await api.get('/spotify/search', { $search: { q: query } });
+    } else if (selectedProvider === 'soundcloud') {
+      [err, results] = await api.get('/soundcloud/search', { $search: { q: query } });
+    }
+
     setIsSearching(false);
 
     if (err || !results) {
@@ -76,7 +108,18 @@ export const AddToQueueModal: React.FC<Props> = ({
       return;
     }
 
-    setSearchResults(results);
+    // Backend returns MusicTracks with { id, title, artist, duration, thumbnail, url }
+    // We map it to SearchResult { id, title, artist, thumbnailUrl, duration, url }
+    const mappedResults: SearchResult[] = results.map((r: any) => ({
+      id: r.id,
+      title: r.title,
+      artist: r.artist || r.channelTitle || 'Unknown',
+      thumbnailUrl: r.thumbnail || r.thumbnailUrl,
+      duration: r.duration,
+      url: r.url,
+    }));
+
+    setSearchResults(mappedResults);
     setShowResults(true);
   };
 
@@ -85,10 +128,11 @@ export const AddToQueueModal: React.FC<Props> = ({
     setError(null);
     setPreviewVideo(null);
 
-    // Check if it's a YouTube URL
+    // Check if it's a YouTube URL (only if strictly YouTube provider or maybe auto-detect?)
+    // For now let's keep it simple: if generic URL detected, maybe switch to generic "add by URL"?
+    // But existing logic was specific to YouTube ID extraction.
     const videoId = extractYoutubeId(query);
-    if (videoId) {
-      // If it's a URL, fetch the video directly
+    if (videoId && selectedProvider === 'youtube') {
       setShowResults(false);
       setIsSearching(true);
       api.get('/youtube/videos/{id}', { id: videoId }).then(([err, video]) => {
@@ -97,12 +141,18 @@ export const AddToQueueModal: React.FC<Props> = ({
           setError('Could not find that video');
           return;
         }
-        setPreviewVideo(video);
+        // Map YouTube video to generic result
+        setPreviewVideo({
+            id: video.id,
+            title: video.title,
+            artist: video.channelTitle,
+            thumbnailUrl: video.thumbnailUrl,
+            duration: video.duration,
+        });
       });
       return;
     }
 
-    // Debounce search
     if (searchTimeoutRef.current) {
       clearTimeout(searchTimeoutRef.current);
     }
@@ -122,13 +172,15 @@ export const AddToQueueModal: React.FC<Props> = ({
     setIsLoading(true);
     const durationSec = parseISODuration(result.duration);
 
+    // Determine sourceType from selectedProvider (which is 'youtube', 'spotify', etc.)
+    // Assuming selectedProvider matches sourceType strings.
     const success = await addToQueue(
-      'youtube',
+      selectedProvider as any, // Cast to any or SourceType
       result.id,
       result.title,
       result.thumbnailUrl,
       durationSec,
-      result.channelTitle,
+      result.artist,
     );
 
     setIsLoading(false);
@@ -150,15 +202,9 @@ export const AddToQueueModal: React.FC<Props> = ({
     }
   };
 
-  // Kept for backward compatibility if needed, or can be removed if strictly unused.
-  // The previous logic for handleAdd is now largely merged into handleSelectResult.
   const handleAdd = async () => {
     if (!previewVideo || justAdded) return;
-    // ... (logic is same as above but targeting previewVideo)
-    // Since we are skipping preview, this might become redundant.
-    // For now, I'll direct handleAdd to work if previewVideo exists (e.g. from copy-paste URL which might still use preview flow if we want, but user asked to skip "last add to queue step").
-    // If "skip the last add to queue step" applies to search results, we use handleSelectResult.
-    // If it applies to everything, we need to auto-add on URL match too.
+    handleSelectResult(previewVideo);
   };
 
   if (!isVisible) return null;
@@ -173,42 +219,88 @@ export const AddToQueueModal: React.FC<Props> = ({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h2
-              className="font-black text-2xl text-ink"
-              style={{ fontFamily: 'Poppins' }}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2
+                className="font-black text-2xl text-ink"
+                style={{ fontFamily: 'Poppins' }}
+              >
+                Add a Song
+              </h2>
+              <p className="mt-1 font-medium text-ink/60 text-sm">
+                Search or paste a link
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="rounded-xl border-2 border-transparent p-2 transition-colors hover:border-ink/10 hover:bg-ink/5"
             >
-              Add a Song
-            </h2>
-            <p className="mt-1 font-medium text-ink/60 text-sm">
-              Search or paste a link
-            </p>
-            <p className="jp-art mt-0.5 text-ink/40 text-xs">曲を検索</p>
+              <svg
+                className="h-5 w-5 text-ink/60"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-xl border-2 border-transparent p-2 transition-colors hover:border-ink/10 hover:bg-ink/5"
-          >
-            <svg
-              className="h-5 w-5 text-ink/60"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
-          </button>
+
+          {/* Provider Tabs */}
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
+            {providers.map((p) => (
+              <button
+                key={p}
+                onClick={() => {
+                   setSelectedProvider(p);
+                   setSearchResults([]);
+                   setSearchQuery('');
+                   setPreviewVideo(null);
+                }}
+                className={`rounded-full px-4 py-1.5 text-sm font-bold transition-all ${
+                  selectedProvider === p
+                    ? 'bg-ink text-white shadow-lg'
+                    : 'bg-surface text-ink/60 hover:bg-ink/5'
+                }`}
+              >
+                {p.charAt(0).toUpperCase() + p.slice(1)}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Search Input */}
         <div className="relative mb-6">
           <div className="relative">
+            {/* Auth Check Logic */}
+            {(() => {
+              const isYoutube = selectedProvider === 'youtube'; // YouTube basically always allowed via Key
+              const isAuthorized = authorizations.includes(selectedProvider);
+              const isActiveSource = room?.activeSources?.includes(selectedProvider);
+              const canSearch = isYoutube || isAuthorized || isActiveSource;
+
+              if (!canSearch) {
+                return (
+                  <div className="absolute inset-0 z-20 flex flex-col items-center justify-center rounded-xl bg-surface/90 backdrop-blur-sm text-center p-4">
+                    <p className="font-bold text-ink mb-2">Connect {selectedProvider} to Search</p>
+                    <button
+                        onClick={() => window.open(`/api/v1/authorizations/${selectedProvider}`, 'Login', 'width=500,height=600')} 
+                        className="bg-primary text-white px-4 py-2 rounded-lg font-bold text-sm shadow-retro-pink hover:bg-primary-muted transition-colors"
+                    >
+                        Connect Now
+                    </button>
+                  </div>
+                )
+              }
+              return null;
+            })()}
+
             <div className="absolute top-1/2 left-4 -translate-y-1/2 text-ink/40">
               {isSearching ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-ink/20 border-t-primary" />
@@ -231,7 +323,7 @@ export const AddToQueueModal: React.FC<Props> = ({
             <input
               ref={inputRef}
               type="text"
-              placeholder="Search songs or paste YouTube URL..."
+              placeholder={`Search ${selectedProvider}...`}
               value={searchQuery}
               onChange={(e) => handleSearchChange(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -305,7 +397,7 @@ export const AddToQueueModal: React.FC<Props> = ({
                       {result.title}
                     </h4>
                     <p className="line-clamp-1 font-medium text-ink/60 text-xs">
-                      {result.channelTitle}
+                      {result.artist}
                     </p>
                   </div>
                 </button>
@@ -345,7 +437,7 @@ export const AddToQueueModal: React.FC<Props> = ({
                   {previewVideo.title}
                 </h3>
                 <p className="line-clamp-1 font-medium text-ink/60 text-sm">
-                  {previewVideo.channelTitle}
+                  {previewVideo.artist}
                 </p>
               </div>
             </div>

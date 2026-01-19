@@ -11,7 +11,7 @@
 - **HTTP Framework**: Gorilla Mux for routing
 - **Real-time**: Server-Sent Events (SSE) for live updates
 - **Monitoring**: OpenTelemetry + Prometheus metrics
-- **External APIs**: YouTube Data API v3
+- **External APIs**: YouTube Data API v3, Spotify Web API, SoundCloud API
 
 ## Frontend Stack
 
@@ -54,7 +54,9 @@ cd backend && go run cmd/server/main.go
 cd frontend && bun dev
 
 # Local development (both)
+# Local development (HTTPS via Caddy)
 make local-dev
+# URL: https://localhost
 ```
 
 ### Database Operations

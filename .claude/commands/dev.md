@@ -1,8 +1,17 @@
 # Start Development
 
-Start frontend and backend dev servers.
+## Recommended (HTTPS)
 
-## Steps
+Run the full stack (Backend + Frontend + Caddy) with HTTPS enabled:
+
+```bash
+make local-dev
+```
+
+- **App**: [https://localhost](https://localhost)
+- **API**: [https://localhost/api](https://localhost/api)
+
+## Manual (HTTP)
 
 1. Start backend:
 ```bash
@@ -13,5 +22,3 @@ cd backend && go build ./cmd/server && ./server
 ```bash
 cd frontend && bun dev
 ```
-
-Both run concurrently. Backend on :8080, frontend on :5173.

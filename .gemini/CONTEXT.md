@@ -1,7 +1,7 @@
 # Vibes Project Context
 
 ## Overview
-Collaborative music queue with synchronized playback. YouTube-only for V1.
+Collaborative music queue with synchronized playback. Supports YouTube, Spotify, and SoundCloud.
 Monorepo-style structure containing backend, frontend, and database migrator.
 
 ## Key Directories
@@ -23,12 +23,45 @@ Monorepo-style structure containing backend, frontend, and database migrator.
 
 ### `frontend/`
 - Workspace root.
-- `apps/mobile/`: Main React application (Vite).
+- `apps/platform/`: Main React application (Vite).
     - `src/api/`: `wiretyped` client and `yup` schemas.
     - `src/stores/`: Zustand stores.
     - `src/components/`: UI components.
-- `packages/`: Shared packages (if any).
+- `packages/`: Shared packages.
+    - `api/`: Shared API client.
+    - `models/`: Shared types and schemas.
+    - `shared/`: Shared utilities.
 - `AGENTS.md`: Coding rules.
+
+## API
+```
+POST   /api/v1/rooms                    # Create room
+GET    /api/v1/rooms/:id                # Get room
+PATCH  /api/v1/rooms/:id/settings       # Update settings
+POST   /api/v1/rooms/:id/sessions       # Join room
+POST   /api/v1/rooms/:id/skips          # Skip song
+PUT    /api/v1/rooms/:id/states         # Update playback state
+
+GET    /api/v1/rooms/:id/songs          # Get queue
+POST   /api/v1/rooms/:id/songs          # Add song
+DELETE /api/v1/rooms/:id/songs/:songId  # Remove song
+POST   /api/v1/rooms/:id/songs/:songId  # Vote/Reorder
+
+GET    /api/v1/rooms/:id/events         # SSE stream
+
+# Music Providers
+GET    /api/v1/youtube/search           # Search YouTube
+GET    /api/v1/youtube/videos/:id       # Get Video
+GET    /api/v1/soundcloud/search        # Search SoundCloud
+GET    /api/v1/soundcloud/tracks/:id    # Get Track
+GET    /api/v1/spotify/search           # Search Spotify
+GET    /api/v1/spotify/tracks/:id       # Get Track
+
+# Authorization
+GET    /api/v1/authorizations           # List connected providers
+GET    /api/v1/authorizations/spotify   # Connect Spotify
+GET    /api/v1/providers                # List enabled providers
+```
 
 ### `migrator/`
 - `main.go`: Entrypoint for running migrations.
@@ -44,6 +77,13 @@ go build ./cmd/server
 ./server
 ```
 *Port: 8080*
+
+### Local Development (HTTPS)
+```bash
+make local-dev
+```
+*Starts Backend + Frontend + Caddy Proxy.*
+*Access at https://localhost*
 
 ### Frontend
 ```bash

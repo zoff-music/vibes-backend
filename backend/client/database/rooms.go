@@ -177,7 +177,36 @@ func (c *Client) GetRoomByName(ctx context.Context, name string) (*vibe.Room, er
 		return nil, fmt.Errorf("error converting room row: %w", err)
 	}
 
+	if err := c.fillActiveSources(ctx, room); err != nil {
+		return nil, err
+	}
+
 	return room, nil
+}
+
+func (c *Client) fillActiveSources(ctx context.Context, room *vibe.Room) error {
+	rows, err := c.DB.QueryContext(ctx, `
+		SELECT DISTINCT source_type FROM songs WHERE room_id = ?
+	`, room.ID)
+	if err != nil {
+		return fmt.Errorf("error in db: get active sources: %w", err)
+	}
+	defer rows.Close()
+	sources := []string{}
+	for rows.Next() {
+		var source string
+		if err := rows.Scan(&source); err != nil {
+			return fmt.Errorf("error in db: scan active source: %w", err)
+		}
+		sources = append(sources, source)
+	}
+
+	if err := rows.Err(); err != nil {
+		return fmt.Errorf("error in db: iterate active sources: %w", err)
+	}
+
+	room.ActiveSources = sources
+	return nil
 }
 
 // GetRoom fetches a room by ID.
@@ -204,6 +233,10 @@ func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
 	room, err := scanned.toRoom()
 	if err != nil {
 		return nil, fmt.Errorf("error converting room row: %w", err)
+	}
+
+	if err := c.fillActiveSources(ctx, room); err != nil {
+		return nil, err
 	}
 
 	return room, nil
