@@ -2,6 +2,7 @@ package event
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -21,10 +22,15 @@ func (h *PlaybackMonitor) Handle(ctx context.Context, data []byte) error {
 		return fmt.Errorf("error processing next expired playback: %w", err)
 	}
 
+	statePayload, err := json.Marshal(state)
+	if err != nil {
+		return fmt.Errorf("error marshaling playback state payload: %w", err)
+	}
+
 	err = h.ips.NotifyRoomUpdates(ctx, state.RoomID, []vibe.RoomEvent{
 		{
 			Type:    vibe.PlaybackUpdate,
-			Payload: state,
+			Payload: statePayload,
 		},
 	})
 	if err != nil {
@@ -47,12 +53,18 @@ func (h *HostMonitor) Handle(ctx context.Context, data []byte) error {
 		return fmt.Errorf("error processing next abandoned host: %w", err)
 	}
 
-	err = h.ips.NotifyRoomUpdate(ctx, info.RoomID, vibe.RoomEvent{
-		Type:    vibe.NewHost,
-		Payload: map[string]string{"userId": info.NewHostID, "message": "You are now the host"},
-	})
+	payloadMap := map[string]string{"userId": info.NewHostID, "message": "You are now the host"}
+	payloadBytes, err := json.Marshal(payloadMap)
 	if err != nil {
-		log.Printf("error notifying room %s host update: %v", info.RoomID, err)
+		log.Printf("error marshaling new host payload: %v", err)
+	} else {
+		err = h.ips.NotifyRoomUpdate(ctx, info.RoomID, vibe.RoomEvent{
+			Type:    vibe.NewHost,
+			Payload: payloadBytes,
+		})
+		if err != nil {
+			log.Printf("error notifying room %s host update: %v", info.RoomID, err)
+		}
 	}
 
 	return nil

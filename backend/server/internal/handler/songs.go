@@ -118,12 +118,17 @@ func AddSong(
 			return
 		}
 
-		err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
-			Type:    vibe.QueueReordered,
-			Payload: songs,
-		})
+		songsPayload, err := json.Marshal(songs)
 		if err != nil {
-			log.Printf("failed to notify room: %v", err)
+			log.Printf("failed to marshal songs payload: %v", err)
+		} else {
+			err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+				Type:    vibe.QueueReordered,
+				Payload: songsPayload,
+			})
+			if err != nil {
+				log.Printf("failed to notify room: %v", err)
+			}
 		}
 
 		// Auto-play if this is the first song
@@ -150,12 +155,17 @@ func AddSong(
 			}
 
 			// Notify room about playback update
-			err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
-				Type:    vibe.PlaybackUpdate,
-				Payload: playbackState,
-			})
+			playbackPayload, err := json.Marshal(playbackState)
 			if err != nil {
-				log.Printf("failed to notify room: %v", err)
+				log.Printf("failed to marshal playback state payload: %v", err)
+			} else {
+				err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+					Type:    vibe.PlaybackUpdate,
+					Payload: playbackPayload,
+				})
+				if err != nil {
+					log.Printf("failed to notify room: %v", err)
+				}
 			}
 		}
 
@@ -201,10 +211,15 @@ func RemoveSong(
 		// Broadcast queue update
 		songs, err := db.GetSongs(ctx, roomID)
 		if err == nil {
-			_ = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
-				Type:    vibe.QueueReordered,
-				Payload: songs,
-			})
+			songsPayload, marshalErr := json.Marshal(songs)
+			if marshalErr != nil {
+				log.Printf("failed to marshal songs payload: %v", marshalErr)
+			} else {
+				_ = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+					Type:    vibe.QueueReordered,
+					Payload: songsPayload,
+				})
+			}
 		}
 
 		w.WriteHeader(http.StatusNoContent)
@@ -248,10 +263,15 @@ func ReorderSongs(
 		// Broadcast queue update
 		songs, err := db.GetSongs(ctx, roomID)
 		if err == nil {
-			_ = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
-				Type:    vibe.QueueReordered,
-				Payload: songs,
-			})
+			songsPayload, marshalErr := json.Marshal(songs)
+			if marshalErr != nil {
+				log.Printf("failed to marshal songs payload: %v", marshalErr)
+			} else {
+				_ = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+					Type:    vibe.QueueReordered,
+					Payload: songsPayload,
+				})
+			}
 		}
 
 		w.WriteHeader(http.StatusNoContent)
@@ -304,10 +324,15 @@ func VoteSong(
 		// Broadcast queue update
 		songs, err := db.GetSongs(ctx, roomID)
 		if err == nil {
-			_ = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
-				Type:    vibe.QueueReordered,
-				Payload: songs,
-			})
+			songsPayload, marshalErr := json.Marshal(songs)
+			if marshalErr != nil {
+				log.Printf("failed to marshal songs payload: %v", marshalErr)
+			} else {
+				_ = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+					Type:    vibe.QueueReordered,
+					Payload: songsPayload,
+				})
+			}
 		}
 
 		w.WriteHeader(http.StatusNoContent)

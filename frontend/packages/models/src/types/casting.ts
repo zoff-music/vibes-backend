@@ -14,7 +14,7 @@ export type CastSessionState = yup.InferType<typeof castSessionStateSchema>;
 export type CastDevice = yup.InferType<typeof castDeviceSchema>;
 export type CastSession = yup.InferType<typeof castSessionSchema>;
 export type MediaInfo = yup.InferType<typeof mediaInfoSchema>;
-export type CastError = yup.InferType<typeof castErrorSchema>;
+export type CastError = Omit<yup.InferType<typeof castErrorSchema>, 'details'> & { details?: unknown };
 
 // Interfaces (Non-schema types)
 export interface CastManager {

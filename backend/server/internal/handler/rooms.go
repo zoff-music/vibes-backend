@@ -246,9 +246,10 @@ func UpdateRoomSettings(
 		}
 
 		// Broadcast room update to all connected clients
+		// Note: 'body' is already the marshaled 'updated' from line 237
 		err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
 			Type:    vibe.SettingsUpdate,
-			Payload: updated,
+			Payload: body,
 		})
 		if err != nil {
 			handleError(

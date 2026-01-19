@@ -36,7 +36,7 @@ const (
 // RoomEvent represents an SSE event for a room
 type RoomEvent struct {
 	Type    string `json:"type"`
-	Payload any    `json:"payload"`
+	Payload []byte `json:"payload"`
 }
 
 // RoomEventNotifier broadcasts events to room subscribers

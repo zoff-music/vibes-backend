@@ -27,7 +27,7 @@ export const AddToQueueModal: React.FC<Props> = ({ roomId, isVisible, onClose })
     const [previewVideo, setPreviewVideo] = useState<SearchResult | null>(null);
     const [justAdded, setJustAdded] = useState(false);
     const { addToQueue } = useQueue(roomId);
-    const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const inputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
