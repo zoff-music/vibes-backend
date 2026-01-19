@@ -23,15 +23,28 @@ Non-negotiable conventions. Follow strictly.
 ```
 client/                    # External integrations
 ├── database/database.go   # SQLite client
-├── youtube/youtube.go     # YouTube API
+├── youtube/               # YouTube API
+│   ├── youtube.go         # Client struct and Init
+│   ├── search.go          # Search method
+│   └── track.go           # GetTrack method
+├── soundcloud/            # SoundCloud API
+│   ├── soundcloud.go      # Client struct and Init
+│   ├── search.go          # Search method
+│   └── track.go           # GetTrack method
+├── spotify/               # Spotify API
+│   ├── spotify.go         # Client struct, Init, token management
+│   ├── search.go          # Search method
+│   └── track.go           # GetTrack method
 └── internalpubsub/        # SSE broadcasting
 
 server/
 ├── server.go              # Client init, route wiring
 ├── router.go              # Route definitions
 └── internal/handler/      # HTTP handlers
+    ├── search.go          # Search handlers (YouTube, SoundCloud, Spotify)
+    └── track.go           # Track handlers (YouTube, SoundCloud, Spotify)
 
-vibe/vibe.go               # ALL domain types & interfaces
+vibe/                      # ALL domain types & interfaces
 ```
 
 ## Handler Pattern

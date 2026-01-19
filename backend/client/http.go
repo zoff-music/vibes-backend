@@ -36,12 +36,12 @@ func NewHTTPClient(parameters Parameters) HTTPClient {
 
 // HTTPRequestData contains the request data.
 type HTTPRequestData struct {
-	Method     string
-	URL        string
-	Headers    map[string]string
-	Body       []byte
-	GetPayload *url.Values
-	BasicAuth  *BasicAuth
+	Method    string
+	URL       string
+	Headers   map[string]string
+	Body      []byte
+	Payload   *url.Values
+	BasicAuth *BasicAuth
 }
 
 // BasicAuth contains crendentials for basic authentication.
@@ -122,8 +122,8 @@ func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) 
 		return nil, err
 	}
 
-	if reqData.GetPayload != nil {
-		req.URL.RawQuery = reqData.GetPayload.Encode()
+	if reqData.Payload != nil {
+		req.URL.RawQuery = reqData.Payload.Encode()
 	}
 
 	span := opentracing.SpanFromContext(ctx)

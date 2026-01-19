@@ -59,6 +59,16 @@ if (error) {
 // use data
 ```
 
+## Music Search
+
+The backend supports multiple music search providers:
+- YouTube: `/api/v1/youtube/search` and `/api/v1/youtube/videos/{id}`
+- SoundCloud: `/api/v1/soundcloud/search` and `/api/v1/soundcloud/tracks/{id}`
+- Spotify: `/api/v1/spotify/search` and `/api/v1/spotify/tracks/{id}`
+
+> [!NOTE]
+> SoundCloud and Spotify clients may be disabled if API keys are not configured. Check the `Enabled` property or handle 500 responses gracefully.
+
 ## API Calls
 
 Always use wiretyped with yup validation:
