@@ -36,11 +36,14 @@ backend/
 └── vibe/vibe.go           # ALL domain types
 
 frontend/
-├── apps/mobile/           # React web app (Main)
-│   ├── src/api/           # wiretyped client + yup schemas
+├── apps/platform/         # React web app (Main)
 │   ├── src/components/    # UI components
-│   └── src/stores/        # Zustand stores
+│   ├── src/stores/        # Zustand stores
+│   └── src/pages/         # Route components
 └── packages/              # Shared packages
+    ├── api/               # API client
+    ├── models/            # Types & Schemas
+    └── shared/            # Utilities
 
 migrator/                  # Database migration tool
 ├── main.go                # Entrypoint

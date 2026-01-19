@@ -41,7 +41,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetMusicTrack")
 
 	s.addSessionMiddleware(api)
-	s.addAuthMiddleware(api)
+	s.addPermissionMiddleware(api)
 	s.addTracingAndMetrics(api)
 	s.addCORSMiddleware(s.Router)
 }
@@ -68,9 +68,9 @@ func (s *Server) addCORSMiddleware(routers ...*mux.Router) {
 	}
 }
 
-func (s *Server) addAuthMiddleware(routers ...*mux.Router) {
-	am := middleware.AuthMiddleware{
-		Provider: s.DB,
+func (s *Server) addPermissionMiddleware(routers ...*mux.Router) {
+	am := middleware.PermissionMiddleware{
+		DB: s.DB,
 		ProtectedRoutes: map[string]bool{
 			"UpdateRoomSettings": true,
 		},

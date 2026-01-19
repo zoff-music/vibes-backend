@@ -3,8 +3,8 @@
   "private": true,
   "workspaces": ["apps/*", "packages/*"],
   "scripts": {
-    "dev": "bun --filter @vibez/mobile dev",
-    "build": "bun --filter @vibez/mobile build",
+    "dev": "bun --filter @vibez/platform dev",
+    "build": "bun --filter @vibez/platform build",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "bun run --filter '*' lint"
   },
