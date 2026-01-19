@@ -1,11 +1,11 @@
 import * as yup from 'yup';
 import {
-  castDeviceTypeSchema,
-  castSessionStateSchema,
   castDeviceSchema,
+  castDeviceTypeSchema,
+  castErrorSchema,
   castSessionSchema,
+  castSessionStateSchema,
   mediaInfoSchema,
-  castErrorSchema
 } from '../schemas/casting';
 
 // Inferred Types
@@ -14,24 +14,30 @@ export type CastSessionState = yup.InferType<typeof castSessionStateSchema>;
 export type CastDevice = yup.InferType<typeof castDeviceSchema>;
 export type CastSession = yup.InferType<typeof castSessionSchema>;
 export type MediaInfo = yup.InferType<typeof mediaInfoSchema>;
-export type CastError = Omit<yup.InferType<typeof castErrorSchema>, 'details'> & { details?: unknown };
+export type CastError = Omit<
+  yup.InferType<typeof castErrorSchema>,
+  'details'
+> & { details?: unknown };
 
 // Interfaces (Non-schema types)
 export interface CastManager {
   // Device Discovery
   discoverDevices(): Promise<CastDevice[]>;
   getAvailableDevices(): CastDevice[];
-  
+
   // Connection Management
   connectToDevice(deviceId: string): Promise<CastSession>;
   disconnectFromDevice(deviceId: string): Promise<void>;
-  
+
   // Playback Control
   castMedia(mediaInfo: MediaInfo): Promise<void>;
   updateQueue(queue: any[]): Promise<void>;
-  updateRoomInfo(roomInfo: { name: string; participantCount: number }): Promise<void>;
+  updateRoomInfo(roomInfo: {
+    name: string;
+    participantCount: number;
+  }): Promise<void>;
   syncPlaybackState(state: any): Promise<void>;
-  
+
   // Event Handling
   onDeviceAvailable(callback: (device: CastDevice) => void): void;
   onSessionStateChange(callback: (session: CastSession) => void): void;
@@ -48,11 +54,11 @@ declare global {
         initialize: (
           apiConfig: chrome.cast.ApiConfig,
           onInitSuccess: () => void,
-          onInitError: (error: chrome.cast.Error) => void
+          onInitError: (error: chrome.cast.Error) => void,
         ) => void;
         requestSession: (
           onSuccess: (session: chrome.cast.Session) => void,
-          onError: (error: chrome.cast.Error) => void
+          onError: (error: chrome.cast.Error) => void,
         ) => void;
         Session: any;
         media: {

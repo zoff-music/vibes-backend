@@ -14,7 +14,8 @@ export type RoomSettings = yup.InferType<typeof roomSettingsSchema>;
 export const roomSchema = yup.object({
   id: yup.string().required(),
   name: yup.string().required(),
-  mode: yup.string()
+  mode: yup
+    .string()
     .transform((value) => (!value ? 'server' : value))
     .oneOf(['server', 'host'])
     .default('server'),

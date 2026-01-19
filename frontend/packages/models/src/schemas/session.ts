@@ -22,4 +22,6 @@ export const createSessionRequestSchema = yup.object({
   nickname: yup.string().optional(),
   password: yup.string().optional(),
 });
-export type CreateSessionRequest = yup.InferType<typeof createSessionRequestSchema>;
+export type CreateSessionRequest = yup.InferType<
+  typeof createSessionRequestSchema
+>;

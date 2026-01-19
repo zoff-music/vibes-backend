@@ -12,7 +12,10 @@ export const playbackStateSchema = yup.object({
 export type PlaybackState = yup.InferType<typeof playbackStateSchema>;
 
 export const roomActionRequestSchema = yup.object({
-  action: yup.string().oneOf(['play', 'pause', 'seek', 'skip', 'vote']).required(),
+  action: yup
+    .string()
+    .oneOf(['play', 'pause', 'seek', 'skip', 'vote'])
+    .required(),
   positionMs: yup.number().optional(),
 });
 export type RoomActionRequest = yup.InferType<typeof roomActionRequestSchema>;

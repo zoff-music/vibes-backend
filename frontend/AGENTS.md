@@ -7,6 +7,8 @@ Non-negotiable conventions. Follow strictly.
 - **No `any` type** - use explicit types, compose when needed
 - **No `@ts-ignore` or `@ts-nocheck`** - fix the type
 - **No `try/catch`** - use `safeWrap`/`safeWrapAsync` from `src/utils/wrap.ts`
+- **Use Biome** for ALL linting and formatting. No ESLint.
+- **Run `bun run lint`** to check both format and lint rules before committing.
 - **Use wiretyped + yup** for ALL API calls / SSE.
 - **NEVER use `fetch()` or `new EventSource()`**. Only `wiretyped` clients.
 
