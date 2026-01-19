@@ -4,6 +4,7 @@ package metrics
 import (
 	"math"
 	"strconv"
+	"sync"
 
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -23,10 +24,14 @@ var (
 	})
 )
 
+var registerOnce sync.Once
+
 // RegisterPrometheusCollectors tells prometheus to set up collectors.
 func RegisterPrometheusCollectors() {
-	prometheus.MustRegister(requestsReceived)
-	prometheus.MustRegister(timeToProcessRequest)
+	registerOnce.Do(func() {
+		prometheus.MustRegister(requestsReceived)
+		prometheus.MustRegister(timeToProcessRequest)
+	})
 }
 
 // ObserveTimeToProcess records the time spent processing an operation.

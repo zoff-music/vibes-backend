@@ -12,11 +12,10 @@ Non-negotiable conventions. Follow strictly.
 
 ## File Layout
 
+## File Layout
+
 ```
-apps/mobile/src/
-├── api/
-│   ├── client.ts          # wiretyped client
-│   └── schemas/           # yup schemas
+apps/platform/src/
 ├── components/
 │   ├── ui/                # Button, Input, Card, etc.
 │   ├── player/            # VideoPlayer, PlayerControls
@@ -34,6 +33,12 @@ apps/mobile/src/
 └── utils/
     └── wrap.ts            # Error handling utilities
 ```
+
+## Packages
+
+- `@vibez/api`: API client (`import { api } from '@vibez/api'`)
+- `@vibez/models`: Shared types and schemas (`import { ... } from '@vibez/models'`)
+- `@vibez/shared`: Shared utilities (`import { ... } from '@vibez/shared'`)
 
 ## Error Handling
 
@@ -59,7 +64,7 @@ if (error) {
 Always use wiretyped with yup validation:
 
 ```typescript
-import { api } from '@/api/client';
+import { api } from '@vibez/api';
 
 // Typed and validated
 const room = await api.post('/rooms', { name: 'My Room' });
