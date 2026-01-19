@@ -177,6 +177,11 @@ func (c *Client) GetRoomByName(ctx context.Context, name string) (*vibe.Room, er
 		return nil, err
 	}
 
+	active, err := c.GetActiveParticipants(ctx, room.ID, 15*time.Second)
+	if err == nil {
+		room.UserCount = len(active)
+	}
+
 	return room, nil
 }
 
@@ -242,6 +247,11 @@ func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
 
 	if err := c.fillActiveSources(ctx, room); err != nil {
 		return nil, err
+	}
+
+	active, err := c.GetActiveParticipants(ctx, room.ID, 15*time.Second)
+	if err == nil {
+		room.UserCount = len(active)
 	}
 
 	return room, nil
