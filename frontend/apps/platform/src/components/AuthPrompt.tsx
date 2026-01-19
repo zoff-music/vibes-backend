@@ -1,5 +1,5 @@
-import { api } from '@vibez/api';
 import { useEffect, useState } from 'react';
+import { useAuthCache } from '../hooks/useAuthCache';
 
 interface AuthPromptProps {
   activeSources?: string[];
@@ -23,48 +23,13 @@ const PROVIDERS = {
   },
 };
 
-// Simple cache to prevent excessive fetching
-let cachedAuths: string[] | null = null;
-let authFetchPromise: Promise<string[] | null> | null = null;
-let cacheTimestamp = 0;
-const CACHE_DURATION = 10000; // 10 seconds
-
 export default function AuthPrompt({ activeSources = [] }: AuthPromptProps) {
   const [dismissed, setDismissed] = useState<string[]>([]);
-  const [userAuths, setUserAuths] = useState<string[]>(cachedAuths || []);
+  const { authorizations, fetchAuthorizations } = useAuthCache();
+  const userAuths = authorizations || [];
 
   useEffect(() => {
-    const fetchAuths = async () => {
-      // Return cached if valid
-      if (cachedAuths && Date.now() - cacheTimestamp < CACHE_DURATION) {
-        setUserAuths(cachedAuths);
-        return;
-      }
-
-      // If fetch in progress, wait for it
-      if (authFetchPromise) {
-        const result = await authFetchPromise;
-        if (result) setUserAuths(result);
-        return;
-      }
-
-      // Start new fetch
-      authFetchPromise = (async () => {
-        const [err, data] = await api.get('/authorizations', null);
-        authFetchPromise = null;
-        if (!err && data) {
-          cachedAuths = data;
-          cacheTimestamp = Date.now();
-          return data;
-        }
-        return null;
-      })();
-
-      const result = await authFetchPromise;
-      if (result) setUserAuths(result);
-    };
-
-    fetchAuths();
+    fetchAuthorizations();
   }, []);
 
   // Determine which providers are needed but missing

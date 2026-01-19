@@ -11,7 +11,7 @@ interface Props {
   isAdmin?: boolean;
 }
 
-export const QueueList: React.FC<Props> = ({
+const QueueListComponent: React.FC<Props> = ({
   songs,
   onRemove,
   onVote,
@@ -68,3 +68,5 @@ export const QueueList: React.FC<Props> = ({
     </div>
   );
 };
+
+export const QueueList = React.memo(QueueListComponent);

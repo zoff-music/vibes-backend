@@ -9,7 +9,7 @@ interface Props {
   onAddSong: () => void;
 }
 
-export const PlayerControls: React.FC<Props> = ({
+const PlayerControlsComponent: React.FC<Props> = ({
   roomId,
   hasSongsInQueue = false,
   onAddSong,
@@ -123,3 +123,5 @@ export const PlayerControls: React.FC<Props> = ({
     </div>
   );
 };
+
+export const PlayerControls = React.memo(PlayerControlsComponent);
