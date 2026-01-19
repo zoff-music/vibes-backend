@@ -18,6 +18,7 @@ const PENDING_CLEANUPS = new Map<string, ReturnType<typeof setTimeout>>();
 export const useSSE = (roomId: string | undefined) => {
   const setRoom = useRoomStore((state) => state.setRoom);
   const setUsers = useRoomStore((state) => state.setUsers);
+  const setUsersCount = useRoomStore((state) => state.setUsersCount);
   const setSongs = useQueueStore((state) => state.setSongs);
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
 
@@ -58,7 +59,7 @@ export const useSSE = (roomId: string | undefined) => {
 
               if (!message) return;
 
-              switch (message.type) {
+              switch ((message as any).type) {
                 case 'connected':
                   console.log('[SSE] connected:', message.data);
                   break;
@@ -108,6 +109,15 @@ export const useSSE = (roomId: string | undefined) => {
                       'Failed to parse settings_update event',
                       error,
                     );
+                  break;
+                }
+                case 'users_update': {
+                  const [_, error] = safeWrap(() => {
+                    const count = message.data as number;
+                    setUsersCount(count);
+                  });
+                  if (error)
+                    console.error('Failed to parse users_update event', error);
                   break;
                 }
               }

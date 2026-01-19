@@ -1,7 +1,6 @@
 package vibe
 
 import (
-	"context"
 	"time"
 )
 
@@ -18,19 +17,4 @@ type User struct {
 // IsEmpty returns true if the user is empty/not found
 func (u *User) IsEmpty() bool {
 	return u.ID == ""
-}
-
-// UserFetcher fetches user data
-type UserFetcher interface {
-	GetUser(ctx context.Context, roomID, userID string) (*User, error)
-	GetUsersInRoom(ctx context.Context, roomID string) ([]User, error)
-	CountUsersInRoom(ctx context.Context, roomID string) (int, error)
-}
-
-// UserManager manages users in rooms
-type UserManager interface {
-	CreateUser(ctx context.Context, user *User) (*User, error)
-	UpdateUserLastSeen(ctx context.Context, roomID, userID string) error
-	RemoveUser(ctx context.Context, roomID, userID string) error
-	CleanupInactiveUsers(ctx context.Context, roomID string, threshold time.Duration) error
 }

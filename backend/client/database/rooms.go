@@ -281,24 +281,6 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 	)
 }
 
-func (r *roomRow) scanRows(rows *sql.Rows) error {
-	return rows.Scan(
-		&r.ID,
-		&r.Name,
-		&r.Mode,
-		&r.HostID,
-		&r.AdminPasswordHash,
-		&r.CreatedAt,
-		&r.SkipAllowed,
-		&r.DemocraticSkip,
-		&r.SkipVoteThreshold,
-		&r.MaxContinuousAdds,
-		&r.RemoveOnPlay,
-		&r.LoopQueue,
-		&r.AllowDuplicates,
-	)
-}
-
 func (r *roomRow) toRoom() (*vibe.Room, error) {
 	if !r.CreatedAt.Valid {
 		return nil, fmt.Errorf("error missing room created_at")

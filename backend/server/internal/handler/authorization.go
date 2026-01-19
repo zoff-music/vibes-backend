@@ -39,7 +39,7 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 }
 
 // OAuthCallback handles GET /api/v1/callbacks/{provider}
-func OAuthCallback(db vibe.OAuthCallbackDB, provider vibe.OAuthProvider, providerName string) http.HandlerFunc {
+func OAuthCallback(db vibe.CodeValidatorUserter, oa vibe.OAuthExchanger, providerName string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		query := r.URL.Query()
@@ -59,7 +59,7 @@ func OAuthCallback(db vibe.OAuthCallbackDB, provider vibe.OAuthProvider, provide
 		}
 
 		// Exchange code for tokens
-		tokenResp, err := provider.ExchangeCode(ctx, code)
+		tokenResp, err := oa.ExchangeCode(ctx, code)
 		if err != nil {
 			handleError(w, fmt.Errorf("error exchanging code for token: %w", err), http.StatusInternalServerError, true)
 			return
@@ -95,7 +95,7 @@ func OAuthCallback(db vibe.OAuthCallbackDB, provider vibe.OAuthProvider, provide
 }
 
 // GetToken handles GET /api/v1/authorizations/{provider}/token
-func GetToken(db vibe.AccessTokenUpserter, getter vibe.AccessTokenGetter, provider vibe.OAuthProvider, providerName string) http.HandlerFunc {
+func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, providerName string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		session, ok := helper.GetSessionFromContext(ctx)
@@ -105,7 +105,7 @@ func GetToken(db vibe.AccessTokenUpserter, getter vibe.AccessTokenGetter, provid
 		}
 
 		// Get current access token
-		token, err := getter.GetAccessToken(ctx, session.UserID, providerName)
+		token, err := db.GetAccessToken(ctx, session.UserID, providerName)
 		if err != nil {
 			// If not found or error, return 403
 			handleError(w, fmt.Errorf("error getting access token: %w", err), http.StatusForbidden, false)
@@ -144,7 +144,7 @@ func GetToken(db vibe.AccessTokenUpserter, getter vibe.AccessTokenGetter, provid
 		}
 
 		// Refresh token
-		tokenResp, err := provider.RefreshToken(ctx, token.RefreshToken)
+		tokenResp, err := oa.RefreshToken(ctx, token.RefreshToken)
 		if err != nil {
 			handleError(w, fmt.Errorf("error refreshing token: %w", err), http.StatusForbidden, false)
 			return

@@ -50,23 +50,30 @@ func (s *Song) IsEmpty() bool {
 // SongsFetcher fetches songs from the queue
 type SongsFetcher interface {
 	GetSongs(ctx context.Context, roomID string) ([]Song, error)
-	GetSong(ctx context.Context, roomID, songID string) (*Song, error)
 }
 
-// SongsModifier modifies the song queue
-type SongsModifier interface {
-	GetSongs(ctx context.Context, roomID string) ([]Song, error)
-	GetSong(ctx context.Context, roomID, songID string) (*Song, error)
-	AddSong(ctx context.Context, song *Song) (*Song, error)
-	RemoveSong(ctx context.Context, roomID, songID string) error
-	ReorderSongs(ctx context.Context, roomID, songID string, newPosition int) error
-	VoteSong(ctx context.Context, roomID, songID, userID string) error
-	GetNextSong(ctx context.Context, roomID string, currentPosition int) (*Song, error)
-	GetMaxPosition(ctx context.Context, roomID string) (int, error)
-}
-
-// SongController controls songs and playback
-type SongController interface {
-	SongsModifier
+// SongAdder adds songs to the queue
+type SongAdder interface {
 	UpsertPlaybackState(ctx context.Context, state *PlaybackState) error
+	GetMaxPosition(ctx context.Context, roomID string) (int, error)
+	AddSong(ctx context.Context, song *Song) (*Song, error)
+	GetSongs(ctx context.Context, roomID string) ([]Song, error)
+}
+
+// SongRemoverGetter removes and gets songs from the queue
+type SongRemoverGetter interface {
+	GetSongs(ctx context.Context, roomID string) ([]Song, error)
+	RemoveSong(ctx context.Context, roomID, songID string) error
+}
+
+// SongsReorderer reorders songs in the queue
+type SongsReorderer interface {
+	ReorderSongs(ctx context.Context, roomID, songID string, newPosition int) error
+	GetSongs(ctx context.Context, roomID string) ([]Song, error)
+}
+
+// SongVoter votes for a song
+type SongVoter interface {
+	VoteSong(ctx context.Context, roomID, songID, userID string) error
+	GetSongs(ctx context.Context, roomID string) ([]Song, error)
 }

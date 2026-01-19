@@ -10,6 +10,7 @@ import { SpotifyPlayer } from '../components/player/SpotifyPlayer';
 import { VideoPlayer } from '../components/player/VideoPlayer';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { QueueList } from '../components/queue/QueueList';
+import { UserCount } from '../components/room/UserCount';
 import { Toast } from '../components/ui/Toast';
 import { usePlayback } from '../hooks/usePlayback';
 import { useProviderToken } from '../hooks/useProviderToken';
@@ -229,14 +230,7 @@ export default function RoomView() {
           </button>
 
           <div className="flex items-center gap-2">
-            {users && users.length > 0 && (
-              <div className="glass mr-2 flex items-center gap-1.5 rounded-full border-2 border-ink/10 px-3 py-1.5 dark:border-primary/20">
-                <div className="h-2 w-2 animate-pulse rounded-full bg-success" />
-                <span className="font-medium text-xs dark:text-dark-text">
-                  {users.length}
-                </span>
-              </div>
-            )}
+            <UserCount />
 
             {/* Dark Mode Toggle */}
             <button

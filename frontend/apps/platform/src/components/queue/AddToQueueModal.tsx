@@ -4,6 +4,8 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAuthCache } from '../../hooks/useAuthCache';
 import { useQueue } from '../../hooks/useQueue';
 import { useRoom } from '../../hooks/useRoom';
+import { usePlaybackStore } from '../../stores/playbackStore';
+import { useQueueStore } from '../../stores/queueStore';
 
 interface Props {
   roomId: string;
@@ -35,6 +37,12 @@ export const AddToQueueModal: React.FC<Props> = ({
   const [previewVideo, setPreviewVideo] = useState<SearchResult | null>(null);
   const [justAdded, setJustAdded] = useState(false);
   const { addToQueue } = useQueue(roomId);
+  const { songs } = useQueueStore();
+  const { currentSong } = usePlaybackStore();
+
+  const hasSpotifySongs =
+    songs.some((s) => s.sourceType === 'spotify') ||
+    currentSong?.sourceType === 'spotify';
 
   const { providers, fetchProviders } = useAuthCache();
   const providerList = providers || [];
@@ -291,6 +299,35 @@ export const AddToQueueModal: React.FC<Props> = ({
             ))}
           </div>
         </div>
+
+        {/* Spotify Disclaimer */}
+        {selectedProvider === 'spotify' && !hasSpotifySongs && (
+          <div className="mb-6 animate-slide-down rounded-2xl border-2 border-sakura/30 bg-sakura/10 p-4 transition-all">
+            <div className="flex gap-3">
+              <div className="mt-0.5 text-primary">
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2.5}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <p className="font-medium text-ink/80 text-sm leading-relaxed">
+                <span className="font-bold text-primary">Note:</span> By adding
+                Spotify, viewers are required to have{' '}
+                <span className="font-bold">Spotify Premium</span> to view
+                content.
+              </p>
+            </div>
+          </div>
+        )}
 
         {/* Search Input */}
         <div className="relative mb-6">

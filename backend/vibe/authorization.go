@@ -10,23 +10,9 @@ type OAuthAuthorizer interface {
 	GetOAuthURL(state string) string
 }
 
-// AuthTokenUpserter handles storing auth token data (code/state).
-type AuthTokenUpserter interface {
-	UpsertAuthToken(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error
-}
-
-// AccessTokenUpserter handles storing access token data.
-type AccessTokenUpserter interface {
+// AccessTokenUpserterGetter handles storing and retrieving access token data.
+type AccessTokenUpserterGetter interface {
 	UpsertAccessToken(ctx context.Context, userID, provider, accessToken, refreshToken string, expiresAt, refreshExpiresAt time.Time) error
-}
-
-// AuthTokenLister handles listing auth providers.
-type AuthTokenLister interface {
-	GetAuthProviders(ctx context.Context, userID string) ([]string, error)
-}
-
-// AccessTokenGetter handles retrieving access token data.
-type AccessTokenGetter interface {
 	GetAccessToken(ctx context.Context, userID, provider string) (*AccessToken, error)
 }
 
@@ -60,9 +46,14 @@ type PendingOAuthStateSaver interface {
 	SavePendingOAuthState(ctx context.Context, userID, state string) error
 }
 
-// OAuthCallbackDB handles database operations for OAuth callbacks
-type OAuthCallbackDB interface {
+// CodeValidatorUserter handles database operations for OAuth callbacks
+type CodeValidatorUserter interface {
 	ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (string, error)
 	UpsertAuthToken(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error
 	UpsertAccessToken(ctx context.Context, userID, provider, accessToken, refreshToken string, expiresAt, refreshExpiresAt time.Time) error
+}
+
+// OAuthExchanger handles exchanging auth codes for tokens
+type OAuthExchanger interface {
+	ExchangeCode(ctx context.Context, code string) (*TokenResponse, error)
 }

@@ -77,7 +77,6 @@ func (r *Room) IsEmpty() bool {
 // RoomFetcher fetches room data
 type RoomFetcher interface {
 	GetRoom(ctx context.Context, id string) (*Room, error)
-	GetRoomByName(ctx context.Context, name string) (*Room, error)
 }
 
 // RoomCreator creates rooms
