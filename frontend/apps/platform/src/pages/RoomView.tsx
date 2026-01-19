@@ -1,7 +1,7 @@
 import { Song } from '@vibez/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import AuthPrompt from '../components/AuthPrompt';
 import { PlayerControls } from '../components/player/PlayerControls';
@@ -97,9 +97,10 @@ export default function RoomView() {
 
   /* Player Controls Handlers */
   const handleAddSong = useCallback(() => setIsAddModalVisible(true), []);
-  
+
   /* Queue Handlers */
-  const handleVote = useCallback(async (songId: string) => {
+  const handleVote = useCallback(
+    async (songId: string) => {
       const result = await voteSong(songId);
       if (result === 'success') {
         setToasts((prev) => [
@@ -120,7 +121,9 @@ export default function RoomView() {
           },
         ]);
       }
-  }, [voteSong]);
+    },
+    [voteSong],
+  );
 
   return (
     <div className="flex min-h-screen animate-fade-in flex-col">

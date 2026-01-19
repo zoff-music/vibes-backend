@@ -474,7 +474,7 @@
             }
 
             isYouTubeContent(media) {
-                return media && media.contentId && (
+                return media?.contentId && (
                     media.contentId.includes('youtube.com') ||
                     media.contentId.includes('youtu.be')
                 );
@@ -533,7 +533,7 @@
                         disablekb: 1
                     },
                     events: {
-                        onReady: (event) => {
+                        onReady: (_event) => {
                             console.log('YouTube player ready');
                             this.showVideoContainer();
                             this.updateMediaInfo();
@@ -590,12 +590,12 @@
 
             startProgressTracking() {
                 setInterval(() => {
-                    if (this.youtubePlayer && this.youtubePlayer.getCurrentTime) {
+                    if (this.youtubePlayer?.getCurrentTime) {
                         try {
                             const currentTime = this.youtubePlayer.getCurrentTime();
                             const duration = this.youtubePlayer.getDuration();
                             this.updateProgress(currentTime, duration);
-                        } catch (error) {
+                        } catch (_error) {
                             // Ignore errors when player is not ready
                         }
                     }
@@ -648,7 +648,7 @@
             }
 
             updateMediaInfo() {
-                if (this.currentMedia && this.currentMedia.metadata) {
+                if (this.currentMedia?.metadata) {
                     const metadata = this.currentMedia.metadata;
                     document.getElementById('media-title').textContent = metadata.title || 'Unknown Title';
                     document.getElementById('media-artist').textContent = metadata.subtitle || 'Unknown Artist';

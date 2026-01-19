@@ -14,7 +14,9 @@ export function safeWrap<T>(fn: () => T): [T | null, Error | null] {
  * Safe wrapper for asynchronous functions.
  * Returns [data, error] tuple.
  */
-export async function safeWrapAsync<T>(promise: Promise<T>): Promise<[T | null, Error | null]> {
+export async function safeWrapAsync<T>(
+  promise: Promise<T>,
+): Promise<[T | null, Error | null]> {
   try {
     const data = await promise;
     return [data, null];

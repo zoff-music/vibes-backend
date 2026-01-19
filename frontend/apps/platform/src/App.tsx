@@ -1,9 +1,9 @@
 import { Route, Routes } from 'react-router-dom';
+import Callback from './pages/Callback';
 import CreateRoom from './pages/CreateRoom';
 import Home from './pages/Home';
 import PlayerTest from './pages/PlayerTest';
 import RoomView from './pages/RoomView';
-import Callback from './pages/Callback';
 
 export default function App() {
   return (

@@ -1,5 +1,4 @@
-export * from './types';
 export * from './constants';
-export * from './utils/wrap';
+export * from './types';
 export * from './utils/time';
-
+export * from './utils/wrap';
