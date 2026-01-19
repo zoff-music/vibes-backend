@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -71,11 +72,9 @@ func (c *Client) SetRoomHost(ctx context.Context, roomID, userID string) error {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var hostID interface{}
-	if userID == "" {
-		hostID = nil
-	} else {
-		hostID = userID
+	hostID := sql.NullString{
+		String: userID,
+		Valid:  userID != "",
 	}
 
 	_, err := c.DB.ExecContext(cctx, `

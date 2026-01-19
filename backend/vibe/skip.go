@@ -18,7 +18,6 @@ type SkipVoteFetcher interface {
 type SkipVoteManager interface {
 	AddSkipVote(ctx context.Context, roomID, songID, userID string) error
 	ClearSkipVotes(ctx context.Context, roomID, songID string) error
-	VoteToSkip(ctx context.Context, roomID, userID string) (*PlaybackState, error)
 }
 
 // RoomSkipper defines actions related to skipping tracks
@@ -26,5 +25,5 @@ type RoomSkipper interface {
 	RoomFetcher
 	SongsFetcher
 	SkipVoteManager
-	SkipTrack(ctx context.Context, roomID string, userID string) (*PlaybackState, error)
+	SkipSong(ctx context.Context, roomID string, userID string, isAdmin bool) (*PlaybackState, error)
 }

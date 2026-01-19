@@ -2,8 +2,8 @@ package trace
 
 import (
 	"context"
+	"log"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/monitoring/opentracing"
 )
 
@@ -19,7 +19,7 @@ func InjectIntoCarrier(ctx context.Context) opentracing.TextMapCarrier {
 
 	err := opentracing.GlobalTracer().Inject(span.Context(), opentracing.TextMap, carrier)
 	if err != nil {
-		log.WithError(err).Error("unexpected error while injecting span into carrier")
+		log.Printf("unexpected error while injecting span into carrier: %v", err)
 	}
 	return carrier
 }
@@ -31,7 +31,7 @@ func ExtractFromCarrier(ctx context.Context, carrier opentracing.TextMapCarrier,
 	wireContext, err := tracer.Extract(opentracing.TextMap, carrier)
 	if err != nil {
 		// At the time of writing, the Extract method will always return nil on the error value
-		log.WithError(err).Error("unexpected error while extracting span from carrier")
+		log.Printf("unexpected error while extracting span from carrier: %v", err)
 		return opentracing.SpanFromContext(ctx), ctx
 	}
 

@@ -16,7 +16,11 @@ type Handler interface {
 }
 
 // GetAppEvents describes all the app events to listen to.
-func GetAppEvents(pa vibe.ExpiredPlaybackProcessor, hm vibe.AbandonnedHostProcessor, ips vibe.RoomEventNotifier, ps vibe.ParticipantStorage) AppEvents {
+func GetAppEvents(pa vibe.ExpiredPlaybackProcessor, hm vibe.AbandonnedHostProcessor, ips interface {
+	vibe.RoomEventNotifier
+	vibe.RoomBatchEventNotifier
+}, ps vibe.ParticipantStorage,
+) AppEvents {
 	return AppEvents{
 		{
 			Name: "ReviewRoomPlayback",

@@ -8,6 +8,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -15,7 +16,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/client/database"
 	"github.com/zoff-music/vibes/client/internalpubsub"
 	"github.com/zoff-music/vibes/client/youtube"
@@ -91,7 +91,7 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 	go s.serveHTTP(ctx, errc)
 	go s.subscribeAndListen(ctx, errc)
 
-	log.Info("Ready")
+	log.Println("Ready")
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -99,7 +99,7 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 	// Block until we receive sigterm or interrupt
 	<-stop
 
-	log.Info("Main server has received a shutdown signal")
+	log.Println("Main server has received a shutdown signal")
 	cancel() // Stop background jobs
 
 	s.shutdown(ctx)
@@ -113,14 +113,14 @@ func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
 		// Block until we receive sigterm or interrupt
 		<-stop
 
-		log.Info("HTTP server has received a shutdown signal")
+		log.Println("HTTP server has received a shutdown signal")
 
 		if err := httpServ.Shutdown(ctx); err != nil {
-			log.Error(err.Error())
+			log.Println(err.Error())
 		}
 	}(ctx, s.HTTP)
 
-	log.Infof("Ready at: %s", s.Config.Port)
+	log.Printf("Ready at: %s", s.Config.Port)
 
 	// Block until httpServ.Shutdown is called
 	if err := s.HTTP.ListenAndServe(); err != http.ErrServerClosed {
@@ -128,7 +128,7 @@ func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
 		return
 	}
 
-	log.Info("HTTP server closed")
+	log.Println("HTTP server closed")
 }
 
 func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
@@ -143,9 +143,9 @@ func (s *Server) shutdown(ctx context.Context) {
 	if s.DB != nil {
 		err := s.DB.Close()
 		if err != nil {
-			log.Errorf("error closing database: %v", err)
+			log.Printf("error closing database: %v", err)
 		}
 	}
 
-	log.Info("client closed")
+	log.Println("client closed")
 }

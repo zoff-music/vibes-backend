@@ -3,11 +3,10 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/zoff-music/vibes/client"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func handleError(
@@ -17,7 +16,7 @@ func handleError(
 	shouldLog bool,
 ) {
 	if shouldLog {
-		log.Error(err.Error())
+		log.Println(err.Error())
 	}
 
 	errorBody, _ := json.Marshal(struct {
@@ -33,7 +32,7 @@ func handleError(
 		statusCode = errorCodeWrapper.StatusCode
 		errorBody, err = errorCodeWrapper.GetResponseBody()
 		if err != nil {
-			log.Error(err.Error())
+			log.Println(err.Error())
 		}
 	}
 

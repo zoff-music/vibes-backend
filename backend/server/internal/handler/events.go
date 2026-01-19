@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/server/internal/helper"
 	"github.com/zoff-music/vibes/vibe"
 )
@@ -79,7 +79,7 @@ func RoomEvents(
 		// Send initial playback state
 		state, err := db.GetPlaybackState(ctx, roomID)
 		if err != nil {
-			log.Errorf("failed to fetch initial playback state: %v", err)
+			log.Printf("failed to fetch initial playback state: %v", err)
 		}
 
 		if state != nil {
@@ -91,7 +91,7 @@ func RoomEvents(
 			state.ServerTimeMs = time.Now().UnixMilli()
 
 			data, _ := json.Marshal(state)
-			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.EventTypePlaybackUpdate, data)
+			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.PlaybackUpdate, data)
 			flusher.Flush()
 		}
 
@@ -120,13 +120,13 @@ func RoomEvents(
 				var event vibe.RoomEvent
 				err := json.Unmarshal(data, &event)
 				if err != nil {
-					log.Errorf("failed to unmarshal room event: %v", err)
+					log.Printf("failed to unmarshal room event: %v", err)
 					continue
 				}
 
 				payloadData, err := json.Marshal(event.Payload)
 				if err != nil {
-					log.Errorf("failed to marshal event payload: %v", err)
+					log.Printf("failed to marshal event payload: %v", err)
 					continue
 				}
 

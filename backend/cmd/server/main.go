@@ -2,35 +2,32 @@ package main
 
 import (
 	"context"
+	"log"
 	"os"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/config"
 	"github.com/zoff-music/vibes/server"
 )
 
 func main() {
-	log.SetFormatter(&log.TextFormatter{
-		FullTimestamp: true,
-	})
-
 	// Enable debug logging if DEBUG=TRUE
 	if os.Getenv("DEBUG") == "TRUE" || os.Getenv("DEBUG") == "true" {
-		log.SetLevel(log.DebugLevel)
+		// Standard log doesn't have levels, just print that debug is enabled
+		log.Println("Debug logging enabled")
 	}
 
-	log.Info("Starting ...")
+	log.Println("Starting ...")
 
 	ctx := context.Background()
 	config, err := config.LoadConfig()
 	if err != nil {
-		log.WithField("err", err.Error()).Fatal("Failed to load config")
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
 	var s server.Server
 
 	if err := s.Create(ctx, config); err != nil {
-		log.WithField("err", err.Error()).Fatal("Server error from s.Create()")
+		log.Fatalf("Server error from s.Create(): %v", err)
 	}
 
 	errc := make(chan error)
@@ -38,6 +35,6 @@ func main() {
 
 	err = <-errc
 	if err != nil {
-		log.WithField("err", err.Error()).Fatal("Server error from s.Serve()")
+		log.Fatalf("Server error from s.Serve(): %v", err)
 	}
 }

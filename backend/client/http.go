@@ -7,11 +7,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	opentracing "github.com/zoff-music/vibes/monitoring/opentracing"
 )
 
@@ -82,7 +82,7 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 	defer func() {
 		err := r.Body.Close()
 		if err != nil {
-			log.Errorf("error closing response body: %s", err.Error())
+			log.Printf("error closing response body: %s", err.Error())
 		}
 	}()
 
@@ -135,7 +135,7 @@ func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) 
 			opentracing.HTTPHeadersCarrier(req.Header),
 		)
 		if err != nil {
-			log.Errorf("error injecting span into request headers: %s", err.Error())
+			log.Printf("error injecting span into request headers: %s", err.Error())
 		}
 	}
 

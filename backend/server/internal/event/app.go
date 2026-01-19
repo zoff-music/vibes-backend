@@ -3,9 +3,9 @@ package event
 import (
 	"context"
 	"errors"
+	"log"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/internalerror"
 	"github.com/zoff-music/vibes/monitoring/opentracing"
 )
@@ -37,7 +37,7 @@ func (e *AppEvent) SubscribeAndListen(ctx context.Context) {
 				var errExpected internalerror.ErrExpected
 				err := e.Handler.Handle(ctx, nil)
 				if err != nil && !errors.As(err, &errExpected) {
-					log.Error(t, err.Error())
+					log.Printf("%v: %s", t, err.Error())
 				}
 			}(t)
 		}

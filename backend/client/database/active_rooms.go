@@ -49,7 +49,7 @@ func (c *Client) GetRoomsWithActiveListeners(ctx context.Context, activeWithin t
 	var rooms []vibe.Room
 	for rows.Next() {
 		var r roomRow
-		err := r.scan(rows)
+		err := r.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning active room: %w", err)
 		}
