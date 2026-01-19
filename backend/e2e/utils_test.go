@@ -70,11 +70,14 @@ func setupEnv(t *testing.T) *TestEnv {
 		t.Fatalf("failed to apply migrations: %v", err)
 	}
 
-	cfg := &config.Config{
-		Port:          strconv.Itoa(port),
-		DatabasePath:  dbPath,
-		YouTubeAPIKey: "dummy-key", // Mock or expecting failures if used
+	cfg, err := config.LoadConfig()
+	if err != nil {
+		t.Fatalf("failed to load config: %v", err)
 	}
+
+	cfg.Port = strconv.Itoa(port)
+	cfg.DatabasePath = dbPath
+	cfg.YouTubeAPIKey = "dummy-key" // Mock or expecting failures if used
 
 	ctx, cancel := context.WithCancel(context.Background())
 
