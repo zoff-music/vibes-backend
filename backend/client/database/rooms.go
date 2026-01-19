@@ -163,7 +163,7 @@ func (c *Client) GetRoomByName(ctx context.Context, name string) (*vibe.Room, er
 
 	var scanned roomRow
 
-	err := scanned.scan(row)
+	err := scanned.scanRow(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &vibe.Room{}, nil
@@ -192,7 +192,7 @@ func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
 
 	var scanned roomRow
 
-	err := scanned.scan(row)
+	err := scanned.scanRow(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &vibe.Room{}, nil
@@ -225,12 +225,26 @@ type roomRow struct {
 	AllowDuplicates   sql.NullInt64
 }
 
-type Scanner interface {
-	Scan(dest ...interface{}) error
+func (r *roomRow) scanRow(row *sql.Row) error {
+	return row.Scan(
+		&r.ID,
+		&r.Name,
+		&r.Mode,
+		&r.HostID,
+		&r.AdminPasswordHash,
+		&r.CreatedAt,
+		&r.SkipAllowed,
+		&r.DemocraticSkip,
+		&r.SkipVoteThreshold,
+		&r.MaxContinuousAdds,
+		&r.RemoveOnPlay,
+		&r.LoopQueue,
+		&r.AllowDuplicates,
+	)
 }
 
-func (r *roomRow) scan(row Scanner) error {
-	return row.Scan(
+func (r *roomRow) scanRows(rows *sql.Rows) error {
+	return rows.Scan(
 		&r.ID,
 		&r.Name,
 		&r.Mode,
@@ -264,41 +278,41 @@ func (r *roomRow) toRoom() (*vibe.Room, error) {
 		HostID:            r.HostID.String,
 		AdminPasswordHash: r.AdminPasswordHash.String,
 		HasPassword:       r.AdminPasswordHash.Valid && r.AdminPasswordHash.String != "",
-		Settings:          settings,
+		Settings:          *settings,
 		CreatedAt:         r.CreatedAt.Time,
 	}, nil
 }
 
-func (r *roomRow) toRoomSettings() (vibe.RoomSettings, error) {
+func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
 	if !r.SkipAllowed.Valid {
-		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings skip_allowed")
+		return nil, fmt.Errorf("error missing room settings skip_allowed")
 	}
 
 	if !r.DemocraticSkip.Valid {
-		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings democratic_skip")
+		return nil, fmt.Errorf("error missing room settings democratic_skip")
 	}
 
 	if !r.SkipVoteThreshold.Valid {
-		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings skip_vote_threshold")
+		return nil, fmt.Errorf("error missing room settings skip_vote_threshold")
 	}
 
 	if !r.MaxContinuousAdds.Valid {
-		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings max_continuous_adds")
+		return nil, fmt.Errorf("error missing room settings max_continuous_adds")
 	}
 
 	if !r.RemoveOnPlay.Valid {
-		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings remove_on_play")
+		return nil, fmt.Errorf("error missing room settings remove_on_play")
 	}
 
 	if !r.LoopQueue.Valid {
-		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings loop_queue")
+		return nil, fmt.Errorf("error missing room settings loop_queue")
 	}
 
 	if !r.AllowDuplicates.Valid {
-		return vibe.RoomSettings{}, fmt.Errorf("error missing room settings allow_duplicates")
+		return nil, fmt.Errorf("error missing room settings allow_duplicates")
 	}
 
-	return vibe.RoomSettings{
+	return &vibe.RoomSettings{
 		SkipAllowed:       r.SkipAllowed.Int64 == 1,
 		DemocraticSkip:    r.DemocraticSkip.Int64 == 1,
 		SkipVoteThreshold: r.SkipVoteThreshold.Float64,

@@ -2,9 +2,9 @@ package opentracing
 
 import (
 	"context"
+	"log"
 	"sync/atomic"
 
-	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/trace"
 )
@@ -72,7 +72,7 @@ func (s *OtSpan) SetTag(key string, value any) {
 	case error:
 		s.SetStringTag(key, v.Error())
 	default:
-		log.Errorf("trace.SetTag: unsupported tag type: %T (value: %v)", v, v)
+		log.Printf("trace.SetTag: unsupported tag type: %T (value: %v)", v, v)
 	}
 }
 

@@ -2,9 +2,9 @@ package event
 
 import (
 	"context"
+	"log"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/vibe"
 )
 
@@ -21,7 +21,7 @@ func (h *CleanupHandler) Handle(ctx context.Context, data []byte) error {
 	}
 
 	if deleted > 0 {
-		log.Infof("Cleaned up %d inactive participants", deleted)
+		log.Printf("Cleaned up %d inactive participants", deleted)
 	}
 
 	return nil

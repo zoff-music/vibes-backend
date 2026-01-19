@@ -3,11 +3,11 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/server/internal/helper"
 	"github.com/zoff-music/vibes/vibe"
 )
@@ -23,7 +23,8 @@ func UpdatePlaybackState(
 		roomID := vars["id"]
 
 		var req vibe.RoomActionRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
 			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
 			return
 		}
@@ -49,7 +50,7 @@ func UpdatePlaybackState(
 			return
 		}
 
-		log.Infof("Room %s: User %s attempting %s", roomID, userID, req.Action)
+		log.Printf("Room %s: User %s attempting %s", roomID, userID, req.Action)
 
 		state, err := db.UpdatePlayback(ctx, roomID, userID, req.Action, req.PositionMs)
 		if err != nil {
@@ -61,12 +62,12 @@ func UpdatePlaybackState(
 
 		// Broadcast if in Host mode
 		if room.Mode == vibe.RoomModeHost {
-			err = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
-				Type:    vibe.EventTypePlaybackUpdate,
+			err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+				Type:    vibe.PlaybackUpdate,
 				Payload: state,
 			})
 			if err != nil {
-				log.Errorf("failed to notify room: %v", err)
+				log.Printf("failed to notify room: %v", err)
 			}
 		}
 

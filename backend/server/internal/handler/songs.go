@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -107,11 +108,22 @@ func AddSong(
 
 		// Broadcast queue update
 		songs, err := db.GetSongs(ctx, roomID)
-		if err == nil {
-			_ = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
-				Type:    vibe.EventTypeQueueReordered,
-				Payload: songs,
-			})
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("failed to fetch songs: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+			Type:    vibe.QueueReordered,
+			Payload: songs,
+		})
+		if err != nil {
+			log.Printf("failed to notify room: %v", err)
 		}
 
 		// Auto-play if this is the first song
@@ -126,15 +138,24 @@ func AddSong(
 				ServerTimeMs:  time.Now().UnixMilli(),
 			}
 
-			if err := db.UpsertPlaybackState(ctx, playbackState); err != nil {
-				// Log error but don't fail the request completely
-				fmt.Printf("failed to auto-play first song: %v\n", err)
-			} else {
-				// Notify room about playback update
-				_ = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
-					Type:    vibe.EventTypePlaybackUpdate,
-					Payload: playbackState,
-				})
+			err := db.UpsertPlaybackState(ctx, playbackState)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("failed to auto-play first song: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			// Notify room about playback update
+			err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+				Type:    vibe.PlaybackUpdate,
+				Payload: playbackState,
+			})
+			if err != nil {
+				log.Printf("failed to notify room: %v", err)
 			}
 		}
 
@@ -180,13 +201,13 @@ func RemoveSong(
 		// Broadcast queue update
 		songs, err := db.GetSongs(ctx, roomID)
 		if err == nil {
-			_ = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
-				Type:    vibe.EventTypeQueueReordered,
+			_ = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+				Type:    vibe.QueueReordered,
 				Payload: songs,
 			})
 		}
 
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -227,13 +248,13 @@ func ReorderSongs(
 		// Broadcast queue update
 		songs, err := db.GetSongs(ctx, roomID)
 		if err == nil {
-			_ = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
-				Type:    vibe.EventTypeQueueReordered,
+			_ = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+				Type:    vibe.QueueReordered,
 				Payload: songs,
 			})
 		}
 
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
@@ -283,8 +304,8 @@ func VoteSong(
 		// Broadcast queue update
 		songs, err := db.GetSongs(ctx, roomID)
 		if err == nil {
-			_ = ips.NotifyRoom(ctx, roomID, &vibe.RoomEvent{
-				Type:    vibe.EventTypeQueueReordered,
+			_ = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+				Type:    vibe.QueueReordered,
 				Payload: songs,
 			})
 		}

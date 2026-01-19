@@ -4,9 +4,9 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"log"
 	"net/http"
 
-	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/server/internal/helper"
 )
 
@@ -16,17 +16,17 @@ func SessionMiddleware(next http.Handler) http.Handler {
 		cookie, err := r.Cookie("session")
 		if err != nil {
 			// No cookie, proceed without session
-			log.Debug("SessionMiddleware: no session cookie found")
+			log.Println("SessionMiddleware: no session cookie found")
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		log.Debugf("SessionMiddleware: found session cookie: %s", cookie.Value)
+		log.Printf("SessionMiddleware: found session cookie: %s", cookie.Value)
 
 		decoded, err := base64.StdEncoding.DecodeString(cookie.Value)
 		if err != nil {
 			// Invalid encoding, ignore
-			log.Warnf("SessionMiddleware: failed to decode cookie: %v", err)
+			log.Printf("SessionMiddleware: failed to decode cookie: %v", err)
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -34,12 +34,12 @@ func SessionMiddleware(next http.Handler) http.Handler {
 		var payload helper.SessionPayload
 		if err := json.Unmarshal(decoded, &payload); err != nil {
 			// Invalid JSON, ignore
-			log.Warnf("SessionMiddleware: failed to unmarshal payload: %v", err)
+			log.Printf("SessionMiddleware: failed to unmarshal payload: %v", err)
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		log.Debugf("SessionMiddleware: parsed userID=%s", payload.UserID)
+		log.Printf("SessionMiddleware: parsed userID=%s", payload.UserID)
 		ctx := context.WithValue(r.Context(), helper.SessionKey, payload)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

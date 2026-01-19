@@ -3,10 +3,10 @@ package telemetry
 import (
 	"context"
 	"fmt"
+	"log"
 	"net"
 	"time"
 
-	log "github.com/sirupsen/logrus"
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"google.golang.org/grpc"
@@ -30,12 +30,12 @@ func (d *ExporterWithLogging) ExportSpans(ctx context.Context, spans []sdktrace.
 
 	err := d.traceExporter.ExportSpans(ctx, spans)
 	if err != nil {
-		log.WithError(err).Errorf("Failed to export %d spans", len(spans))
+		log.Printf("Failed to export %d spans: %v", len(spans), err)
 		return err
 	}
 
 	if d.LogSuccess {
-		log.Infof("Exported %d spans.", len(spans))
+		log.Printf("Exported %d spans.", len(spans))
 	}
 
 	return nil
@@ -100,23 +100,12 @@ func (d *ExporterWithLogging) LoggingInterceptor(
 	start := time.Now()
 	err := invoker(ctx, method, req, reply, cc, opts...)
 	if err != nil {
-		log.WithFields(log.Fields{
-			"method":   method,
-			"req":      req,
-			"reply":    reply,
-			"duration": time.Since(start),
-			"error":    err,
-		}).Error("RPC error")
+		log.Printf("RPC error method=%s duration=%v error=%v", method, time.Since(start), err)
 		return err
 	}
 
 	if d.LogSuccess {
-		log.WithFields(log.Fields{
-			"method":   method,
-			"req":      req,
-			"reply":    reply,
-			"duration": time.Since(start),
-		}).Info("RPC call")
+		log.Printf("RPC call method=%s duration=%v", method, time.Since(start))
 	}
 
 	return nil
@@ -138,10 +127,10 @@ type loggingCreds struct {
 func (c *loggingCreds) ClientHandshake(ctx context.Context, addr string, rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
 	conn, auth, err := c.TransportCredentials.ClientHandshake(ctx, addr, rawConn)
 	if err != nil {
-		log.WithError(err).Error("Client handshake failed")
+		log.Printf("Client handshake failed: %v", err)
 	}
 	if err == nil && c.logSuccess {
-		log.Info("Client handshake succeeded")
+		log.Println("Client handshake succeeded")
 	}
 	return conn, auth, err
 }

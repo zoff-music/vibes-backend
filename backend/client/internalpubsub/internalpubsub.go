@@ -34,8 +34,8 @@ func (c *Client) NotifyTopic(ctx context.Context, topicName string, data []byte)
 	return nil
 }
 
-func (c *Client) NotifyRoom(ctx context.Context, roomID string, event *vibe.RoomEvent) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyRoom")
+func (c *Client) NotifyRoomUpdate(ctx context.Context, roomID string, event vibe.RoomEvent) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyRoomUpdate")
 	defer span.Finish()
 
 	data, err := json.Marshal(event)
@@ -47,7 +47,7 @@ func (c *Client) NotifyRoom(ctx context.Context, roomID string, event *vibe.Room
 	return c.NotifyTopic(ctx, topicName, data)
 }
 
-func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []*vibe.RoomEvent) error {
+func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []vibe.RoomEvent) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyRoomUpdates")
 	defer span.Finish()
 

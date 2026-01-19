@@ -1,10 +1,10 @@
 package middleware
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
-	log "github.com/sirupsen/logrus"
 	"github.com/zoff-music/vibes/server/internal/helper"
 	"github.com/zoff-music/vibes/vibe"
 )
@@ -43,7 +43,7 @@ func (m *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 
 		room, err := m.Provider.GetRoom(ctx, roomID)
 		if err != nil {
-			log.Errorf("AuthMiddleware: failed to fetch room %s: %v", roomID, err)
+			log.Printf("AuthMiddleware: failed to fetch room %s: %v", roomID, err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -68,7 +68,7 @@ func (m *AuthMiddleware) Middleware(next http.Handler) http.Handler {
 		// Fetch the user
 		user, err := m.Provider.GetUser(ctx, roomID, session.UserID)
 		if err != nil {
-			log.Errorf("AuthMiddleware: failed to fetch user %s in room %s: %v", session.UserID, roomID, err)
+			log.Printf("AuthMiddleware: failed to fetch user %s in room %s: %v", session.UserID, roomID, err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}

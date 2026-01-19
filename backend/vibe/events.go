@@ -22,28 +22,28 @@ type Subscriber interface {
 	Subscribe(topic string) (*SubscriptionContainer, error)
 }
 
-// EventType represents the type of SSE event
-type EventType string
-
 const (
-	EventTypePlaybackUpdate EventType = "playback_update"
-	EventTypeSongAdded      EventType = "song_added"
-	EventTypeSongRemoved    EventType = "song_removed"
-	EventTypeQueueReordered EventType = "songs_update"
-	EventTypeNewHost        EventType = "new_host"
-	EventTypeUserJoined     EventType = "user_joined"
-	EventTypeUserLeft       EventType = "user_left"
-	EventTypeSettingsUpdate EventType = "settings_update"
+	PlaybackUpdate = "playback_update"
+	SongAdded      = "song_added"
+	SongRemoved    = "song_removed"
+	QueueReordered = "songs_update"
+	NewHost        = "new_host"
+	UserJoined     = "user_joined"
+	UserLeft       = "user_left"
+	SettingsUpdate = "settings_update"
 )
 
 // RoomEvent represents an SSE event for a room
 type RoomEvent struct {
-	Type    EventType   `json:"type"`
-	Payload interface{} `json:"payload"`
+	Type    string `json:"type"`
+	Payload any    `json:"payload"`
 }
 
 // RoomEventNotifier broadcasts events to room subscribers
 type RoomEventNotifier interface {
-	NotifyRoom(ctx context.Context, roomID string, event *RoomEvent) error
-	NotifyRoomUpdates(ctx context.Context, roomID string, events []*RoomEvent) error
+	NotifyRoomUpdate(ctx context.Context, roomID string, event RoomEvent) error
+}
+
+type RoomBatchEventNotifier interface {
+	NotifyRoomUpdates(ctx context.Context, roomID string, events []RoomEvent) error
 }
