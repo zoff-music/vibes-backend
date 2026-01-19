@@ -1,6 +1,9 @@
 package vibe
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 // Subscription defines interface to use the internalpubsub client
 type Subscription interface {
@@ -30,8 +33,14 @@ const (
 	NewHost        = "new_host"
 	UserJoined     = "user_joined"
 	UserLeft       = "user_left"
+	UsersUpdate    = "users_update"
 	SettingsUpdate = "settings_update"
 )
+
+type SubscriberPublisher interface {
+	Subscriber
+	RoomEventNotifier
+}
 
 // RoomEvent represents an SSE event for a room
 type RoomEvent struct {
@@ -44,6 +53,15 @@ type RoomEventNotifier interface {
 	NotifyRoomUpdate(ctx context.Context, roomID string, event RoomEvent) error
 }
 
+// RoomBatchEventNotifier broadcasts events to room subscribers in batches
 type RoomBatchEventNotifier interface {
 	NotifyRoomUpdates(ctx context.Context, roomID string, events []RoomEvent) error
+}
+
+// ParticipantGetterUpdaterPlaybackGetter defines methods for managing room participants
+type ParticipantGetterUpdaterPlaybackGetter interface {
+	UpdateParticipant(ctx context.Context, roomID, userID string, isActiveListener bool) error
+	GetActiveParticipants(ctx context.Context, roomID string, activeWithin time.Duration) ([]Participant, error)
+	GetPlaybackState(ctx context.Context, roomID string) (*PlaybackState, error)
+	RemoveParticipant(ctx context.Context, roomID, userID string) error
 }

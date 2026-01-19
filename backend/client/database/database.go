@@ -47,13 +47,8 @@ type Client struct {
 	StartPlaybackIfIdleStatement        *sql.Stmt
 
 	// User statements
-	GetUserStatement              *sql.Stmt
-	GetUsersInRoomStatement       *sql.Stmt
-	CountUsersInRoomStatement     *sql.Stmt
-	CreateUserStatement           *sql.Stmt
-	UpdateUserLastSeenStatement   *sql.Stmt
-	RemoveUserStatement           *sql.Stmt
-	CleanupInactiveUsersStatement *sql.Stmt
+	GetUserStatement    *sql.Stmt
+	CreateUserStatement *sql.Stmt
 
 	// Skip vote statements
 	GetSkipVotesStatement   *sql.Stmt
@@ -174,12 +169,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareStartPlaybackIfIdleStmt,
 		// User statements
 		c.prepareGetUserStmt,
-		c.prepareGetUsersInRoomStmt,
-		c.prepareCountUsersInRoomStmt,
 		c.prepareCreateUserStmt,
-		c.prepareUpdateUserLastSeenStmt,
-		c.prepareRemoveUserStmt,
-		c.prepareCleanupInactiveUsersStmt,
 		// Skip vote statements
 		c.prepareGetSkipVotesStmt,
 		c.prepareHasUserVotedStmt,
@@ -237,12 +227,7 @@ func (c *Client) Close() error {
 		c.ProcessNextExpiredPlaybackStatement,
 		c.StartPlaybackIfIdleStatement,
 		c.GetUserStatement,
-		c.GetUsersInRoomStatement,
-		c.CountUsersInRoomStatement,
 		c.CreateUserStatement,
-		c.UpdateUserLastSeenStatement,
-		c.RemoveUserStatement,
-		c.CleanupInactiveUsersStatement,
 		c.GetSkipVotesStatement,
 		c.HasUserVotedStatement,
 		c.AddSkipVoteStatement,

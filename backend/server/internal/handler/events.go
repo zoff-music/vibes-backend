@@ -15,9 +15,8 @@ import (
 
 // RoomEvents handles GET /api/v1/rooms/:id/events (SSE)
 func RoomEvents(
-	ips vibe.Subscriber,
-	db vibe.PlaybackStateUpdater,
-	participants vibe.ParticipantStorage,
+	ips vibe.SubscriberPublisher,
+	db vibe.ParticipantGetterUpdaterPlaybackGetter,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -31,6 +30,21 @@ func RoomEvents(
 		session, ok := helper.GetSessionFromContext(ctx)
 		if ok {
 			userID = session.UserID
+		}
+
+		notifyUsers := func(ctx context.Context) {
+			active, err := db.GetActiveParticipants(ctx, roomID, 15*time.Second)
+			if err != nil {
+				log.Printf("failed to fetch active participants: %v", err)
+				return
+			}
+
+			count := len(active)
+			payload, _ := json.Marshal(count)
+			_ = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+				Type:    vibe.UsersUpdate,
+				Payload: payload,
+			})
 		}
 
 		// Set SSE headers
@@ -68,10 +82,10 @@ func RoomEvents(
 
 		// Update presence on connect and cleanup on disconnect
 		if userID != "" {
-			_ = participants.UpdateParticipant(ctx, roomID, userID, true)
-			defer func() {
-				_ = participants.RemoveParticipant(context.Background(), roomID, userID)
-			}()
+			_ = db.UpdateParticipant(ctx, roomID, userID, true)
+			notifyUsers(ctx)
+			defer notifyUsers(context.Background())
+			defer db.RemoveParticipant(context.Background(), roomID, userID)
 		}
 
 		// Send initial playback state
@@ -105,7 +119,7 @@ func RoomEvents(
 			case <-ticker.C:
 				// Keep-alive heartbeat AND update participant status
 				if userID != "" {
-					_ = participants.UpdateParticipant(ctx, roomID, userID, true)
+					_ = db.UpdateParticipant(ctx, roomID, userID, true)
 				}
 
 				fmt.Fprintf(w, ": heartbeat\n\n")

@@ -28,6 +28,8 @@ export const roomSchema = yup.object({
 });
 export type Room = yup.InferType<typeof roomSchema>;
 
+export const usersUpdateSchema = yup.number().required();
+
 export const createRoomRequestSchema = yup.object({
   name: yup.string().required(),
   mode: yup.string().oneOf(['server', 'host']).optional(),

@@ -14,7 +14,7 @@ import (
 
 // UpdatePlaybackState handles PUT /rooms/{id}/states
 func UpdatePlaybackState(
-	db vibe.PlaybackStateUpdater,
+	db vibe.RoomGetterPlaybackUpdater,
 	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

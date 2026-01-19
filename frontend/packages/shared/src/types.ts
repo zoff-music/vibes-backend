@@ -148,7 +148,7 @@ export interface PlaybackUpdateEvent extends SSEEvent<PlaybackState> {
   type: 'playback_update';
 }
 
-export interface UsersUpdateEvent extends SSEEvent<RoomUser[]> {
+export interface UsersUpdateEvent extends SSEEvent<number> {
   type: 'users_update';
 }
 
