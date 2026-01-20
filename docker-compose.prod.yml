@@ -31,7 +31,7 @@ services:
       - vibes_data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/_healthz"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/_healthz"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -74,7 +74,7 @@ services:
       - vibes_data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/_healthz"]
+      test: ["CMD", "curl", "-sf", "http://localhost:8080/_healthz"]
       interval: 10s
       timeout: 5s
       retries: 3

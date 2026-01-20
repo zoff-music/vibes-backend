@@ -131,9 +131,10 @@ CMD ["bun", "run", "/app/server.js"]
 # Using Debian slim for glibc compatibility (Go CGO binaries need glibc)
 FROM debian:bookworm-slim AS backend-prod
 
-# Install ca-certificates for HTTPS
+# Install ca-certificates for HTTPS and curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy binaries
