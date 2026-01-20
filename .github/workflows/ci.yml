@@ -41,6 +41,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: 'backend/go.mod'
+        cache-dependency-path: 'backend/go.sum'
         
     - name: Build
       run: make build
@@ -57,6 +58,7 @@ jobs:
       uses: actions/setup-go@v5
       with:
         go-version-file: 'backend/go.mod'
+        cache-dependency-path: 'backend/go.sum'
         
     - name: Create data dir
       run: mkdir -p backend/data
