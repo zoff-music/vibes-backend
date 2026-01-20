@@ -8,10 +8,10 @@ build:
 	cd $(BACKEND_DIR) && \
 	go mod download; \
 	go mod vendor; \
-	CGO_ENABLED=0 \
+	CGO_ENABLED=1 \
 	GOOS=linux \
 	GOARCH=amd64 \
-	go build -a -ldflags '-w -s' -o main cmd/server/main.go
+	go build -ldflags '-w -s' -o main cmd/server/main.go
 
 ## build-migrator: builds the migrator
 build-migrator:
