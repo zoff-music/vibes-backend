@@ -83,25 +83,56 @@ COPY frontend/. .
 
 RUN bun run build
 
-# Frontend production image
+# Frontend production image - serve static files
 FROM oven/bun:1.2.0-slim AS frontend-prod
 
 WORKDIR /app
 
+# Copy built static files
 COPY --from=frontend-builder /app/apps/platform/dist ./dist
-COPY --from=frontend-builder /app/package.json ./
+
+# Create a simple static file server
+RUN echo 'Bun.serve({ port: 3000, fetch(req) { return new Response(Bun.file("./dist" + new URL(req.url).pathname === "/" ? "/index.html" : new URL(req.url).pathname)); } });' > /app/server.js || true
+
+# Create proper static server script
+RUN cat <<'EOF' > /app/server.js
+const server = Bun.serve({
+  port: process.env.PORT || 3000,
+  async fetch(req) {
+    const url = new URL(req.url);
+    let path = url.pathname;
+    
+    // Default to index.html for root and SPA routes
+    if (path === "/" || !path.includes(".")) {
+      path = "/index.html";
+    }
+    
+    const file = Bun.file("./dist" + path);
+    if (await file.exists()) {
+      return new Response(file);
+    }
+    
+    // Fallback to index.html for SPA routing
+    return new Response(Bun.file("./dist/index.html"));
+  },
+});
+
+
+
+console.log(`Frontend server running on port ${server.port}`);
+EOF
 
 ENV PORT=3000
 EXPOSE 3000
 
-CMD ["bun", "run", "start"]
+CMD ["bun", "run", "/app/server.js"]
 
 # Create production image for backend application with needed files
-# Using alpine instead of scratch to have a shell for migrations
+# Using alpine with glibc for CGO compatibility
 FROM alpine:3.21 AS backend-prod
 
-# Install ca-certificates for HTTPS
-RUN apk --no-cache add ca-certificates
+# Install ca-certificates and libc6-compat for CGO binaries
+RUN apk --no-cache add ca-certificates libc6-compat
 
 # Create app user
 RUN adduser -D -g '' -u 10001 appuser
@@ -110,6 +141,9 @@ RUN adduser -D -g '' -u 10001 appuser
 COPY --from=backend-builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
 COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrator-bin /app/migrator-bin
 COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrations /app/migrations
+
+# Ensure binaries are executable
+RUN chmod +x /app/main /app/migrator-bin
 
 # Create data directory
 RUN mkdir -p /app/data && chown -R appuser:appuser /app
