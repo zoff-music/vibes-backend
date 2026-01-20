@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vibez - Maintenance</title>
+    <style>
+      @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@400;500;600;700;800;900&display=swap");
+
+      :root {
+        /* Dark theme variables inline */
+        --theme-bg: #0d0d0f;
+        --theme-text: #f5f5f7;
+        --theme-text-muted: #a1a1a8;
+        --theme-primary: #ff2e97;
+        --theme-primary-muted: #ff1493;
+        --theme-glass-bg: #1a1a1e;
+        --theme-glass-border: rgba(255, 46, 151, 0.12);
+        --theme-shadow-accent: rgba(255, 46, 151, 0.12);
+      }
+
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: var(--theme-bg);
+        color: var(--theme-text);
+        font-family: "Inter", system-ui, sans-serif;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+
+      /* Background gradient matching app */
+      body::before {
+        content: "";
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background:
+          radial-gradient(
+            circle at 20% 80%,
+            rgba(255, 46, 151, 0.08) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 80% 20%,
+            rgba(255, 46, 151, 0.04) 0%,
+            transparent 50%
+          ),
+          radial-gradient(
+            circle at 50% 100%,
+            rgba(255, 46, 151, 0.06) 0%,
+            transparent 40%
+          );
+        pointer-events: none;
+        z-index: 0;
+      }
+
+      .container {
+        position: relative;
+        z-index: 1;
+        text-align: center;
+        padding: 2rem;
+        max-width: 600px;
+        
+        /* Glass card effect */
+        background-color: var(--theme-glass-bg);
+        border: 1px solid var(--theme-glass-border);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.2), 0 0 20px var(--theme-shadow-accent);
+        border-radius: 16px;
+        backdrop-filter: blur(12px);
+      }
+
+      h1 {
+        font-family: "Poppins", sans-serif;
+        font-weight: 700;
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        color: var(--theme-primary);
+        text-shadow: 0 0 15px rgba(255, 46, 151, 0.3);
+      }
+
+      p {
+        font-size: 1.1rem;
+        line-height: 1.6;
+        color: var(--theme-text-muted);
+        margin-bottom: 2rem;
+      }
+
+      .spinner {
+        width: 40px;
+        height: 40px;
+        border: 3px solid rgba(255, 46, 151, 0.1);
+        border-radius: 50%;
+        border-top-color: var(--theme-primary);
+        animation: spin 1s ease-in-out infinite;
+        margin: 0 auto;
+      }
+
+      @keyframes spin {
+        to { transform: rotate(360deg); }
+      }
+
+      .pulse {
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.8; }
+        100% { transform: scale(1); opacity: 1; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Vibez is upgrading</h1>
+      <p>We're currently performing a system upgrade to improve your experience. The platform will be back online in just a few moments.</p>
+      <div class="spinner"></div>
+      <p style="margin-top: 1.5rem; font-size: 0.9rem; margin-bottom: 0;">Hang tight!</p>
+    </div>
+    
+    <script>
+      // Auto-reload every 10 seconds to check if we're back
+      setTimeout(() => {
+        window.location.reload();
+      }, 10000);
+    </script>
+  </body>
+</html>
