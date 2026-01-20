@@ -6,7 +6,7 @@ services:
     image: caddy:2.9.1
     ports:
       - "42069:42069"
-      - "2019:2019"  # Admin API for dynamic config
+      - "2020:2020"  # Admin API for dynamic config
     volumes:
       - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
