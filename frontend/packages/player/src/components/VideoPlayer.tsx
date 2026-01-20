@@ -1,6 +1,6 @@
+import { usePlaybackStore, useProviderToken } from '@vibez/shared';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import YouTube, { type YouTubeProps } from 'react-youtube';
-import { useProviderToken, usePlaybackStore } from '@vibez/shared';
 import { AuthOverlay } from './AuthOverlay';
 
 interface Props {
@@ -8,10 +8,7 @@ interface Props {
   onEnded?: () => void;
 }
 
-const VideoPlayerComponent = ({
-  isVisible = true,
-  onEnded,
-}: Props) => {
+const VideoPlayerComponent = ({ isVisible = true, onEnded }: Props) => {
   // Only subscribe to the fields we need to avoid unnecessary re-renders
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);

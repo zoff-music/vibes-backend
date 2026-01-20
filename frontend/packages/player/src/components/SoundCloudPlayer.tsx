@@ -1,6 +1,6 @@
+import { usePlaybackStore } from '@vibez/shared';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import ReactPlayer from 'react-player';
-import { usePlaybackStore } from '@vibez/shared';
 
 interface Props {
   isVisible?: boolean;

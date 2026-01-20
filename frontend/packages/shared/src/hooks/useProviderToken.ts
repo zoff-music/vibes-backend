@@ -1,7 +1,7 @@
 import { api } from '@vibez/api';
 import { type ProviderToken } from '@vibez/models';
-import { safeWrapAsync } from '../utils/wrap';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { safeWrapAsync } from '../utils/wrap';
 
 const tokenCache: Record<string, { token: string; expiresAt: string }> = {};
 // Using any here as simple placeholder promise type

@@ -1,11 +1,10 @@
+import { SoundCloudPlayer, SpotifyPlayer, VideoPlayer } from '@vibez/player';
 import { Song } from '@vibez/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-
 import { PlayerControls } from '../components/player/PlayerControls';
-import { SpotifyPlayer, SoundCloudPlayer, VideoPlayer } from '@vibez/player';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { QueueList } from '../components/queue/QueueList';
 import { UserCount } from '../components/room/UserCount';

@@ -1,5 +1,5 @@
-import { describe, it, expect, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import App from './App';
 
 // Mock the player components as they might need context
@@ -20,7 +20,7 @@ vi.mock('@vibez/shared', () => ({
 
 describe('App', () => {
   it('renders without crashing', () => {
-    render(<App />); 
+    render(<App />);
     expect(screen.getByText('Vibez')).toBeInTheDocument();
   });
 });
