@@ -24,7 +24,7 @@ import {
   youTubeVideoSchema,
 } from '@vibez/models';
 import { safeWrapAsync } from '@vibez/shared';
-import { RequestClient, RequestDefinitions } from 'wiretyped';
+import { RequestClient, type RequestDefinitions } from 'wiretyped';
 
 const API_BASE_PATH = '/api/v1';
 

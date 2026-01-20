@@ -39,6 +39,13 @@ localhost, 127.0.0.1 {
 		}
 	}
 
+	handle /casting/receiver/* {
+		reverse_proxy localhost:3001 {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
 	handle {
 		reverse_proxy localhost:3000
 	}

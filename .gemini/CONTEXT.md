@@ -27,6 +27,7 @@ Monorepo-style structure containing backend, frontend, and database migrator.
     - `src/api/`: `wiretyped` client and `yup` schemas.
     - `src/stores/`: Zustand stores.
     - `src/components/`: UI components.
+- `apps/cast/`: Standalone Cast Receiver (Vite).
 - `packages/`: Shared packages.
     - `api/`: Shared API client.
     - `models/`: Shared types and schemas.
@@ -82,7 +83,7 @@ go build ./cmd/server
 ```bash
 make local-dev
 ```
-*Starts Backend + Frontend + Caddy Proxy.*
+*Starts Backend + Platform + Cast Receiver + Caddy Proxy.*
 *Access at https://localhost*
 
 ### Frontend

@@ -5,9 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 import { PlayerControls } from '../components/player/PlayerControls';
-import { SoundCloudPlayer } from '../components/player/SoundCloudPlayer';
-import { SpotifyPlayer } from '../components/player/SpotifyPlayer';
-import { VideoPlayer } from '../components/player/VideoPlayer';
+import { SpotifyPlayer, SoundCloudPlayer, VideoPlayer } from '@vibez/player';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { QueueList } from '../components/queue/QueueList';
 import { UserCount } from '../components/room/UserCount';

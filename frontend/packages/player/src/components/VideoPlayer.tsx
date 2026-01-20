@@ -1,7 +1,6 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import YouTube, { YouTubeProps } from 'react-youtube';
-import { useProviderToken } from '../../hooks/useProviderToken';
-import { usePlaybackStore } from '../../stores/playbackStore';
+import YouTube, { type YouTubeProps } from 'react-youtube';
+import { useProviderToken, usePlaybackStore } from '@vibez/shared';
 import { AuthOverlay } from './AuthOverlay';
 
 interface Props {
@@ -9,10 +8,10 @@ interface Props {
   onEnded?: () => void;
 }
 
-const VideoPlayerComponent: React.FC<Props> = ({
+const VideoPlayerComponent = ({
   isVisible = true,
   onEnded,
-}) => {
+}: Props) => {
   // Only subscribe to the fields we need to avoid unnecessary re-renders
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
@@ -49,7 +48,7 @@ const VideoPlayerComponent: React.FC<Props> = ({
       setIsVerifying(true);
       setError(null);
 
-      fetchToken('youtube', true).then((newToken) => {
+      fetchToken('youtube', true).then((newToken: string | null) => {
         setIsVerifying(false);
         if (!newToken) {
           setError('Failed to refresh token after authorization.');

@@ -18,8 +18,8 @@
     "@vibez/shared": "workspace:*",
     "framer-motion": "^12.26.2",
     "qrcode.react": "^4.2.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "react-player": "^3.4.0",
     "react-router-dom": "^7.1.0",
     "react-spotify-web-playback": "^0.14.7",
@@ -33,14 +33,12 @@
     "@tailwindcss/postcss": "^4.1.18",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",
-    "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.0",
-    "@vitejs/plugin-react": "^4.3.1",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "happy-dom": "^20.3.3",
     "postcss": "^8.4.47",
     "tailwindcss": "^4.1.18",
     "typescript": "^5.9.2",
-    "vite": "^6.0.0",
     "vitest": "^4.0.17"
   }
 }
