@@ -1,19 +1,20 @@
 # Production Caddyfile for vibes.zoff.me
 # Supports blue-green deployments with sticky sessions
 #
-# Note: During deployment, Caddy's admin API (port 2019) is used
-# to dynamically update upstream weights. This file serves as the
-# initial configuration.
+# Port mapping:
+# - Caddy: 42069
+# - Backend blue: 42070, Backend green: 42071
+# - Frontend blue: 42072, Frontend green: 42073
 
 {
 	# Enable admin API for dynamic config updates
 	admin 0.0.0.0:2019
 }
 
-vibes.zoff.me {
+:42069 {
 	# SSE endpoints - needs flush_interval for streaming
 	handle /api/v1/rooms/*/events {
-		reverse_proxy localhost:8080 localhost:8081 {
+		reverse_proxy localhost:42070 localhost:42071 {
 			lb_policy cookie vibes_lb_backend
 			
 			# Flush immediately for SSE
@@ -35,7 +36,7 @@ vibes.zoff.me {
 
 	# API endpoints
 	handle /api/* {
-		reverse_proxy localhost:8080 localhost:8081 {
+		reverse_proxy localhost:42070 localhost:42071 {
 			lb_policy cookie vibes_lb_backend
 			
 			header_up Host {host}
@@ -50,7 +51,7 @@ vibes.zoff.me {
 
 	# Metrics endpoint
 	handle /metrics {
-		reverse_proxy localhost:8080 localhost:8081 {
+		reverse_proxy localhost:42070 localhost:42071 {
 			lb_policy cookie vibes_lb_backend
 			
 			header_up Host {host}
@@ -63,7 +64,7 @@ vibes.zoff.me {
 
 	# Health check endpoint
 	handle /_healthz {
-		reverse_proxy localhost:8080 localhost:8081 {
+		reverse_proxy localhost:42070 localhost:42071 {
 			lb_policy cookie vibes_lb_backend
 			
 			header_up Host {host}
@@ -73,7 +74,7 @@ vibes.zoff.me {
 
 	# Frontend - all other requests
 	handle {
-		reverse_proxy localhost:3000 localhost:3001 {
+		reverse_proxy localhost:42072 localhost:42073 {
 			lb_policy cookie vibes_lb_frontend
 			
 			# Health check for frontend
