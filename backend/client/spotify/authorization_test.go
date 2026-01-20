@@ -37,7 +37,7 @@ func TestGetOAuthURL(t *testing.T) {
 		t.Errorf("Expected response_type 'code', got %q", got)
 	}
 
-	expectedScope := "user-read-playback-state user-modify-playback-state"
+	expectedScope := "streaming user-read-email user-read-private"
 	if got := q.Get("scope"); got != expectedScope {
 		t.Errorf("Expected scope %q, got %q", expectedScope, got)
 	}
