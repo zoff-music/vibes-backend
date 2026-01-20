@@ -17,8 +17,7 @@ const CAST_APPLICATION_ID = import.meta.env.VITE_CAST_APP_ID || '1FAF5D9F'; // C
 // Production: Use registered custom receiver
 const DEVELOPMENT_MODE = true;
 const CUSTOM_RECEIVER_URL =
-  import.meta.env.VITE_CAST_RECEIVER_URL ||
-  'http://localhost:5173/cast-receiver.html';
+  import.meta.env.VITE_CAST_RECEIVER_URL || '/casting/receiver/';
 
 class GoogleCastManager implements CastManager {
   private devices: CastDevice[] = [];
