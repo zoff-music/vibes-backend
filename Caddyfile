@@ -39,6 +39,8 @@ localhost, 127.0.0.1 {
 		}
 	}
 
+	# Cast receiver endpoint
+	redir /casting/receiver /casting/receiver/
 	handle /casting/receiver/* {
 		reverse_proxy localhost:3001 {
 			header_up Host {host}
