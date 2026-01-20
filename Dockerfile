@@ -97,27 +97,28 @@ EXPOSE 3000
 CMD ["bun", "run", "start"]
 
 # Create production image for backend application with needed files
-FROM scratch AS backend-prod
+# Using alpine instead of scratch to have a shell for migrations
+FROM alpine:3.21 AS backend-prod
 
-# Copy SSL certificates from builder
-COPY --from=backend-builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+# Install ca-certificates for HTTPS
+RUN apk --no-cache add ca-certificates
 
-# Copy app user from builder
-COPY --from=backend-builder /etc/passwd /etc/passwd
-COPY --from=backend-builder /etc/group /etc/group
+# Create app user
+RUN adduser -D -g '' -u 10001 appuser
 
-# Copy binary from builder
-
-# Copy binary from builder
+# Copy binaries
 COPY --from=backend-builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
 COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrator-bin /app/migrator-bin
 COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrations /app/migrations
 
-USER appuser:appuser
+# Create data directory
+RUN mkdir -p /app/data && chown -R appuser:appuser /app
+
+USER appuser
 
 EXPOSE 8080
 
 WORKDIR /app
-# We use a shell to run multiple commands: migrate then start app
-ENTRYPOINT [ "/bin/sh", "-c", "/app/migrator-bin -db /app/data/vibes.db && /app/main" ]
 
+# Run migrations then start the app
+ENTRYPOINT ["/bin/sh", "-c", "/app/migrator-bin -db /app/data/vibes.db && exec /app/main"]
