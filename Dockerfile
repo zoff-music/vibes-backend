@@ -128,14 +128,16 @@ EXPOSE 3000
 CMD ["bun", "run", "/app/server.js"]
 
 # Create production image for backend application with needed files
-# Using alpine with glibc for CGO compatibility
-FROM alpine:3.21 AS backend-prod
+# Using Debian slim for glibc compatibility (Go CGO binaries need glibc)
+FROM debian:bookworm-slim AS backend-prod
 
-# Install ca-certificates and libc6-compat for CGO binaries
-RUN apk --no-cache add ca-certificates libc6-compat
+# Install ca-certificates for HTTPS
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create app user
-RUN adduser -D -g '' -u 10001 appuser
+RUN useradd -r -u 10001 -s /usr/sbin/nologin appuser
 
 # Copy binaries
 COPY --from=backend-builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
