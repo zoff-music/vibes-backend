@@ -237,12 +237,19 @@ export const AddToQueueModal: React.FC<Props> = ({
   return (
     <div
       className="fixed inset-0 z-50 flex animate-fade-in items-start justify-center overflow-y-auto bg-ink/80 pt-4 pb-safe backdrop-blur-md"
-      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
     >
-      <div
-        className="mx-4 w-full max-w-lg animate-scale-in rounded-3xl border-4 border-ink bg-white p-7 shadow-retro-pink"
-        onClick={(e) => e.stopPropagation()}
-      >
+      {/* Backdrop button */}
+      <button
+        type="button"
+        className="fixed inset-0 h-full w-full cursor-default"
+        onClick={onClose}
+        aria-label="Close modal"
+      />
+
+      {/* Modal content */}
+      <div className="relative mx-4 w-full max-w-lg animate-scale-in rounded-3xl border-4 border-ink bg-white p-7 shadow-retro-pink">
         {/* Header */}
         <div className="mb-6">
           <div className="mb-4 flex items-center justify-between">

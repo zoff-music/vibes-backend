@@ -105,6 +105,7 @@
   --animate-scale-in: scaleIn 0.2s ease-out;
   --animate-neon-pulse: neonPulse 2s ease-in-out infinite;
   --animate-float: float 3s ease-in-out infinite;
+  --animate-float-delayed: float 4s ease-in-out 1s infinite;
 
   @keyframes fadeIn {
     0% {

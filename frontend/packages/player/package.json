@@ -7,7 +7,7 @@
   "license": "MIT",
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "biome check ."
+    "lint": "bunx biome check ."
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -25,7 +25,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "typescript": "^5.3.0",
-    "@biomejs/biome": "^1.5.0",
+    "@biomejs/biome": "^2.3.11",
     "autoprefixer": "^10.4.16",
     "postcss": "^8.4.31",
     "tailwindcss": "^3.3.5"
