@@ -9,7 +9,9 @@ const pendingRequests: Record<string, Promise<any> | undefined> = {};
 const listeners = new Set<(provider: string, token: string | null) => void>();
 
 const emitChange = (provider: string, token: string | null) => {
-  listeners.forEach((listener) => listener(provider, token));
+  listeners.forEach((listener) => {
+    listener(provider, token);
+  });
 };
 
 export function useProviderToken() {

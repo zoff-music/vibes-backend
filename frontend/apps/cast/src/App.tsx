@@ -1,7 +1,7 @@
 /// <reference types="chromecast-caf-receiver" />
 
 import { SoundCloudPlayer, SpotifyPlayer, VideoPlayer } from '@vibez/player';
-import { usePlaybackStore } from '@vibez/shared';
+import { setCachedToken, usePlaybackStore } from '@vibez/shared';
 import type { framework } from 'chromecast-caf-receiver';
 import { useEffect, useRef, useState } from 'react';
 
@@ -46,7 +46,26 @@ const App = () => {
           if (media?.customData) {
             // Assuming our sender sends song info in customData
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const song = media.customData as any;
+            const data = media.customData as any;
+
+            // Handle tokens if present
+            if (data.tokens) {
+              for (const [provider, tokenData] of Object.entries(
+                data.tokens as Record<string, any>,
+              )) {
+                if (tokenData?.token) {
+                  setCachedToken(
+                    provider,
+                    tokenData.token,
+                    tokenData.expiresAt ||
+                      new Date(Date.now() + 3600000).toISOString(),
+                  );
+                }
+              }
+            }
+
+            const song = data.song || data; // handle if song is nested or root
+
             setPlaybackState({
               currentSong: song,
               isPlaying: true,
@@ -97,12 +116,16 @@ const App = () => {
   };
 
   return (
-    <div className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-indigo-900 to-purple-900 text-white">
-      {/* Main Content Area */}
-      <div className="relative flex h-full w-full items-center justify-center">
-        {/* Render Players based on currentSong type */}
-        {/* They check usePlaybackStore internally */}
+    <div className="dark relative flex h-screen w-screen animate-fade-in flex-col items-center justify-center overflow-hidden bg-theme text-theme">
+      {/* Dynamic Background Elements */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] h-[40%] w-[40%] animate-float rounded-full bg-primary/10 blur-[120px]" />
+        <div className="absolute right-[-5%] bottom-[-5%] h-[50%] w-[50%] animate-float-delayed rounded-full bg-primary/5 blur-[100px]" />
+      </div>
 
+      {/* Main Content Area */}
+      <div className="relative z-10 flex h-full w-full items-center justify-center">
+        {/* Render Players based on currentSong type */}
         <div className="absolute inset-0 h-full w-full">
           <VideoPlayer isVisible={currentSong?.sourceType === 'youtube'} />
           <SpotifyPlayer isVisible={currentSong?.sourceType === 'spotify'} />
@@ -113,13 +136,33 @@ const App = () => {
 
         {/* Fallback / Idle Screen */}
         {!currentSong && (
-          <div className="z-10 text-center">
-            <h1 className="mb-4 font-black text-6xl">Vibez</h1>
-            <p className="text-2xl opacity-70">{statusText}</p>
+          <div className="animate-scale-in text-center">
+            <h1
+              className="mb-6 font-black text-8xl text-primary tracking-tight drop-shadow-neon-pink"
+              style={{ fontFamily: 'Poppins, sans-serif' }}
+            >
+              Vibez
+            </h1>
+            <div className="glass mx-auto max-w-sm rounded-3xl px-8 py-4">
+              <p className="font-bold text-2xl tracking-wide opacity-90">
+                {statusText}
+              </p>
+              <p className="mt-2 font-medium opacity-50">
+                Waiting for music to play...
+              </p>
+            </div>
+
             {roomInfo && (
-              <div className="mt-8 rounded-xl bg-white/10 p-6 backdrop-blur-md">
-                <p className="font-bold text-xl">{roomInfo.name}</p>
-                <p className="opacity-60">{roomInfo.participantCount} active</p>
+              <div className="glass-elevated mt-10 animate-slide-up rounded-3xl p-8">
+                <p className="font-black text-3xl tracking-tight">
+                  {roomInfo.name}
+                </p>
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-matcha" />
+                  <p className="font-bold text-lg text-matcha">
+                    {roomInfo.participantCount} active
+                  </p>
+                </div>
               </div>
             )}
           </div>

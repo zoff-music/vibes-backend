@@ -6,6 +6,7 @@ import type {
   CastSessionState,
   MediaInfo,
 } from '@vibez/models';
+import { getToken } from '@vibez/shared';
 
 // Google Cast Application ID - Custom Vibez Receiver
 // For development, we use the Styled Media Receiver which allows custom content
@@ -569,6 +570,10 @@ class GoogleCastManager implements CastManager {
             ? this.extractYouTubeVideoId(mediaInfo.contentId)
             : null,
         },
+        tokens: {
+          spotify: { token: getToken('spotify') },
+          soundcloud: { token: getToken('soundcloud') },
+        },
       };
 
       const request = new window.chrome.cast.media.LoadRequest(
@@ -933,15 +938,21 @@ class GoogleCastManager implements CastManager {
 
   // Private notification methods
   private notifyDeviceAvailable(device: CastDevice): void {
-    this.deviceAvailableCallbacks.forEach((callback) => callback(device));
+    this.deviceAvailableCallbacks.forEach((callback) => {
+      callback(device);
+    });
   }
 
   private notifySessionStateChange(session: CastSession): void {
-    this.sessionStateCallbacks.forEach((callback) => callback(session));
+    this.sessionStateCallbacks.forEach((callback) => {
+      callback(session);
+    });
   }
 
   private notifyError(error: CastError): void {
-    this.errorCallbacks.forEach((callback) => callback(error));
+    this.errorCallbacks.forEach((callback) => {
+      callback(error);
+    });
   }
 
   // Utility methods

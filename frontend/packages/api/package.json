@@ -10,7 +10,7 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "lint": "biome check src"
+    "lint": "bunx biome check src"
   },
   "dependencies": {
     "wiretyped": "^0.3.4",
