@@ -7,9 +7,10 @@ Collaborative music queue with synchronized playback. Supports YouTube, Spotify,
 ```bash
 # Local Development (Recommended)
 make local-dev
-# Runs backend + frontend + Caddy (HTTPS).
-# App: https://127.0.0.1
-# API: https://127.0.0.1/api
+# Runs backend + platform + cast receiver + Caddy (HTTPS).
+# Platform: https://localhost
+# Cast Receiver: https://localhost/casting/receiver/
+# API: https://localhost/api
 
 # Backend Manual
 cd backend && go build ./cmd/server && ./server
@@ -46,6 +47,9 @@ frontend/
 │   ├── src/components/    # UI components
 │   ├── src/stores/        # Zustand stores
 │   └── src/pages/         # Route components
+├── apps/cast/             # Cast Receiver App (Standalone)
+│   ├── src/App.tsx        # Receiver Entrypoint
+│   └── vite.config.ts     # Vite Config (Port 3001)
 └── packages/              # Shared packages
     ├── api/               # API client
     ├── models/            # Types & Schemas

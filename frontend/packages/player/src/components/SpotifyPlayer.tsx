@@ -1,7 +1,8 @@
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import SpotifyWebPlayer, { CallbackState } from 'react-spotify-web-playback';
-import { useProviderToken } from '../../hooks/useProviderToken';
-import { usePlaybackStore } from '../../stores/playbackStore';
+import SpotifyWebPlayer, {
+  type CallbackState,
+} from 'react-spotify-web-playback';
+import { useProviderToken, usePlaybackStore } from '@vibez/shared';
 import { AuthOverlay } from './AuthOverlay';
 
 interface Props {

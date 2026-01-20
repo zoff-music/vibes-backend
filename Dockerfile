@@ -82,50 +82,27 @@ RUN bun install --frozen-lockfile
 COPY frontend/. .
 
 RUN bun run build
+# Build cast app explicitly if not covered by root build (it might be if root build is workspace aware, but simpler to be explicit or ensure it is)
+# "bun run build" at root likely runs "turbo run build" or similar if configured, or just recursive.
+# Let's assume root build script covers it OR run it explicitly. 
+# Checking root package.json would be good, but safe to run explicit build for cast here.
+RUN cd apps/cast && bun run build
 
 # Frontend production image - serve static files
-FROM oven/bun:1.2.0-slim AS frontend-prod
+# Frontend production image - serve static files with Caddy
+FROM caddy:2.9.1-alpine AS frontend-prod
 
-WORKDIR /app
+WORKDIR /srv
+
+# Copy Caddy configuration
+COPY frontend/Caddyfile /etc/caddy/Caddyfile
 
 # Copy built static files
-COPY --from=frontend-builder /app/apps/platform/dist ./dist
+COPY --from=frontend-builder /app/apps/platform/dist ./app
+COPY --from=frontend-builder /app/apps/cast/dist ./cast-app
 
-# Create a simple static file server
-RUN echo 'Bun.serve({ port: 3000, fetch(req) { return new Response(Bun.file("./dist" + new URL(req.url).pathname === "/" ? "/index.html" : new URL(req.url).pathname)); } });' > /app/server.js || true
-
-# Create proper static server script
-RUN cat <<'EOF' > /app/server.js
-const server = Bun.serve({
-  port: process.env.PORT || 3000,
-  async fetch(req) {
-    const url = new URL(req.url);
-    let path = url.pathname;
-    
-    // Default to index.html for root and SPA routes
-    if (path === "/" || !path.includes(".")) {
-      path = "/index.html";
-    }
-    
-    const file = Bun.file("./dist" + path);
-    if (await file.exists()) {
-      return new Response(file);
-    }
-    
-    // Fallback to index.html for SPA routing
-    return new Response(Bun.file("./dist/index.html"));
-  },
-});
-
-
-
-console.log(`Frontend server running on port ${server.port}`);
-EOF
-
-ENV PORT=3000
 EXPOSE 3000
-
-CMD ["bun", "run", "/app/server.js"]
+# Default command for caddy image is to run with /etc/caddy/Caddyfile
 
 # Create production image for backend application with needed files
 # Using Debian slim for glibc compatibility (Go CGO binaries need glibc)

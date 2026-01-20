@@ -1,0 +1,27 @@
+:3000 {
+	# Redirect /casting/receiver to /casting/receiver/
+	redir /casting/receiver /casting/receiver/
+
+	# Cast Receiver App
+	# Serves /casting/receiver/* from /srv/cast-app
+	# Uses handle_path to strip the prefix
+	handle_path /casting/receiver/* {
+		root * /srv/cast-app
+		try_files {path} {path}/ /index.html
+		file_server
+	}
+
+	# Main Platform App
+	# Serves /* from /srv/app
+	handle {
+		root * /srv/app
+		try_files {path} {path}/ /index.html
+		file_server
+	}
+
+	# Logging
+	log {
+		output stderr
+		format json
+	}
+}

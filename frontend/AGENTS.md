@@ -23,17 +23,13 @@ apps/platform/src/
 │   ├── player/            # VideoPlayer, PlayerControls
 │   └── queue/             # QueueItem, QueueList
 ├── hooks/
-│   ├── useRoom.ts
-│   ├── useQueue.ts
-│   ├── usePlayback.ts
-│   └── useSSE.ts
 ├── stores/                # Zustand stores
-│   ├── roomStore.ts
-│   ├── queueStore.ts
-│   └── playbackStore.ts
 ├── pages/                 # Route components
 └── utils/
-    └── wrap.ts            # Error handling utilities
+
+apps/cast/src/
+├── App.tsx                # Entrypoint
+└── components/            # Cast-specific components
 ```
 
 ## Packages

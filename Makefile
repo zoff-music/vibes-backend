@@ -68,6 +68,8 @@ local-dev:
 	sh -c 'cd migrator && go run main.go -db ../backend/data/vibes.db && cd ../backend && go run cmd/server/main.go' & \
 	PORT=3000 \
 	sh -c 'cd frontend && bun install && bun dev' & \
+	PORT=3001 \
+	sh -c 'cd frontend && bun --filter @vibez/cast dev' & \
 	caddy run --config Caddyfile & \
 	wait
 
