@@ -14,8 +14,6 @@ Non-negotiable conventions. Follow strictly.
 
 ## File Layout
 
-## File Layout
-
 ```
 apps/platform/src/
 ├── components/
