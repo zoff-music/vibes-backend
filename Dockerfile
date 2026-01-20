@@ -68,8 +68,36 @@ COPY frontend/. .
 EXPOSE 19006
 CMD ["bun", "run", "dev:web", "--", "--host", "localhost", "--port", "19006"]
 
-# Create production image for application with needed files
-FROM scratch
+# Frontend production build
+FROM oven/bun:1.2.0 AS frontend-builder
+
+WORKDIR /app
+
+COPY frontend/package.json frontend/bun.lock ./
+COPY frontend/apps ./apps
+COPY frontend/packages ./packages
+
+RUN bun install --frozen-lockfile
+
+COPY frontend/. .
+
+RUN bun run build
+
+# Frontend production image
+FROM oven/bun:1.2.0-slim AS frontend-prod
+
+WORKDIR /app
+
+COPY --from=frontend-builder /app/apps/platform/dist ./dist
+COPY --from=frontend-builder /app/package.json ./
+
+ENV PORT=3000
+EXPOSE 3000
+
+CMD ["bun", "run", "start"]
+
+# Create production image for backend application with needed files
+FROM scratch AS backend-prod
 
 # Copy SSL certificates from builder
 COPY --from=backend-builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
@@ -92,3 +120,4 @@ EXPOSE 8080
 WORKDIR /app
 # We use a shell to run multiple commands: migrate then start app
 ENTRYPOINT [ "/bin/sh", "-c", "/app/migrator-bin -db /app/data/vibes.db && /app/main" ]
+

@@ -1,4 +1,4 @@
-.PHONY: build install server test help docker dev dev-down frontend local-dev gosec govulncheck ci-lint
+.PHONY: build install server test help docker dev dev-down frontend local-dev gosec govulncheck ci-lint deploy deploy-dry-run deploy-rollback
 
 PROJECT_NAME=$(shell basename $(CURDIR))
 BACKEND_DIR=backend
@@ -78,3 +78,15 @@ gosec:
 ## govulncheck: Runs govulncheck
 govulncheck:
 	@echo "Running govulncheck:" && cd $(BACKEND_DIR) && govulncheck ./...
+
+## deploy: Run blue-green deployment to production
+deploy:
+	.github/deploy/deploy.sh
+
+## deploy-dry-run: Preview deployment without executing
+deploy-dry-run:
+	.github/deploy/deploy.sh --dry-run
+
+## deploy-rollback: Rollback to previous deployment
+deploy-rollback:
+	.github/deploy/deploy.sh --rollback
