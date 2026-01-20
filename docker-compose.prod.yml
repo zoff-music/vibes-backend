@@ -1,0 +1,111 @@
+# Production Docker Compose for Blue-Green Deployments
+# Used by .github/deploy/deploy.sh
+
+services:
+  caddy:
+    image: caddy:2.9.1
+    ports:
+      - "80:80"
+      - "443:443"
+      - "2019:2019"  # Admin API for dynamic config
+    volumes:
+      - ./Caddyfile.prod:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    restart: unless-stopped
+    networks:
+      - vibes-network
+
+  # Blue deployment
+  backend-blue:
+    build:
+      context: .
+      target: backend-prod
+      args:
+        - COLOR=blue
+    container_name: vibes-backend-blue
+    ports:
+      - "8080:8080"
+    env_file:
+      - .env.prod
+    volumes:
+      - ./backend/data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/_healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - vibes-network
+
+  frontend-blue:
+    build:
+      context: .
+      target: frontend-prod
+      args:
+        - COLOR=blue
+    container_name: vibes-frontend-blue
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - vibes-network
+
+  # Green deployment
+  backend-green:
+    build:
+      context: .
+      target: backend-prod
+      args:
+        - COLOR=green
+    container_name: vibes-backend-green
+    ports:
+      - "8081:8080"
+    env_file:
+      - .env.prod
+    volumes:
+      - ./backend/data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/_healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - vibes-network
+
+  frontend-green:
+    build:
+      context: .
+      target: frontend-prod
+      args:
+        - COLOR=green
+    container_name: vibes-frontend-green
+    ports:
+      - "3001:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - vibes-network
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  vibes-network:
+    driver: bridge
