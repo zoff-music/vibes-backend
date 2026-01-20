@@ -28,7 +28,7 @@ services:
     env_file:
       - .env.prod
     volumes:
-      - ./backend/data:/app/data
+      - vibes_data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/_healthz"]
@@ -71,7 +71,7 @@ services:
     env_file:
       - .env.prod
     volumes:
-      - ./backend/data:/app/data
+      - vibes_data:/app/data
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://localhost:8080/_healthz"]
@@ -104,6 +104,7 @@ services:
 volumes:
   caddy_data:
   caddy_config:
+  vibes_data:
 
 networks:
   vibes-network:
