@@ -7,7 +7,7 @@
 - **Collaborative Queue**: Multiple users can add songs to a shared queue
 - **Synchronized Playback**: All participants hear the same song at the same time
 - **Room-based Sessions**: Users join rooms to participate in shared listening
-- **YouTube Integration**: V1 focuses exclusively on YouTube as the music source
+- **Multi-Provider Integration**: Supports YouTube, Spotify, and SoundCloud.
 - **Real-time Updates**: Server-Sent Events (SSE) keep all clients synchronized
 - **Democratic Controls**: Skip voting and admin controls for room management
 
@@ -26,7 +26,7 @@
 
 ## Technical Constraints
 
-- YouTube-only for V1 (extensible architecture for future sources)
+- Multi-provider support (YouTube, Spotify, SoundCloud).
 - Web-based interface (React app)
 - Real-time synchronization requirements
 - Minimal authentication (password-based admin, anonymous participants)

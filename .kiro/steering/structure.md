@@ -91,7 +91,7 @@ migrator/
 - **Backend Rules**: `backend/AGENTS.md` - Non-negotiable coding conventions
 - **Frontend Rules**: `frontend/AGENTS.md` - TypeScript and React conventions
 - **Domain Types**: `backend/vibe/vibe.go` - ALL business logic types
-- **API Schemas**: `frontend/apps/mobile/src/api/schemas/` - Yup validation schemas
+- **API Schemas**: `frontend/apps/platform/src/api/schemas/` - Yup validation schemas
 
 ## Development Workflow
 

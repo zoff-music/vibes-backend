@@ -6,8 +6,8 @@
 
 ## Backend Stack
 
-- **Language**: Go 1.25
-- **Database**: SQLite with `mattn/go-sqlite3` driver
+- **Language**: Go 1.23+
+- **Database**: SQLite with `modernc.org/sqlite` driver (CGO-free)
 - **HTTP Framework**: Gorilla Mux for routing
 - **Real-time**: Server-Sent Events (SSE) for live updates
 - **Monitoring**: OpenTelemetry + Prometheus metrics

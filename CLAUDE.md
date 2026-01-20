@@ -107,7 +107,6 @@ Critical rules:
 - No `any` type, no `try/catch` (use `safeWrap`)
 - All errors wrapped with context
 - No inline error assignments (`if err := ...`)
-- No inline error assignments (`if err := ...`)
 - HTTP only through clients, consumed via interfaces
 - Domain types in `vibe/vibe.go`, not in handlers
 - **Providers**: YouTube, Spotify, SoundCloud supported for search/auth

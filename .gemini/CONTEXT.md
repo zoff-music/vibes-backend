@@ -92,7 +92,7 @@ cd frontend
 bun install
 bun dev
 ```
-*Note: Runs `@vibez/mobile` via filter. URL: http://localhost:5173 (usually)*
+*Note: Runs `@vibez/platform` via filter. URL: http://localhost:5173 (usually)*
 
 ### Migrator
 ```bash
