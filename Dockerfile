@@ -147,14 +147,13 @@ COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrat
 # Ensure binaries are executable
 RUN chmod +x /app/main /app/migrator-bin
 
-# Create data directory
+# Create data directory (will be overwritten by volume mount at runtime)
 RUN mkdir -p /app/data && chown -R appuser:appuser /app
-
-USER appuser
 
 EXPOSE 8080
 
 WORKDIR /app
 
-# Run migrations then start the app
-ENTRYPOINT ["/bin/sh", "-c", "/app/migrator-bin -db /app/data/vibes.db && exec /app/main"]
+# Use entrypoint script that ensures permissions are correct
+# Run as root briefly to fix permissions, then run app
+ENTRYPOINT ["/bin/sh", "-c", "chown -R appuser:appuser /app/data && exec su -s /bin/sh appuser -c '/app/migrator-bin -db /app/data/vibes.db && exec /app/main'"]
