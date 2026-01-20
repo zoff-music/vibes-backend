@@ -136,9 +136,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Create app user
-RUN useradd -r -u 10001 -s /usr/sbin/nologin appuser
-
 # Copy binaries
 COPY --from=backend-builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
 COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrator-bin /app/migrator-bin
@@ -147,13 +144,12 @@ COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrat
 # Ensure binaries are executable
 RUN chmod +x /app/main /app/migrator-bin
 
-# Create data directory (will be overwritten by volume mount at runtime)
-RUN mkdir -p /app/data && chown -R appuser:appuser /app
+# Create data directory
+RUN mkdir -p /app/data
 
 EXPOSE 8080
 
 WORKDIR /app
 
-# Use entrypoint script that ensures permissions are correct
-# Run as root briefly to fix permissions, then run app
-ENTRYPOINT ["/bin/sh", "-c", "chown -R appuser:appuser /app/data && exec su -s /bin/sh appuser -c '/app/migrator-bin -db /app/data/vibes.db && exec /app/main'"]
+# Run migrations then start the app
+ENTRYPOINT ["/bin/sh", "-c", "/app/migrator-bin -db /app/data/vibes.db && exec /app/main"]
