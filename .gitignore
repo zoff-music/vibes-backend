@@ -172,3 +172,6 @@ vendor/
 
 /tag-state
 test-youtube-search.sh
+
+# Generated files
+Caddyfile.prod
