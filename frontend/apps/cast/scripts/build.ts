@@ -136,4 +136,9 @@ if (isWatch) {
 }
 
 // Always run initial build
-runBuild();
+await runBuild();
+
+// Exit explicitly in non-watch mode
+if (!isWatch) {
+  process.exit(0);
+}
