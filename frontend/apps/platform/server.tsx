@@ -1,5 +1,5 @@
 import { api } from '@vibez/api';
-import { safeWrap, safeWrapAsync } from '@vibez/shared';
+import { safeWrap } from '@vibez/shared';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router';
 import App from './src/App';
@@ -21,10 +21,15 @@ try {
   console.warn('[SSR] Could not load manifest.json:', err);
 }
 
-function createHTMLShell(appHTML: string, initialData: any, mainJS: string, mainCSS: string) {
+function createHTMLShell(
+  appHTML: string,
+  initialData: any,
+  mainJS: string,
+  mainCSS: string,
+) {
   const [err, dataScript] = safeWrap(() => JSON.stringify(initialData));
   const dataScriptContent = err ? '{}' : dataScript || '{}';
-  
+
   return `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -72,19 +77,22 @@ async function handleStaticFiles(path: string) {
 async function getInitialData(path: string, req: Request) {
   console.log(`[SSR] Processing path: ${path}`);
   console.log(`[SSR] Request URL: ${req.url}`);
-  
+
   const roomMatch = path.match(/^\/room\/([^/]+)$/);
   console.log(`[SSR] Room match:`, roomMatch);
-  
+
   if (!roomMatch || roomMatch[1] === 'create') {
     console.log(`[SSR] No room match or create page, returning empty data`);
-    
+
     // If it's the create page, check for query parameters
     if (roomMatch && roomMatch[1] === 'create') {
       const url = new URL(req.url);
       const name = url.searchParams.get('name');
       console.log(`[SSR] Create page - URL: ${url.toString()}`);
-      console.log(`[SSR] Create page - Query params:`, Object.fromEntries(url.searchParams.entries()));
+      console.log(
+        `[SSR] Create page - Query params:`,
+        Object.fromEntries(url.searchParams.entries()),
+      );
       console.log(`[SSR] Create page - Name parameter: ${name}`);
       if (name) {
         console.log(`[SSR] Create page with name parameter: ${name}`);
@@ -93,7 +101,7 @@ async function getInitialData(path: string, req: Request) {
         return { data, redirect: null };
       }
     }
-    
+
     return { data: {}, redirect: null };
   }
 
@@ -139,22 +147,26 @@ Bun.serve({
     if (redirect) return redirect;
 
     // Get the correct asset filenames from manifest (same format as cast app)
-    const mainJS = manifest['main.js'] ? `/assets/platform/${manifest['main.js']}` : '/assets/platform/client.js';
-    const mainCSS = manifest['index.css'] ? `/assets/platform/${manifest['index.css']}` : '/assets/platform/index.css';
+    const mainJS = manifest['main.js']
+      ? `/assets/platform/${manifest['main.js']}`
+      : '/assets/platform/client.js';
+    const mainCSS = manifest['index.css']
+      ? `/assets/platform/${manifest['index.css']}`
+      : '/assets/platform/index.css';
 
     try {
       // Render the App component to string
       const appHTML = renderToString(
         <StaticRouter location={path}>
           <App initialData={initialData} />
-        </StaticRouter>
+        </StaticRouter>,
       );
 
       // Create the full HTML with the rendered app
       const fullHTML = createHTMLShell(appHTML, initialData, mainJS, mainCSS);
-      
-      return new Response(fullHTML, { 
-        headers: { 'Content-Type': 'text/html' } 
+
+      return new Response(fullHTML, {
+        headers: { 'Content-Type': 'text/html' },
       });
     } catch (error) {
       console.error('[SSR Error]', error);

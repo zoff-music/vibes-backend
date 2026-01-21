@@ -22,7 +22,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
     if (initialData?.createRoomName) {
       return initialData.createRoomName;
     }
-    
+
     // During client-side, try URL params (but only if we're not in SSR)
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
@@ -31,10 +31,10 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
         return urlName;
       }
     }
-    
+
     return '';
   });
-  
+
   const [mode, setMode] = useState<'server' | 'host'>('server');
   const [password, setPassword] = useState('');
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
@@ -45,18 +45,18 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
   // Handle hydration
   useEffect(() => {
     setIsHydrated(true);
-    
+
     // Fix hydration mismatch: ensure client state matches server state
     if (initialData?.createRoomName && name !== initialData.createRoomName) {
       setName(initialData.createRoomName);
       return; // Don't check URL params if we have SSR data
     }
-    
+
     // After hydration, check if we need to update from URL params (only if no SSR data)
     if (!initialData?.createRoomName) {
       const urlParams = new URLSearchParams(window.location.search);
       const urlName = urlParams.get('name');
-      
+
       if (urlName && urlName !== name) {
         setName(urlName);
       }
@@ -66,15 +66,15 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
   // Handle client-side URL changes (for navigation)
   useEffect(() => {
     if (!isHydrated) return; // Wait for hydration
-    
+
     // Only update from URL if we don't have SSR data
     if (initialData?.createRoomName) {
       return;
     }
-    
+
     const urlParams = new URLSearchParams(window.location.search);
     const urlName = urlParams.get('name');
-    
+
     if (urlName && urlName !== name) {
       setName(urlName);
     }

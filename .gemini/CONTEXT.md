@@ -2,13 +2,13 @@
 
 ## Overview
 Collaborative music queue with synchronized playback. Supports YouTube, Spotify, and SoundCloud.
-Monorepo-style structure containing backend, frontend (with SSR), and database migrator.
+Monorepo-style structure containing backend, frontend (with unified SSR), and database migrator.
 
 ## Key Directories
 
 ### `/` (Root)
 - `backend/`: Go backend server
-- `frontend/`: Bun workspace (React + Vite + TypeScript with SSR)
+- `frontend/`: Bun workspace (React + Bun build system with SSR)
 - `migrator/`: Go database migration tool
 - `.env.sample`: Environment configuration template
 - `docker-compose.yml`: Multi-service development environment
@@ -27,15 +27,17 @@ Monorepo-style structure containing backend, frontend (with SSR), and database m
 
 ### `frontend/`
 - Workspace root with Bun workspaces
-- `apps/platform/`: Main React application (Vite with SSR)
+- `apps/platform/`: Main React application (Bun build system with SSR)
     - `src/api/`: `wiretyped` client and `yup` schemas
     - `src/stores/`: Zustand stores
     - `src/components/`: UI components
-    - `server.tsx`: SSR server
+    - `server.tsx`: SSR server (Bun runtime)
     - `client.tsx`: Client hydration
-- `apps/cast/`: Standalone Cast Receiver (Vite with SSR)
-    - `server.tsx`: SSR server
+    - `scripts/build.ts`: Custom Bun build script with hashing
+- `apps/cast/`: Standalone Cast Receiver (Bun build system with SSR)
+    - `server.tsx`: SSR server (Bun runtime)
     - `client.tsx`: Client hydration
+    - `scripts/build.ts`: Custom Bun build script with hashing
 - `packages/`: Shared packages
     - `api/`: Shared API client
     - `models/`: Shared types and schemas
@@ -107,7 +109,14 @@ cd frontend
 bun install
 bun dev
 ```
-*Platform: http://localhost:3000, Cast: http://localhost:3001*
+*Platform: http://localhost:3000 (SSR), Cast: http://localhost:3001 (SSR)*
+
+### Build Frontend Apps
+```bash
+cd frontend
+bun run build
+```
+*Builds both apps with content hashing and manifest generation*
 
 ### Database Migrations
 ```bash
@@ -146,4 +155,6 @@ make migrate-down STEPS=3  # Run multiple down steps
 - **Real-time**: SSE (Server-Sent Events) for updates
 - **Playback**: Synchronized via backend state + SSE
 - **HTTPS Development**: Caddy provides automatic SSL certificates
+- **SSR**: Both apps use unified Bun-based build system with SSR
+- **Asset Management**: Content hashing with manifest-based resolution
 - **Environment**: `.env.sample` template with comprehensive configuration

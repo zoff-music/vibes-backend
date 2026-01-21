@@ -25,7 +25,7 @@ let manifest = await loadManifest();
 async function handleStaticFiles(path: string) {
   console.log(`[Static] Handling request for: ${path}`);
   console.log(`[Static] Current working directory: ${process.cwd()}`);
-  
+
   // Handle cast assets from /assets/cast/
   if (path.startsWith('/assets/cast/')) {
     const assetPath = path.replace('/assets/cast/', '');
@@ -34,10 +34,10 @@ async function handleStaticFiles(path: string) {
     const absolutePath = `${process.cwd()}/dist/assets/cast/${assetPath}`;
     console.log(`[Static] Looking for cast asset: ${fullPath}`);
     console.log(`[Static] Absolute path: ${absolutePath}`);
-    
+
     const exists = await distFile.exists();
     console.log(`[Static] File exists: ${exists}`);
-    
+
     if (exists) {
       console.log(`[Static] Found cast asset: ${assetPath}`);
       const headers: Record<string, string> = {};
@@ -57,7 +57,7 @@ async function handleStaticFiles(path: string) {
       // List what files are actually available
       try {
         const files = await Array.fromAsync(
-          new Bun.Glob('*').scan({ cwd: './dist/assets/cast' })
+          new Bun.Glob('*').scan({ cwd: './dist/assets/cast' }),
         );
         console.log(`[Static] Available files:`, files);
       } catch (err) {
@@ -83,7 +83,9 @@ async function renderHTML(path: string, initialData: any) {
         <App initialData={initialData} />
       </StaticRouter>,
       {
-        bootstrapModules: [`/assets/cast/${manifest['client.js'] || 'client.js'}`],
+        bootstrapModules: [
+          `/assets/cast/${manifest['client.js'] || 'client.js'}`,
+        ],
         onError(error) {
           console.error('[SSR Stream Error]', error);
         },
@@ -99,7 +101,7 @@ async function renderHTML(path: string, initialData: any) {
   // Convert React stream to string to avoid ReadableStream lock issues
   const chunks: Uint8Array[] = [];
   const reader = stream.getReader();
-  
+
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -112,11 +114,11 @@ async function renderHTML(path: string, initialData: any) {
 
   // Combine all chunks into a single string
   const decoder = new TextDecoder();
-  const reactHTML = chunks.map(chunk => decoder.decode(chunk)).join('');
+  const reactHTML = chunks.map((chunk) => decoder.decode(chunk)).join('');
 
   // Create complete HTML document with SSR content
   const cssPath = `/assets/cast/${manifest['index.css'] || 'index.css'}`;
-  
+
   const fullHTML = `<!DOCTYPE html>
 <html lang="en">
   <head>
@@ -140,7 +142,7 @@ async function renderHTML(path: string, initialData: any) {
 </html>`;
 
   return new Response(fullHTML, {
-    headers: { 'Content-Type': 'text/html; charset=utf-8' }
+    headers: { 'Content-Type': 'text/html; charset=utf-8' },
   });
 }
 
@@ -167,9 +169,9 @@ Bun.serve({
     // If it's an asset request that we couldn't serve, return proper 404
     if (path.startsWith('/assets/cast/')) {
       console.log(`[Cast Server] Asset not found, returning 404: ${path}`);
-      return new Response('Asset Not Found', { 
+      return new Response('Asset Not Found', {
         status: 404,
-        headers: { 'Content-Type': 'text/plain' }
+        headers: { 'Content-Type': 'text/plain' },
       });
     }
 

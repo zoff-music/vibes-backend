@@ -56,7 +56,7 @@ async function runBuild() {
     if (!isWatch) process.exit(1);
   } else {
     console.log(`[Build] Success! ${new Date().toLocaleTimeString()}`);
-    
+
     // Copy public files to platform assets directory
     const publicDir = join(import.meta.dir, '../public');
     if (existsSync(publicDir)) {
@@ -72,31 +72,31 @@ async function runBuild() {
 
     // Write build manifest for SSR to know the hashed filenames
     const manifest: Record<string, string> = {};
-    
+
     // Find the built files and map them
     for (const output of result.outputs) {
       const filename = output.path.split('/').pop() || '';
       const fullPath = output.path;
-      
+
       console.log(`[Build] Processing output: ${fullPath} -> ${filename}`);
-      
+
       if (filename.includes('client') && filename.endsWith('.js')) {
         manifest['main.js'] = filename;
       }
     }
-    
+
     // Check for CSS files in the output directory
     const cssFiles = await Array.fromAsync(
-      new Bun.Glob('*.css').scan({ cwd: './dist/assets/platform' })
+      new Bun.Glob('*.css').scan({ cwd: './dist/assets/platform' }),
     );
-    
+
     if (cssFiles.length > 0) {
       manifest['index.css'] = cssFiles[0]; // Take the first CSS file
       console.log(`[Build] Found CSS file: ${cssFiles[0]}`);
     }
-    
+
     manifest.timestamp = Date.now().toString();
-    
+
     console.log(`[Build] Writing manifest:`, manifest);
     await Bun.write('./dist/manifest.json', JSON.stringify(manifest, null, 2));
   }
@@ -106,21 +106,28 @@ if (isWatch) {
   // Use Node.js fs.watch since Bun.watch is not available in v1.3.6
   const fs = await import('node:fs');
   const watchDir = join(import.meta.dir, '..');
-  
+
   console.log(`[Build] Using fs.watch, watching ${watchDir}`);
-  
-  const watcher = fs.watch(watchDir, { recursive: true }, (eventType, filename) => {
-    if (filename && (
-      filename.endsWith('.tsx') ||
-      filename.endsWith('.ts') ||
-      filename.endsWith('.css') ||
-      filename.includes('public/')
-    ) && !filename.includes('dist/')) { // Exclude dist directory to prevent rebuild loops
-      console.log(`[Build] Change detected in ${filename}, rebuilding...`);
-      runBuild();
-    }
-  });
-  
+
+  const watcher = fs.watch(
+    watchDir,
+    { recursive: true },
+    (_eventType, filename) => {
+      if (
+        filename &&
+        (filename.endsWith('.tsx') ||
+          filename.endsWith('.ts') ||
+          filename.endsWith('.css') ||
+          filename.includes('public/')) &&
+        !filename.includes('dist/')
+      ) {
+        // Exclude dist directory to prevent rebuild loops
+        console.log(`[Build] Change detected in ${filename}, rebuilding...`);
+        runBuild();
+      }
+    },
+  );
+
   // Handle cleanup
   process.on('SIGINT', () => {
     watcher.close();

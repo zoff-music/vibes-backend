@@ -16,7 +16,7 @@ interface AppProps {
   initialData?: any;
 }
 
-const App = ({ initialData }: AppProps) => {
+const App = ({ initialData: _ }: AppProps) => {
   const [roomInfo] = useState<RoomInfo | null>(null);
   const [statusText] = useState('Ready for Casting');
 
@@ -128,12 +128,8 @@ const App = ({ initialData }: AppProps) => {
       <div className="relative z-10 flex h-full w-full items-center justify-center">
         {/* Render Players based on currentSong type */}
         <div className="absolute inset-0 h-full w-full">
-          <VideoPlayer
-            isVisible={currentSong?.sourceType === 'youtube'}
-          />
-          <SpotifyPlayer
-            isVisible={currentSong?.sourceType === 'spotify'}
-          />
+          <VideoPlayer isVisible={currentSong?.sourceType === 'youtube'} />
+          <SpotifyPlayer isVisible={currentSong?.sourceType === 'spotify'} />
           <SoundCloudPlayer
             isVisible={currentSong?.sourceType === 'soundcloud'}
           />
