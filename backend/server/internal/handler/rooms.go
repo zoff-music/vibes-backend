@@ -189,7 +189,7 @@ func GetRoom(
 
 // UpdateRoomSettings handles PATCH /rooms/{id}/settings
 func UpdateRoomSettings(
-	db vibe.RoomUpdater,
+	db vibe.RoomSettingsUpdater,
 	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

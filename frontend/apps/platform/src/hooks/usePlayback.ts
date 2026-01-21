@@ -1,6 +1,6 @@
 import { api } from '@vibez/api';
 import { useCallback, useEffect } from 'react';
-import { usePlaybackStore } from '../stores/playbackStore';
+import { usePlaybackStore } from '@vibez/shared';
 
 export const usePlayback = (roomId: string) => {
   const playback = usePlaybackStore();

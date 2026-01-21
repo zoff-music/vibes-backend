@@ -87,6 +87,11 @@ type RoomCreator interface {
 
 // RoomUpdater updates room data
 type RoomUpdater interface {
-	GetRoom(ctx context.Context, id string) (*Room, error)
 	UpdateRoom(ctx context.Context, room *Room) (*Room, error)
+}
+
+// RoomSettingsUpdater fetches and updates room data
+type RoomSettingsUpdater interface {
+	RoomFetcher
+	RoomUpdater
 }

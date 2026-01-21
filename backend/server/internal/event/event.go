@@ -7,7 +7,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes/client/database"
+	"github.com/zoff-music/vibes/client/internalpubsub"
+	"github.com/zoff-music/vibes/client/spotify"
+	"github.com/zoff-music/vibes/client/youtube"
+	"github.com/zoff-music/vibes/server/internal/handler"
 )
 
 // Handler is an interface that all event handles must implement.
@@ -16,37 +20,65 @@ type Handler interface {
 }
 
 // GetAppEvents describes all the app events to listen to.
-func GetAppEvents(pa vibe.ExpiredPlaybackProcessor, hm vibe.AbandonnedHostProcessor, ips interface {
-	vibe.RoomEventNotifier
-	vibe.RoomBatchEventNotifier
-}, ps vibe.ParticipantStorage, eac vibe.AuthTokenCleaner,
+func GetAppEvents(
+	db *database.Client,
+	ips *internalpubsub.Client,
+	spotifyClient *spotify.Client,
+	youtubeClient *youtube.Client,
 ) AppEvents {
 	return AppEvents{
 		{
 			Name: "ReviewRoomPlayback",
 			Rate: 500 * time.Millisecond,
-			Handler: &PlaybackMonitor{
-				db:  pa,
-				ips: ips,
+			Handler: &handler.ReviewRoomPlayback{
+				DB:  db,
+				IPS: ips,
 			},
 		},
 		{
 			Name: "ReviewHostHealth",
 			Rate: 500 * time.Millisecond,
-			Handler: &HostMonitor{
-				db:  hm,
-				ips: ips,
+			Handler: &handler.ReviewHostHealth{
+				DB:  db,
+				IPS: ips,
 			},
 		},
 		{
-			Name:    "CleanupInactiveParticipants",
-			Rate:    5 * time.Minute,
-			Handler: &CleanupHandler{DB: ps},
+			Name: "CleanupInactiveParticipants",
+			Rate: 10 * time.Second,
+			Handler: &handler.CleanupInactiveParticipants{
+				DB: db,
+			},
 		},
 		{
-			Name:    "CleanupExpiredTokens",
-			Rate:    5 * time.Minute,
-			Handler: &ExpiredTokenCleanupHandler{DB: eac},
+			Name: "CleanupExpiredTokens",
+			Rate: 10 * time.Second,
+			Handler: &handler.CleanupExpiredTokens{
+				DB: db,
+			},
+		},
+		{
+			Name: "RefreshSpotifyTokens",
+			Rate: 10 * time.Second,
+			Handler: &handler.RefreshSpotifyTokens{
+				DB:       db,
+				Provider: spotifyClient,
+			},
+		},
+		{
+			Name: "RefreshYouTubeTokens",
+			Rate: 10 * time.Second,
+			Handler: &handler.RefreshYouTubeTokens{
+				DB:       db,
+				Provider: youtubeClient,
+			},
+		},
+		{
+			Name: "CleanupExpiredPendingOAuthStates",
+			Rate: 10 * time.Second,
+			Handler: &handler.CleanupExpiredPendingOAuthStates{
+				DB: db,
+			},
 		},
 	}
 }

@@ -72,6 +72,10 @@ type Client struct {
 	DeletePendingOAuthStateStatement            *sql.Stmt
 	DeleteExpiredPendingOAuthStatesStatement    *sql.Stmt
 
+	// Token cleanup statements
+	ClaimAndGetExpiredTokenForRefreshStatement *sql.Stmt
+	UpdateLastCheckedStatement                 *sql.Stmt
+
 	// Participant statements
 	UpdateParticipantStatement          *sql.Stmt
 	GetActiveParticipantsStatement      *sql.Stmt
@@ -187,6 +191,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareValidateAndDeletePendingOAuthStateStmt,
 		c.prepareDeletePendingOAuthStateStmt,
 		c.prepareDeleteExpiredPendingOAuthStatesStmt,
+		c.prepareClaimAndGetExpiredTokenForRefreshStmt,
+		c.prepareUpdateLastCheckedStmt,
 		// Participant statements
 		c.prepareUpdateParticipantStmt,
 		c.prepareGetActiveParticipantsStmt,
@@ -242,6 +248,8 @@ func (c *Client) Close() error {
 		c.ValidateAndDeletePendingOAuthStateStatement,
 		c.DeletePendingOAuthStateStatement,
 		c.DeleteExpiredPendingOAuthStatesStatement,
+		c.ClaimAndGetExpiredTokenForRefreshStatement,
+		c.UpdateLastCheckedStatement,
 		c.UpdateParticipantStatement,
 		c.GetActiveParticipantsStatement,
 		c.SetRoomHostStatement,

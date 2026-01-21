@@ -57,3 +57,14 @@ type CodeValidatorUserter interface {
 type OAuthExchanger interface {
 	ExchangeCode(ctx context.Context, code string) (*TokenResponse, error)
 }
+
+// ExpiredTokenClaimUpdater claims and returns an expired token for refresh
+type ExpiredTokenClaimUpdater interface {
+	ClaimAndGetExpiredTokenForRefresh(ctx context.Context, provider string) (*AccessToken, error)
+	UpsertAccessToken(ctx context.Context, userID, provider, accessToken, refreshToken string, expiresAt, refreshExpiresAt time.Time) error
+}
+
+// ExpiredPendingOAuthStateCleaner deletes expired pending OAuth states
+type ExpiredPendingOAuthStateCleaner interface {
+	DeleteExpiredPendingOAuthStates(ctx context.Context) (int64, error)
+}

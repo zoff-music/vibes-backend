@@ -270,7 +270,7 @@ func (c *Client) prepareDeleteExpiredPendingOAuthStatesStmt() error {
 	return nil
 }
 
-// DeleteExpiredPendingOAuthStates removes all expired pending oauth states from the database.
+// DeleteExpiredPendingOAuthStates removes all expired pending OAuth states.
 func (c *Client) DeleteExpiredPendingOAuthStates(ctx context.Context) (int64, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "DeleteExpiredPendingOAuthStates")
 	defer span.Finish()
@@ -286,4 +286,67 @@ func (c *Client) DeleteExpiredPendingOAuthStates(ctx context.Context) (int64, er
 	}
 
 	return rowsAffected, nil
+}
+
+func (c *Client) prepareClaimAndGetExpiredTokenForRefreshStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT user_id, provider, access_token, refresh_token, expires_at, refresh_expires_at
+		FROM access_tokens
+		WHERE provider = ?1
+		AND expires_at <= CURRENT_TIMESTAMP
+		AND refresh_expires_at > CURRENT_TIMESTAMP
+		AND (last_checked IS NULL OR last_checked <= datetime('now', '-2 minutes'))
+		ORDER BY last_checked ASC NULLS FIRST
+		LIMIT 1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ClaimAndGetExpiredTokenForRefreshStatement: %w", err)
+	}
+	c.ClaimAndGetExpiredTokenForRefreshStatement = stmt
+	return nil
+}
+
+func (c *Client) prepareUpdateLastCheckedStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE access_tokens SET last_checked = CURRENT_TIMESTAMP
+		WHERE user_id = ?1 AND provider = ?2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing UpdateLastCheckedStatement: %w", err)
+	}
+	c.UpdateLastCheckedStatement = stmt
+	return nil
+}
+
+// ClaimAndGetExpiredTokenForRefresh finds an expired token, claims it by updating last_checked, and returns it.
+func (c *Client) ClaimAndGetExpiredTokenForRefresh(ctx context.Context, provider string) (*vibe.AccessToken, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "ClaimAndGetExpiredTokenForRefresh")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var token vibe.AccessToken
+	err := c.ClaimAndGetExpiredTokenForRefreshStatement.QueryRowContext(cctx, provider).Scan(
+		&token.UserID,
+		&token.Provider,
+		&token.AccessToken,
+		&token.RefreshToken,
+		&token.ExpiresAt,
+		&token.RefreshExpiresAt,
+	)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error in db: get expired token for refresh: %w", err)
+	}
+
+	// Claim the token by updating last_checked
+	_, err = c.UpdateLastCheckedStatement.ExecContext(cctx, token.UserID, token.Provider)
+	if err != nil {
+		return nil, fmt.Errorf("error in db: update last checked: %w", err)
+	}
+
+	return &token, nil
 }

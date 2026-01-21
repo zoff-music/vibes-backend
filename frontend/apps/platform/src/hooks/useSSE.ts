@@ -1,7 +1,7 @@
 import { api } from '@vibez/api';
 import { PlaybackState, Song, safeWrap } from '@vibez/shared';
 import { useEffect, useRef } from 'react';
-import { usePlaybackStore } from '../stores/playbackStore';
+import { usePlaybackStore } from '@vibez/shared';
 import { useQueueStore } from '../stores/queueStore';
 import { useRoomStore } from '../stores/roomStore';
 
