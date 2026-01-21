@@ -8,51 +8,77 @@ const DEFAULT_SETTINGS = {
   loopQueue: false,
 };
 
-export default function CreateRoom() {
+interface CreateRoomProps {
+  initialData?: any;
+}
+
+const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  
-  // Initialize name with query param if present - try multiple methods
-  const getInitialName = () => {
-    // Method 1: useSearchParams hook
-    const paramName = searchParams.get('name');
-    if (paramName) {
-      console.log('[CreateRoom] Found name via useSearchParams:', paramName);
-      return paramName;
+
+  // Initialize name - prioritize SSR data, then URL params
+  const [name, setName] = useState(() => {
+    // During SSR, use the initial data if available
+    if (initialData?.createRoomName) {
+      return initialData.createRoomName;
     }
     
-    // Method 2: Direct URL parsing as fallback
+    // During client-side, try URL params (but only if we're not in SSR)
     if (typeof window !== 'undefined') {
       const urlParams = new URLSearchParams(window.location.search);
       const urlName = urlParams.get('name');
       if (urlName) {
-        console.log('[CreateRoom] Found name via window.location.search:', urlName);
         return urlName;
       }
     }
     
-    console.log('[CreateRoom] No name parameter found');
     return '';
-  };
+  });
   
-  const [name, setName] = useState(getInitialName);
   const [mode, setMode] = useState<'server' | 'host'>('server');
   const [password, setPassword] = useState('');
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isHydrated, setIsHydrated] = useState(false);
 
-  // Also handle query param changes after initial render
+  // Handle hydration
   useEffect(() => {
-    const prefilledName = searchParams.get('name');
-    console.log('[CreateRoom] useEffect - Query params:', Object.fromEntries(searchParams.entries()));
-    console.log('[CreateRoom] useEffect - Prefilled name:', prefilledName);
-    console.log('[CreateRoom] useEffect - Current name state:', name);
-    if (prefilledName && prefilledName !== name) {
-      console.log('[CreateRoom] useEffect - Setting name to:', prefilledName);
-      setName(prefilledName);
+    setIsHydrated(true);
+    
+    // Fix hydration mismatch: ensure client state matches server state
+    if (initialData?.createRoomName && name !== initialData.createRoomName) {
+      setName(initialData.createRoomName);
+      return; // Don't check URL params if we have SSR data
     }
-  }, [searchParams, name]);
+    
+    // After hydration, check if we need to update from URL params (only if no SSR data)
+    if (!initialData?.createRoomName) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlName = urlParams.get('name');
+      
+      if (urlName && urlName !== name) {
+        setName(urlName);
+      }
+    }
+  }, []); // Run only once on mount
+
+  // Handle client-side URL changes (for navigation)
+  useEffect(() => {
+    if (!isHydrated) return; // Wait for hydration
+    
+    // Only update from URL if we don't have SSR data
+    if (initialData?.createRoomName) {
+      return;
+    }
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const urlName = urlParams.get('name');
+    
+    if (urlName && urlName !== name) {
+      setName(urlName);
+    }
+  }, [searchParams, isHydrated, initialData?.createRoomName, name]);
 
   const handleCreate = async () => {
     if (!name.trim() || isLoading) return;
@@ -156,10 +182,11 @@ export default function CreateRoom() {
               <button
                 type="button"
                 onClick={() => setMode('server')}
-                className={`rounded-xl border-2 p-4 text-left transition-all ${mode === 'server'
-                  ? 'border-primary bg-primary/10 text-ink'
-                  : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
-                  }`}
+                className={`rounded-xl border-2 p-4 text-left transition-all ${
+                  mode === 'server'
+                    ? 'border-primary bg-primary/10 text-ink'
+                    : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
+                }`}
               >
                 <div className="mb-1 font-bold">Server Mode</div>
                 <div className="text-xs opacity-70">
@@ -169,10 +196,11 @@ export default function CreateRoom() {
               <button
                 type="button"
                 onClick={() => setMode('host')}
-                className={`rounded-xl border-2 p-4 text-left transition-all ${mode === 'host'
-                  ? 'border-secondary bg-secondary/10 text-ink'
-                  : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
-                  }`}
+                className={`rounded-xl border-2 p-4 text-left transition-all ${
+                  mode === 'host'
+                    ? 'border-secondary bg-secondary/10 text-ink'
+                    : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
+                }`}
               >
                 <div className="mb-1 font-bold">Host Mode</div>
                 <div className="text-xs opacity-70">
@@ -324,4 +352,6 @@ export default function CreateRoom() {
       </div>
     </div>
   );
-}
+};
+
+export default CreateRoom;

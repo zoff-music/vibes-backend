@@ -1,5 +1,5 @@
-import { Route, Routes } from 'react-router';
 import { safeWrap } from '@vibez/shared';
+import { Route, Routes } from 'react-router';
 import Callback from './pages/Callback';
 import CreateRoom from './pages/CreateRoom';
 import Home from './pages/Home';
@@ -11,33 +11,20 @@ interface AppProps {
 }
 
 export default function App({ initialData }: AppProps) {
+  console.warn('🔥 [App] Received initialData:', initialData);
+  console.warn('🔥 [App] typeof window:', typeof window);
+  console.warn('🔥 [App] initialData.createRoomName:', initialData?.createRoomName);
+  
   return (
-    <html lang="en">
-      <head>
-        <meta charSet="UTF-8" />
-        <link rel="icon" type="image/png" href="/favicon.png" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Vibez - Shared Music Queue</title>
-        <link rel="stylesheet" href="/index.css" />
-        <script
-          id="ssr-data"
-          type="application/json"
-          dangerouslySetInnerHTML={{
-            __html: safeWrap(() => JSON.stringify(initialData))[1] || '{}'
-          }}
-        />
-      </head>
-      <body>
-        <div id="root">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/room/create" element={<CreateRoom />} />
-            <Route path="/room/:id" element={<RoomView initialData={initialData?.room} />} />
-            <Route path="/player-test" element={<PlayerTest />} />
-            <Route path="/callback" element={<Callback />} />
-          </Routes>
-        </div>
-      </body>
-    </html>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/room/create" element={<CreateRoom initialData={initialData} />} />
+      <Route
+        path="/room/:id"
+        element={<RoomView initialData={initialData?.room} />}
+      />
+      <Route path="/player-test" element={<PlayerTest />} />
+      <Route path="/callback" element={<Callback />} />
+    </Routes>
   );
 }

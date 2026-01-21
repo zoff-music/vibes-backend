@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "bun scripts/build.ts --watch & bun run --hot server.tsx",
     "build": "bun run build:css && bun run build:client && bun run build:server",
+    "build:css": "bunx @tailwindcss/cli -i src/index.css -o dist/assets/platform/index.css --minify",
     "build:client": "NODE_ENV=production bun scripts/build.ts",
-    "build:server": "bun build ./server.tsx --outdir ./dist/server --target bun --minify",
-    "build:css": "bunx @tailwindcss/cli -i src/index.css -o dist/client/index.css",
-    "start": "bun run ./dist/server/server.js",
+    "build:server": "bun build server.tsx --outdir ./dist/server --target bun --minify",
+    "start": "NODE_ENV=production bun dist/server/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "bunx biome check src",
     "test:e2e": "playwright test",

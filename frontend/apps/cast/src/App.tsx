@@ -1,7 +1,7 @@
 /// <reference types="chromecast-caf-receiver" />
 
 import { SoundCloudPlayer, SpotifyPlayer, VideoPlayer } from '@vibez/player';
-import { setCachedToken, usePlaybackStore, safeWrap, safeWrapAsync } from '@vibez/shared';
+import { safeWrap, setCachedToken, usePlaybackStore } from '@vibez/shared';
 import type { framework } from 'chromecast-caf-receiver';
 import { useEffect, useRef, useState } from 'react';
 
@@ -12,14 +12,11 @@ interface RoomInfo {
   participantCount: number;
 }
 
-// QueueItem removed as unused
-
 interface AppProps {
   initialData?: any;
 }
 
 const App = ({ initialData }: AppProps) => {
-
   const [roomInfo] = useState<RoomInfo | null>(null);
   const [statusText] = useState('Ready for Casting');
 
@@ -63,7 +60,7 @@ const App = ({ initialData }: AppProps) => {
                     provider,
                     tokenData.token,
                     tokenData.expiresAt ||
-                    new Date(Date.now() + 3600000).toISOString(),
+                      new Date(Date.now() + 3600000).toISOString(),
                   );
                 }
               }
@@ -120,83 +117,63 @@ const App = ({ initialData }: AppProps) => {
   };
 
   return (
-    <html lang="en">
-      <head>
-        <meta charSet="UTF-8" />
-        <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Vibez Cast Receiver</title>
-        <link rel="stylesheet" href="/index.css" />
-        {/* Google Cast Receiver SDK */}
-        <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js" />
-        {/* YouTube IFrame API */}
-        <script src="https://www.youtube.com/iframe_api" />
-        <script
-          id="ssr-data"
-          type="application/json"
-          dangerouslySetInnerHTML={{
-            __html: safeWrap(() => JSON.stringify(initialData))[1] || '{}'
-          }}
-        />
-      </head>
-      <body>
-        <div id="root">
-          <div className="dark relative flex h-screen w-screen animate-fade-in flex-col items-center justify-center overflow-hidden bg-theme text-theme">
-            {/* Dynamic Background Elements */}
-            <div className="pointer-events-none absolute inset-0 overflow-hidden">
-              <div className="absolute top-[-10%] left-[-10%] h-[40%] w-[40%] animate-float rounded-full bg-primary/10 blur-[120px]" />
-              <div className="absolute right-[-5%] bottom-[-5%] h-[50%] w-[50%] animate-float-delayed rounded-full bg-primary/5 blur-[100px]" />
-            </div>
+    <div className="dark relative flex h-screen w-screen animate-fade-in flex-col items-center justify-center overflow-hidden bg-theme text-theme">
+      {/* Dynamic Background Elements */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute top-[-10%] left-[-10%] h-[40%] w-[40%] animate-float rounded-full bg-primary/10 blur-[120px]" />
+        <div className="absolute right-[-5%] bottom-[-5%] h-[50%] w-[50%] animate-float-delayed rounded-full bg-primary/5 blur-[100px]" />
+      </div>
 
-            {/* Main Content Area */}
-            <div className="relative z-10 flex h-full w-full items-center justify-center">
-              {/* Render Players based on currentSong type */}
-              <div className="absolute inset-0 h-full w-full">
-                <VideoPlayer isVisible={currentSong?.sourceType === 'youtube'} />
-                <SpotifyPlayer isVisible={currentSong?.sourceType === 'spotify'} />
-                <SoundCloudPlayer
-                  isVisible={currentSong?.sourceType === 'soundcloud'}
-                />
-              </div>
-
-              {/* Fallback / Idle Screen */}
-              {!currentSong && (
-                <div className="animate-scale-in text-center">
-                  <h1
-                    className="mb-6 font-black text-8xl text-primary tracking-tight drop-shadow-neon-pink"
-                    style={{ fontFamily: 'Poppins, sans-serif' }}
-                  >
-                    Vibez
-                  </h1>
-                  <div className="glass mx-auto max-w-sm rounded-3xl px-8 py-4">
-                    <p className="font-bold text-2xl tracking-wide opacity-90">
-                      {statusText}
-                    </p>
-                    <p className="mt-2 font-medium opacity-50">
-                      Waiting for music to play...
-                    </p>
-                  </div>
-
-                  {roomInfo && (
-                    <div className="glass-elevated mt-10 animate-slide-up rounded-3xl p-8">
-                      <p className="font-black text-3xl tracking-tight">
-                        {roomInfo.name}
-                      </p>
-                      <div className="mt-3 flex items-center justify-center gap-2">
-                        <div className="h-2 w-2 animate-pulse rounded-full bg-matcha" />
-                        <p className="font-bold text-lg text-matcha">
-                          {roomInfo.participantCount} active
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
+      {/* Main Content Area */}
+      <div className="relative z-10 flex h-full w-full items-center justify-center">
+        {/* Render Players based on currentSong type */}
+        <div className="absolute inset-0 h-full w-full">
+          <VideoPlayer
+            isVisible={currentSong?.sourceType === 'youtube'}
+          />
+          <SpotifyPlayer
+            isVisible={currentSong?.sourceType === 'spotify'}
+          />
+          <SoundCloudPlayer
+            isVisible={currentSong?.sourceType === 'soundcloud'}
+          />
         </div>
-      </body>
-    </html>
+
+        {/* Fallback / Idle Screen */}
+        {!currentSong && (
+          <div className="animate-scale-in text-center">
+            <h1
+              className="mb-6 font-black text-8xl text-primary tracking-tight drop-shadow-neon-pink"
+              style={{ fontFamily: 'Poppins, sans-serif' }}
+            >
+              Vibez
+            </h1>
+            <div className="glass mx-auto max-w-sm rounded-3xl px-8 py-4">
+              <p className="font-bold text-2xl tracking-wide opacity-90">
+                {statusText}
+              </p>
+              <p className="mt-2 font-medium opacity-50">
+                Waiting for music to play...
+              </p>
+            </div>
+
+            {roomInfo && (
+              <div className="glass-elevated mt-10 animate-slide-up rounded-3xl p-8">
+                <p className="font-black text-3xl tracking-tight">
+                  {roomInfo.name}
+                </p>
+                <div className="mt-3 flex items-center justify-center gap-2">
+                  <div className="h-2 w-2 animate-pulse rounded-full bg-matcha" />
+                  <p className="font-bold text-lg text-matcha">
+                    {roomInfo.participantCount} active
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
   );
 };
 

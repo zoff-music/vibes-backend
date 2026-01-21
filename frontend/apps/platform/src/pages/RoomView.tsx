@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
+import { getHttpError } from 'wiretyped';
 import { PlayerControls } from '../components/player/PlayerControls';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { QueueList } from '../components/queue/QueueList';
@@ -159,6 +160,49 @@ export default function RoomView({ initialData }: RoomViewProps) {
     }
   }, [hasSpotifySongs, fetchSpotifyToken]);
 
+  // Auto-redirect to create room if room not found
+  useEffect(() => {
+    if (error && id) {
+      console.log('[RoomView] Error detected:', error);
+      console.log('[RoomView] Error message:', error.message);
+      console.log('[RoomView] Room ID:', id);
+      
+      // Check if it's an HTTP error using wiretyped's getHttpError
+      const httpError = getHttpError(error);
+      console.log('[RoomView] HTTP error:', httpError);
+      
+      let isRoomNotFound = false;
+      
+      if (httpError && httpError.response) {
+        console.log('[RoomView] HTTP status:', httpError.response.status);
+        isRoomNotFound = httpError.response.status === 404;
+      } else {
+        // Fallback to message checking if getHttpError doesn't work
+        isRoomNotFound = 
+          error.message.includes('not found') || 
+          error.message.includes('404') ||
+          error.message.includes('Room does not exist') ||
+          error.message.toLowerCase().includes('room not found');
+      }
+        
+      console.log('[RoomView] Is room not found?', isRoomNotFound);
+      
+      if (isRoomNotFound) {
+        console.log(
+          '[RoomView] Room not found, redirecting to create with name:',
+          id,
+        );
+        const timer = setTimeout(() => {
+          const createUrl = `/room/create?name=${encodeURIComponent(id)}`;
+          console.log('[RoomView] Navigating to:', createUrl);
+          navigate(createUrl);
+        }, 2000); // Wait 2 seconds to show the error message
+
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [error, id, navigate]);
+
   const handleConnectSpotify = useCallback(() => {
     const width = 600;
     const height = 800;
@@ -249,10 +293,11 @@ export default function RoomView({ initialData }: RoomViewProps) {
             {/* Dark Mode Toggle */}
             <button
               onClick={toggleDarkMode}
-              className={`rounded-xl border-2 p-2.5 transition-all ${isDarkMode
-                ? 'border-primary bg-primary text-white shadow-neon-pink'
-                : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'
-                }`}
+              className={`rounded-xl border-2 p-2.5 transition-all ${
+                isDarkMode
+                  ? 'border-primary bg-primary text-white shadow-neon-pink'
+                  : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'
+              }`}
               title={
                 isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
               }
@@ -638,12 +683,35 @@ export default function RoomView({ initialData }: RoomViewProps) {
               Connection Failed
             </h2>
             <p className="mb-6 font-medium text-ink/60">{error.message}</p>
-            <button
-              onClick={() => fetchRoom()}
-              className="glass-elevated rounded-xl border-2 border-ink/10 px-8 py-3.5 font-bold text-ink transition-all hover:shadow-retro"
-            >
-              Try Again
-            </button>
+            <div className="flex gap-4">
+              <button
+                onClick={() => fetchRoom()}
+                className="glass-elevated rounded-xl border-2 border-ink/10 px-8 py-3.5 font-bold text-ink transition-all hover:shadow-retro"
+              >
+                Try Again
+              </button>
+              {(() => {
+                const httpError = getHttpError(error);
+                const isRoomNotFound = httpError?.response?.status === 404 || 
+                  error.message.includes('not found') ||
+                  error.message.includes('404') ||
+                  error.message.includes('Room does not exist') ||
+                  error.message.toLowerCase().includes('room not found');
+                
+                return isRoomNotFound && (
+                  <button
+                    onClick={() =>
+                      navigate(
+                        `/room/create?name=${encodeURIComponent(id || '')}`,
+                      )
+                    }
+                    className="rounded-xl border-2 border-primary bg-primary px-8 py-3.5 font-bold text-white transition-all hover:bg-primary-muted hover:shadow-retro-pink"
+                  >
+                    Create Room
+                  </button>
+                );
+              })()}
+            </div>
           </div>
         </div>
       ) : (

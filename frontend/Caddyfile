@@ -2,6 +2,12 @@
 	# Redirect /casting/receiver to /casting/receiver/
 	redir /casting/receiver /casting/receiver/
 
+	# Cast Assets - serve from /srv/cast-app
+	handle /assets/cast/* {
+		root * /srv/cast-app
+		file_server
+	}
+
 	# Cast Receiver App
 	# Serves /casting/receiver/* from /srv/cast-app
 	# Uses handle_path to strip the prefix
