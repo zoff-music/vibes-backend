@@ -9,6 +9,7 @@ build:
 	go mod download; \
 	go mod vendor; \
 	CGO_ENABLED=1 \
+	CC=x86_64-linux-gnu-gcc \
 	GOOS=linux \
 	GOARCH=amd64 \
 	go build -ldflags '-w -s' -o main cmd/server/main.go
