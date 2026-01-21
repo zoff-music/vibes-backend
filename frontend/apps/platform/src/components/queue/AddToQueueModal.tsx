@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useAuthCache } from '../../hooks/useAuthCache';
 import { useQueue } from '../../hooks/useQueue';
 import { useRoom } from '../../hooks/useRoom';
-import { usePlaybackStore } from '../../stores/playbackStore';
+import { usePlaybackStore } from '@vibez/shared';
 import { useQueueStore } from '../../stores/queueStore';
 
 interface Props {

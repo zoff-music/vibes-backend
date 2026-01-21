@@ -150,7 +150,7 @@ func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
 }
 
 func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
-	for _, e := range event.GetAppEvents(s.DB, s.DB, s.InternalPubSub, s.DB, s.DB) {
+	for _, e := range event.GetAppEvents(s.DB, s.InternalPubSub, s.Spotify, s.YouTube) {
 		go func(e event.AppEvent) {
 			e.SubscribeAndListen(ctx)
 		}(e)

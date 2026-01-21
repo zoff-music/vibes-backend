@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -117,4 +118,65 @@ func UpdatePlaybackState(
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
 	}
+}
+
+// ReviewRoomPlayback handles playback monitoring for server-mode rooms
+type ReviewRoomPlayback struct {
+	DB  vibe.ExpiredPlaybackProcessor
+	IPS vibe.RoomBatchEventNotifier
+}
+
+// Handle checks for rooms that need to auto-advance
+func (h *ReviewRoomPlayback) Handle(ctx context.Context, data []byte) error {
+	state, err := h.DB.ProcessNextExpiredPlayback(ctx)
+	if err != nil {
+		return fmt.Errorf("error processing next expired playback: %w", err)
+	}
+
+	statePayload, err := json.Marshal(state)
+	if err != nil {
+		return fmt.Errorf("error marshaling playback state payload: %w", err)
+	}
+
+	err = h.IPS.NotifyRoomUpdates(ctx, state.RoomID, []vibe.RoomEvent{
+		{
+			Type:    vibe.PlaybackUpdate,
+			Payload: statePayload,
+		},
+	})
+	if err != nil {
+		log.Printf("error notifying room %s update: %v", state.RoomID, err)
+	}
+
+	return nil
+}
+
+// ReviewHostHealth handles host health checks
+type ReviewHostHealth struct {
+	DB  vibe.AbandonnedHostProcessor
+	IPS vibe.RoomEventNotifier
+}
+
+// Handle checks for rooms that need a new host
+func (h *ReviewHostHealth) Handle(ctx context.Context, data []byte) error {
+	info, err := h.DB.ProcessNextAbandonedHost(ctx)
+	if err != nil {
+		return fmt.Errorf("error processing next abandoned host: %w", err)
+	}
+
+	payloadMap := map[string]string{"userId": info.NewHostID, "message": "You are now the host"}
+	payloadBytes, err := json.Marshal(payloadMap)
+	if err != nil {
+		log.Printf("error marshaling new host payload: %v", err)
+	} else {
+		err = h.IPS.NotifyRoomUpdate(ctx, info.RoomID, vibe.RoomEvent{
+			Type:    vibe.NewHost,
+			Payload: payloadBytes,
+		})
+		if err != nil {
+			log.Printf("error notifying room %s host update: %v", info.RoomID, err)
+		}
+	}
+
+	return nil
 }
