@@ -26,7 +26,7 @@ graph TD
 ## Development
 
 ### Running Locally
-To run the full stack including the Cast Receiver:
+To run the full stack including the Cast Receiver with SSR:
 
 ```bash
 make local-dev
@@ -34,15 +34,21 @@ make local-dev
 
 This starts:
 - **Backend**: `localhost:8080`
-- **Platform**: `localhost:3000`
-- **Cast Receiver**: `localhost:3001`
+- **Platform**: `localhost:3000` (SSR-enabled)
+- **Cast Receiver**: `localhost:3001` (SSR-enabled)
 - **Caddy Proxy**: `https://localhost` (Routes `/casting/receiver/*` to `localhost:3001`)
 
 ### Testing the Receiver
 You can test the receiver UI in your browser without a Chromecast device:
-1. Run `make local-dev`.
-2. Open **[https://localhost/casting/receiver/](https://localhost/casting/receiver/)**.
-3. The app simulates a session (if configured to do so in dev mode) or waits for a Cast session.
+1. Run `make local-dev`
+2. Open **[https://localhost/casting/receiver/](https://localhost/casting/receiver/)**
+3. The app loads with SSR for faster initial rendering and waits for a Cast session
+
+### SSR Development
+Both applications now support server-side rendering:
+- **Hot Module Replacement**: Works with SSR during development
+- **Fast Refresh**: React components update without losing state
+- **Error Handling**: SSR errors are handled gracefully with fallbacks
 
 ### Debugging on Chromecast
 1. Register your **Custom Receiver** in the Google Cast SDK Console.
@@ -52,15 +58,17 @@ You can test the receiver UI in your browser without a Chromecast device:
 
 ## Deployment
 
-The Cast Receiver is deployed as part of the frontend Docker image.
+The Cast Receiver is deployed as part of the frontend Docker image with SSR support.
 
-- **Dockerfile**: Builds `apps/cast` and copies artifacts to `/srv/cast-app`.
+- **Dockerfile**: Builds both `apps/platform` and `apps/cast` with SSR
+- **SSR Servers**: Both apps run their own SSR servers in production
 - **Caddy**: Routes traffic:
-    - `https://vibez.io/` -> Platform App
-    - `https://vibez.io/casting/receiver/*` -> Cast Receiver App
+    - `https://vibez.io/` -> Platform App (SSR)
+    - `https://vibez.io/casting/receiver/*` -> Cast Receiver App (SSR)
 
 ## Key Features
-- **YouTube Support**: embeddings via `react-player` / custom iframe.
-- **Real-time Sync**: Connects to backend SSE for room state.
-- **Queue Display**: Shows upcoming songs.
-- **Branding**: Full custom UI matching Vibez design system.
+- **YouTube Support**: Embeddings via `react-player` / custom iframe
+- **Real-time Sync**: Connects to backend SSE for room state
+- **Queue Display**: Shows upcoming songs with real-time updates
+- **SSR Performance**: Fast initial loading with server-side rendering
+- **Branding**: Full custom UI matching Vibez design system with dark mode support

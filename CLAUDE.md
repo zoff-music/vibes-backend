@@ -5,32 +5,39 @@ Collaborative music queue with synchronized playback. Supports YouTube, Spotify,
 ## Commands
 
 ```bash
-# Local Development (Recommended)
+# Local Development with HTTPS (Recommended)
 make local-dev
-# Runs backend + platform + cast receiver + Caddy (HTTPS).
+# Runs backend + platform + cast receiver + Caddy (HTTPS)
 # Platform: https://localhost
 # Cast Receiver: https://localhost/casting/receiver/
 # API: https://localhost/api
 
-# Backend Manual
-cd backend && go build ./cmd/server && ./server
+# Docker Development
+make dev
+# Full stack via Docker Compose
 
-# Frontend
+# Backend Manual
+cd backend && go run cmd/server/main.go
+
+# Frontend (Both Apps with SSR)
 cd frontend && bun install && bun dev
 
-# Migrator
-cd migrator && go run main.go
+# Database Migrations
+make migrate-up    # Run all up migrations
+make migrate-down  # Run down migrations
 ```
 
 ## Stack
 
 | Layer | Tech |
 |-------|------|
-| Frontend | React 19 + Vite + Tailwind + TypeScript |
-| Backend | Go + SQLite (`modernc.org/sqlite`) |
+| Frontend | React 19 + Vite + Tailwind CSS v4 + TypeScript + SSR |
+| Backend | Go + SQLite (`modernc.org/sqlite`) + OpenTelemetry |
 | Migrator | Go + SQLite |
-| Real-time | Server-Sent Events |
+| Real-time | Server-Sent Events (SSE) |
 | Package Manager | Bun |
+| Proxy | Caddy (HTTPS, SSL certificates) |
+| Error Handling | safeWrap/safeWrapAsync utilities |
 
 ## Structure
 
@@ -38,22 +45,36 @@ cd migrator && go run main.go
 backend/
 ├── AGENTS.md              # Go coding rules (READ FIRST)
 ├── cmd/server/            # Entrypoint
-├── client/                # DB, YouTube, PubSub clients
-├── server/internal/handler/   # HTTP handlers
-└── vibe/vibe.go           # ALL domain types
+├── client/                # External service clients
+│   ├── database/          # SQLite operations
+│   ├── youtube/           # YouTube API client
+│   ├── soundcloud/        # SoundCloud API client
+│   ├── spotify/           # Spotify API client
+│   └── internalpubsub/    # SSE broadcasting
+├── server/                # HTTP server and routing
+│   ├── internal/handler/  # HTTP handlers
+│   ├── internal/middleware/ # HTTP middleware
+│   └── internal/helper/   # Utility functions
+├── vibe/                  # Domain types and interfaces (CRITICAL)
+├── config/                # Configuration management
+└── monitoring/            # Telemetry, tracing, metrics
 
 frontend/
-├── apps/platform/         # React web app (Main)
+├── apps/platform/         # React web app (Main, SSR-enabled)
 │   ├── src/components/    # UI components
 │   ├── src/stores/        # Zustand stores
-│   └── src/pages/         # Route components
-├── apps/cast/             # Cast Receiver App (Standalone)
+│   ├── src/pages/         # Route components
+│   ├── server.tsx         # SSR server
+│   └── client.tsx         # Client hydration
+├── apps/cast/             # Cast Receiver App (SSR-enabled)
 │   ├── src/App.tsx        # Receiver Entrypoint
-│   └── vite.config.ts     # Vite Config (Port 3001)
+│   ├── server.tsx         # SSR server
+│   └── client.tsx         # Client hydration
 └── packages/              # Shared packages
-    ├── api/               # API client
-    ├── models/            # Types & Schemas
-    └── shared/            # Utilities
+    ├── api/               # wiretyped API client
+    ├── models/            # Types & Yup schemas
+    ├── shared/            # Utilities (safeWrap, stores)
+    └── player/            # Video player components
 
 migrator/                  # Database migration tool
 ├── main.go                # Entrypoint
@@ -91,11 +112,28 @@ Full contract: `docs/API.md`
 ## Environment
 
 ```bash
+# Backend Configuration (.env)
 PORT=8080
-DATABASE_PATH=./vibez.db
+DATABASE_PATH=./data/db/vibes.db
 YOUTUBE_API_KEY=required
-VITE_API_URL=http://127.0.0.1:8080
+SPOTIFY_CLIENT_ID=optional
+SPOTIFY_CLIENT_SECRET=optional
+SOUNDCLOUD_API_KEY=optional
+
+# OpenTelemetry (optional)
+OTEL_SAMPLER_PARAM=1
+OTEL_EXPORTER_TIMEOUT=1s
+
+# Cast Configuration
+CAST_APP_ID=1FAF5D9F
+CAST_RECEIVER_URL=https://vibes.zoff.me/casting/receiver
+
+# Frontend URLs
+FRONTEND_URL=https://localhost
+VITE_API_URL=https://localhost/api
 ```
+
+Copy `.env.sample` to `.env` and configure your API keys.
 
 ## Coding Rules
 
@@ -104,9 +142,11 @@ Read before writing code:
 - **Frontend:** `frontend/AGENTS.md`
 
 Critical rules:
-- No `any` type, no `try/catch` (use `safeWrap`)
+- No `any` type, no `try/catch` (use `safeWrap`/`safeWrapAsync`)
 - All errors wrapped with context
 - No inline error assignments (`if err := ...`)
 - HTTP only through clients, consumed via interfaces
 - Domain types in `vibe/vibe.go`, not in handlers
+- **SSR**: Both platform and cast apps support server-side rendering
+- **Error Handling**: Use `safeWrap`/`safeWrapAsync` from `@vibez/shared`
 - **Providers**: YouTube, Spotify, SoundCloud supported for search/auth

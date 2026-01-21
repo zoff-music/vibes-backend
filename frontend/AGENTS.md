@@ -6,11 +6,12 @@ Non-negotiable conventions. Follow strictly.
 
 - **No `any` type** - use explicit types, compose when needed
 - **No `@ts-ignore` or `@ts-nocheck`** - fix the type
-- **No `try/catch`** - use `safeWrap`/`safeWrapAsync` from `src/utils/wrap.ts`
+- **No `try/catch`** - use `safeWrap`/`safeWrapAsync` from `@vibez/shared`
 - **Use Biome** for ALL linting and formatting. No ESLint.
 - **Run `bun run lint`** to check both format and lint rules before committing.
 - **Use wiretyped + yup** for ALL API calls / SSE.
 - **NEVER use `fetch()` or `new EventSource()`**. Only `wiretyped` clients.
+- **SSR Support** - Both platform and cast apps support server-side rendering
 
 ## File Layout
 
@@ -19,15 +20,29 @@ apps/platform/src/
 ├── components/
 │   ├── ui/                # Button, Input, Card, etc.
 │   ├── player/            # VideoPlayer, PlayerControls
-│   └── queue/             # QueueItem, QueueList
-├── hooks/
+│   ├── queue/             # QueueItem, QueueList
+│   ├── cast/              # CastButton, DeviceSelector
+│   └── room/              # UserCount, room components
+├── hooks/                 # Custom React hooks
 ├── stores/                # Zustand stores
 ├── pages/                 # Route components
-└── utils/
+├── services/              # castManager, etc.
+├── server.tsx             # SSR server
+└── client.tsx             # Client hydration
 
 apps/cast/src/
-├── App.tsx                # Entrypoint
-└── components/            # Cast-specific components
+├── App.tsx                # Cast receiver entrypoint
+├── components/            # Cast-specific components
+├── server.tsx             # SSR server
+└── client.tsx             # Client hydration
+
+packages/
+├── api/                   # wiretyped API client
+├── models/                # Shared types and Yup schemas
+├── shared/                # Utilities, hooks, stores
+│   ├── src/utils/wrap.ts  # safeWrap utilities
+│   └── src/stores/        # Shared Zustand stores
+└── player/                # Video player components
 ```
 
 ## Packages
@@ -38,13 +53,18 @@ apps/cast/src/
 
 ## Error Handling
 
-Never use try/catch. Use the wrap utilities:
+Never use try/catch. Use the wrap utilities from `@vibez/shared`:
 
 ```typescript
-import { safeWrap, safeWrapAsync } from '@/utils/wrap';
+import { safeWrap, safeWrapAsync } from '@vibez/shared';
 
 // Sync
 const [result, error] = safeWrap(() => JSON.parse(data));
+if (error) {
+  // handle error
+  return;
+}
+// use result
 
 // Async
 const [data, error] = await safeWrapAsync(api.get('/rooms'));
@@ -73,16 +93,35 @@ Always use wiretyped with yup validation:
 import { api } from '@vibez/api';
 
 // Typed and validated
-const room = await api.post('/rooms', { name: 'My Room' });
+const [room, error] = await safeWrapAsync(api.post('/rooms', { name: 'My Room' }));
+if (error) {
+  // handle error
+  return;
+}
+// use room
+```
+
+## Server-Side Rendering (SSR)
+
+Both platform and cast apps support SSR:
+
+```typescript
+// server.tsx - SSR server
+import { renderToReadableStream } from 'react-dom/server';
+import { StaticRouter } from 'react-router';
+import { safeWrapAsync } from '@vibez/shared';
+
+// client.tsx - Client hydration
+import { hydrateRoot } from 'react-dom/client';
 ```
 
 ## Styling
 
-Use Tailwind CSS. No inline styles or CSS-in-JS.
+Use Tailwind CSS v4 with dark mode support. No inline styles or CSS-in-JS.
 
 ```tsx
-// Good
-<button className="bg-primary text-white px-4 py-2 rounded-lg">
+// Good - with dark mode support
+<button className="bg-white text-gray-900 dark:bg-gray-800 dark:text-white px-4 py-2 rounded-lg">
 
 // Bad
 <button style={{ backgroundColor: 'purple' }}>

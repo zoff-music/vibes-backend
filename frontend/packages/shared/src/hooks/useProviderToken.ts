@@ -64,7 +64,7 @@ export function useProviderToken() {
     // Check pending requests
     const pending = pendingRequests[provider];
     if (pending) {
-      const [data, err] = await safeWrapAsync<ProviderToken>(pending);
+      const [err, data] = await safeWrapAsync<ProviderToken>(pending);
       if (err) {
         setError('Failed to join pending request');
         return null;
@@ -95,7 +95,7 @@ export function useProviderToken() {
     const requestPromise = tokenRequest();
     pendingRequests[provider] = requestPromise;
 
-    const [tokenData, err] = await safeWrapAsync<ProviderToken>(requestPromise);
+    const [err, tokenData] = await safeWrapAsync<ProviderToken>(requestPromise);
     delete pendingRequests[provider];
 
     if (err) {
