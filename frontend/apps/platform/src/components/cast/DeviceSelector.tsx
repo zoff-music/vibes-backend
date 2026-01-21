@@ -1,7 +1,7 @@
 import type { CastDevice } from '@vibez/models';
+import { usePlaybackStore } from '@vibez/shared';
 import React, { useState } from 'react';
 import { useCastStore } from '../../stores/castStore';
-import { usePlaybackStore } from '@vibez/shared';
 
 interface DeviceSelectorProps {
   isOpen: boolean;
