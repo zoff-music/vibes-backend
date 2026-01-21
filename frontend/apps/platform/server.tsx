@@ -29,6 +29,7 @@ async function getInitialData(path: string, req: Request) {
         console.log(`[SSR] Room ${roomId} not found, redirecting to create...`);
         const createUrl = new URL('/room/create', req.url);
         createUrl.searchParams.set('name', roomId);
+        console.log(`[SSR] Redirect URL: ${createUrl.toString()}`);
         return { data: {}, redirect: Response.redirect(createUrl.toString(), 302) };
     }
 

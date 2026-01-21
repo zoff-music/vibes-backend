@@ -11,6 +11,7 @@
     "build:server": "bun build server.tsx --outdir ./dist/server --target bun --minify",
     "start": "NODE_ENV=production bun dist/server/server.js",
     "lint": "bunx biome check .",
+    "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "test": "vitest",
     "test:e2e": "playwright test",

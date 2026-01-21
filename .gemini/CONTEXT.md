@@ -1,38 +1,47 @@
-# Vibes Project Context
+# Vibez Project Context
 
 ## Overview
 Collaborative music queue with synchronized playback. Supports YouTube, Spotify, and SoundCloud.
-Monorepo-style structure containing backend, frontend, and database migrator.
+Monorepo-style structure containing backend, frontend (with SSR), and database migrator.
 
 ## Key Directories
 
 ### `/` (Root)
-- `backend/`: Go backend server.
-- `frontend/`: Bun workspace (React + Vite + TypeScript).
-- `migrator/`: Go database migration tool.
-- `.gemini/`: Context and help for AI agents.
-- `CLAUDE.md`: High-level project commands and structure (human-facing).
+- `backend/`: Go backend server
+- `frontend/`: Bun workspace (React + Vite + TypeScript with SSR)
+- `migrator/`: Go database migration tool
+- `.env.sample`: Environment configuration template
+- `docker-compose.yml`: Multi-service development environment
+- `Caddyfile`: HTTPS reverse proxy configuration
+- `Makefile`: Development and build commands
 
 ### `backend/`
-- `cmd/server/`: Entrypoint (`main.go`).
-- `client/`: External integrations (Database, YouTube, PubSub). **All HTTP calls live here.**
-- `server/`: HTTP router and middleware.
-- `server/internal/handler/`: Business logic handlers.
-- `vibe/`: Domain types and interfaces. **Pure Go, no dependencies.**
-- `AGENTS.md`: Coding rules.
+- `cmd/server/`: Entrypoint (`main.go`)
+- `client/`: External integrations (Database, YouTube, Spotify, SoundCloud, PubSub)
+- `server/`: HTTP router, middleware, and handlers
+- `server/internal/handler/`: Business logic handlers
+- `vibe/`: Domain types and interfaces (pure Go, no dependencies)
+- `config/`: Configuration management
+- `monitoring/`: OpenTelemetry tracing, metrics, and telemetry
+- `AGENTS.md`: Coding rules
 
 ### `frontend/`
-- Workspace root.
-- `apps/platform/`: Main React application (Vite).
-    - `src/api/`: `wiretyped` client and `yup` schemas.
-    - `src/stores/`: Zustand stores.
-    - `src/components/`: UI components.
-- `apps/cast/`: Standalone Cast Receiver (Vite).
-- `packages/`: Shared packages.
-    - `api/`: Shared API client.
-    - `models/`: Shared types and schemas.
-    - `shared/`: Shared utilities.
-- `AGENTS.md`: Coding rules.
+- Workspace root with Bun workspaces
+- `apps/platform/`: Main React application (Vite with SSR)
+    - `src/api/`: `wiretyped` client and `yup` schemas
+    - `src/stores/`: Zustand stores
+    - `src/components/`: UI components
+    - `server.tsx`: SSR server
+    - `client.tsx`: Client hydration
+- `apps/cast/`: Standalone Cast Receiver (Vite with SSR)
+    - `server.tsx`: SSR server
+    - `client.tsx`: Client hydration
+- `packages/`: Shared packages
+    - `api/`: Shared API client
+    - `models/`: Shared types and schemas
+    - `shared/`: Shared utilities (safeWrap, stores)
+    - `player/`: Video player components
+- `AGENTS.md`: Coding rules
 
 ## API
 ```
@@ -65,65 +74,76 @@ GET    /api/v1/providers                # List enabled providers
 ```
 
 ### `migrator/`
-- `main.go`: Entrypoint for running migrations.
-- `migrations/`: SQL migration files (`.up.sql`, `.down.sql`).
-- **Convention**: SQL filenames are `Sequentially Numbered` (e.g. `0001_initial.up.sql`).
+- `main.go`: Entrypoint for running migrations
+- `migrations/`: SQL migration files (`.up.sql`, `.down.sql`)
+- **Convention**: SQL filenames are sequentially numbered (e.g. `0001_initial.up.sql`)
+- **Automatic execution**: Runs automatically in Docker and local-dev
 
 ## Commands
+
+### Local Development with HTTPS (Recommended)
+```bash
+make local-dev
+```
+*Starts Backend + Platform (SSR) + Cast Receiver (SSR) + Caddy Proxy*
+*Access at https://localhost*
+
+### Docker Development
+```bash
+make dev
+```
+*Full stack via Docker Compose with SSR-enabled services*
 
 ### Backend
 ```bash
 cd backend
-go build ./cmd/server
-./server
+go run cmd/server/main.go
 ```
 *Port: 8080*
 
-### Local Development (HTTPS)
-```bash
-make local-dev
-```
-*Starts Backend + Platform + Cast Receiver + Caddy Proxy.*
-*Access at https://localhost*
-
-### Frontend
+### Frontend (Both Apps with SSR)
 ```bash
 cd frontend
 bun install
 bun dev
 ```
-*Note: Runs `@vibez/platform` via filter. URL: http://localhost:5173 (usually)*
+*Platform: http://localhost:3000, Cast: http://localhost:3001*
 
-### Migrator
+### Database Migrations
 ```bash
-cd migrator
-export DATABASE_PATH=../vibes.db
-go run main.go
+make migrate-up    # Run all up migrations
+make migrate-down  # Run down migrations (1 step)
+make migrate-down STEPS=3  # Run multiple down steps
 ```
 
 ## Critical Coding Rules (Summary)
 
 ### General
-- **No `any` types.**
-- **No `try/catch`** (use `safeWrap` or returns).
-- **Explicit types** everywhere.
+- **No `any` types**
+- **No `try/catch`** (use `safeWrap`/`safeWrapAsync` from `@vibez/shared`)
+- **Explicit types** everywhere
+- **SSR Support**: Both platform and cast apps support server-side rendering
 
 ### Backend (Go)
-- **No Service/Repo layers.** Keep it simple: Handler -> Client/Domain.
-- **No `New*` constructors.** Use struct literals.
-- **No inline error assignment** (`if err := ...`).
-- **Wrap ALL errors** (`fmt.Errorf("doing X: %w", err)`).
-- **No transactions** in DB client. Use atomic queries or CTEs.
-- **Use Prepared Statements.**
+- **No Service/Repo layers** - Keep it simple: Handler -> Client/Domain
+- **No `New*` constructors** - Use struct literals
+- **No inline error assignment** (`if err := ...`)
+- **Wrap ALL errors** (`fmt.Errorf("doing X: %w", err)`)
+- **No transactions** in DB client - Use atomic queries or CTEs
+- **Use Prepared Statements**
+- **Domain types in `vibe/`** - ALL business logic types here
 
 ### Frontend (TypeScript)
-- **Use `wiretyped`** for ALL API calls / SSE. **No `fetch()` or `EventSource`.**
-- **Use `yup`** for validation.
-- **Tailwind CSS** for styling.
-- **Zustand** for state management.
-- **No inline styles.**
+- **Use `wiretyped`** for ALL API calls / SSE - **No `fetch()` or `EventSource`**
+- **Use `yup`** for validation
+- **Tailwind CSS v4** for styling with dark mode support
+- **Zustand** for state management
+- **No inline styles**
+- **Error handling**: `safeWrap`/`safeWrapAsync` from `@vibez/shared`
 
 ## Architecture Notes
-- **Database**: SQLite (modernc.org/sqlite).
-- **Real-time**: SSE (Server-Sent Events) for updates.
-- **Playback**: Synchronized via backend state + SSE.
+- **Database**: SQLite (modernc.org/sqlite) - CGO-free
+- **Real-time**: SSE (Server-Sent Events) for updates
+- **Playback**: Synchronized via backend state + SSE
+- **HTTPS Development**: Caddy provides automatic SSL certificates
+- **Environment**: `.env.sample` template with comprehensive configuration

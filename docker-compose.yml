@@ -53,7 +53,7 @@ services:
       - .:/go/src/github.com/zoff-music/vibes:ro
       - db_data:/data/db
 
-    command: ["sh", "-c", "cd /go/src/github.com/zoff-music/vibes/migrator && go run main.go -db /data/db/vibes.db -dir ./migrations"]
+    command: ["sh", "-c", "cd /go/src/github.com/zoff-music/vibes/migrator && go run main.go -db /data/db/vibes.db"]
 
   frontend-platform:
     build:

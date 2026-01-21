@@ -9,19 +9,47 @@ const DEFAULT_SETTINGS = {
 };
 
 export default function CreateRoom() {
-  const [name, setName] = useState('');
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  
+  // Initialize name with query param if present - try multiple methods
+  const getInitialName = () => {
+    // Method 1: useSearchParams hook
+    const paramName = searchParams.get('name');
+    if (paramName) {
+      console.log('[CreateRoom] Found name via useSearchParams:', paramName);
+      return paramName;
+    }
+    
+    // Method 2: Direct URL parsing as fallback
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlName = urlParams.get('name');
+      if (urlName) {
+        console.log('[CreateRoom] Found name via window.location.search:', urlName);
+        return urlName;
+      }
+    }
+    
+    console.log('[CreateRoom] No name parameter found');
+    return '';
+  };
+  
+  const [name, setName] = useState(getInitialName);
   const [mode, setMode] = useState<'server' | 'host'>('server');
   const [password, setPassword] = useState('');
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [searchParams] = useSearchParams();
-  const navigate = useNavigate();
 
-  // Prefill name from query params if present
+  // Also handle query param changes after initial render
   useEffect(() => {
     const prefilledName = searchParams.get('name');
-    if (prefilledName && !name) {
+    console.log('[CreateRoom] useEffect - Query params:', Object.fromEntries(searchParams.entries()));
+    console.log('[CreateRoom] useEffect - Prefilled name:', prefilledName);
+    console.log('[CreateRoom] useEffect - Current name state:', name);
+    if (prefilledName && prefilledName !== name) {
+      console.log('[CreateRoom] useEffect - Setting name to:', prefilledName);
       setName(prefilledName);
     }
   }, [searchParams, name]);

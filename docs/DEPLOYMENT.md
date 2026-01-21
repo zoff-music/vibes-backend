@@ -7,16 +7,21 @@ Vibez uses a **Blue/Green Deployment** strategy orchestrated by Docker Compose a
 ### Components
 
 1.  **Caddy Gateway (Load Balancer)**
-    - Uses `docker-compose.prod.yml` -> `caddy` service.
-    - Exposes ports `443` and `80` (or mapped high ports like `42069`).
-    - Routes traffic dynamically to either the "Blue" or "Green" environment based on configuration.
-    - Manages SSL certificates automatically.
+    - Uses `docker-compose.yml` -> `caddy` service
+    - Exposes ports `443` and `80` (configurable via environment variables)
+    - Routes traffic dynamically to either the "Blue" or "Green" environment based on configuration
+    - Manages SSL certificates automatically with `local_certs` for development
 
 2.  **Color Environments (Blue & Green)**
-    - Each color consists of a **Backend** container and a **Frontend** container.
-    - **Blue**: `vibes-backend-blue` + `vibes-frontend-blue`.
-    - **Green**: `vibes-backend-green` + `vibes-frontend-green`.
-    - They share the same database volume (`vibes_data`), as SQLite handles concurrent access well with WAL mode.
+    - Each color consists of **Backend**, **Platform Frontend**, and **Cast Frontend** containers
+    - **Blue**: `backend-blue` + `frontend-platform-blue` + `frontend-cast-blue`
+    - **Green**: `backend-green` + `frontend-platform-green` + `frontend-cast-green`
+    - All services support SSR for improved performance
+    - They share the same database volume (`vibes_db_shared`), as SQLite handles concurrent access well with WAL mode
+
+3.  **Database Migration**
+    - **Migrator**: Runs automatically before backend services start
+    - Ensures database schema is up-to-date before application startup
 
 ### Traffic Flow
 
@@ -24,16 +29,19 @@ Vibez uses a **Blue/Green Deployment** strategy orchestrated by Docker Compose a
 graph TD
     User -->|HTTPS| Caddy[Caddy Gateway]
     Caddy -->|/api/*| Backend[Active Backend (Blue or Green)]
-    Caddy -->|/*| Frontend[Active Frontend (Blue or Green)]
+    Caddy -->|/casting/receiver/*| CastApp[Active Cast App (Blue or Green)]
+    Caddy -->|/*| PlatformApp[Active Platform App (Blue or Green)]
     
     subgraph Blue Env
     BackendBlue[Backend Blue]
-    FrontendBlue[Frontend Blue]
+    PlatformBlue[Platform Blue - SSR]
+    CastBlue[Cast Blue - SSR]
     end
     
     subgraph Green Env
     BackendGreen[Backend Green]
-    FrontendGreen[Frontend Green]
+    PlatformGreen[Platform Green - SSR]
+    CastGreen[Cast Green - SSR]
     end
 ```
 
@@ -43,11 +51,12 @@ The deployment is managed by `.github/deploy/deploy.sh`.
 
 1.  **Identify Active Color**: The script checks Caddy's configuration to see which color is currently serving traffic.
 2.  **Prepare Idle Color**:
-    - If Blue is active, Green is prepared (and vice versa).
-    - Checks out the latest code.
-    - Builds new Docker images for the idle color.
-    - Starts the idle containers (`docker compose up -d backend-green frontend-green`).
-    - Waits for health checks to pass.
+    - If Blue is active, Green is prepared (and vice versa)
+    - Checks out the latest code
+    - Builds new Docker images for the idle color (backend, platform, cast)
+    - Runs database migrations via the migrator service
+    - Starts the idle containers (`docker compose up -d backend-green frontend-platform-green frontend-cast-green`)
+    - Waits for health checks to pass on all services
 3.  **Switch Traffic**:
     - Updates Caddy configuration to point to the new color's IP/Container.
     - Caddy reloads configuration gracefully with zero downtime.
@@ -73,12 +82,25 @@ handle /* {
 ### Local Development
 Locally, we use a simpler setup defined in `Makefile`:
 
-- **Caddy**: Proxies `https://localhost` to local ports.
-- **Backend**: Runs on `:8080`.
-- **Platform App**: Runs on `:3000`.
-- **Cast App**: Runs on `:3001` (Mapped from `/casting/receiver/*`).
+- **Caddy**: Proxies `https://localhost` to local ports with automatic SSL certificates
+- **Backend**: Runs on `:8080` with automatic database migrations
+- **Platform App**: Runs on `:3000` with SSR support
+- **Cast App**: Runs on `:3001` with SSR support (Mapped from `/casting/receiver/*`)
 
 Run with: `make local-dev`
+
+## Frontend Architecture
+
+The frontend now uses **Server-Side Rendering (SSR)** for both applications:
+
+1.  **Platform App**: Main application served at root `/` with SSR for better performance
+2.  **Cast Receiver**: Chromecast receiver served at `/casting/receiver/` with SSR for faster loading
+3.  **SSR Benefits**: 
+    - Faster initial page loads
+    - Better SEO and social media sharing
+    - Improved performance on slower devices
+    - Room data prefetching for platform app
+4.  **Development**: Both apps support hot module replacement with SSR during development
 
 ## Frontend Serving
 
