@@ -51,6 +51,7 @@ cd frontend && bun dev
 - **Music Providers**: [docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md)
 - **Cast Development**: [CAST_DEVELOPMENT_GUIDE.md](./CAST_DEVELOPMENT_GUIDE.md)
 - **Deployment Guide**: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
+- **Troubleshooting**: [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)
 - **Frontend Rules**: [frontend/AGENTS.md](./frontend/AGENTS.md)
 - **Backend Rules**: [backend/AGENTS.md](./backend/AGENTS.md)
 

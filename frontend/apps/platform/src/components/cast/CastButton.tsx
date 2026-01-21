@@ -1,6 +1,6 @@
+import { safeWrapAsync } from '@vibez/shared';
 import React, { useEffect } from 'react';
 import { useCastStore } from '../../stores/castStore';
-import { safeWrapAsync } from '@vibez/shared';
 
 interface CastButtonProps {
   onDeviceSelect?: () => void;
@@ -37,7 +37,9 @@ export const CastButton: React.FC<CastButtonProps> = ({
       if (onDeviceSelect) {
         onDeviceSelect();
       } else {
-        const [err] = await safeWrapAsync(disconnectFromDevice(currentSession.deviceId));
+        const [err] = await safeWrapAsync(
+          disconnectFromDevice(currentSession.deviceId),
+        );
         if (err) console.error('Failed to disconnect:', err);
       }
       return;
@@ -47,7 +49,9 @@ export const CastButton: React.FC<CastButtonProps> = ({
       if (onDeviceSelect) {
         onDeviceSelect();
       } else {
-        const [err] = await safeWrapAsync(connectToDevice(availableDevices[0].id));
+        const [err] = await safeWrapAsync(
+          connectToDevice(availableDevices[0].id),
+        );
         if (err) console.error('Failed to connect:', err);
       }
       return;
@@ -106,16 +110,19 @@ export const CastButton: React.FC<CastButtonProps> = ({
       <button
         onClick={handleCastClick}
         disabled={isDisabled}
-        className={`group flex items-center space-x-2 rounded-lg px-4 py-2 transition-all duration-200 ease-in-out ${isConnected
+        className={`group flex items-center space-x-2 rounded-lg px-4 py-2 transition-all duration-200 ease-in-out ${
+          isConnected
             ? 'bg-primary text-white shadow-lg hover:bg-primary-dark dark:bg-primary-light dark:hover:bg-primary'
             : 'bg-gray-200 text-gray-900 hover:bg-gray-300 dark:bg-gray-700 dark:text-white dark:hover:bg-gray-600'
-          }
-          ${isDisabled
-            ? 'cursor-not-allowed opacity-50'
-            : 'cursor-pointer hover:scale-105 active:scale-95'
-          }border-2 border-transparent ${isConnected
-            ? 'hover:border-primary-dark/20 dark:hover:border-primary/30'
-            : 'hover:border-primary/20 dark:hover:border-primary-light/30'
+        }
+          ${
+            isDisabled
+              ? 'cursor-not-allowed opacity-50'
+              : 'cursor-pointer hover:scale-105 active:scale-95'
+          }border-2 border-transparent ${
+            isConnected
+              ? 'hover:border-primary-dark/20 dark:hover:border-primary/30'
+              : 'hover:border-primary/20 dark:hover:border-primary-light/30'
           }focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-800 ${className}
         `}
         aria-label={

@@ -1,5 +1,5 @@
 import type { CastDevice } from '@vibez/models';
-import { usePlaybackStore, safeWrapAsync } from '@vibez/shared';
+import { safeWrapAsync, usePlaybackStore } from '@vibez/shared';
 import React, { useState } from 'react';
 import { useCastStore } from '../../stores/castStore';
 
@@ -43,7 +43,9 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
   const handleDisconnect = async () => {
     if (!currentSession) return;
 
-    const [err] = await safeWrapAsync(disconnectFromDevice(currentSession.deviceId));
+    const [err] = await safeWrapAsync(
+      disconnectFromDevice(currentSession.deviceId),
+    );
     if (err) {
       console.error('Failed to disconnect:', err);
       return;
@@ -61,7 +63,9 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
     if (err) {
       console.error('Failed to cast:', err);
       if (err.message.includes('YouTube')) {
-        console.log('💡 YouTube casting requires a custom receiver - this is a known limitation');
+        console.log(
+          '💡 YouTube casting requires a custom receiver - this is a known limitation',
+        );
       }
     } else {
       console.log('✅ Successfully cast');
@@ -212,13 +216,20 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                 <button
                   onClick={() => {
                     const testMedia = {
-                      contentId: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                      contentId:
+                        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
                       contentType: 'video/mp4',
                       streamType: 'BUFFERED' as const,
                       metadata: {
                         title: 'Test Video - Big Buck Bunny',
                         artist: 'Blender Foundation',
-                        images: [{ url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg', height: 480, width: 640 }],
+                        images: [
+                          {
+                            url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
+                            height: 480,
+                            width: 640,
+                          },
+                        ],
                       },
                       duration: 596,
                     };
@@ -286,10 +297,11 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                     isConnecting === device.id ||
                     (isConnected && currentSession?.deviceId === device.id)
                   }
-                  className={`w-full rounded-lg border p-3 text-left transition-colors duration-200 ${isConnected && currentSession?.deviceId === device.id
+                  className={`w-full rounded-lg border p-3 text-left transition-colors duration-200 ${
+                    isConnected && currentSession?.deviceId === device.id
                       ? 'cursor-default border-primary/20 bg-primary/10 dark:border-primary/30 dark:bg-primary/20'
                       : 'cursor-pointer border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600'
-                    }
+                  }
                     ${isConnecting === device.id ? 'opacity-50' : ''}focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-800`}
                 >
                   <div className="flex items-center space-x-3">

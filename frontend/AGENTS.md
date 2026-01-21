@@ -9,6 +9,7 @@ Non-negotiable conventions. Follow strictly.
 - **No `try/catch`** - use `safeWrap`/`safeWrapAsync` from `@vibez/shared`
 - **Use Biome** for ALL linting and formatting. No ESLint.
 - **Run `bun run lint`** to check both format and lint rules before committing.
+- **Run `bun run typecheck`** to verify TypeScript compilation before committing.
 - **Use wiretyped + yup** for ALL API calls / SSE.
 - **NEVER use `fetch()` or `new EventSource()`**. Only `wiretyped` clients.
 - **SSR Support** - Both platform and cast apps support server-side rendering
@@ -59,21 +60,23 @@ Never use try/catch. Use the wrap utilities from `@vibez/shared`:
 import { safeWrap, safeWrapAsync } from '@vibez/shared';
 
 // Sync
-const [result, error] = safeWrap(() => JSON.parse(data));
+const [error, result] = safeWrap(() => JSON.parse(data));
 if (error) {
   // handle error
   return;
 }
 // use result
 
-// Async
-const [data, error] = await safeWrapAsync(api.get('/rooms'));
+// Async - CRITICAL: destructure as [error, data]
+const [error, data] = await safeWrapAsync(api.get('/rooms'));
 if (error) {
   // handle error
   return;
 }
 // use data
 ```
+
+**Important**: `safeWrapAsync` returns `[Error | null, T | null]` - always destructure as `[error, data]`, not `[data, error]`.
 
 ## Music Search
 

@@ -1,7 +1,7 @@
 import type { CastDevice, CastError, CastSession } from '@vibez/models';
+import { safeWrap, safeWrapAsync } from '@vibez/shared';
 import { create } from 'zustand';
 import { castManager } from '../services/castManager';
-import { safeWrap, safeWrapAsync } from '@vibez/shared';
 
 interface CastState {
   // State
@@ -67,7 +67,7 @@ export const useCastStore = create<CastState>((set, get) => ({
 
     // Discover initial devices
     const [error, devices] = await safeWrapAsync(castManager.discoverDevices());
-    
+
     if (error) {
       console.error('Failed to initialize casting:', error);
       set({
@@ -89,7 +89,7 @@ export const useCastStore = create<CastState>((set, get) => ({
   discoverDevices: async () => {
     set({ isDiscovering: true, lastError: null });
     const [error, devices] = await safeWrapAsync(castManager.discoverDevices());
-    
+
     if (error) {
       console.error('Failed to discover devices:', error);
       set({
@@ -111,8 +111,10 @@ export const useCastStore = create<CastState>((set, get) => ({
 
   connectToDevice: async (deviceId: string) => {
     set({ lastError: null });
-    const [error, session] = await safeWrapAsync(castManager.connectToDevice(deviceId));
-    
+    const [error, session] = await safeWrapAsync(
+      castManager.connectToDevice(deviceId),
+    );
+
     if (error || !session) {
       console.error('Failed to connect to device:', error);
       set({
@@ -133,8 +135,10 @@ export const useCastStore = create<CastState>((set, get) => ({
 
   disconnectFromDevice: async (deviceId: string) => {
     set({ lastError: null });
-    const [error, _] = await safeWrapAsync(castManager.disconnectFromDevice(deviceId));
-    
+    const [error, _] = await safeWrapAsync(
+      castManager.disconnectFromDevice(deviceId),
+    );
+
     if (error) {
       console.error('Failed to disconnect from device:', error);
       set({
@@ -181,7 +185,7 @@ export const useCastStore = create<CastState>((set, get) => ({
     };
 
     const [error, _] = await safeWrapAsync(castManager.castMedia(mediaInfo));
-    
+
     if (error) {
       console.error('Failed to cast song:', error);
       set({
@@ -199,8 +203,10 @@ export const useCastStore = create<CastState>((set, get) => ({
     if (!get().isConnected) return;
 
     set({ lastError: null });
-    const [error, _] = await safeWrapAsync(castManager.syncPlaybackState(state));
-    
+    const [error, _] = await safeWrapAsync(
+      castManager.syncPlaybackState(state),
+    );
+
     if (error) {
       console.error('Failed to sync playback state:', error);
       set({
@@ -218,7 +224,7 @@ export const useCastStore = create<CastState>((set, get) => ({
 
     set({ lastError: null });
     const [error, _] = await safeWrapAsync(castManager.updateQueue(queue));
-    
+
     if (error) {
       console.error('Failed to update queue:', error);
       set({
@@ -238,8 +244,10 @@ export const useCastStore = create<CastState>((set, get) => ({
     if (!get().isConnected) return;
 
     set({ lastError: null });
-    const [error, _] = await safeWrapAsync(castManager.updateRoomInfo(roomInfo));
-    
+    const [error, _] = await safeWrapAsync(
+      castManager.updateRoomInfo(roomInfo),
+    );
+
     if (error) {
       console.error('Failed to update room info:', error);
       set({
@@ -258,7 +266,7 @@ export const useCastStore = create<CastState>((set, get) => ({
 
   cleanup: () => {
     const [error, _] = safeWrap(() => castManager.destroy());
-    
+
     if (error) {
       console.error('Error during cleanup:', error);
     }

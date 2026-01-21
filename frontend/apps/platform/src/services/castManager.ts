@@ -46,32 +46,35 @@ class GoogleCastManager implements CastManager {
     this.initializationPromise = (async () => {
       if (this.isInitialized) return;
 
-      const [loadErr] = await safeWrapAsync(new Promise<void>((resolve, reject) => {
-        if (window.chrome?.cast?.isAvailable) {
-          resolve();
-          return;
-        }
+      const [loadErr] = await safeWrapAsync(
+        new Promise<void>((resolve, reject) => {
+          if (window.chrome?.cast?.isAvailable) {
+            resolve();
+            return;
+          }
 
-        if (!window.chrome?.cast) {
-          const script = document.createElement('script');
-          script.src = 'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
-          script.onload = () => {
+          if (!window.chrome?.cast) {
+            const script = document.createElement('script');
+            script.src =
+              'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
+            script.onload = () => {
+              this.waitForCastAPI().then(resolve).catch(reject);
+            };
+            script.onerror = () => {
+              const error = new Error('Failed to load Google Cast SDK');
+              this.notifyError({
+                code: 'SDK_LOAD_FAILED',
+                description: 'Failed to load Google Cast SDK',
+                details: error,
+              });
+              reject(error);
+            };
+            document.head.appendChild(script);
+          } else {
             this.waitForCastAPI().then(resolve).catch(reject);
-          };
-          script.onerror = () => {
-            const error = new Error('Failed to load Google Cast SDK');
-            this.notifyError({
-              code: 'SDK_LOAD_FAILED',
-              description: 'Failed to load Google Cast SDK',
-              details: error,
-            });
-            reject(error);
-          };
-          document.head.appendChild(script);
-        } else {
-          this.waitForCastAPI().then(resolve).catch(reject);
-        }
-      }));
+          }
+        }),
+      );
 
       if (loadErr) {
         this.initializationPromise = null;
@@ -125,7 +128,9 @@ class GoogleCastManager implements CastManager {
     const [_, err] = safeWrap(() => {
       console.log('Setting up Google Cast API...');
 
-      const sessionRequest = new window.chrome.cast.SessionRequest(CAST_APPLICATION_ID);
+      const sessionRequest = new window.chrome.cast.SessionRequest(
+        CAST_APPLICATION_ID,
+      );
       console.log('Created session request for app ID:', CAST_APPLICATION_ID);
 
       const apiConfig = new window.chrome.cast.ApiConfig(
@@ -362,7 +367,9 @@ class GoogleCastManager implements CastManager {
             this.reconnectAttempts = 0;
 
             if (session.addUpdateListener) {
-              session.addUpdateListener(this.onSessionUpdateListener.bind(this));
+              session.addUpdateListener(
+                this.onSessionUpdateListener.bind(this),
+              );
             }
 
             this.notifySessionStateChange(castSession);
@@ -373,7 +380,8 @@ class GoogleCastManager implements CastManager {
           else resolve(res!);
         },
         (error: any) => {
-          const errMsg = error?.description || error?.message || 'Unknown error';
+          const errMsg =
+            error?.description || error?.message || 'Unknown error';
           console.error('Failed to connect to device:', error);
           this.notifyError({
             code: error?.code || 'CONNECTION_FAILED',
@@ -476,7 +484,8 @@ class GoogleCastManager implements CastManager {
       metadata.subtitle = 'Loading...';
 
       receiverMediaInfo.metadata = metadata;
-      receiverMediaInfo.streamType = window.chrome.cast.media.StreamType.BUFFERED;
+      receiverMediaInfo.streamType =
+        window.chrome.cast.media.StreamType.BUFFERED;
 
       // Store the original media info to send to receiver once loaded
       receiverMediaInfo.customData = {
@@ -496,7 +505,9 @@ class GoogleCastManager implements CastManager {
         },
       };
 
-      const request = new window.chrome.cast.media.LoadRequest(receiverMediaInfo);
+      const request = new window.chrome.cast.media.LoadRequest(
+        receiverMediaInfo,
+      );
 
       console.log('🎬 Loading custom receiver with data:', {
         receiverUrl: CUSTOM_RECEIVER_URL,
@@ -524,7 +535,8 @@ class GoogleCastManager implements CastManager {
           resolve();
         },
         (error: any) => {
-          const errorMessage = error?.description || error?.message || 'Unknown error';
+          const errorMessage =
+            error?.description || error?.message || 'Unknown error';
           console.error('❌ Failed to load custom receiver:', error);
 
           this.notifyError({
@@ -565,7 +577,8 @@ class GoogleCastManager implements CastManager {
           'urn:x-cast:vibez.media',
           message,
           () => console.log('✅ YouTube content sent to receiver'),
-          (error: any) => console.error('❌ Failed to send YouTube content:', error),
+          (error: any) =>
+            console.error('❌ Failed to send YouTube content:', error),
         );
       } else {
         // For non-YouTube content, send standard media info
@@ -582,7 +595,8 @@ class GoogleCastManager implements CastManager {
           'urn:x-cast:vibez.media',
           message,
           () => console.log('✅ Media content sent to receiver'),
-          (error: any) => console.error('❌ Failed to send media content:', error),
+          (error: any) =>
+            console.error('❌ Failed to send media content:', error),
         );
       }
     });
@@ -647,7 +661,8 @@ class GoogleCastManager implements CastManager {
           resolve();
         },
         (error: any) => {
-          const errorMessage = error?.description || error?.message || 'Unknown error';
+          const errorMessage =
+            error?.description || error?.message || 'Unknown error';
           console.error('❌ Failed to load standard media:', error);
 
           this.notifyError({
@@ -738,35 +753,45 @@ class GoogleCastManager implements CastManager {
   }
 
   async syncPlaybackState(state: any): Promise<void> {
-    const [_, err] = await safeWrapAsync((async () => {
-      if (!this.isConnected() || !this.actualCastSession) return;
-      const session = this.actualCastSession;
-      if (!session.media?.[0]) return;
+    const [_, err] = await safeWrapAsync(
+      (async () => {
+        if (!this.isConnected() || !this.actualCastSession) return;
+        const session = this.actualCastSession;
+        if (!session.media?.[0]) return;
 
-      const media = session.media[0];
+        const media = session.media[0];
 
-      // Sync play/pause
-      if (state.isPlaying && media.playerState === window.chrome.cast.media.PlayerState.PAUSED) {
-        await new Promise<void>((res, rej) => media.play(null, res, rej));
-      } else if (!state.isPlaying && media.playerState === window.chrome.cast.media.PlayerState.PLAYING) {
-        await new Promise<void>((res, rej) => media.pause(null, res, rej));
-      }
-
-      // Sync position
-      if (state.positionMs && typeof state.positionMs === 'number') {
-        const currentTimeMs = (media.currentTime || 0) * 1000;
-        if (Math.abs(currentTimeMs - state.positionMs) > 2000) {
-          const seekRequest = new window.chrome.cast.media.SeekRequest();
-          seekRequest.currentTime = state.positionMs / 1000;
-          await new Promise<void>((res, rej) => media.seek(seekRequest, res, rej));
+        // Sync play/pause
+        if (
+          state.isPlaying &&
+          media.playerState === window.chrome.cast.media.PlayerState.PAUSED
+        ) {
+          await new Promise<void>((res, rej) => media.play(null, res, rej));
+        } else if (
+          !state.isPlaying &&
+          media.playerState === window.chrome.cast.media.PlayerState.PLAYING
+        ) {
+          await new Promise<void>((res, rej) => media.pause(null, res, rej));
         }
-      }
 
-      if (this.currentSession) {
-        this.currentSession.lastSyncAt = new Date();
-        this.notifySessionStateChange(this.currentSession);
-      }
-    })());
+        // Sync position
+        if (state.positionMs && typeof state.positionMs === 'number') {
+          const currentTimeMs = (media.currentTime || 0) * 1000;
+          if (Math.abs(currentTimeMs - state.positionMs) > 2000) {
+            const seekRequest = new window.chrome.cast.media.SeekRequest();
+            seekRequest.currentTime = state.positionMs / 1000;
+            await new Promise<void>((res, rej) =>
+              media.seek(seekRequest, res, rej),
+            );
+          }
+        }
+
+        if (this.currentSession) {
+          this.currentSession.lastSyncAt = new Date();
+          this.notifySessionStateChange(this.currentSession);
+        }
+      })(),
+    );
 
     if (err) {
       console.error('Failed to sync playback state:', err);
@@ -900,4 +925,3 @@ class GoogleCastManager implements CastManager {
 
 // Export singleton instance
 export const castManager = new GoogleCastManager();
-export default castManager;

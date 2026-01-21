@@ -19,10 +19,12 @@ build-migrator:
 
 ## migrate-up: Runs all up migrations
 migrate-up:
+	mkdir -p data/db
 	cd migrator && go run main.go -db ../data/db/vibes.db
 
 ## migrate-down: Runs one down migration step by default (use STEPS=N for more)
 migrate-down:
+	mkdir -p data/db
 	cd migrator && go run main.go -db ../data/db/vibes.db -down -steps $(if $(STEPS),$(STEPS),1)
 
 
@@ -76,7 +78,6 @@ setup-caddy:
 
 ## local-dev: Runs backend + frontend locally with env ports set and Caddy for SSL
 local-dev: setup-caddy
-
 	@echo "Stopping any existing dev processes..."
 	@-lsof -ti :3000,3001,8080 | xargs kill -9 2>/dev/null || true
 	@echo "Ensuring dependencies are up to date..."
@@ -86,8 +87,8 @@ local-dev: setup-caddy
 	@echo "Starting local development services..."
 	@sh -c 'trap "kill 0" INT TERM EXIT; \
 	PORT=8080 sh -c "cd migrator && go run main.go -db ../data/db/vibes.db && cd ../backend && DATABASE_PATH=../data/db/vibes.db exec go run cmd/server/main.go" & \
-	PORT=3000 sh -c "cd frontend && exec bun dev" & \
-	PORT=3001 sh -c "cd frontend && exec bun --filter @vibez/cast dev" & \
+	sh -c "cd frontend/apps/platform && FORCE_COLOR=1 exec bun run dev" & \
+	sh -c "cd frontend/apps/cast && FORCE_COLOR=1 exec bun run dev" & \
 	exec caddy run --config Caddyfile & \
 	wait'
 

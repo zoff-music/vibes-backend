@@ -10,6 +10,22 @@ http://localhost {
 }
 
 localhost, 127.0.0.1 {
+	# Handle cast assets - proxy to cast server
+	handle /assets/cast/* {
+		reverse_proxy {$CAST_UPSTREAM:localhost:3001} {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
+	# Handle platform assets - proxy to platform server
+	handle /assets/platform/* {
+		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3000} {
+			header_up Host {host}
+			header_up X-Forwarded-Proto {scheme}
+		}
+	}
+
 	handle /api/v1/rooms/*/events {
 		reverse_proxy {$BACKEND_UPSTREAM:localhost:8080} {
 			flush_interval -1

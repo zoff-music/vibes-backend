@@ -2,11 +2,7 @@
   "compilerOptions": {
     "target": "ES2020",
     "useDefineForClassFields": true,
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "skipLibCheck": true,
     /* Bundler mode */
@@ -21,25 +17,14 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "types": [
-      "vitest/globals",
-      "@testing-library/jest-dom",
-      "bun",
-      "node"
-    ],
+    "types": ["vitest/globals", "@testing-library/jest-dom", "bun", "node"],
     /* Path aliases */
     "baseUrl": ".",
     "paths": {
-      "@/*": [
-        "./src/*"
-      ]
+      "@/*": ["./src/*"]
     }
   },
-  "include": [
-    "src",
-    "server.tsx",
-    "client.tsx"
-  ],
+  "include": ["src", "server.tsx", "client.tsx"],
   "references": [
     {
       "path": "./tsconfig.node.json"
