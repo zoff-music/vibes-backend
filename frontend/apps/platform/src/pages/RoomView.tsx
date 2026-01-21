@@ -3,7 +3,7 @@ import { Song } from '@vibez/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router';
 import { PlayerControls } from '../components/player/PlayerControls';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { QueueList } from '../components/queue/QueueList';
@@ -13,9 +13,14 @@ import { usePlayback } from '../hooks/usePlayback';
 import { useProviderToken } from '../hooks/useProviderToken';
 import { useQueue } from '../hooks/useQueue';
 import { useRoom } from '../hooks/useRoom';
+import { useRoomStore } from '../stores/roomStore';
 import { useThemeStore } from '../stores/themeStore';
 
-export default function RoomView() {
+interface RoomViewProps {
+  initialData?: any;
+}
+
+export default function RoomView({ initialData }: RoomViewProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { currentSong, skip, isPlaying } = usePlayback(id || '');
@@ -32,6 +37,18 @@ export default function RoomView() {
     updateRoom,
   } = useRoom(id || '');
   const { isDarkMode, toggleDarkMode } = useThemeStore();
+
+  // Handle SSR initial data
+  const { setRoom } = useRoomStore();
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (initialData && !initialized) {
+      console.log('[SSR] Initializing room with server-provided data');
+      setRoom(initialData);
+      setInitialized(true);
+    }
+  }, [initialData, initialized, setRoom]);
 
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [showRoomInfo, setShowRoomInfo] = useState(false);
@@ -232,11 +249,10 @@ export default function RoomView() {
             {/* Dark Mode Toggle */}
             <button
               onClick={toggleDarkMode}
-              className={`rounded-xl border-2 p-2.5 transition-all ${
-                isDarkMode
-                  ? 'border-primary bg-primary text-white shadow-neon-pink'
-                  : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'
-              }`}
+              className={`rounded-xl border-2 p-2.5 transition-all ${isDarkMode
+                ? 'border-primary bg-primary text-white shadow-neon-pink'
+                : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'
+                }`}
               title={
                 isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
               }

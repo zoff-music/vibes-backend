@@ -1,6 +1,7 @@
 import type { CastDevice, CastError, CastSession } from '@vibez/models';
 import { create } from 'zustand';
 import { castManager } from '../services/castManager';
+import { safeWrap, safeWrapAsync } from '@vibez/shared';
 
 interface CastState {
   // State
@@ -38,40 +39,36 @@ export const useCastStore = create<CastState>((set, get) => ({
 
   // Actions
   initialize: async () => {
-    try {
-      set({ lastError: null });
+    set({ lastError: null });
 
-      // Set up event listeners
-      castManager.onDeviceAvailable((device) => {
-        set((state) => {
-          // Remove existing device with same ID and add updated one
-          const filteredDevices = state.availableDevices.filter(
-            (d) => d.id !== device.id,
-          );
-          return {
-            availableDevices: [...filteredDevices, device],
-          };
-        });
+    // Set up event listeners
+    castManager.onDeviceAvailable((device) => {
+      set((state) => {
+        // Remove existing device with same ID and add updated one
+        const filteredDevices = state.availableDevices.filter(
+          (d) => d.id !== device.id,
+        );
+        return {
+          availableDevices: [...filteredDevices, device],
+        };
       });
+    });
 
-      castManager.onSessionStateChange((session) => {
-        set({
-          currentSession: session,
-          isConnected: session.state === 'connected',
-        });
-      });
-
-      castManager.onCastError((error) => {
-        set({ lastError: error });
-      });
-
-      // Discover initial devices
-      const devices = await castManager.discoverDevices();
+    castManager.onSessionStateChange((session) => {
       set({
-        isInitialized: true,
-        availableDevices: devices,
+        currentSession: session,
+        isConnected: session.state === 'connected',
       });
-    } catch (error) {
+    });
+
+    castManager.onCastError((error) => {
+      set({ lastError: error });
+    });
+
+    // Discover initial devices
+    const [error, devices] = await safeWrapAsync(castManager.discoverDevices());
+    
+    if (error) {
       console.error('Failed to initialize casting:', error);
       set({
         lastError: {
@@ -80,18 +77,20 @@ export const useCastStore = create<CastState>((set, get) => ({
           details: error,
         },
       });
+      return;
     }
+
+    set({
+      isInitialized: true,
+      availableDevices: devices || [],
+    });
   },
 
   discoverDevices: async () => {
-    try {
-      set({ isDiscovering: true, lastError: null });
-      const devices = await castManager.discoverDevices();
-      set({
-        availableDevices: devices,
-        isDiscovering: false,
-      });
-    } catch (error) {
+    set({ isDiscovering: true, lastError: null });
+    const [error, devices] = await safeWrapAsync(castManager.discoverDevices());
+    
+    if (error) {
       console.error('Failed to discover devices:', error);
       set({
         isDiscovering: false,
@@ -101,18 +100,20 @@ export const useCastStore = create<CastState>((set, get) => ({
           details: error,
         },
       });
+      return;
     }
+
+    set({
+      availableDevices: devices || [],
+      isDiscovering: false,
+    });
   },
 
   connectToDevice: async (deviceId: string) => {
-    try {
-      set({ lastError: null });
-      const session = await castManager.connectToDevice(deviceId);
-      set({
-        currentSession: session,
-        isConnected: session.state === 'connected',
-      });
-    } catch (error) {
+    set({ lastError: null });
+    const [error, session] = await safeWrapAsync(castManager.connectToDevice(deviceId));
+    
+    if (error || !session) {
       console.error('Failed to connect to device:', error);
       set({
         lastError: {
@@ -121,18 +122,20 @@ export const useCastStore = create<CastState>((set, get) => ({
           details: error,
         },
       });
+      return;
     }
+
+    set({
+      currentSession: session,
+      isConnected: session.state === 'connected',
+    });
   },
 
   disconnectFromDevice: async (deviceId: string) => {
-    try {
-      set({ lastError: null });
-      await castManager.disconnectFromDevice(deviceId);
-      set({
-        currentSession: null,
-        isConnected: false,
-      });
-    } catch (error) {
+    set({ lastError: null });
+    const [error, _] = await safeWrapAsync(castManager.disconnectFromDevice(deviceId));
+    
+    if (error) {
       console.error('Failed to disconnect from device:', error);
       set({
         lastError: {
@@ -141,39 +144,45 @@ export const useCastStore = create<CastState>((set, get) => ({
           details: error,
         },
       });
+      return;
     }
+
+    set({
+      currentSession: null,
+      isConnected: false,
+    });
   },
 
   castCurrentSong: async (song: any) => {
-    try {
-      if (!get().isConnected) {
-        throw new Error('No active casting session');
-      }
+    if (!get().isConnected) {
+      throw new Error('No active casting session');
+    }
 
-      set({ lastError: null });
+    set({ lastError: null });
 
-      const mediaInfo = {
-        contentId: `https://www.youtube.com/watch?v=${song.sourceId}`,
-        contentType: 'video/mp4',
-        streamType: 'BUFFERED' as const,
-        metadata: {
-          title: song.title || 'Unknown Title',
-          artist: song.artist || 'Unknown Artist',
-          images: song.thumbnailUrl
-            ? [
-                {
-                  url: song.thumbnailUrl,
-                  height: 480,
-                  width: 640,
-                },
-              ]
-            : [],
-        },
-        duration: song.duration,
-      };
+    const mediaInfo = {
+      contentId: `https://www.youtube.com/watch?v=${song.sourceId}`,
+      contentType: 'video/mp4',
+      streamType: 'BUFFERED' as const,
+      metadata: {
+        title: song.title || 'Unknown Title',
+        artist: song.artist || 'Unknown Artist',
+        images: song.thumbnailUrl
+          ? [
+              {
+                url: song.thumbnailUrl,
+                height: 480,
+                width: 640,
+              },
+            ]
+          : [],
+      },
+      duration: song.duration,
+    };
 
-      await castManager.castMedia(mediaInfo);
-    } catch (error) {
+    const [error, _] = await safeWrapAsync(castManager.castMedia(mediaInfo));
+    
+    if (error) {
       console.error('Failed to cast song:', error);
       set({
         lastError: {
@@ -182,17 +191,17 @@ export const useCastStore = create<CastState>((set, get) => ({
           details: error,
         },
       });
-      throw error; // Re-throw so calling code can handle it
+      throw error;
     }
   },
 
   syncPlaybackState: async (state: any) => {
-    try {
-      if (!get().isConnected) return;
+    if (!get().isConnected) return;
 
-      set({ lastError: null });
-      await castManager.syncPlaybackState(state);
-    } catch (error) {
+    set({ lastError: null });
+    const [error, _] = await safeWrapAsync(castManager.syncPlaybackState(state));
+    
+    if (error) {
       console.error('Failed to sync playback state:', error);
       set({
         lastError: {
@@ -205,12 +214,12 @@ export const useCastStore = create<CastState>((set, get) => ({
   },
 
   updateQueue: async (queue: any[]) => {
-    try {
-      if (!get().isConnected) return;
+    if (!get().isConnected) return;
 
-      set({ lastError: null });
-      await castManager.updateQueue(queue);
-    } catch (error) {
+    set({ lastError: null });
+    const [error, _] = await safeWrapAsync(castManager.updateQueue(queue));
+    
+    if (error) {
       console.error('Failed to update queue:', error);
       set({
         lastError: {
@@ -226,12 +235,12 @@ export const useCastStore = create<CastState>((set, get) => ({
     name: string;
     participantCount: number;
   }) => {
-    try {
-      if (!get().isConnected) return;
+    if (!get().isConnected) return;
 
-      set({ lastError: null });
-      await castManager.updateRoomInfo(roomInfo);
-    } catch (error) {
+    set({ lastError: null });
+    const [error, _] = await safeWrapAsync(castManager.updateRoomInfo(roomInfo));
+    
+    if (error) {
       console.error('Failed to update room info:', error);
       set({
         lastError: {
@@ -248,18 +257,19 @@ export const useCastStore = create<CastState>((set, get) => ({
   },
 
   cleanup: () => {
-    try {
-      castManager.destroy();
-      set({
-        isInitialized: false,
-        availableDevices: [],
-        currentSession: null,
-        isConnected: false,
-        lastError: null,
-        isDiscovering: false,
-      });
-    } catch (error) {
+    const [error, _] = safeWrap(() => castManager.destroy());
+    
+    if (error) {
       console.error('Error during cleanup:', error);
     }
+
+    set({
+      isInitialized: false,
+      availableDevices: [],
+      currentSession: null,
+      isConnected: false,
+      lastError: null,
+      isDiscovering: false,
+    });
   },
 }));

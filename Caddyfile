@@ -11,7 +11,7 @@ http://localhost {
 
 localhost, 127.0.0.1 {
 	handle /api/v1/rooms/*/events {
-		reverse_proxy localhost:8080 {
+		reverse_proxy {$BACKEND_UPSTREAM:localhost:8080} {
 			flush_interval -1
 			header_up Host {host}
 			header_up X-Forwarded-Proto {scheme}
@@ -19,21 +19,21 @@ localhost, 127.0.0.1 {
 	}
 
 	handle /api/* {
-		reverse_proxy localhost:8080 {
+		reverse_proxy {$BACKEND_UPSTREAM:localhost:8080} {
 			header_up Host {host}
 			header_up X-Forwarded-Proto {scheme}
 		}
 	}
 
 	handle /metrics {
-		reverse_proxy localhost:8080 {
+		reverse_proxy {$BACKEND_UPSTREAM:localhost:8080} {
 			header_up Host {host}
 			header_up X-Forwarded-Proto {scheme}
 		}
 	}
 
 	handle /_healthz {
-		reverse_proxy localhost:8080 {
+		reverse_proxy {$BACKEND_UPSTREAM:localhost:8080} {
 			header_up Host {host}
 			header_up X-Forwarded-Proto {scheme}
 		}
@@ -42,13 +42,15 @@ localhost, 127.0.0.1 {
 	# Cast receiver endpoint
 	redir /casting/receiver /casting/receiver/
 	handle /casting/receiver/* {
-		reverse_proxy localhost:3001 {
+		reverse_proxy {$CAST_UPSTREAM:localhost:3001} {
 			header_up Host {host}
 			header_up X-Forwarded-Proto {scheme}
 		}
 	}
 
 	handle {
-		reverse_proxy localhost:3000
+		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3000}
 	}
 }
+
+

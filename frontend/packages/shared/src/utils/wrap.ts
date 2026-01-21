@@ -1,26 +1,26 @@
 /**
  * Safe wrapper for synchronous functions.
- * Returns [data, error] tuple.
+ * Returns [error, data] tuple.
  */
-export function safeWrap<T>(fn: () => T): [T | null, Error | null] {
+export function safeWrap<T>(fn: () => T): [Error | null, T | null] {
   try {
-    return [fn(), null];
+    return [null, fn()];
   } catch (err) {
-    return [null, err instanceof Error ? err : new Error(String(err))];
+    return [err instanceof Error ? err : new Error(String(err)), null];
   }
 }
 
 /**
  * Safe wrapper for asynchronous functions.
- * Returns [data, error] tuple.
+ * Returns [error, data] tuple.
  */
 export async function safeWrapAsync<T>(
   promise: Promise<T>,
-): Promise<[T | null, Error | null]> {
+): Promise<[Error | null, T | null]> {
   try {
     const data = await promise;
-    return [data, null];
+    return [null, data];
   } catch (err) {
-    return [null, err instanceof Error ? err : new Error(String(err))];
+    return [err instanceof Error ? err : new Error(String(err)), null];
   }
 }

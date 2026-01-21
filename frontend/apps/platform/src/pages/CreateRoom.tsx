@@ -1,6 +1,6 @@
 import { api } from '@vibez/api';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router';
 
 const DEFAULT_SETTINGS = {
   skipAllowed: true,
@@ -15,7 +15,16 @@ export default function CreateRoom() {
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+
+  // Prefill name from query params if present
+  useEffect(() => {
+    const prefilledName = searchParams.get('name');
+    if (prefilledName && !name) {
+      setName(prefilledName);
+    }
+  }, [searchParams, name]);
 
   const handleCreate = async () => {
     if (!name.trim() || isLoading) return;
@@ -119,11 +128,10 @@ export default function CreateRoom() {
               <button
                 type="button"
                 onClick={() => setMode('server')}
-                className={`rounded-xl border-2 p-4 text-left transition-all ${
-                  mode === 'server'
-                    ? 'border-primary bg-primary/10 text-ink'
-                    : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
-                }`}
+                className={`rounded-xl border-2 p-4 text-left transition-all ${mode === 'server'
+                  ? 'border-primary bg-primary/10 text-ink'
+                  : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
+                  }`}
               >
                 <div className="mb-1 font-bold">Server Mode</div>
                 <div className="text-xs opacity-70">
@@ -133,11 +141,10 @@ export default function CreateRoom() {
               <button
                 type="button"
                 onClick={() => setMode('host')}
-                className={`rounded-xl border-2 p-4 text-left transition-all ${
-                  mode === 'host'
-                    ? 'border-secondary bg-secondary/10 text-ink'
-                    : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
-                }`}
+                className={`rounded-xl border-2 p-4 text-left transition-all ${mode === 'host'
+                  ? 'border-secondary bg-secondary/10 text-ink'
+                  : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
+                  }`}
               >
                 <div className="mb-1 font-bold">Host Mode</div>
                 <div className="text-xs opacity-70">

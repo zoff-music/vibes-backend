@@ -68,75 +68,63 @@ COPY frontend/. .
 EXPOSE 19006
 CMD ["bun", "run", "dev:web", "--", "--host", "localhost", "--port", "19006"]
 
-# Frontend production build
+# Frontend builder stage
 FROM oven/bun:1.2.0 AS frontend-builder
-
 WORKDIR /app
-
 COPY frontend/package.json frontend/bun.lock ./
 COPY frontend/apps ./apps
 COPY frontend/packages ./packages
-
 RUN bun install --frozen-lockfile
-ARG VITE_API_URL
-ARG VITE_APP_TITLE
-ARG VITE_CAST_APP_ID
-ARG VITE_CAST_RECEIVER_URL
 
-ENV VITE_API_URL=$VITE_API_URL
-ENV VITE_APP_TITLE=$VITE_APP_TITLE
-ENV VITE_CAST_APP_ID=$VITE_CAST_APP_ID
-ENV VITE_CAST_RECEIVER_URL=$VITE_CAST_RECEIVER_URL
-
-COPY frontend/. .
-
+# Platform build
+FROM frontend-builder AS platform-builder
+WORKDIR /app/apps/platform
+COPY frontend/apps/platform .
 RUN bun run build
-# Build cast app explicitly if not covered by root build (it might be if root build is workspace aware, but simpler to be explicit or ensure it is)
-# "bun run build" at root likely runs "turbo run build" or similar if configured, or just recursive.
-# Let's assume root build script covers it OR run it explicitly. 
-# Checking root package.json would be good, but safe to run explicit build for cast here.
-RUN cd apps/cast && bun run build
 
-# Frontend production image - serve static files
-# Frontend production image - serve static files with Caddy
-FROM caddy:2.9.1-alpine AS frontend-prod
+# Cast build
+FROM frontend-builder AS cast-builder
+WORKDIR /app/apps/cast
+COPY frontend/apps/cast .
+RUN bun run build
 
-WORKDIR /srv
-
-# Copy Caddy configuration
-COPY frontend/Caddyfile /etc/caddy/Caddyfile
-
-# Copy built static files
-COPY --from=frontend-builder /app/apps/platform/dist ./app
-COPY --from=frontend-builder /app/apps/cast/dist ./cast-app
-
+# Platform production image
+FROM oven/bun:1.2.0-slim AS frontend-platform-prod
+WORKDIR /app
+COPY --from=platform-builder /app/apps/platform/dist ./dist
+COPY --from=platform-builder /app/apps/platform/package.json .
+COPY --from=platform-builder /app/apps/platform/server.tsx .
+# Copy necessary workspace dependencies if any (usually bundled, but let's be safe or check build output)
+# Since we bun build with --target bun and --minify, it should be self-contained except for bun itself.
 EXPOSE 3000
-# Default command for caddy image is to run with /etc/caddy/Caddyfile
+CMD ["bun", "run", "start"]
 
-# Create production image for backend application with needed files
-# Using Debian slim for glibc compatibility (Go CGO binaries need glibc)
+# Cast production image
+FROM oven/bun:1.2.0-slim AS frontend-cast-prod
+WORKDIR /app
+COPY --from=cast-builder /app/apps/cast/dist ./dist
+COPY --from=cast-builder /app/apps/cast/package.json .
+COPY --from=cast-builder /app/apps/cast/server.tsx .
+EXPOSE 3001
+CMD ["bun", "run", "start"]
+
+# Production image for backend application
 FROM debian:bookworm-slim AS backend-prod
-
-# Install ca-certificates for HTTPS and curl for healthcheck
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy binaries
+WORKDIR /app
 COPY --from=backend-builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
 COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrator-bin /app/migrator-bin
 COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrations /app/migrations
 
-# Ensure binaries are executable
 RUN chmod +x /app/main /app/migrator-bin
-
-# Create data directory
-RUN mkdir -p /app/data
+RUN mkdir -p /data/db
 
 EXPOSE 8080
+# Migrations are handled by the migrator service in docker-compose, 
+# but we keep this as a fallback or for standalone runs.
+ENTRYPOINT ["/bin/sh", "-c", "/app/main"]
 
-WORKDIR /app
-
-# Run migrations then start the app
-ENTRYPOINT ["/bin/sh", "-c", "/app/migrator-bin -db /app/data/vibes.db && exec /app/main"]

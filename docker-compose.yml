@@ -2,38 +2,100 @@ services:
   caddy:
     image: caddy:2.9.1
     ports:
+      - "${CADDY_HTTP_PORT:-80}:80"
+      - "${CADDY_HTTPS_PORT:-443}:443"
       - "42069:42069"
     volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./${CADDYFILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
+      # Add volume for caddy data to persist certs if needed
+      - caddy_data:/data
+      - caddy_config:/config
+    environment:
+      - BACKEND_UPSTREAM=backend:8080
+      - PLATFORM_UPSTREAM=frontend-platform:3000
+      - CAST_UPSTREAM=frontend-cast:3001
     depends_on:
       - backend
-      - frontend
+      - frontend-platform
+      - frontend-cast
+    restart: unless-stopped
 
   backend:
     build:
       context: .
-      target: backend-dev
+      target: ${BACKEND_BUILD_TARGET:-backend-dev}
     ports:
-      - "42070:8080"
+      - "${BACKEND_PORT:-42070}:8080"
     env_file:
-      - .env
+      - ${ENV_FILE:-.env}
+    environment:
+      - DATABASE_PATH=/data/db/vibes.db
     volumes:
-      - .:/go/src/github.com/zoff-music/vibes
+      - .:/go/src/github.com/zoff-music/vibes:ro
+      - db_data:/data/db
+    depends_on:
+      migrator:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/_healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
-  frontend:
+  migrator:
     build:
       context: .
-      target: frontend-dev
+      target: ${BACKEND_BUILD_TARGET:-backend-dev}
+    environment:
+      - DATABASE_PATH=/data/db/vibes.db
+    volumes:
+      - .:/go/src/github.com/zoff-music/vibes:ro
+      - db_data:/data/db
+
+    command: ["sh", "-c", "cd /go/src/github.com/zoff-music/vibes/migrator && go run main.go -db /data/db/vibes.db -dir ./migrations"]
+
+  frontend-platform:
+    build:
+      context: .
+      target: ${FRONTEND_PLATFORM_TARGET:-frontend-dev}
     ports:
-      - "19006:19006"
+      - "${FRONTEND_PLATFORM_PORT:-3000}:3000"
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
-    command: ["sh", "-c", "bun install && bun run dev -- --host localhost --port 19006"]
+    command: ["sh", "-c", "bun install && bun --filter @vibez/platform ${FRONTEND_CMD:-dev}"]
     environment:
-      - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
-    stdin_open: true
-    tty: true
+      - PORT=3000
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  frontend-cast:
+    build:
+      context: .
+      target: ${FRONTEND_CAST_TARGET:-frontend-dev}
+    ports:
+      - "${FRONTEND_CAST_PORT:-3001}:3001"
+    volumes:
+      - ./frontend:/app
+      - frontend_node_modules:/app/node_modules
+    command: ["sh", "-c", "bun install && bun --filter @vibez/cast ${FRONTEND_CMD:-dev}"]
+    environment:
+      - PORT=3001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
 
 volumes:
   frontend_node_modules:
+  caddy_data:
+  caddy_config:
+  db_data:
+    name: vibes_db_shared
