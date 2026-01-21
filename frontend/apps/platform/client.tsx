@@ -22,9 +22,9 @@ if (rootElement) {
   console.error = (...args) => {
     if (
       typeof args[0] === 'string' &&
-      (args[0].includes('Hydration failed') || 
-       args[0].includes('hydration') ||
-       args[0].includes('did not match'))
+      (args[0].includes('Hydration failed') ||
+        args[0].includes('hydration') ||
+        args[0].includes('did not match'))
     ) {
       // Suppress hydration warnings in development
       return;

@@ -12,11 +12,12 @@ EXPOSE 8080
 CMD ["go", "run", "cmd/server/main.go"]
 
 FROM golang:1.25.5 AS migrator-builder
+RUN apt-get update && apt-get install -y build-essential
 WORKDIR /go/src/github.com/zoff-music/vibes/migrator
 COPY migrator/go.mod migrator/go.sum ./
 RUN go mod download
 COPY migrator .
-RUN CGO_ENABLED=1 GOOS=linux GOARCH=amd64 go build -a -ldflags '-w -s' -o migrator-bin main.go
+RUN CGO_ENABLED=1 go build -a -ldflags '-w -s' -o migrator-bin main.go
 
 FROM golang:1.25.5 AS backend-builder
 

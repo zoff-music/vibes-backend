@@ -48,6 +48,7 @@ cd frontend && bun dev
 
 - **Project Overview**: [CLAUDE.md](./CLAUDE.md)
 - **API Reference**: [docs/API.md](./docs/API.md)
+- **SSR Architecture**: [docs/SSR_ARCHITECTURE.md](./docs/SSR_ARCHITECTURE.md)
 - **Music Providers**: [docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md)
 - **Cast Development**: [CAST_DEVELOPMENT_GUIDE.md](./CAST_DEVELOPMENT_GUIDE.md)
 - **Deployment Guide**: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)

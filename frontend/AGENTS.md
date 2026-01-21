@@ -12,7 +12,8 @@ Non-negotiable conventions. Follow strictly.
 - **Run `bun run typecheck`** to verify TypeScript compilation before committing.
 - **Use wiretyped + yup** for ALL API calls / SSE.
 - **NEVER use `fetch()` or `new EventSource()`**. Only `wiretyped` clients.
-- **SSR Support** - Both platform and cast apps support server-side rendering
+- **Unified Build System** - Both apps use identical Bun-based build with SSR
+- **Content Hashing** - All assets use content-based hashing for cache busting
 
 ## File Layout
 
@@ -28,13 +29,15 @@ apps/platform/src/
 ├── stores/                # Zustand stores
 ├── pages/                 # Route components
 ├── services/              # castManager, etc.
-├── server.tsx             # SSR server
+├── scripts/build.ts       # Custom Bun build script
+├── server.tsx             # SSR server (Bun runtime)
 └── client.tsx             # Client hydration
 
 apps/cast/src/
 ├── App.tsx                # Cast receiver entrypoint
 ├── components/            # Cast-specific components
-├── server.tsx             # SSR server
+├── scripts/build.ts       # Custom Bun build script
+├── server.tsx             # SSR server (Bun runtime)
 └── client.tsx             # Client hydration
 
 packages/
@@ -106,17 +109,39 @@ if (error) {
 
 ## Server-Side Rendering (SSR)
 
-Both platform and cast apps support SSR:
+Both platform and cast apps use unified SSR with Bun runtime:
 
 ```typescript
-// server.tsx - SSR server
-import { renderToReadableStream } from 'react-dom/server';
+// server.tsx - SSR server (Bun runtime)
+import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router';
 import { safeWrapAsync } from '@vibez/shared';
+
+// Asset resolution via manifest
+const manifest = await Bun.file('./dist/manifest.json').json();
+const mainJS = manifest['main.js'] ? `/assets/platform/${manifest['main.js']}` : '/assets/platform/client.js';
 
 // client.tsx - Client hydration
 import { hydrateRoot } from 'react-dom/client';
 ```
+
+### Build System
+
+Both apps use identical Bun-based build system:
+
+```bash
+# Development (with watch mode and SSR)
+bun run dev
+
+# Production build (with content hashing)
+bun run build
+```
+
+Build features:
+- Content-based hashing for cache busting
+- Manifest generation for asset resolution
+- CSS compilation with Tailwind v4
+- SSR server bundling
 
 ## Styling
 
