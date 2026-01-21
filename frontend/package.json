@@ -7,7 +7,7 @@
   ],
   "scripts": {
     "dev": "bun --filter @vibez/platform dev",
-    "build": "bun --filter @vibez/platform build",
+    "build": "bun --filter @vibez/platform build && bun --filter @vibez/cast build",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "bun run --filter '*' lint",
     "test": "bun run --filter '*' test",
