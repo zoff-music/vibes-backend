@@ -1,5 +1,5 @@
 import type { CastDevice } from '@vibez/models';
-import { usePlaybackStore } from '@vibez/shared';
+import { usePlaybackStore, safeWrapAsync } from '@vibez/shared';
 import React, { useState } from 'react';
 import { useCastStore } from '../../stores/castStore';
 
@@ -29,66 +29,54 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
 
   const handleDeviceSelect = async (device: CastDevice) => {
     setIsConnecting(device.id);
-    try {
-      if (isConnected && currentSession) {
-        await disconnectFromDevice(currentSession.deviceId);
-      }
-      await connectToDevice(device.id);
-      // Don't close modal immediately - let user manually cast
-    } catch (error) {
-      console.error('Failed to connect to device:', error);
-    } finally {
-      setIsConnecting(null);
+
+    if (isConnected && currentSession) {
+      await safeWrapAsync(disconnectFromDevice(currentSession.deviceId));
     }
+
+    const [err] = await safeWrapAsync(connectToDevice(device.id));
+    if (err) console.error('Failed to connect to device:', err);
+
+    setIsConnecting(null);
   };
 
   const handleDisconnect = async () => {
-    if (currentSession) {
-      try {
-        await disconnectFromDevice(currentSession.deviceId);
-        onClose();
-      } catch (error) {
-        console.error('Failed to disconnect:', error);
-      }
+    if (!currentSession) return;
+
+    const [err] = await safeWrapAsync(disconnectFromDevice(currentSession.deviceId));
+    if (err) {
+      console.error('Failed to disconnect:', err);
+      return;
     }
+    onClose();
   };
 
-  const handleCastCurrentSong = async () => {
-    if (!currentSong || !isConnected) return;
+  const handleCastCurrentSong = async (media?: any) => {
+    const songToCast = media || currentSong;
+    if (!songToCast || !isConnected) return;
 
     setIsCasting(true);
-    try {
-      await castCurrentSong(currentSong);
-      console.log('✅ Successfully cast current song');
-    } catch (error) {
-      console.error('Failed to cast current song:', error);
+    const [err] = await safeWrapAsync(castCurrentSong(songToCast));
 
-      // Show user-friendly error for YouTube content
-      if (error instanceof Error && error.message.includes('YouTube')) {
-        // Could show a toast or modal here explaining the limitation
-        console.log(
-          '💡 YouTube casting requires a custom receiver - this is a known limitation',
-        );
+    if (err) {
+      console.error('Failed to cast:', err);
+      if (err.message.includes('YouTube')) {
+        console.log('💡 YouTube casting requires a custom receiver - this is a known limitation');
       }
-    } finally {
-      setIsCasting(false);
+    } else {
+      console.log('✅ Successfully cast');
     }
+
+    setIsCasting(false);
   };
 
   const handleRefresh = async () => {
     console.log('🔄 Refreshing devices...');
-
-    // Import cast manager for debugging
     const { castManager } = await import('../../services/castManager');
 
-    // Log debug info
     console.log('Cast Debug Info:', castManager.getDebugInfo());
-
-    // Force discovery
-    await castManager.forceDiscovery();
-
-    // Refresh devices in store
-    await discoverDevices();
+    await safeWrapAsync(castManager.forceDiscovery());
+    await safeWrapAsync(discoverDevices());
   };
 
   if (!isOpen) return null;
@@ -222,35 +210,19 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
 
                 {/* Test Cast Button for Demo */}
                 <button
-                  onClick={async () => {
-                    if (!isConnected) return;
-
-                    try {
-                      // Test with a sample video that should work
-                      const testMedia = {
-                        contentId:
-                          'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
-                        contentType: 'video/mp4',
-                        streamType: 'BUFFERED' as const,
-                        metadata: {
-                          title: 'Test Video - Big Buck Bunny',
-                          artist: 'Blender Foundation',
-                          images: [
-                            {
-                              url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
-                              height: 480,
-                              width: 640,
-                            },
-                          ],
-                        },
-                        duration: 596,
-                      };
-
-                      await castCurrentSong(testMedia as any);
-                      console.log('✅ Test video cast successfully');
-                    } catch (error) {
-                      console.error('Failed to cast test video:', error);
-                    }
+                  onClick={() => {
+                    const testMedia = {
+                      contentId: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                      contentType: 'video/mp4',
+                      streamType: 'BUFFERED' as const,
+                      metadata: {
+                        title: 'Test Video - Big Buck Bunny',
+                        artist: 'Blender Foundation',
+                        images: [{ url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg', height: 480, width: 640 }],
+                      },
+                      duration: 596,
+                    };
+                    handleCastCurrentSong(testMedia);
                   }}
                   className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-gray-600 px-4 py-2 text-white text-xs transition-colors duration-200 hover:bg-gray-700"
                 >
@@ -314,11 +286,10 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                     isConnecting === device.id ||
                     (isConnected && currentSession?.deviceId === device.id)
                   }
-                  className={`w-full rounded-lg border p-3 text-left transition-colors duration-200 ${
-                    isConnected && currentSession?.deviceId === device.id
+                  className={`w-full rounded-lg border p-3 text-left transition-colors duration-200 ${isConnected && currentSession?.deviceId === device.id
                       ? 'cursor-default border-primary/20 bg-primary/10 dark:border-primary/30 dark:bg-primary/20'
                       : 'cursor-pointer border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600'
-                  }
+                    }
                     ${isConnecting === device.id ? 'opacity-50' : ''}focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-800`}
                 >
                   <div className="flex items-center space-x-3">

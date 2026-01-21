@@ -30,7 +30,10 @@ const API_BASE_PATH = '/api/v1';
 
 const getApiUrl = () => {
   // If explicitly set via env var, use it
-  if (import.meta.env.VITE_API_URL) {
+  if (typeof process !== 'undefined' && process.env.API_URL) {
+    return process.env.API_URL;
+  }
+  if (import.meta.env?.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
 

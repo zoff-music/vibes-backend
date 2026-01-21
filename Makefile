@@ -19,11 +19,12 @@ build-migrator:
 
 ## migrate-up: Runs all up migrations
 migrate-up:
-	cd migrator && go run main.go -db ../backend/data/vibes.db
+	cd migrator && go run main.go -db ../data/db/vibes.db
 
 ## migrate-down: Runs one down migration step by default (use STEPS=N for more)
 migrate-down:
-	cd migrator && go run main.go -db ../backend/data/vibes.db -down -steps $(if $(STEPS),$(STEPS),1)
+	cd migrator && go run main.go -db ../data/db/vibes.db -down -steps $(if $(STEPS),$(STEPS),1)
+
 
 ## install: fetches go modules
 install:
@@ -62,19 +63,35 @@ dev-down:
 frontend:
 	cd frontend && bun dev
 
+## setup-caddy: Installs Caddy and trusts local CA (MacOS only)
+setup-caddy:
+	@command -v caddy >/dev/null 2>&1 || (echo "Caddy not found. Installing via Homebrew..." && brew install caddy)
+	@echo "Ensuring local Caddy CA is trusted (may require password)..."
+	@echo "Starting Caddy temporarily to fetch CA info..."
+	@caddy start --config Caddyfile >/dev/null 2>&1
+	@sleep 2
+	@sudo caddy trust
+	@caddy stop >/dev/null 2>&1
+
+
 ## local-dev: Runs backend + frontend locally with env ports set and Caddy for SSL
-local-dev:
+local-dev: setup-caddy
+
 	@echo "Stopping any existing dev processes..."
 	@-lsof -ti :3000,3001,8080 | xargs kill -9 2>/dev/null || true
 	@echo "Ensuring dependencies are up to date..."
 	@cd frontend && bun install
+	@echo "Ensuring database directory exists..."
+	@mkdir -p data/db
 	@echo "Starting local development services..."
 	@sh -c 'trap "kill 0" INT TERM EXIT; \
-	PORT=8080 sh -c "cd migrator && go run main.go -db ../backend/data/vibes.db && cd ../backend && exec go run cmd/server/main.go" & \
+	PORT=8080 sh -c "cd migrator && go run main.go -db ../data/db/vibes.db && cd ../backend && DATABASE_PATH=../data/db/vibes.db exec go run cmd/server/main.go" & \
 	PORT=3000 sh -c "cd frontend && exec bun dev" & \
 	PORT=3001 sh -c "cd frontend && exec bun --filter @vibez/cast dev" & \
 	exec caddy run --config Caddyfile & \
 	wait'
+
+
 
 ## gosec: Runs gosec
 gosec:

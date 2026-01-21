@@ -44,6 +44,7 @@ interface ThemeState {
 
 // Apply theme class to document
 const applyTheme = (themeId: ThemeId) => {
+  if (typeof document === 'undefined') return;
   const html = document.documentElement;
 
   // Remove all theme classes
