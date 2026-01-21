@@ -21,6 +21,9 @@ RUN CGO_ENABLED=1 go build -a -ldflags '-w -s' -o migrator-bin main.go
 
 FROM golang:1.25.5 AS backend-builder
 
+# Install cross-compilation tools for CGO
+RUN apt-get update && apt-get install -y build-essential
+
 # See https://stackoverflow.com/a/55757473/12429735
 # Create an app-user with no shell, no login, no home directory,
 # a fixed UID (10001), and a fixed GUID (10001), then get ca-certificates.crt
@@ -35,7 +38,6 @@ RUN adduser \
     --no-create-home \
     --uid "${UID}" \
     "${USER}" \
-    && apt-get update \
     && apt-get install -y ca-certificates --no-install-recommends
 
 # Install govulncheck and gosec
