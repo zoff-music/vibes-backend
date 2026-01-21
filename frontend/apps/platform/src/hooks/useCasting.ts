@@ -1,6 +1,6 @@
+import { usePlaybackStore } from '@vibez/shared';
 import { useCallback, useEffect } from 'react';
 import { useCastStore } from '../stores/castStore';
-import { usePlaybackStore } from '@vibez/shared';
 
 /**
  * Hook to integrate casting functionality with the existing playback system

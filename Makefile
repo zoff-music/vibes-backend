@@ -64,14 +64,17 @@ frontend:
 
 ## local-dev: Runs backend + frontend locally with env ports set and Caddy for SSL
 local-dev:
-	PORT=8080 \
-	sh -c 'cd migrator && go run main.go -db ../backend/data/vibes.db && cd ../backend && go run cmd/server/main.go' & \
-	PORT=3000 \
-	sh -c 'cd frontend && bun install && bun dev' & \
-	PORT=3001 \
-	sh -c 'cd frontend && bun --filter @vibez/cast dev' & \
-	caddy run --config Caddyfile & \
-	wait
+	@echo "Stopping any existing dev processes..."
+	@-lsof -ti :3000,3001,8080 | xargs kill -9 2>/dev/null || true
+	@echo "Ensuring dependencies are up to date..."
+	@cd frontend && bun install
+	@echo "Starting local development services..."
+	@sh -c 'trap "kill 0" INT TERM EXIT; \
+	PORT=8080 sh -c "cd migrator && go run main.go -db ../backend/data/vibes.db && cd ../backend && exec go run cmd/server/main.go" & \
+	PORT=3000 sh -c "cd frontend && exec bun dev" & \
+	PORT=3001 sh -c "cd frontend && exec bun --filter @vibez/cast dev" & \
+	exec caddy run --config Caddyfile & \
+	wait'
 
 ## gosec: Runs gosec
 gosec:
