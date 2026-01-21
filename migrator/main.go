@@ -109,7 +109,7 @@ func getCurrentVersion(db *sql.DB) (int, bool, error) {
 func getMigrationFiles() ([]string, error) {
 	// Look for migration files in "migrator/migrations" if running from root,
 	// or "./migrations" if running from migrator dir.
-	paths := []string{"./backend/migrator/migrations", "./migrations"}
+	paths := []string{"./migrations", "./migrator/migrations"}
 	var dir string
 	for _, p := range paths {
 		if _, err := os.Stat(p); err == nil {
@@ -118,9 +118,14 @@ func getMigrationFiles() ([]string, error) {
 		}
 	}
 	if dir == "" {
+		// Log current working directory and what we tried
+		cwd, _ := os.Getwd()
+		log.Printf("Current working directory: %s", cwd)
+		log.Printf("Tried paths: %v", paths)
 		return nil, fmt.Errorf("migrations directory not found in %v", paths)
 	}
 
+	log.Printf("Using migrations directory: %s", dir)
 	files, err := os.ReadDir(dir)
 	if err != nil {
 		return nil, err
@@ -141,6 +146,8 @@ func getMigrationFiles() ([]string, error) {
 		}
 		migrationFiles = append(migrationFiles, filepath.Join(dir, f.Name()))
 	}
+	
+	log.Printf("Found %d migration files", len(migrationFiles))
 	return migrationFiles, nil
 }
 
