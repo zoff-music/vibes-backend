@@ -1,7 +1,5 @@
-import { existsSync } from 'node:fs';
-
 const port = process.env.PORT || 3001;
-const isDev = true;
+const _isDev = true;
 
 console.log('[Cast Dev Server] Starting development server...');
 
@@ -40,7 +38,7 @@ Bun.serve({
   ws.onopen = () => console.log('[HMR] Connected');
   ws.onclose = () => console.log('[HMR] Disconnected');
 </script>`;
-        
+
         const modifiedHtml = html.replace('</body>', `${hmrScript}</body>`);
         return new Response(modifiedHtml, {
           headers: { 'Content-Type': 'text/html; charset=utf-8' },
@@ -51,10 +49,10 @@ Bun.serve({
     // Serve other static files (JS, CSS, etc.)
     const filePath = path === '/' ? '/index.html' : path;
     const file = Bun.file(`./dist${filePath}`);
-    
+
     if (await file.exists()) {
       const headers: Record<string, string> = {};
-      
+
       if (filePath.endsWith('.css')) {
         headers['Content-Type'] = 'text/css';
       } else if (filePath.endsWith('.js')) {
@@ -62,20 +60,21 @@ Bun.serve({
       } else if (filePath.endsWith('.html')) {
         headers['Content-Type'] = 'text/html; charset=utf-8';
       }
-      
+
       return new Response(file, { headers });
     }
 
     // 404 for missing files
     return new Response('Not Found', { status: 404 });
   },
-  
+
   websocket: {
     message() {},
     open(ws) {
       console.log('[HMR] Client connected');
       // Store the websocket for later use
-      (globalThis as any).hmrClients = (globalThis as any).hmrClients || new Set();
+      (globalThis as any).hmrClients =
+        (globalThis as any).hmrClients || new Set();
       (globalThis as any).hmrClients.add(ws);
     },
     close(ws) {
@@ -103,4 +102,6 @@ Bun.serve({
 
 console.log(`[Cast Dev Server] Running at http://localhost:${port}`);
 console.log(`[Cast Dev Server] Serving static files from ./dist/`);
-console.log(`[Cast Dev Server] HMR enabled - files will auto-reload on changes`);
+console.log(
+  `[Cast Dev Server] HMR enabled - files will auto-reload on changes`,
+);
