@@ -36,7 +36,13 @@ import { RequestClient, type RequestDefinitions } from 'wiretyped';
 const API_BASE_PATH = '/api/v1';
 
 const getApiUrl = () => {
-  // If explicitly set via env var, use it
+  // If explicitly set via runtime env var (e.g. in SSR), use it first
+  const runtimeApiUrl = typeof process !== 'undefined' ? process.env?.VITE_API_URL : undefined;
+  if (runtimeApiUrl) {
+    return runtimeApiUrl;
+  }
+
+  // If set via build-time env var, use it
   if (import.meta.env?.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
