@@ -12,28 +12,32 @@ const isDev = process.env.NODE_ENV !== 'production';
 let manifest: Record<string, string> = {};
 if (!isDev) {
   try {
-    const manifestPath = join(process.cwd(), 'dist/manifest.json');
-    const manifestFile = Bun.file(manifestPath);
-    console.log('[SSR] Attempting to load manifest from:', manifestPath);
-    if (await manifestFile.exists()) {
-      manifest = await manifestFile.json();
-      console.log('[SSR] Loaded manifest:', manifest);
-    } else {
-      console.warn('[SSR] Manifest file not found at:', manifestPath);
-      // Check if we are in the wrong directory
-      console.warn('[SSR] Current working directory:', process.cwd());
-      console.warn(
-        '[SSR] __dirname/import.meta.dir equivalent:',
-        import.meta.dir,
-      );
-      const distExists = await Bun.file(join(process.cwd(), 'dist')).exists();
-      console.warn('[SSR] ./dist exists:', distExists);
-      if (distExists) {
-        const distFiles = await Array.fromAsync(
-          new Bun.Glob('**/*').scan({ cwd: join(process.cwd(), 'dist') }),
-        );
-        console.log('[SSR] Files in ./dist:', distFiles);
+    const pathsToTry = [
+      join(process.cwd(), 'dist/manifest.json'),
+      join(import.meta.dir, 'dist/manifest.json'),
+      join(process.cwd(), 'apps/platform/dist/manifest.json'),
+    ];
+
+    let loaded = false;
+    for (const manifestPath of pathsToTry) {
+      const manifestFile = Bun.file(manifestPath);
+      console.log('[SSR] Checking manifest at:', manifestPath);
+      if (await manifestFile.exists()) {
+        manifest = await manifestFile.json();
+        console.log('[SSR] Successfully loaded manifest from:', manifestPath);
+        console.log('[SSR] Manifest content:', manifest);
+        loaded = true;
+        break;
       }
+    }
+
+    if (!loaded) {
+      console.warn(
+        '[SSR] Manifest file not found in any of the expected locations:',
+        pathsToTry,
+      );
+      console.warn('[SSR] Current working directory:', process.cwd());
+      console.warn('[SSR] import.meta.dir:', import.meta.dir);
     }
   } catch (err) {
     console.warn('[SSR] Could not load manifest.json:', err);

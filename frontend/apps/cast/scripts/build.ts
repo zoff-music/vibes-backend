@@ -110,15 +110,21 @@ async function runBuild() {
       }
     }
 
-    // Check for CSS files in the output directory
+    // Check for CSS files - prioritize tailwind.css produced by our build:css script
     console.log(`[Build] Scanning for CSS files in ./dist...`);
     const cssFiles = await Array.fromAsync(
       new Bun.Glob('*.css').scan({ cwd: './dist' }),
     );
+    console.log(`[Build] Found CSS files:`, cssFiles);
 
-    if (cssFiles.length > 0 && cssFiles[0]) {
-      cssFilename = cssFiles[0];
-      console.log(`[Build] Found CSS file: ${cssFilename}`);
+    cssFilename =
+      cssFiles.find((f) => f === 'tailwind.css') ||
+      cssFiles.find((f) => f.startsWith('client')) ||
+      cssFiles[0] ||
+      'index.css';
+
+    if (cssFilename) {
+      console.log(`[Build] Selected CSS file for HTML: ${cssFilename}`);
     }
 
     // Generate static HTML file

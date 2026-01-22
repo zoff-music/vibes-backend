@@ -3,7 +3,8 @@ import { StrictMode } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import App from './src/App';
-import './src/index.css';
+
+// import './src/index.css'; // Removed to avoid hydration styling conflicts as it's already in the HTML shell
 
 // Read initial data from script tag if present
 const dataElement = document.getElementById('ssr-data');

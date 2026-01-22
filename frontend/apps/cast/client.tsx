@@ -1,7 +1,8 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import App from './src/App';
-import './src/index.css';
+
+// import './src/index.css'; // Removed to avoid hydration styling conflicts as it's already in the HTML shell
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
