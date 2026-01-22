@@ -87,39 +87,47 @@ async function runBuild() {
       }
     }
 
-    // Check for CSS files in the output directory and hash them for production
+    // Check for CSS files - prioritize tailwind.css produced by our build:css script
+    const distAssetsDir = './dist/assets/platform';
     const cssFiles = await Array.fromAsync(
-      new Bun.Glob('*.css').scan({ cwd: './dist/assets/platform' }),
+      new Bun.Glob('*.css').scan({ cwd: distAssetsDir }),
     );
+    console.log(`[Build] Found CSS files in ${distAssetsDir}:`, cssFiles);
 
-    if (cssFiles.length > 0 && cssFiles[0]) {
-      const originalName = cssFiles[0];
-      if (isProd && originalName === 'index.css') {
+    const cssFilename =
+      cssFiles.find((f) => f === 'tailwind.css') || cssFiles[0];
+
+    if (cssFilename) {
+      if (isProd && cssFilename === 'tailwind.css') {
         const cssContent = await Bun.file(
-          join('./dist/assets/platform', originalName),
+          join(distAssetsDir, cssFilename),
         ).arrayBuffer();
         const hash = Bun.hash(cssContent).toString(16).slice(0, 8);
         const hashedName = `index-${hash}.css`;
 
         const [renameErr] = await safeWrapAsync(
-          Bun.spawn(['mv', originalName, hashedName], {
-            cwd: './dist/assets/platform',
+          Bun.spawn(['mv', cssFilename, hashedName], {
+            cwd: distAssetsDir,
           }).exited,
         );
 
         if (!renameErr) {
           manifest['index.css'] = hashedName;
-          console.log(`[Build] Hashed CSS: ${originalName} -> ${hashedName}`);
+          console.log(
+            `[Build] Hashed Tailwind CSS: ${cssFilename} -> ${hashedName}`,
+          );
         } else {
-          manifest['index.css'] = originalName;
+          manifest['index.css'] = cssFilename;
           console.warn(
-            `[Build] Failed to rename CSS, using original: ${originalName}`,
+            `[Build] Failed to rename CSS, using original: ${cssFilename}`,
           );
         }
       } else {
-        manifest['index.css'] = originalName;
-        console.log(`[Build] Found CSS file: ${originalName}`);
+        manifest['index.css'] = cssFilename;
+        console.log(`[Build] Using CSS file: ${cssFilename}`);
       }
+    } else {
+      console.warn(`[Build] No CSS files found in ${distAssetsDir}`);
     }
 
     manifest.timestamp = Date.now().toString();
