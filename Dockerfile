@@ -96,6 +96,7 @@ RUN bun install --frozen-lockfile
 FROM frontend-builder AS platform-builder
 WORKDIR /app/apps/platform
 COPY frontend/apps/platform .
+# Build CSS, client, and server bundles
 RUN bun run build
 
 # Cast build
@@ -107,11 +108,21 @@ RUN bun run build
 # Platform production image
 FROM oven/bun:1.2.0-slim AS frontend-platform-prod
 WORKDIR /app
-COPY --from=platform-builder /app/apps/platform/dist ./dist
-COPY --from=platform-builder /app/apps/platform/package.json .
-COPY --from=platform-builder /app/apps/platform/server.tsx .
-# Copy necessary workspace dependencies if any (usually bundled, but let's be safe or check build output)
-# Since we bun build with --target bun and --minify, it should be self-contained except for bun itself.
+
+# Copy the entire platform app structure
+COPY --from=platform-builder /app/apps/platform ./apps/platform
+
+# Copy workspace packages that are imported by server.tsx
+COPY --from=frontend-builder /app/packages ./packages
+COPY --from=frontend-builder /app/package.json .
+COPY --from=frontend-builder /app/bun.lock .
+
+# Install only production dependencies
+RUN bun install --production --frozen-lockfile
+
+# Set working directory to platform app
+WORKDIR /app/apps/platform
+
 EXPOSE 3000
 CMD ["bun", "run", "start"]
 
