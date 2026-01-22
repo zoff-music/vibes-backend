@@ -11,33 +11,36 @@ const isDev = process.env.NODE_ENV !== 'production';
 
 // Load manifest for hashed filenames (Synchronously at startup for absolute reliability)
 let manifest: Record<string, string> = {};
-if (!isDev) {
-  console.log('[SSR] --- Production Startup (Final Refinement) ---');
-  console.log('[SSR] CWD:', process.cwd());
-  console.log('[SSR] import.meta.dir:', import.meta.dir);
 
-  const pathsToTry = [
-    '/app/apps/platform/dist/manifest.json', // Exact confirmed path in container
-    join(import.meta.dir, '../manifest.json'), // Relative to server.js
-    join(process.cwd(), 'dist/manifest.json'), // CWD based
-  ];
+console.log('[SSR] --- Production Startup (Final Refinement) ---');
+console.log('[SSR] NODE_ENV:', process.env.NODE_ENV);
+console.log('[SSR] isDev resolving to:', isDev);
+console.log('[SSR] CWD:', process.cwd());
+console.log('[SSR] import.meta.dir:', import.meta.dir);
 
-  for (const p of pathsToTry) {
-    try {
-      console.log(`[SSR] Attempting manifest load: ${p}`);
-      if (existsSync(p)) {
-        const content = readFileSync(p, 'utf8');
-        manifest = JSON.parse(content);
-        console.log(`[SSR] Manifest SUCCESS from ${p}:`, manifest);
-        break;
+if (!isDev || process.env.FORCE_MANIFEST === 'true') {
+  try {
+    const pathsToTry = [
+      '/app/apps/platform/dist/manifest.json', // Exact confirmed path in container
+      join(import.meta.dir, '../manifest.json'), // Relative to server.js in dist/server/
+      join(process.cwd(), 'dist/manifest.json'), // CWD based
+    ];
+
+    for (const p of pathsToTry) {
+      try {
+        console.log(`[SSR] Checking manifest: ${p}`);
+        if (existsSync(p)) {
+          const content = readFileSync(p, 'utf8');
+          manifest = JSON.parse(content);
+          console.log(`[SSR] Manifest LOADED from ${p}:`, manifest);
+          break;
+        }
+      } catch (e) {
+        console.error(`[SSR] Error reading ${p}:`, e);
       }
-    } catch (e) {
-      console.error(`[SSR] Failed to read manifest at ${p}:`, e);
     }
-  }
-
-  if (Object.keys(manifest).length === 0) {
-    console.error('[SSR] CRITICAL: No manifest loaded! Assets will 404.');
+  } catch (err) {
+    console.error('[SSR] CRITICAL Error during manifest loading:', err);
   }
 }
 
