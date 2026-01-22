@@ -87,14 +87,35 @@ async function runBuild() {
       }
     }
 
-    // Check for CSS files in the output directory
+    // Check for CSS files in the output directory and hash them for production
     const cssFiles = await Array.fromAsync(
       new Bun.Glob('*.css').scan({ cwd: './dist/assets/platform' }),
     );
 
     if (cssFiles.length > 0 && cssFiles[0]) {
-      manifest['index.css'] = cssFiles[0]; // Take the first CSS file
-      console.log(`[Build] Found CSS file: ${cssFiles[0]}`);
+      const originalName = cssFiles[0];
+      if (isProd && originalName === 'index.css') {
+        const cssContent = await Bun.file(join('./dist/assets/platform', originalName)).arrayBuffer();
+        const hash = Bun.hash(cssContent).toString(16).slice(0, 8);
+        const hashedName = `index-${hash}.css`;
+        
+        const [renameErr] = await safeWrapAsync(
+          Bun.spawn(['mv', originalName, hashedName], {
+            cwd: './dist/assets/platform',
+          }).exited,
+        );
+
+        if (!renameErr) {
+          manifest['index.css'] = hashedName;
+          console.log(`[Build] Hashed CSS: ${originalName} -> ${hashedName}`);
+        } else {
+          manifest['index.css'] = originalName;
+          console.warn(`[Build] Failed to rename CSS, using original: ${originalName}`);
+        }
+      } else {
+        manifest['index.css'] = originalName;
+        console.log(`[Build] Found CSS file: ${originalName}`);
+      }
     }
 
     manifest.timestamp = Date.now().toString();

@@ -1,3 +1,4 @@
+import { join } from 'node:path';
 import { api } from '@vibez/api';
 import { safeWrap } from '@vibez/shared';
 import { renderToString } from 'react-dom/server';
@@ -11,12 +12,18 @@ const isDev = process.env.NODE_ENV !== 'production';
 let manifest: Record<string, string> = {};
 if (!isDev) {
   try {
-    const manifestFile = Bun.file('./dist/manifest.json');
+    const manifestPath = join(process.cwd(), 'dist/manifest.json');
+    const manifestFile = Bun.file(manifestPath);
+    console.log('[SSR] Attempting to load manifest from:', manifestPath);
     if (await manifestFile.exists()) {
       manifest = await manifestFile.json();
       console.log('[SSR] Loaded manifest:', manifest);
     } else {
-      console.warn('[SSR] Manifest file not found at ./dist/manifest.json');
+      console.warn('[SSR] Manifest file not found at:', manifestPath);
+      // Check if we are in the wrong directory
+      console.warn('[SSR] Current working directory:', process.cwd());
+      const distExists = await Bun.file(join(process.cwd(), 'dist')).exists();
+      console.warn('[SSR] ./dist exists:', distExists);
     }
   } catch (err) {
     console.warn('[SSR] Could not load manifest.json:', err);
@@ -69,6 +76,8 @@ async function handleStaticFiles(path: string) {
       }
       return new Response(distFile, { headers });
     }
+    console.warn(`[Platform Server] Asset not found: ${path}`);
+    return new Response('Not Found', { status: 404 });
   }
 
   // Handle public files
@@ -158,6 +167,8 @@ Bun.serve({
       ? `/assets/platform/${manifest['index.css']}`
       : '/assets/platform/index.css';
 
+    console.log(`[SSR] Resolved assets: JS=${mainJS}, CSS=${mainCSS}`);
+
     try {
       // Render the App component to string
       const appHTML = renderToString(
@@ -178,7 +189,7 @@ Bun.serve({
     }
   },
   websocket: {
-    message() {},
+    message() { },
     open() {
       console.log('[HMR] Client connected');
     },
