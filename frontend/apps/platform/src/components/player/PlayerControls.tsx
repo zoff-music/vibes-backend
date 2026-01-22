@@ -23,7 +23,7 @@ const PlayerControlsComponent: React.FC<Props> = ({
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
 
   const btnClass =
-    'glass p-4 rounded-xl hover:shadow-retro active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed group border-2 border-ink/10 flex items-center justify-center h-14';
+    'glass p-4 cursor-pointer rounded-xl hover:shadow-retro active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed group border-2 border-ink/10 flex items-center justify-center h-14';
 
   return (
     <div className="w-full">
@@ -33,7 +33,7 @@ const PlayerControlsComponent: React.FC<Props> = ({
         <button
           onClick={isPlaying ? pause : play}
           disabled={!currentSong && !hasSongsInQueue}
-          className={`group flex h-14 w-14 items-center justify-center rounded-xl border-2 border-white/50 bg-primary text-white shadow-retro-pink transition-all hover:shadow-neon-pink hover:shadow-retro active:scale-95 disabled:cursor-not-allowed disabled:opacity-30`}
+          className={`group flex h-14 w-14 cursor-pointer items-center justify-center rounded-xl border-2 border-white/50 bg-primary text-white shadow-retro-pink transition-all hover:shadow-neon-pink hover:shadow-retro active:scale-95 disabled:cursor-not-allowed disabled:opacity-30`}
         >
           {isPlaying ? (
             <svg className="h-6 w-6 fill-current" viewBox="0 0 24 24">

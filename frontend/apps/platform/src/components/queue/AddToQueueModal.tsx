@@ -163,21 +163,23 @@ export const AddToQueueModal: React.FC<Props> = ({
     if (videoId && selectedProvider === 'youtube') {
       setShowResults(false);
       setIsSearching(true);
-      api.get('/youtube/videos/{id}', { id: videoId }).then(([err, video]: [Error | null, any]) => {
-        setIsSearching(false);
-        if (err || !video) {
-          setError('Could not find that video');
-          return;
-        }
-        // Map YouTube video to generic result
-        setPreviewVideo({
-          id: video.id,
-          title: video.title,
-          artist: video.channelTitle,
-          thumbnailUrl: video.thumbnailUrl,
-          duration: video.duration,
+      api
+        .get('/youtube/videos/{id}', { id: videoId })
+        .then(([err, video]: [Error | null, any]) => {
+          setIsSearching(false);
+          if (err || !video) {
+            setError('Could not find that video');
+            return;
+          }
+          // Map YouTube video to generic result
+          setPreviewVideo({
+            id: video.id,
+            title: video.title,
+            artist: video.channelTitle,
+            thumbnailUrl: video.thumbnailUrl,
+            duration: video.duration,
+          });
         });
-      });
       return;
     }
 
@@ -246,7 +248,7 @@ export const AddToQueueModal: React.FC<Props> = ({
       {/* Backdrop button */}
       <button
         type="button"
-        className="fixed inset-0 h-full w-full cursor-default"
+        className="fixed inset-0 h-full w-full cursor-pointer"
         onClick={onClose}
         aria-label="Close modal"
       />
@@ -269,7 +271,7 @@ export const AddToQueueModal: React.FC<Props> = ({
             </div>
             <button
               onClick={onClose}
-              className="rounded-xl border-2 border-transparent p-2 transition-colors hover:border-ink/10 hover:bg-ink/5"
+              className="cursor-pointer rounded-xl border-2 border-transparent p-2 transition-colors hover:border-ink/10 hover:bg-ink/5"
             >
               <svg
                 className="h-5 w-5 text-ink/60"
@@ -298,10 +300,11 @@ export const AddToQueueModal: React.FC<Props> = ({
                   setSearchQuery('');
                   setPreviewVideo(null);
                 }}
-                className={`rounded-full px-4 py-1.5 font-bold text-sm transition-all ${selectedProvider === p
+                className={`cursor-pointer rounded-full px-4 py-1.5 font-bold text-sm transition-all ${
+                  selectedProvider === p
                     ? 'bg-ink text-white shadow-lg'
                     : 'bg-surface text-ink/60 hover:bg-ink/5'
-                  }`}
+                }`}
               >
                 {p.charAt(0).toUpperCase() + p.slice(1)}
               </button>
@@ -375,7 +378,7 @@ export const AddToQueueModal: React.FC<Props> = ({
             {searchQuery && (
               <button
                 onClick={() => handleSearchChange('')}
-                className="absolute top-1/2 right-3 -translate-y-1/2 rounded-lg p-1.5 transition-colors hover:bg-ink/5"
+                className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-ink/5"
               >
                 <svg
                   className="h-5 w-5 text-ink/40"
@@ -420,7 +423,7 @@ export const AddToQueueModal: React.FC<Props> = ({
                 <button
                   key={result.id}
                   onClick={() => handleSelectResult(result)}
-                  className={`flex w-full gap-3 p-4 text-left transition-all hover:bg-sakura/20 ${index > 0 ? 'border-ink/10 border-t-2' : ''}`}
+                  className={`flex w-full cursor-pointer gap-3 p-4 text-left transition-all hover:bg-sakura/20 ${index > 0 ? 'border-ink/10 border-t-2' : ''}`}
                 >
                   <div className="relative shrink-0">
                     <img
@@ -522,14 +525,14 @@ export const AddToQueueModal: React.FC<Props> = ({
           <div className="flex gap-3">
             <button
               onClick={onClose}
-              className="glass flex-1 rounded-xl border-2 border-ink/10 py-3.5 font-bold text-ink/70 tracking-wide transition-all hover:shadow-retro active:scale-[0.98]"
+              className="glass flex-1 cursor-pointer rounded-xl border-2 border-ink/10 py-3.5 font-bold text-ink/70 tracking-wide transition-all hover:shadow-retro active:scale-[0.98]"
             >
               Cancel
             </button>
             <button
               onClick={handleAdd}
               disabled={isLoading}
-              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-primary py-3.5 font-black text-white tracking-wide transition-all hover:bg-primary-muted hover:shadow-retro-pink active:scale-[0.98] disabled:bg-ink/10 disabled:text-ink/30"
+              className="flex flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-primary py-3.5 font-black text-white tracking-wide transition-all hover:bg-primary-muted hover:shadow-retro-pink active:scale-[0.98] disabled:bg-ink/10 disabled:text-ink/30"
               style={{ fontFamily: 'Poppins' }}
             >
               {isLoading ? (

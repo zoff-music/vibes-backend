@@ -131,7 +131,9 @@ export const useSSE = (roomId: string | undefined) => {
 
         if (!inFlight) return; // Should not happen but satisfies TS
 
-        const [err, unsubscribe] = await (inFlight as Promise<[Error | null, any]>);
+        const [err, unsubscribe] = await (inFlight as Promise<
+          [Error | null, any]
+        >);
 
         // Remove from in-flight since it's resolved
         if (IN_FLIGHT_CONNECTIONS.get(roomId) === inFlight) {

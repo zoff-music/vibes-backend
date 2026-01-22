@@ -78,7 +78,7 @@ export default function Home() {
           {/* Create room button - primary action */}
           <button
             onClick={handleCreateRoom}
-            className="group glass-elevated w-full rounded-2xl p-6 transition-all hover:scale-[1.02] hover:shadow-retro-pink active:scale-[0.98]"
+            className="group glass-elevated w-full cursor-pointer rounded-2xl p-6 transition-all hover:scale-[1.02] hover:shadow-retro-pink active:scale-[0.98]"
           >
             <div className="flex items-center justify-between">
               <div className="text-left">
@@ -138,7 +138,7 @@ export default function Home() {
                 {roomCode && (
                   <button
                     onClick={() => setRoomCode('')}
-                    className="absolute top-1/2 right-3 -translate-y-1/2 rounded-lg p-1 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
+                    className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink"
                   >
                     <svg
                       className="h-5 w-5"
@@ -160,7 +160,7 @@ export default function Home() {
             <button
               onClick={handleJoinRoom}
               disabled={!roomCode.trim()}
-              className="w-full rounded-xl bg-secondary py-4 font-bold text-white tracking-wide transition-all hover:bg-secondary/90 hover:shadow-retro-cyan active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
+              className="w-full cursor-pointer rounded-xl bg-secondary py-4 font-bold text-white tracking-wide transition-all hover:bg-secondary/90 hover:shadow-retro-cyan active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
               style={{ fontFamily: 'Poppins' }}
             >
               Join Session

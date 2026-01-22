@@ -96,7 +96,7 @@ export const QueueItem: React.FC<Props> = ({
                 e.stopPropagation();
                 onRemove?.(song.id);
               }}
-              className="rounded-lg border-2 border-transparent p-2.5 text-ink/40 transition-all hover:border-error/20 hover:bg-error/10 hover:text-error dark:text-dark-text-subtle"
+              className="cursor-pointer rounded-lg border-2 border-transparent p-2.5 text-ink/40 transition-all hover:border-error/20 hover:bg-error/10 hover:text-error dark:text-dark-text-subtle"
               title="Remove from queue"
             >
               <svg

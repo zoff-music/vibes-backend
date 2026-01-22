@@ -94,7 +94,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
           </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 transition-colors duration-200 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+            className="cursor-pointer text-gray-400 transition-colors duration-200 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
           >
             <svg
               className="h-6 w-6"
@@ -126,7 +126,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
               </div>
               <button
                 onClick={handleDisconnect}
-                className="rounded bg-primary px-3 py-1 text-sm text-white transition-colors duration-200 hover:bg-primary/90 dark:bg-primary-light dark:hover:bg-primary"
+                className="cursor-pointer rounded bg-primary px-3 py-1 text-sm text-white transition-colors duration-200 hover:bg-primary/90 dark:bg-primary-light dark:hover:bg-primary"
               >
                 Disconnect
               </button>
@@ -138,7 +138,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                 <button
                   onClick={handleCastCurrentSong}
                   disabled={isCasting}
-                  className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-white transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-light dark:hover:bg-primary"
+                  className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-white transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-light dark:hover:bg-primary"
                 >
                   {isCasting ? (
                     <>
@@ -259,7 +259,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
             </h4>
             <button
               onClick={handleRefresh}
-              className="text-primary text-sm transition-colors duration-200 hover:text-primary/80 dark:text-primary-light dark:hover:text-primary"
+              className="cursor-pointer text-primary text-sm transition-colors duration-200 hover:text-primary/80 dark:text-primary-light dark:hover:text-primary"
             >
               Refresh
             </button>
