@@ -3,6 +3,7 @@ services:
     image: caddy:2.9.1
     ports:
       - "${CADDY_PORT:-42069}:42069"
+      - "2020:2020"
     volumes:
       - ./${CADDYFILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
       # Add volume for caddy data to persist certs if needed
@@ -17,6 +18,11 @@ services:
       - backend
       - frontend-platform
       - frontend-cast
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:2020/config/"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
     restart: unless-stopped
 
   backend:
