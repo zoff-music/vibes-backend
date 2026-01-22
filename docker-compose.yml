@@ -73,6 +73,8 @@ services:
     environment:
       - PORT=3000
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8080}
+      - NODE_ENV=${NODE_ENV:-development}
+      - FORCE_MANIFEST=${FORCE_MANIFEST:-false}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 10s
