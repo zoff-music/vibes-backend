@@ -38,6 +38,20 @@ if (!isDev) {
       );
       console.warn('[SSR] Current working directory:', process.cwd());
       console.warn('[SSR] import.meta.dir:', import.meta.dir);
+
+      // DIAGNOSTIC: List files to see what's actually there
+      try {
+        console.log('[SSR] --- Diagnostic Listing ---');
+        const files = await Array.fromAsync(
+          new Bun.Glob('**/*').scan({ cwd: '.' }),
+        );
+        console.log(
+          '[SSR] Files in project:',
+          files.filter((f) => !f.includes('node_modules')),
+        );
+      } catch (e) {
+        console.warn('[SSR] Diagnostic listing failed:', e);
+      }
     }
   } catch (err) {
     console.warn('[SSR] Could not load manifest.json:', err);
