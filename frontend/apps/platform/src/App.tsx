@@ -21,12 +21,12 @@ export default function App({ initialData }: AppProps) {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route
-        path="/room/create"
+        path="/rooms/create"
         element={<CreateRoom initialData={initialData} />}
       />
       <Route
-        path="/room/:id"
-        element={<RoomView initialData={initialData?.room} />}
+        path="/rooms/:id"
+        element={<RoomView initialData={initialData} />}
       />
       <Route path="/player-test" element={<PlayerTest />} />
       <Route path="/callback" element={<Callback />} />

@@ -31,3 +31,17 @@ func (e ErrExpected) Error() string {
 func (e ErrExpected) Unwrap() error {
 	return e.Err
 }
+
+// ErrAlreadyVoted is an error type for errors that are expected and don't
+// need to appear in metrics.
+type ErrAlreadyVoted struct {
+	Err error
+}
+
+func (e ErrAlreadyVoted) Error() string {
+	return fmt.Sprintf("Already voted error: %v", e.Err)
+}
+
+func (e ErrAlreadyVoted) Unwrap() error {
+	return e.Err
+}

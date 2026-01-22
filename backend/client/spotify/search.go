@@ -12,34 +12,6 @@ import (
 	"github.com/zoff-music/vibes/vibe"
 )
 
-type searchResponse struct {
-	Tracks searchTracks `json:"tracks"`
-}
-
-type searchTracks struct {
-	Items []spotifyTrack `json:"items"`
-}
-
-type spotifyTrack struct {
-	ID         string          `json:"id"`
-	Name       string          `json:"name"`
-	Artists    []spotifyArtist `json:"artists"`
-	Album      spotifyAlbum    `json:"album"`
-	DurationMS int             `json:"duration_ms"`
-}
-
-type spotifyArtist struct {
-	Name string `json:"name"`
-}
-
-type spotifyAlbum struct {
-	Images []spotifyImage `json:"images"`
-}
-
-type spotifyImage struct {
-	URL string `json:"url"`
-}
-
 // Search searches for tracks on Spotify
 func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, error) {
 	if !c.Enabled {
@@ -99,4 +71,32 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	}
 
 	return tracks, nil
+}
+
+type searchResponse struct {
+	Tracks searchTracks `json:"tracks"`
+}
+
+type searchTracks struct {
+	Items []spotifyTrack `json:"items"`
+}
+
+type spotifyTrack struct {
+	ID         string          `json:"id"`
+	Name       string          `json:"name"`
+	Artists    []spotifyArtist `json:"artists"`
+	Album      spotifyAlbum    `json:"album"`
+	DurationMS int             `json:"duration_ms"`
+}
+
+type spotifyArtist struct {
+	Name string `json:"name"`
+}
+
+type spotifyAlbum struct {
+	Images []spotifyImage `json:"images"`
+}
+
+type spotifyImage struct {
+	URL string `json:"url"`
 }

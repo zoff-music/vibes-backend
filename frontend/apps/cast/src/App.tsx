@@ -79,8 +79,6 @@ const App = () => {
               positionMs: 0,
               updatedAt: new Date().toISOString(),
               serverTimeMs: Date.now(),
-              // Add required fields with defaults
-              currentSongId: song.id || null,
             });
             setIsPlaying(true);
           }

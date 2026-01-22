@@ -19,7 +19,7 @@ console.log('[SSR] CWD:', process.cwd());
 console.log('[SSR] import.meta.dir:', import.meta.dir);
 
 if (!isDev || process.env.FORCE_MANIFEST === 'true') {
-  try {
+  const [criticalErr] = safeWrap(() => {
     const pathsToTry = [
       '/app/apps/platform/dist/manifest.json', // Exact confirmed path in container
       join(import.meta.dir, '../manifest.json'), // Relative to server.js in dist/server/
@@ -27,20 +27,28 @@ if (!isDev || process.env.FORCE_MANIFEST === 'true') {
     ];
 
     for (const p of pathsToTry) {
-      try {
+      const [err] = safeWrap(() => {
         console.log(`[SSR] Checking manifest: ${p}`);
         if (existsSync(p)) {
           const content = readFileSync(p, 'utf8');
           manifest = JSON.parse(content);
           console.log(`[SSR] Manifest LOADED from ${p}:`, manifest);
-          break;
+          return true;
         }
-      } catch (e) {
-        console.error(`[SSR] Error reading ${p}:`, e);
+        return false;
+      });
+
+      if (err) {
+        console.error(`[SSR] Error reading ${p}:`, err);
+      } else if (manifest && Object.keys(manifest).length > 0) {
+        // If we successfully loaded a manifest, we can stop
+        break;
       }
     }
-  } catch (err) {
-    console.error('[SSR] CRITICAL Error during manifest loading:', err);
+  });
+
+  if (criticalErr) {
+    console.error('[SSR] CRITICAL Error during manifest loading:', criticalErr);
   }
 }
 
@@ -87,24 +95,21 @@ async function handleStaticFiles(path: string) {
 
     for (const p of paths) {
       if (existsSync(p)) {
-        try {
-          const stats = statSync(p);
-          if (stats.isFile()) {
-            const file = Bun.file(p);
-            const headers: Record<string, string> = {};
-            if (assetPath.endsWith('.css'))
-              headers['Content-Type'] = 'text/css';
-            else if (assetPath.endsWith('.js'))
-              headers['Content-Type'] = 'application/javascript';
-            else if (assetPath.endsWith('.ico'))
-              headers['Content-Type'] = 'image/x-icon';
-            else if (assetPath.endsWith('.png'))
-              headers['Content-Type'] = 'image/png';
+        const [err, stats] = safeWrap(() => statSync(p));
+        if (!err && stats?.isFile()) {
+          const file = Bun.file(p);
+          const headers: Record<string, string> = {};
+          if (assetPath.endsWith('.css')) headers['Content-Type'] = 'text/css';
+          else if (assetPath.endsWith('.js'))
+            headers['Content-Type'] = 'application/javascript';
+          else if (assetPath.endsWith('.ico'))
+            headers['Content-Type'] = 'image/x-icon';
+          else if (assetPath.endsWith('.png'))
+            headers['Content-Type'] = 'image/png';
 
-            console.log(`[SSR] Serving: ${path} -> ${p}`);
-            return new Response(file, { headers });
-          }
-        } catch (_e) {}
+          console.log(`[SSR] Serving: ${path} -> ${p}`);
+          return new Response(file, { headers });
+        }
       }
     }
 
@@ -117,17 +122,16 @@ async function handleStaticFiles(path: string) {
 
   // Handle public files if they exist and are actual files
   const publicPath = join(process.cwd(), 'public', path);
-  try {
-    if (existsSync(publicPath) && statSync(publicPath).isFile()) {
-      return new Response(Bun.file(publicPath));
-    }
-  } catch (_e) {}
+  const [err, stats] = safeWrap(() => statSync(publicPath));
+  if (!err && stats?.isFile()) {
+    return new Response(Bun.file(publicPath));
+  }
 
   return null;
 }
 
 async function getInitialData(path: string, req: Request) {
-  const roomMatch = path.match(/^\/room\/([^/]+)$/);
+  const roomMatch = path.match(/^\/rooms\/([^/]+)$/);
   if (!roomMatch || roomMatch[1] === 'create') {
     if (roomMatch && roomMatch[1] === 'create') {
       const url = new URL(req.url);
@@ -138,15 +142,38 @@ async function getInitialData(path: string, req: Request) {
   }
 
   const roomId = roomMatch[1];
-  const [err, room] = await api.get('/rooms/{id}', { id: roomId });
+  const cookieHeader = req.headers.get('Cookie');
+  console.log(`[SSR] Room: ${roomId}, Cookie present: ${!!cookieHeader}`);
 
-  if (err || !room) {
-    const createUrl = new URL('/room/create', req.url);
+  const authenticatedApi = cookieHeader
+    ? (api as any).withHeaders({ Cookie: cookieHeader })
+    : api;
+
+  // Fetch all necessary data for room view in parallel
+  const [roomRes, songsRes, playbackRes] = await Promise.all([
+    authenticatedApi.get('/rooms/{id}', { id: roomId }),
+    authenticatedApi.get('/rooms/{id}/songs', { id: roomId }),
+    authenticatedApi.get('/rooms/{id}/states', { id: roomId }),
+  ]);
+
+  const [roomErr, room] = roomRes;
+  const [_songsErr, songs] = songsRes;
+  const [_playbackErr, playback] = playbackRes;
+
+  if (roomErr || !room) {
+    const createUrl = new URL('/rooms/create', req.url);
     createUrl.searchParams.set('name', roomId);
     return { data: {}, redirect: Response.redirect(createUrl.toString(), 302) };
   }
 
-  return { data: { room }, redirect: null };
+  return {
+    data: {
+      room,
+      songs: songs || [],
+      playback: playback || null,
+    },
+    redirect: null,
+  };
 }
 
 Bun.serve({
@@ -168,7 +195,7 @@ Bun.serve({
     // If it's a known non-route that isn't a static file, return 404 early
     if (
       path === '/favicon.ico' ||
-      (path.includes('.') && !path.startsWith('/room/'))
+      (path.includes('.') && !path.startsWith('/rooms/'))
     ) {
       return new Response('Not Found', { status: 404 });
     }
@@ -184,21 +211,23 @@ Bun.serve({
       ? `/assets/platform/${manifest['index.css']}`
       : '/assets/platform/index.css';
 
-    try {
-      const appHTML = renderToString(
+    const [error, appHTML] = safeWrap(() =>
+      renderToString(
         <StaticRouter location={path}>
           <App initialData={initialData} />
         </StaticRouter>,
-      );
+      ),
+    );
 
-      const fullHTML = createHTMLShell(appHTML, initialData, mainJS, mainCSS);
-      return new Response(fullHTML, {
-        headers: { 'Content-Type': 'text/html' },
-      });
-    } catch (error) {
+    if (error || !appHTML) {
       console.error('[SSR Error]', error);
       return new Response('Internal Server Error', { status: 500 });
     }
+
+    const fullHTML = createHTMLShell(appHTML, initialData, mainJS, mainCSS);
+    return new Response(fullHTML, {
+      headers: { 'Content-Type': 'text/html' },
+    });
   },
   websocket: {
     message() {},

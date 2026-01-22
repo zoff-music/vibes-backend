@@ -1,5 +1,5 @@
 import { SoundCloudPlayer, SpotifyPlayer, VideoPlayer } from '@vibez/player';
-import { Song } from '@vibez/shared';
+import { Song, usePlaybackStore } from '@vibez/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -14,6 +14,7 @@ import { usePlayback } from '../hooks/usePlayback';
 import { useProviderToken } from '../hooks/useProviderToken';
 import { useQueue } from '../hooks/useQueue';
 import { useRoom } from '../hooks/useRoom';
+import { useQueueStore } from '../stores/queueStore';
 import { useRoomStore } from '../stores/roomStore';
 import { useThemeStore } from '../stores/themeStore';
 
@@ -35,38 +36,54 @@ export default function RoomView({ initialData }: RoomViewProps) {
     userId,
     users,
     updateRoomSettings,
-    updateRoom,
   } = useRoom(id || '');
   const { isDarkMode, toggleDarkMode } = useThemeStore();
 
   // Handle SSR initial data
-  const { setRoom } = useRoomStore();
+  const { setRoom, isAdmin: storeIsAdmin } = useRoomStore();
+  const isAdmin = storeIsAdmin || initialData?.room?.isAdmin || false;
+  const { setSongs } = useQueueStore();
+  const { setPlaybackState } = usePlaybackStore();
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
     if (initialData && !initialized) {
-      console.log('[SSR] Initializing room with server-provided data');
-      setRoom(initialData);
+      console.log(
+        '[SSR] Initializing room with server-provided data',
+        initialData,
+      );
+      if (initialData.room) {
+        setRoom(initialData.room);
+        console.log('[SSR] Set room. isAdmin:', initialData.room.isAdmin);
+      }
+      if (initialData.songs) setSongs(initialData.songs);
+      if (initialData.playback) setPlaybackState(initialData.playback);
       setInitialized(true);
     }
-  }, [initialData, initialized, setRoom]);
+  }, [initialData, initialized, setRoom, setSongs, setPlaybackState]);
 
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [showRoomInfo, setShowRoomInfo] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [toasts, setToasts] = useState<
-    { id: string; message: string; type: 'success' | 'info' }[]
+    { id: string; message: string; type: 'success' | 'info' | 'error' }[]
   >([]);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
 
   const fetchAttemptedRef = useRef<string | null>(null);
   useEffect(() => {
     if (id && fetchAttemptedRef.current !== id) {
       fetchAttemptedRef.current = id;
-      fetchRoom();
-      fetchQueue();
+
+      // Only fetch if we don't have initial data for this specific room
+      if (!initialData || initialData.room?.id !== id) {
+        fetchRoom();
+        fetchQueue();
+      }
     }
-  }, [id, fetchRoom, fetchQueue]);
+  }, [id, fetchRoom, fetchQueue, initialData]);
 
   const formatTime = (ms: number) => {
     const seconds = Math.floor(ms / 1000);
@@ -105,12 +122,14 @@ export default function RoomView({ initialData }: RoomViewProps) {
     if (joinAttemptedRef.current !== id) {
       joinAttemptedRef.current = id;
       const checkJoin = async () => {
-        await joinRoom(`Guest_${Math.floor(Math.random() * 1000)}`);
+        // Implicit session creation happens via middleware on any request.
+        // We just need to fetch the room to be sure.
+        await fetchRoom();
       };
 
       checkJoin();
     }
-  }, [id, userId, joinRoom]);
+  }, [id, userId, fetchRoom]);
 
   // Render logic moved inside main return
 
@@ -143,6 +162,36 @@ export default function RoomView({ initialData }: RoomViewProps) {
     },
     [voteSong],
   );
+
+  const handleJoinAdmin = useCallback(async () => {
+    if (!adminPassword) return;
+    setIsAuthenticating(true);
+    const data = await joinRoom(adminPassword);
+    setIsAuthenticating(false);
+
+    if (data) {
+      setToasts((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          message: room?.hasPassword
+            ? 'Logged in as admin!'
+            : 'Password set and admin granted!',
+          type: 'success',
+        },
+      ]);
+      setAdminPassword('');
+    } else {
+      setToasts((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          message: 'Failed to authenticate. Incorrect password?',
+          type: 'error',
+        },
+      ]);
+    }
+  }, [adminPassword, joinRoom, room?.hasPassword]);
 
   /* Spotify Proactive Auth Logic */
   const { token: spotifyToken, fetchToken: fetchSpotifyToken } =
@@ -193,7 +242,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
           id,
         );
         const timer = setTimeout(() => {
-          const createUrl = `/room/create?name=${encodeURIComponent(id)}`;
+          const createUrl = `/rooms/create?name=${encodeURIComponent(id)}`;
           console.log('[RoomView] Navigating to:', createUrl);
           navigate(createUrl);
         }, 2000); // Wait 2 seconds to show the error message
@@ -448,7 +497,9 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
                       <div className="group flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="font-bold text-ink text-sm dark:text-dark-text">
+                          <span
+                            className={`font-bold text-sm ${room?.hasPassword && !isAdmin ? 'text-ink/30 dark:text-dark-text-subtle' : 'text-ink dark:text-dark-text'}`}
+                          >
                             Allow Skip
                           </span>
                           <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">
@@ -456,6 +507,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                           </span>
                         </div>
                         <button
+                          disabled={room?.hasPassword && !isAdmin}
                           onClick={() =>
                             room &&
                             updateRoomSettings({
@@ -463,7 +515,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               skipAllowed: !room.settings.skipAllowed,
                             })
                           }
-                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.skipAllowed ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'}`}
+                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.skipAllowed ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                         >
                           <div
                             className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.skipAllowed ? 'right-1.5' : 'left-1.5'}`}
@@ -473,7 +525,9 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
                       <div className="group flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="font-bold text-ink text-sm dark:text-dark-text">
+                          <span
+                            className={`font-bold text-sm ${room?.hasPassword && !isAdmin ? 'text-ink/30 dark:text-dark-text-subtle' : 'text-ink dark:text-dark-text'}`}
+                          >
                             Democratic Skip
                           </span>
                           <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">
@@ -481,6 +535,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                           </span>
                         </div>
                         <button
+                          disabled={room?.hasPassword && !isAdmin}
                           onClick={() =>
                             room &&
                             updateRoomSettings({
@@ -488,7 +543,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               democraticSkip: !room.settings.democraticSkip,
                             })
                           }
-                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.democraticSkip ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'}`}
+                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.democraticSkip ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                         >
                           <div
                             className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.democraticSkip ? 'right-1.5' : 'left-1.5'}`}
@@ -498,7 +553,9 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
                       <div className="group flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="font-bold text-ink text-sm dark:text-dark-text">
+                          <span
+                            className={`font-bold text-sm ${room?.hasPassword && !isAdmin ? 'text-ink/30 dark:text-dark-text-subtle' : 'text-ink dark:text-dark-text'}`}
+                          >
                             Loop Queue
                           </span>
                           <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">
@@ -506,6 +563,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                           </span>
                         </div>
                         <button
+                          disabled={room?.hasPassword && !isAdmin}
                           onClick={() =>
                             room &&
                             updateRoomSettings({
@@ -513,7 +571,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               loopQueue: !room.settings.loopQueue,
                             })
                           }
-                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.loopQueue ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'}`}
+                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.loopQueue ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                         >
                           <div
                             className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.loopQueue ? 'right-1.5' : 'left-1.5'}`}
@@ -523,7 +581,9 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
                       <div className="group flex items-center justify-between">
                         <div className="flex flex-col">
-                          <span className="font-bold text-ink text-sm dark:text-dark-text">
+                          <span
+                            className={`font-bold text-sm ${room?.hasPassword && !isAdmin ? 'text-ink/30 dark:text-dark-text-subtle' : 'text-ink dark:text-dark-text'}`}
+                          >
                             Remove Played
                           </span>
                           <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">
@@ -531,6 +591,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                           </span>
                         </div>
                         <button
+                          disabled={room?.hasPassword && !isAdmin}
                           onClick={() =>
                             room &&
                             updateRoomSettings({
@@ -538,7 +599,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               removeOnPlay: !room.settings.removeOnPlay,
                             })
                           }
-                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.removeOnPlay ? 'bg-ink dark:bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'}`}
+                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.removeOnPlay ? 'bg-ink dark:bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                         >
                           <div
                             className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.removeOnPlay ? 'right-1.5' : 'left-1.5'}`}
@@ -546,34 +607,44 @@ export default function RoomView({ initialData }: RoomViewProps) {
                         </button>
                       </div>
 
-                      <div className="group mt-6 flex items-center justify-between border-ink/5 border-t-2 pt-4 dark:border-primary/20">
-                        <div className="flex flex-col">
+                      {!isAdmin && (
+                        <div className="group mt-6 flex flex-col gap-2 border-ink/5 border-t-2 pt-4 dark:border-primary/20">
                           <span className="font-bold text-ink text-sm dark:text-dark-text">
-                            Room Mode
+                            Admin Access
                           </span>
-                          <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">
-                            {room?.mode === 'host'
-                              ? 'Host Controls Playback'
-                              : 'Auto-Play Server'}
+                          <div className="flex gap-2">
+                            <input
+                              type="password"
+                              value={adminPassword}
+                              onChange={(e) => setAdminPassword(e.target.value)}
+                              placeholder={
+                                room?.hasPassword
+                                  ? 'Login as admin'
+                                  : 'Add password'
+                              }
+                              className="flex-1 rounded-xl border-2 border-ink/10 bg-white px-3 py-2 text-ink text-sm outline-none transition-all focus:border-primary/50 dark:border-primary/20 dark:bg-dark-paper dark:text-dark-text"
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleJoinAdmin();
+                              }}
+                            />
+                            <button
+                              onClick={handleJoinAdmin}
+                              disabled={isAuthenticating || !adminPassword}
+                              className="rounded-xl bg-ink p-2 px-4 font-bold text-white text-xs transition-all hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary"
+                            >
+                              {isAuthenticating ? '...' : 'Go'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {isAdmin && (
+                        <div className="group mt-6 border-ink/5 border-t-2 pt-4 text-center dark:border-primary/20">
+                          <span className="font-bold text-matcha text-sm">
+                            ✓ You are an Admin
                           </span>
                         </div>
-                        <div className="flex rounded-lg border border-ink/10 bg-ink/5 p-1 dark:border-primary/20 dark:bg-dark-surfaceElevated">
-                          <button
-                            onClick={() =>
-                              room && updateRoom({ mode: 'server' })
-                            }
-                            className={`rounded-md px-3 py-1 font-bold text-xs transition-all ${room?.mode === 'server' ? 'bg-white text-ink shadow-xs dark:bg-dark-paper dark:text-dark-text' : 'text-ink/40 hover:text-ink/60 dark:text-dark-text-muted dark:hover:text-dark-text-muted'}`}
-                          >
-                            Server
-                          </button>
-                          <button
-                            onClick={() => room && updateRoom({ mode: 'host' })}
-                            className={`rounded-md px-3 py-1 font-bold text-xs transition-all ${room?.mode === 'host' ? 'bg-white text-ink shadow-xs dark:bg-dark-paper dark:text-dark-text' : 'text-ink/40 hover:text-ink/60 dark:text-dark-text-muted dark:hover:text-dark-text-muted'}`}
-                          >
-                            Host
-                          </button>
-                        </div>
-                      </div>
+                      )}
 
                       <p className="pt-2 text-center font-black text-[10px] text-ink/30 italic dark:text-dark-text-subtle">
                         Settings sync enabled
@@ -625,7 +696,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                     Listeners ({users.length})
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {users.slice(0, 8).map((user) => (
+                    {users.slice(0, 8).map((user: any) => (
                       <div
                         key={user.id}
                         className="rounded-full border border-sakura/50 bg-sakura/30 px-3 py-1.5 font-medium text-ink/70 text-xs"
@@ -704,7 +775,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                     <button
                       onClick={() =>
                         navigate(
-                          `/room/create?name=${encodeURIComponent(id || '')}`,
+                          `/rooms/create?name=${encodeURIComponent(id || '')}`,
                         )
                       }
                       className="rounded-xl border-2 border-primary bg-primary px-8 py-3.5 font-bold text-white transition-all hover:bg-primary-muted hover:shadow-retro-pink"

@@ -24,6 +24,7 @@ export const roomSchema = yup.object({
   hasPassword: yup.boolean().required(),
   settings: roomSettingsSchema.required(),
   userCount: yup.number().optional(),
+  isAdmin: yup.boolean().optional(),
   activeSources: yup.array(yup.string().required()).optional(),
 });
 export type Room = yup.InferType<typeof roomSchema>;
@@ -34,6 +35,7 @@ export const createRoomRequestSchema = yup.object({
   name: yup.string().required(),
   mode: yup.string().oneOf(['server', 'host']).optional(),
   password: yup.string().optional(),
+  settings: roomSettingsSchema.partial().optional(),
 });
 export type CreateRoomRequest = yup.InferType<typeof createRoomRequestSchema>;
 

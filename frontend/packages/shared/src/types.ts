@@ -8,6 +8,7 @@ export interface Room {
   hasPassword: boolean;
   settings: RoomSettings;
   userCount?: number;
+  isAdmin?: boolean;
 }
 
 export interface RoomSettings {
@@ -50,7 +51,6 @@ export interface Song {
 
 // Playback types
 export interface PlaybackState {
-  currentSongId: string | null;
   currentSong: Song | null;
   isPlaying: boolean;
   positionMs: number;
@@ -61,7 +61,6 @@ export interface PlaybackState {
 // User types
 export interface RoomUser {
   id: string;
-  nickname?: string;
   isAdmin: boolean;
   joinedAt: string;
   lastSeenAt: string;
@@ -70,7 +69,6 @@ export interface RoomUser {
 // Session types
 export interface Session {
   userId: string;
-  nickname?: string;
   isAdmin: boolean;
   room: Room;
 }

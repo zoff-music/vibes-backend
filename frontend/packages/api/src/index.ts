@@ -109,6 +109,9 @@ const endpoints = {
   },
 
   '/rooms/{id}/states': {
+    get: {
+      response: playbackStateSchema,
+    },
     put: {
       request: roomActionRequestSchema,
       response: playbackStateSchema,
@@ -210,16 +213,6 @@ const endpoints = {
   },
 } satisfies RequestDefinitions;
 
-const baseClient = new RequestClient({
-  hostname: API_BASE_URL,
-  baseUrl: API_BASE_URL,
-  endpoints,
-  validation: true,
-  fetchOpts: {
-    credentials: 'include',
-  },
-});
-
 // Helper interface for wiretyped errors
 interface HTTPError extends Error {
   response?: Response;
@@ -276,83 +269,110 @@ async function formatError(error: Error, context: string): Promise<Error> {
   return formatted;
 }
 
-// Create wrapped client that adds logging
-const wrappedClient = {
-  async get(...args: Parameters<typeof baseClient.get>) {
-    console.log('[API] GET', args[0], args[1] ? JSON.stringify(args[1]) : '');
-    const [err, data] = await baseClient.get(...args);
-    if (err) {
-      return [await formatError(err, `GET ${args[0]} failed`), null] as const;
-    }
-    console.log('[API] GET', args[0], '→ success');
-    return [null, data] as const;
-  },
+const createWrappedClient = (customHeaders: Record<string, string> = {}) => {
+  const localBaseClient = new RequestClient({
+    hostname: API_BASE_URL,
+    baseUrl: API_BASE_URL,
+    endpoints,
+    validation: true,
+    fetchOpts: {
+      credentials: 'include',
+      headers: customHeaders,
+    },
+  });
 
-  async post(...args: Parameters<typeof baseClient.post>) {
-    console.log(
-      '[API] POST',
-      args[0],
-      args[1] ? JSON.stringify(args[1]) : '',
-      args[2] ? JSON.stringify(args[2]) : '',
-    );
-    const [err, data] = await baseClient.post(...args);
-    if (err) {
-      return [await formatError(err, `POST ${args[0]} failed`), null] as const;
-    }
-    console.log('[API] POST', args[0], '→ success');
-    return [null, data] as const;
-  },
+  const wrapped = {
+    async get(...args: Parameters<typeof localBaseClient.get>) {
+      console.log('[API] GET', args[0], args[1] ? JSON.stringify(args[1]) : '');
+      const [err, data] = await localBaseClient.get(...args);
+      if (err) {
+        return [await formatError(err, `GET ${args[0]} failed`), null] as const;
+      }
+      console.log('[API] GET', args[0], '→ success');
+      return [null, data] as const;
+    },
 
-  async patch(...args: Parameters<typeof baseClient.patch>) {
-    console.log(
-      '[API] PATCH',
-      args[0],
-      args[1] ? JSON.stringify(args[1]) : '',
-      args[2] ? JSON.stringify(args[2]) : '',
-    );
-    const [err, data] = await baseClient.patch(...args);
-    if (err) {
-      return [await formatError(err, `PATCH ${args[0]} failed`), null] as const;
-    }
-    console.log('[API] PATCH', args[0], '→ success');
-    return [null, data] as const;
-  },
+    async post(...args: Parameters<typeof localBaseClient.post>) {
+      console.log(
+        '[API] POST',
+        args[0],
+        args[1] ? JSON.stringify(args[1]) : '',
+        args[2] ? JSON.stringify(args[2]) : '',
+      );
+      const [err, data] = await localBaseClient.post(...args);
+      if (err) {
+        return [
+          await formatError(err, `POST ${args[0]} failed`),
+          null,
+        ] as const;
+      }
+      console.log('[API] POST', args[0], '→ success');
+      return [null, data] as const;
+    },
 
-  async put(...args: Parameters<typeof baseClient.put>) {
-    console.log(
-      '[API] PUT',
-      args[0],
-      args[1] ? JSON.stringify(args[1]) : '',
-      args[2] ? JSON.stringify(args[2]) : '',
-    );
-    const [err, data] = await baseClient.put(...args);
-    if (err) {
-      return [await formatError(err, `PUT ${args[0]} failed`), null] as const;
-    }
-    console.log('[API] PUT', args[0], '→ success');
-    return [null, data] as const;
-  },
+    async patch(...args: Parameters<typeof localBaseClient.patch>) {
+      console.log(
+        '[API] PATCH',
+        args[0],
+        args[1] ? JSON.stringify(args[1]) : '',
+        args[2] ? JSON.stringify(args[2]) : '',
+      );
+      const [err, data] = await localBaseClient.patch(...args);
+      if (err) {
+        return [
+          await formatError(err, `PATCH ${args[0]} failed`),
+          null,
+        ] as const;
+      }
+      console.log('[API] PATCH', args[0], '→ success');
+      return [null, data] as const;
+    },
 
-  async delete(...args: Parameters<typeof baseClient.delete>) {
-    console.log(
-      '[API] DELETE',
-      args[0],
-      args[1] ? JSON.stringify(args[1]) : '',
-    );
-    const [err, data] = await baseClient.delete(...args);
-    if (err) {
-      return [
-        await formatError(err, `DELETE ${args[0]} failed`),
-        null,
-      ] as const;
-    }
-    console.log('[API] DELETE', args[0], '→ success');
-    return [null, data] as const;
-  },
+    async put(...args: Parameters<typeof localBaseClient.put>) {
+      console.log(
+        '[API] PUT',
+        args[0],
+        args[1] ? JSON.stringify(args[1]) : '',
+        args[2] ? JSON.stringify(args[2]) : '',
+      );
+      const [err, data] = await localBaseClient.put(...args);
+      if (err) {
+        return [await formatError(err, `PUT ${args[0]} failed`), null] as const;
+      }
+      console.log('[API] PUT', args[0], '→ success');
+      return [null, data] as const;
+    },
 
-  // Expose SSE and other methods from base client
-  sse: baseClient.sse.bind(baseClient),
-  url: baseClient.url.bind(baseClient),
+    async delete(...args: Parameters<typeof localBaseClient.delete>) {
+      console.log(
+        '[API] DELETE',
+        args[0],
+        args[1] ? JSON.stringify(args[1]) : '',
+      );
+      const [err, data] = await localBaseClient.delete(...args);
+      if (err) {
+        return [
+          await formatError(err, `DELETE ${args[0]} failed`),
+          null,
+        ] as const;
+      }
+      console.log('[API] DELETE', args[0], '→ success');
+      return [null, data] as const;
+    },
+
+    // Expose SSE and other methods from local base client
+    sse: localBaseClient.sse.bind(localBaseClient),
+    url: localBaseClient.url.bind(localBaseClient),
+
+    // Method to create a new client with additional headers
+    withHeaders(headers: Record<string, string>) {
+      return createWrappedClient({ ...customHeaders, ...headers });
+    },
+  };
+
+  return wrapped as unknown as typeof localBaseClient & {
+    withHeaders: (headers: Record<string, string>) => typeof wrapped;
+  };
 };
 
-export const api = wrappedClient as unknown as typeof baseClient;
+export const api = createWrappedClient() as any;

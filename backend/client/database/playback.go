@@ -31,13 +31,15 @@ func (c *Client) prepareGetPlaybackStateStmt() error {
 // prepareProcessNextExpiredPlaybackStmt prepares the ProcessNextExpiredPlaybackStatement.
 func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT ps.room_id
-		FROM playback_state ps
-		JOIN songs s ON ps.current_song_id = s.id
-		JOIN rooms r ON ps.room_id = r.id
-		WHERE ps.is_playing = 1
-		  AND (r.mode = 'server' OR r.mode = 'host')
-		  AND ((unixepoch('now') - unixepoch(ps.updated_at)) * 1000 + ps.position_ms) >= (s.duration * 1000 - 2000)
+		SELECT a.room_id
+		FROM playback_state a
+		JOIN songs b 
+		ON a.current_song_id = b.id
+		JOIN rooms c 
+		ON a.room_id = c.id
+		WHERE a.is_playing = 1
+		AND (c.mode = 'server' OR c.mode = 'host')
+		AND ((UNIXEPOCH('now') - UNIXEPOCH(a.updated_at)) * 1000 + a.position_ms) >= (b.duration * 1000 - 2000)
 		LIMIT 1
 	`)
 	if err != nil {
@@ -57,8 +59,10 @@ func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.Playback
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var roomID string
-	err := c.ProcessNextExpiredPlaybackStatement.QueryRowContext(cctx).Scan(&roomID)
+	r := c.ProcessNextExpiredPlaybackStatement.QueryRowContext(cctx)
+
+	var row sql.NullString
+	err := r.Scan(&row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, internalerror.ErrExpected{
@@ -67,8 +71,11 @@ func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.Playback
 				},
 			}
 		}
+
 		return nil, fmt.Errorf("error finding expired playback: %w", err)
 	}
+
+	roomID := row.String
 
 	// Skip the track
 	// skipTrack is internal and doesn't check permissions, which is what we want here
@@ -88,39 +95,42 @@ func (c *Client) getPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.GetPlaybackStateStatement.QueryRowContext(cctx, roomID)
+	r := c.GetPlaybackStateStatement.QueryRowContext(cctx, roomID)
 
-	var scanned playbackStateRow
-	err := scanned.scan(row)
+	var row playbackStateRow
+	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			// Return default state if no state exists
 			return &vibe.PlaybackState{
-				RoomID:        roomID,
-				CurrentSongID: nil,
-				IsPlaying:     false,
-				PositionMs:    0,
-				UpdatedAt:     time.Now(),
-				ServerTimeMs:  time.Now().UnixMilli(),
+				RoomID:       roomID,
+				CurrentSong:  nil,
+				IsPlaying:    false,
+				PositionMs:   0,
+				UpdatedAt:    time.Now(),
+				ServerTimeMs: int(time.Now().UnixMilli()),
 			}, nil
 		}
 
 		return nil, fmt.Errorf("error fetching playback state: %w", err)
 	}
 
-	state, err := scanned.toPlaybackState()
+	state, err := row.toPlaybackState()
 	if err != nil {
 		return nil, fmt.Errorf("error converting playback state row: %w", err)
 	}
 
-	if state.CurrentSongID != nil {
-		song, err := c.GetSong(ctx, state.RoomID, *state.CurrentSongID)
-		if err != nil {
-			return nil, fmt.Errorf("error get current song %s: %w", *state.CurrentSongID, err)
-		}
-		if !song.IsEmpty() {
-			state.CurrentSong = song
-		}
+	if !row.CurrentSongID.Valid || row.CurrentSongID.String == "" {
+		return state, nil
+	}
+
+	song, err := c.GetSong(ctx, state.RoomID, row.CurrentSongID.String)
+	if err != nil {
+		return nil, fmt.Errorf("error get current song %s: %w", row.CurrentSongID.String, err)
+	}
+
+	if !song.IsEmpty() {
+		state.CurrentSong = song
 	}
 
 	return state, nil
@@ -129,20 +139,27 @@ func (c *Client) getPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 // GetPlaybackState fetches the playback state for a room.
 // It will automatically attempt to start playback if the room is idle.
 func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
-	state, err := c.getPlaybackState(ctx, roomID)
+	span, ctx := opentracing.StartSpanFromContext(ctx, "GetPlaybackState")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	state, err := c.getPlaybackState(cctx, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("error get playback state: %w", err)
 	}
 
-	if state.CurrentSongID == nil {
-		newState, err := c.StartPlaybackIfIdle(ctx, roomID)
-		if err != nil {
-			return nil, fmt.Errorf("error auto-start playback: %w", err)
-		}
-		return newState, nil
+	if state.CurrentSong != nil {
+		return state, nil
 	}
 
-	return state, nil
+	newState, err := c.StartPlaybackIfIdle(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("error auto-start playback: %w", err)
+	}
+
+	return newState, nil
 }
 
 type playbackStateRow struct {
@@ -164,28 +181,13 @@ func (r *playbackStateRow) scan(row *sql.Row) error {
 }
 
 func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
-	var currentSongID *string
-	if r.CurrentSongID.Valid && r.CurrentSongID.String != "" {
-		currentSongID = &r.CurrentSongID.String
-	}
-
-	if !r.UpdatedAt.Valid {
-		return nil, fmt.Errorf("error missing playback_state updated_at")
-	}
-
-	positionMs := int64(0)
-	if r.PositionMs.Valid {
-		positionMs = r.PositionMs.Int64
-	}
-
 	return &vibe.PlaybackState{
-		RoomID:        r.RoomID.String,
-		CurrentSongID: currentSongID,
-		CurrentSong:   nil,
-		IsPlaying:     r.IsPlaying.Valid && r.IsPlaying.Int64 == 1,
-		PositionMs:    positionMs,
-		UpdatedAt:     r.UpdatedAt.Time,
-		ServerTimeMs:  time.Now().UnixMilli(),
+		RoomID:       r.RoomID.String,
+		CurrentSong:  nil,
+		IsPlaying:    r.IsPlaying.Valid && r.IsPlaying.Int64 == 1,
+		PositionMs:   int(r.PositionMs.Int64),
+		UpdatedAt:    r.UpdatedAt.Time,
+		ServerTimeMs: int(time.Now().UnixMilli()),
 	}, nil
 }
 
@@ -217,15 +219,15 @@ func (c *Client) UpsertPlaybackState(ctx context.Context, state *vibe.PlaybackSt
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	isPlaying := 0
-	if state.IsPlaying {
-		isPlaying = 1
+	var currentSongID string
+	if state.CurrentSong != nil {
+		currentSongID = state.CurrentSong.ID
 	}
 
 	_, err := c.UpsertPlaybackStateStatement.ExecContext(cctx,
 		state.RoomID,
-		state.CurrentSongID,
-		isPlaying,
+		currentSongID,
+		boolToInt(state.IsPlaying),
 		state.PositionMs,
 		state.UpdatedAt,
 	)
@@ -246,35 +248,25 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 		return nil, fmt.Errorf("skip track: get playback state: %w", err)
 	}
 
-	room, err := c.GetRoom(ctx, roomID)
+	room, err := c.GetRoom(ctx, roomID, "")
 	if err != nil {
 		return nil, fmt.Errorf("skip track: get room: %w", err)
 	}
 
 	currentPosition := -1
-	currentSongID := ""
+	var currentSongID string
 	if state.CurrentSong != nil {
 		currentPosition = state.CurrentSong.Position
 		currentSongID = state.CurrentSong.ID
-	} else if state.CurrentSongID != nil {
-		currentSongID = *state.CurrentSongID
-		// If we only have ID, we need position to find next song
-		song, _ := c.GetSong(ctx, roomID, currentSongID)
-		if !song.IsEmpty() {
-			currentPosition = song.Position
-		}
 	}
 
-	// 1. Remove current song if RemoveOnPlay is enabled
 	if room.Settings.RemoveOnPlay && currentSongID != "" {
 		err = c.RemoveSong(ctx, roomID, currentSongID)
 		if err != nil {
-			// Log error but continue skipping?
-			fmt.Printf("Error removing song %s from room %s: %v\n", currentSongID, roomID, err)
+			return nil, fmt.Errorf("skip track: remove song: %w", err)
 		}
 	}
 
-	// 2. Find next song
 	nextSong, err := c.GetNextSong(ctx, roomID, currentPosition)
 	if err != nil {
 		return nil, fmt.Errorf("skip track: get next song: %w", err)
@@ -289,12 +281,9 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 		}
 	}
 
-	if nextSong.IsEmpty() {
-		state.CurrentSongID = nil
-		state.CurrentSong = nil
-		state.IsPlaying = false
-	} else {
-		state.CurrentSongID = &nextSong.ID
+	state.CurrentSong = nil
+	state.IsPlaying = false
+	if !nextSong.IsEmpty() {
 		state.CurrentSong = nextSong
 		state.IsPlaying = true
 	}
@@ -320,17 +309,22 @@ func (c *Client) SkipTrack(ctx context.Context, roomID string, userID string) (*
 		return nil, err
 	}
 
-	return c.skipTrack(ctx, roomID)
+	state, err := c.skipTrack(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("skip track: %w", err)
+	}
+
+	return state, nil
 }
 
 // UpdatePlayback updates the playback state based on the action (play/pause/seek).
-func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID string, action vibe.RoomAction, positionMs int64) (*vibe.PlaybackState, error) {
+func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID string, action vibe.RoomAction, positionMs int) (*vibe.PlaybackState, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "UpdatePlayback")
 	defer span.Finish()
 
 	err := c.checkHostPermissions(ctx, roomID, userID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error checking host permissions in update playback in %s: %w", roomID, err)
 	}
 
 	state, err := c.GetPlaybackState(ctx, roomID)
@@ -340,23 +334,31 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 
 	switch action {
 	case vibe.RoomActionPlay:
-		if state.CurrentSongID == nil {
-			// If no song is selected, try to play the first one
-			firstSong, err := c.GetNextSong(ctx, roomID, 0)
-			if err == nil && !firstSong.IsEmpty() {
-				state.CurrentSongID = &firstSong.ID
-				state.CurrentSong = firstSong
-				state.PositionMs = 0
-			}
-		}
 		state.IsPlaying = true
-	case vibe.RoomActionPause:
-		// Calculate projected position before pausing
-		if state.IsPlaying {
-			elapsed := time.Since(state.UpdatedAt).Milliseconds()
-			state.PositionMs = state.PositionMs + elapsed
+		if state.CurrentSong != nil {
+			break
 		}
+
+		// If no song is selected, try to play the first one
+		firstSong, err := c.GetNextSong(ctx, roomID, -1)
+		if err != nil {
+			return nil, fmt.Errorf("update playback: get next song: %w", err)
+		}
+
+		if firstSong.IsEmpty() {
+			break
+		}
+
+		state.CurrentSong = firstSong
+		state.PositionMs = 0
+	case vibe.RoomActionPause:
 		state.IsPlaying = false
+		if !state.IsPlaying {
+			break
+		}
+
+		elapsed := time.Since(state.UpdatedAt).Milliseconds()
+		state.PositionMs = state.PositionMs + int(elapsed)
 	case vibe.RoomActionSeek:
 		state.PositionMs = positionMs
 	default:
@@ -377,10 +379,10 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE playback_state
 		SET current_song_id = ?1,
-			is_playing = 1,
-			updated_at = ?2
+		is_playing = 1,
+		updated_at = ?2
 		WHERE room_id = ?3
-		  AND current_song_id IS NULL
+		AND current_song_id IS NULL
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing StartPlaybackIfIdleStatement: %w", err)
@@ -430,13 +432,12 @@ func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.
 
 	// 3. Successfully started, return the new state
 	return &vibe.PlaybackState{
-		RoomID:        roomID,
-		CurrentSongID: &firstSong.ID,
-		CurrentSong:   firstSong,
-		IsPlaying:     true,
-		PositionMs:    0,
-		UpdatedAt:     now,
-		ServerTimeMs:  now.UnixMilli(),
+		RoomID:       roomID,
+		CurrentSong:  firstSong,
+		IsPlaying:    true,
+		PositionMs:   0,
+		UpdatedAt:    now,
+		ServerTimeMs: int(now.UnixMilli()),
 	}, nil
 }
 
@@ -446,11 +447,14 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 	}
 
 	// Register user as active participant
-	_ = c.UpdateParticipant(ctx, roomID, userID, true)
-
-	room, err := c.GetRoom(ctx, roomID)
+	err := c.UpdateParticipant(ctx, roomID, userID, true)
 	if err != nil {
-		return fmt.Errorf("failed to fetch room: %w", err)
+		return fmt.Errorf("error updating participant in check host permission in %s for %s: %w", roomID, userID, err)
+	}
+
+	room, err := c.GetRoom(ctx, roomID, userID)
+	if err != nil {
+		return fmt.Errorf("error getting room in check host permission in %s for %s: %w", roomID, userID, err)
 	}
 
 	if room.Mode != vibe.RoomModeHost {
@@ -461,7 +465,7 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 		// Claim host
 		err := c.SetRoomHost(ctx, roomID, userID)
 		if err != nil {
-			return fmt.Errorf("failed to set room host: %w", err)
+			return fmt.Errorf("error setting room host in check host permission in %s for %s: %w", roomID, userID, err)
 		}
 		return nil
 	}
@@ -473,7 +477,7 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 	// Check if current host is still active
 	activeParticipants, err := c.GetActiveParticipants(ctx, roomID, 30*time.Second)
 	if err != nil {
-		return fmt.Errorf("failed to get active participants: %w", err)
+		return fmt.Errorf("error getting active participants in check host permission in %s for %s: %w", roomID, userID, err)
 	}
 
 	hostStillActive := false
@@ -488,10 +492,10 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 		// Previous host inactive, claim host
 		err := c.SetRoomHost(ctx, roomID, userID)
 		if err != nil {
-			return fmt.Errorf("failed to set room host: %w", err)
+			return fmt.Errorf("error setting room host in check host permission in %s for %s: %w", roomID, userID, err)
 		}
 		return nil
 	}
 
-	return fmt.Errorf("only the host can perform this action")
+	return fmt.Errorf("error only the host can perform this action in %s for %s", roomID, userID)
 }

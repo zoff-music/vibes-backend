@@ -34,7 +34,7 @@ func (m *PermissionMiddleware) Middleware(next http.Handler) http.Handler {
 		// NOTE: If the room has NO password, we might still want to allow access.
 		// But first we need to fetch the room to know if it has a password.
 
-		room, err := m.DB.GetRoom(ctx, roomID)
+		room, err := m.DB.GetRoom(ctx, roomID, session.UserID)
 		if err != nil {
 			log.Printf("PermissionMiddleware: failed to fetch room %s: %v", roomID, err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/zoff-music/vibes/internalerror"
@@ -19,8 +20,8 @@ func (c *Client) prepareProcessNextAbandonedHostStmt() error {
 		FROM rooms r
 		LEFT JOIN room_users ru ON r.host_id = ru.id
 		WHERE r.mode = 'host'
-		  AND r.host_id IS NOT NULL AND r.host_id != ''
-		  AND (ru.last_seen_at IS NULL OR ru.last_seen_at < datetime('now', '-15 seconds'))
+		AND r.host_id IS NOT NULL AND r.host_id != ''
+		AND (ru.last_seen_at IS NULL OR ru.last_seen_at < datetime('now', '-15 seconds'))
 		LIMIT 1
 	`)
 	if err != nil {
@@ -40,8 +41,10 @@ func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostIn
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var roomID string
-	err := c.ProcessNextAbandonedHostStatement.QueryRowContext(cctx).Scan(&roomID)
+	r := c.ProcessNextAbandonedHostStatement.QueryRowContext(cctx)
+
+	var roomID sql.NullString
+	err := r.Scan(&roomID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, internalerror.ErrExpected{
@@ -53,22 +56,24 @@ func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostIn
 		return nil, fmt.Errorf("error finding abandoned host: %w", err)
 	}
 
-	var newHostID string
-	err = c.ElectNewHostStatement.QueryRowContext(cctx, roomID).Scan(&newHostID)
+	r = c.ElectNewHostStatement.QueryRowContext(cctx, roomID)
+
+	var newHostID sql.NullString
+	err = r.Scan(&newHostID)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return nil, fmt.Errorf("error electing new host: %w", err)
 	}
 	// if ErrNoRows, newHostID is "", which is fine (no host)
 
 	// Update the room
-	err = c.SetRoomHost(ctx, roomID, newHostID)
+	err = c.SetRoomHost(ctx, roomID.String, newHostID.String)
 	if err != nil {
 		return nil, fmt.Errorf("error setting room host: %w", err)
 	}
 
 	return &vibe.RoomHostInfo{
-		RoomID:    roomID,
-		NewHostID: newHostID,
+		RoomID:    roomID.String,
+		NewHostID: newHostID.String,
 	}, nil
 }
 
@@ -76,7 +81,7 @@ func (c *Client) prepareElectNewHostStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id FROM room_users 
 		WHERE room_id = ?1 
-		  AND last_seen_at >= datetime('now', '-15 seconds')
+		AND last_seen_at >= DATETIME('now', '-15 seconds')
 		ORDER BY joined_at ASC
 		LIMIT 1
 	`)
@@ -91,22 +96,27 @@ func (c *Client) prepareElectNewHostStmt() error {
 func (c *Client) prepareGetRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT
-			rooms.id,
-			rooms.name,
-			rooms.mode,
-			rooms.host_id,
-			rooms.admin_password_hash,
-			rooms.created_at,
-			room_settings.skip_allowed,
-			room_settings.democratic_skip,
-			room_settings.skip_vote_threshold,
-			room_settings.max_continuous_adds,
-			room_settings.remove_on_play,
-			room_settings.loop_queue,
-			room_settings.allow_duplicates
-		FROM rooms
-		JOIN room_settings ON room_settings.room_id = rooms.id
-		WHERE rooms.id = ?1
+			a.id,
+			a.name,
+			a.mode,
+			a.host_id,
+			a.admin_password_hash,
+			a.created_at,
+			b.skip_allowed,
+			b.democratic_skip,
+			b.skip_vote_threshold,
+			b.max_continuous_adds,
+			b.remove_on_play,
+			b.loop_queue,
+			b.allow_duplicates,
+			COALESCE(c.is_admin, 0) as is_requester_admin
+		FROM rooms a
+		JOIN room_settings b
+		ON b.room_id = a.id
+		LEFT JOIN room_users c 
+		ON c.room_id = a.id 
+		AND c.id = ?2
+		WHERE a.id = ?1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetRoomStatement: %w", err)
@@ -121,22 +131,27 @@ func (c *Client) prepareGetRoomStmt() error {
 func (c *Client) prepareGetRoomByNameStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT
-			rooms.id,
-			rooms.name,
-			rooms.mode,
-			rooms.host_id,
-			rooms.admin_password_hash,
-			rooms.created_at,
-			room_settings.skip_allowed,
-			room_settings.democratic_skip,
-			room_settings.skip_vote_threshold,
-			room_settings.max_continuous_adds,
-			room_settings.remove_on_play,
-			room_settings.loop_queue,
-			room_settings.allow_duplicates
-		FROM rooms
-		JOIN room_settings ON room_settings.room_id = rooms.id
-		WHERE rooms.name = ?1
+			a.id,
+			a.name,
+			a.mode,
+			a.host_id,
+			a.admin_password_hash,
+			a.created_at,
+			b.skip_allowed,
+			b.democratic_skip,
+			b.skip_vote_threshold,
+			b.max_continuous_adds,
+			b.remove_on_play,
+			b.loop_queue,
+			b.allow_duplicates,
+			COALESCE(c.is_admin, 0) as is_requester_admin
+		FROM rooms a
+		JOIN room_settings b
+		ON b.room_id = a.id
+		LEFT JOIN room_users c 
+		ON c.room_id = a.id 
+		AND c.id = ?2
+		WHERE a.name = ?1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetRoomByNameStatement: %w", err)
@@ -148,17 +163,16 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 }
 
 // GetRoomByName fetches a room by name.
-func (c *Client) GetRoomByName(ctx context.Context, name string) (*vibe.Room, error) {
+func (c *Client) GetRoomByName(ctx context.Context, name string, userID string) (*vibe.Room, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "GetRoomByName")
 	defer span.Finish()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.GetRoomByNameStatement.QueryRowContext(cctx, name)
+	row := c.GetRoomByNameStatement.QueryRowContext(cctx, name, userID)
 
 	var scanned roomRow
-
 	err := scanned.scanRow(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -173,8 +187,9 @@ func (c *Client) GetRoomByName(ctx context.Context, name string) (*vibe.Room, er
 		return nil, fmt.Errorf("error converting room row: %w", err)
 	}
 
-	if err := c.fillActiveSources(ctx, room); err != nil {
-		return nil, err
+	room, err = c.fillActiveSources(ctx, *room)
+	if err != nil {
+		return nil, fmt.Errorf("error filling active sources: %w", err)
 	}
 
 	active, err := c.GetActiveParticipants(ctx, room.ID, 15*time.Second)
@@ -196,42 +211,47 @@ func (c *Client) prepareGetActiveSourcesStmt() error {
 	return nil
 }
 
-func (c *Client) fillActiveSources(ctx context.Context, room *vibe.Room) error {
-	rows, err := c.GetActiveSourcesStatement.QueryContext(ctx, room.ID)
+func (c *Client) fillActiveSources(ctx context.Context, room vibe.Room) (*vibe.Room, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "fillActiveSources")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := c.GetActiveSourcesStatement.QueryContext(cctx, room.ID)
 	if err != nil {
-		return fmt.Errorf("error in db: get active sources: %w", err)
+		return nil, fmt.Errorf("error in db: get active sources: %w", err)
 	}
 	defer rows.Close()
+
 	sources := []string{}
 	for rows.Next() {
-		var source string
-		if err := rows.Scan(&source); err != nil {
-			return fmt.Errorf("error in db: scan active source: %w", err)
+		var row sql.NullString
+		err := rows.Scan(&row)
+		if err != nil {
+			return nil, fmt.Errorf("error in db: scan active source: %w", err)
 		}
-		sources = append(sources, source)
-	}
-
-	if err := rows.Err(); err != nil {
-		return fmt.Errorf("error in db: iterate active sources: %w", err)
+		sources = append(sources, row.String)
 	}
 
 	room.ActiveSources = sources
-	return nil
+	return &room, nil
 }
 
 // GetRoom fetches a room by ID.
-func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
+// If userID is provided, it also populates the IsAdmin field for that user.
+func (c *Client) GetRoom(ctx context.Context, id string, userID string) (*vibe.Room, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "GetRoom")
 	defer span.Finish()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.GetRoomStatement.QueryRowContext(cctx, id)
+	r := c.GetRoomStatement.QueryRowContext(cctx, id, userID)
+	log.Printf("database.GetRoom: roomID=%s, userID=%s", id, userID)
 
-	var scanned roomRow
-
-	err := scanned.scanRow(row)
+	var row roomRow
+	err := row.scanRow(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &vibe.Room{}, nil
@@ -240,13 +260,14 @@ func (c *Client) GetRoom(ctx context.Context, id string) (*vibe.Room, error) {
 		return nil, fmt.Errorf("error fetching room: %w", err)
 	}
 
-	room, err := scanned.toRoom()
+	room, err := row.toRoom()
 	if err != nil {
 		return nil, fmt.Errorf("error converting room row: %w", err)
 	}
 
-	if err := c.fillActiveSources(ctx, room); err != nil {
-		return nil, err
+	room, err = c.fillActiveSources(ctx, *room)
+	if err != nil {
+		return nil, fmt.Errorf("error filling active sources: %w", err)
 	}
 
 	active, err := c.GetActiveParticipants(ctx, room.ID, 15*time.Second)
@@ -271,6 +292,7 @@ type roomRow struct {
 	RemoveOnPlay      sql.NullInt64
 	LoopQueue         sql.NullInt64
 	AllowDuplicates   sql.NullInt64
+	IsRequesterAdmin  sql.NullInt64
 }
 
 func (r *roomRow) scanRow(row *sql.Row) error {
@@ -288,14 +310,11 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.RemoveOnPlay,
 		&r.LoopQueue,
 		&r.AllowDuplicates,
+		&r.IsRequesterAdmin,
 	)
 }
 
 func (r *roomRow) toRoom() (*vibe.Room, error) {
-	if !r.CreatedAt.Valid {
-		return nil, fmt.Errorf("error missing room created_at")
-	}
-
 	settings, err := r.toRoomSettings()
 	if err != nil {
 		return nil, fmt.Errorf("error converting room settings: %w", err)
@@ -308,47 +327,21 @@ func (r *roomRow) toRoom() (*vibe.Room, error) {
 		HostID:            r.HostID.String,
 		AdminPasswordHash: r.AdminPasswordHash.String,
 		HasPassword:       r.AdminPasswordHash.Valid && r.AdminPasswordHash.String != "",
+		IsAdmin:           r.IsRequesterAdmin.Int64 == 1,
 		Settings:          *settings,
 		CreatedAt:         r.CreatedAt.Time,
 	}, nil
 }
 
 func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
-	if !r.SkipAllowed.Valid {
-		return nil, fmt.Errorf("error missing room settings skip_allowed")
-	}
-
-	if !r.DemocraticSkip.Valid {
-		return nil, fmt.Errorf("error missing room settings democratic_skip")
-	}
-
-	if !r.SkipVoteThreshold.Valid {
-		return nil, fmt.Errorf("error missing room settings skip_vote_threshold")
-	}
-
-	if !r.MaxContinuousAdds.Valid {
-		return nil, fmt.Errorf("error missing room settings max_continuous_adds")
-	}
-
-	if !r.RemoveOnPlay.Valid {
-		return nil, fmt.Errorf("error missing room settings remove_on_play")
-	}
-
-	if !r.LoopQueue.Valid {
-		return nil, fmt.Errorf("error missing room settings loop_queue")
-	}
-
-	if !r.AllowDuplicates.Valid {
-		return nil, fmt.Errorf("error missing room settings allow_duplicates")
-	}
 
 	return &vibe.RoomSettings{
-		SkipAllowed:       r.SkipAllowed.Int64 == 1,
-		DemocraticSkip:    r.DemocraticSkip.Int64 == 1,
+		SkipAllowed:       int(r.SkipAllowed.Int64) == 1,
+		DemocraticSkip:    int(r.DemocraticSkip.Int64) == 1,
 		SkipVoteThreshold: r.SkipVoteThreshold.Float64,
 		MaxContinuousAdds: int(r.MaxContinuousAdds.Int64),
-		RemoveOnPlay:      r.RemoveOnPlay.Int64 == 1,
-		LoopQueue:         r.LoopQueue.Int64 == 1,
+		RemoveOnPlay:      int(r.RemoveOnPlay.Int64) == 1,
+		LoopQueue:         int(r.LoopQueue.Int64) == 1,
 		AllowDuplicates:   r.AllowDuplicates.Int64 == 1,
 	}, nil
 }
@@ -428,17 +421,16 @@ func (c *Client) prepareUpdateRoomStmt() error {
 		UPDATE rooms_view
 		SET
 			name = ?1,
-			admin_password_hash = ?2,
-			mode = ?11,
-			host_id = ?12,
-			skip_allowed = ?4,
-			democratic_skip = ?5,
-			skip_vote_threshold = ?6,
-			max_continuous_adds = ?7,
-			remove_on_play = ?8,
-			loop_queue = ?9,
-			allow_duplicates = ?10
-		WHERE id = ?3
+			mode = ?10,
+			host_id = ?11,
+			skip_allowed = ?3,
+			democratic_skip = ?4,
+			skip_vote_threshold = ?5,
+			max_continuous_adds = ?6,
+			remove_on_play = ?7,
+			loop_queue = ?8,
+			allow_duplicates = ?9
+		WHERE id = ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateRoomStatement: %w", err)
@@ -459,7 +451,6 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 
 	_, err := c.UpdateRoomStatement.ExecContext(cctx,
 		room.Name,
-		room.AdminPasswordHash,
 		room.ID,
 		boolToInt(room.Settings.SkipAllowed),
 		boolToInt(room.Settings.DemocraticSkip),

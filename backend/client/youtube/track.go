@@ -12,26 +12,6 @@ import (
 	"github.com/zoff-music/vibes/vibe"
 )
 
-type videoResponse struct {
-	Items []videoItem `json:"items"`
-}
-
-type videoItem struct {
-	ID             string              `json:"id"`
-	Snippet        videoSnippet        `json:"snippet"`
-	ContentDetails videoContentDetails `json:"contentDetails"`
-}
-
-type videoSnippet struct {
-	Title        string           `json:"title"`
-	ChannelTitle string           `json:"channelTitle"`
-	Thumbnails   searchThumbnails `json:"thumbnails"`
-}
-
-type videoContentDetails struct {
-	Duration string `json:"duration"`
-}
-
 // GetTrack fetches details for a specific video ID
 func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, error) {
 	if c.apiKey == "" {
@@ -60,7 +40,7 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	}
 
 	if len(result.Items) == 0 {
-		return nil, fmt.Errorf("track not found")
+		return nil, fmt.Errorf("error track not found")
 	}
 
 	item := result.Items[0]
@@ -72,4 +52,24 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 		ThumbnailURL: item.Snippet.Thumbnails.Medium.URL,
 		Duration:     item.ContentDetails.Duration,
 	}, nil
+}
+
+type videoResponse struct {
+	Items []videoItem `json:"items"`
+}
+
+type videoItem struct {
+	ID             string              `json:"id"`
+	Snippet        videoSnippet        `json:"snippet"`
+	ContentDetails videoContentDetails `json:"contentDetails"`
+}
+
+type videoSnippet struct {
+	Title        string           `json:"title"`
+	ChannelTitle string           `json:"channelTitle"`
+	Thumbnails   searchThumbnails `json:"thumbnails"`
+}
+
+type videoContentDetails struct {
+	Duration string `json:"duration"`
 }

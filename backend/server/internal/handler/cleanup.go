@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"time"
 
@@ -14,7 +15,7 @@ type CleanupInactiveParticipants struct {
 }
 
 // Handle deletes participants who haven't been seen in 1 hour
-func (h *CleanupInactiveParticipants) Handle(ctx context.Context, data []byte) error {
+func (h *CleanupInactiveParticipants) Handle(ctx context.Context, _ []byte) error {
 	deleted, err := h.DB.DeleteInactiveParticipants(ctx, 1*time.Hour)
 	if err != nil {
 		return err
@@ -33,7 +34,7 @@ type CleanupExpiredTokens struct {
 }
 
 // Handle deletes expired external auth tokens
-func (h *CleanupExpiredTokens) Handle(ctx context.Context, data []byte) error {
+func (h *CleanupExpiredTokens) Handle(ctx context.Context, _ []byte) error {
 	deletedAuth, err := h.DB.DeleteExpiredAuthTokens(ctx)
 	if err != nil {
 		return err
@@ -59,14 +60,10 @@ type RefreshSpotifyTokens struct {
 }
 
 // Handle refreshes the next expired Spotify token
-func (h *RefreshSpotifyTokens) Handle(ctx context.Context, data []byte) error {
+func (h *RefreshSpotifyTokens) Handle(ctx context.Context, _ []byte) error {
 	token, err := h.DB.ClaimAndGetExpiredTokenForRefresh(ctx, "spotify")
 	if err != nil {
-		return err
-	}
-
-	if token == nil {
-		return nil
+		return fmt.Errorf("error claiming expired token for refresh in spotify handler: %w", err)
 	}
 
 	newToken, err := h.Provider.RefreshToken(ctx, token.RefreshToken)
@@ -98,14 +95,10 @@ type RefreshYouTubeTokens struct {
 }
 
 // Handle refreshes the next expired YouTube token
-func (h *RefreshYouTubeTokens) Handle(ctx context.Context, data []byte) error {
+func (h *RefreshYouTubeTokens) Handle(ctx context.Context, _ []byte) error {
 	token, err := h.DB.ClaimAndGetExpiredTokenForRefresh(ctx, "youtube")
 	if err != nil {
-		return err
-	}
-
-	if token == nil {
-		return nil
+		return fmt.Errorf("error claiming expired token for refresh in youtube handler: %w", err)
 	}
 
 	newToken, err := h.Provider.RefreshToken(ctx, token.RefreshToken)
@@ -122,7 +115,7 @@ func (h *RefreshYouTubeTokens) Handle(ctx context.Context, data []byte) error {
 
 	err = h.DB.UpsertAccessToken(ctx, token.UserID, "youtube", newToken.AccessToken, refreshToken, expiresAt, token.RefreshExpiresAt)
 	if err != nil {
-		return err
+		return fmt.Errorf("error upserting access-token for refreh in youtube handler")
 	}
 
 	log.Printf("Refreshed YouTube token for user %s", token.UserID)
@@ -135,7 +128,7 @@ type CleanupExpiredPendingOAuthStates struct {
 }
 
 // Handle deletes expired pending OAuth states
-func (h *CleanupExpiredPendingOAuthStates) Handle(ctx context.Context, data []byte) error {
+func (h *CleanupExpiredPendingOAuthStates) Handle(ctx context.Context, _ []byte) error {
 	deleted, err := h.DB.DeleteExpiredPendingOAuthStates(ctx)
 	if err != nil {
 		return err

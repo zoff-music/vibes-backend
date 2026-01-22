@@ -11,21 +11,6 @@ import (
 	"github.com/zoff-music/vibes/vibe"
 )
 
-type trackResponse struct {
-	ID          int    `json:"id"`
-	Title       string `json:"title"`
-	User        user   `json:"user"`
-	ArtworkURL  string `json:"artwork_url"`
-	Duration    int    `json:"duration"`
-	Permalink   string `json:"permalink"`
-	StreamURL   string `json:"stream_url"`
-	Description string `json:"description"`
-}
-
-type user struct {
-	Username string `json:"username"`
-}
-
 // Search searches for tracks on SoundCloud
 func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, error) {
 	if !c.Enabled {
@@ -67,4 +52,19 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	}
 
 	return tracks, nil
+}
+
+type trackResponse struct {
+	ID          int    `json:"id"`
+	Title       string `json:"title"`
+	User        user   `json:"user"`
+	ArtworkURL  string `json:"artwork_url"`
+	Duration    int    `json:"duration"`
+	Permalink   string `json:"permalink"`
+	StreamURL   string `json:"stream_url"`
+	Description string `json:"description"`
+}
+
+type user struct {
+	Username string `json:"username"`
 }

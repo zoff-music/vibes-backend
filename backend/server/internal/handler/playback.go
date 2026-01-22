@@ -60,7 +60,7 @@ func UpdatePlaybackState(
 		}
 		userID := session.UserID
 
-		room, err := db.GetRoom(ctx, roomID)
+		room, err := db.GetRoom(ctx, roomID, userID)
 		if err != nil {
 			handleError(
 				w,
@@ -84,7 +84,7 @@ func UpdatePlaybackState(
 			return
 		}
 
-		state.ServerTimeMs = time.Now().UnixMilli()
+		state.ServerTimeMs = int(time.Now().UnixMilli())
 
 		// Broadcast if in Host mode
 		if room.Mode == vibe.RoomModeHost {
@@ -92,14 +92,22 @@ func UpdatePlaybackState(
 			statePayload, err := json.Marshal(state)
 			if err != nil {
 				log.Printf("failed to marshal playback state payload: %v", err)
-			} else {
-				err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
-					Type:    vibe.PlaybackUpdate,
-					Payload: statePayload,
-				})
-				if err != nil {
-					log.Printf("failed to notify room: %v", err)
-				}
+				handleError(
+					w,
+					fmt.Errorf("error marshalling playback state payload in update playback state handler: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+				Type:    vibe.PlaybackUpdate,
+				Payload: statePayload,
+			})
+
+			if err != nil {
+				log.Printf("failed to notify room: %v", err)
 			}
 		}
 
@@ -145,7 +153,7 @@ func (h *ReviewRoomPlayback) Handle(ctx context.Context, data []byte) error {
 		},
 	})
 	if err != nil {
-		log.Printf("error notifying room %s update: %v", state.RoomID, err)
+		return fmt.Errorf("error notifying room %s update: %w", state.RoomID, err)
 	}
 
 	return nil
@@ -167,15 +175,15 @@ func (h *ReviewHostHealth) Handle(ctx context.Context, data []byte) error {
 	payloadMap := map[string]string{"userId": info.NewHostID, "message": "You are now the host"}
 	payloadBytes, err := json.Marshal(payloadMap)
 	if err != nil {
-		log.Printf("error marshaling new host payload: %v", err)
-	} else {
-		err = h.IPS.NotifyRoomUpdate(ctx, info.RoomID, vibe.RoomEvent{
-			Type:    vibe.NewHost,
-			Payload: payloadBytes,
-		})
-		if err != nil {
-			log.Printf("error notifying room %s host update: %v", info.RoomID, err)
-		}
+		return fmt.Errorf("error marshaling new host payload: %w", err)
+	}
+
+	err = h.IPS.NotifyRoomUpdate(ctx, info.RoomID, vibe.RoomEvent{
+		Type:    vibe.NewHost,
+		Payload: payloadBytes,
+	})
+	if err != nil {
+		return fmt.Errorf("error notifying room %s host update: %w", info.RoomID, err)
 	}
 
 	return nil

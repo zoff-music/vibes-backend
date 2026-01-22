@@ -12,7 +12,6 @@ interface PlaybackStoreState extends PlaybackState {
 }
 
 export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
-  currentSongId: null,
   currentSong: null,
   isPlaying: false,
   positionMs: 0,

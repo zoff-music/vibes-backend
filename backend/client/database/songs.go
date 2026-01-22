@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/zoff-music/vibes/internalerror"
 	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"github.com/zoff-music/vibes/vibe"
 )
@@ -14,12 +15,27 @@ import (
 // prepareGetSongsStmt prepares the GetSongsStatement.
 func (c *Client) prepareGetSongsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT s.id, s.room_id, s.source_type, s.source_id, s.title, s.artist, s.thumbnail_url, s.duration, s.added_by, s.added_by_nickname, s.added_at, s.position, COUNT(sv.user_id) as vote_count
-		FROM songs s
-		LEFT JOIN song_votes sv ON s.id = sv.song_id AND s.room_id = sv.room_id
-		WHERE s.room_id = ?1
-		GROUP BY s.id
-		ORDER BY vote_count DESC, s.position ASC
+		SELECT 
+			a.id, 
+			a.room_id, 
+			a.source_type, 
+			a.source_id, 
+			a.title, 
+			a.artist, 
+			a.thumbnail_url, 
+			a.duration, 
+			a.added_by, 
+			a.added_by_nickname, 
+			a.added_at, 
+			a.position, 
+			COUNT(b.user_id) as vote_count
+		FROM songs a
+		LEFT JOIN song_votes b 
+		ON a.id = b.song_id 
+		AND a.room_id = b.room_id
+		WHERE a.room_id = ?1
+		GROUP BY a.id
+		ORDER BY vote_count DESC, a.position ASC
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSongsStatement: %w", err)
@@ -45,7 +61,6 @@ func (c *Client) GetSongs(ctx context.Context, roomID string) ([]vibe.Song, erro
 	defer rows.Close()
 
 	songs := []vibe.Song{}
-
 	for rows.Next() {
 		var row songRow
 
@@ -54,17 +69,7 @@ func (c *Client) GetSongs(ctx context.Context, roomID string) ([]vibe.Song, erro
 			return nil, fmt.Errorf("error scanning song row: %w", err)
 		}
 
-		song, err := row.toSong()
-		if err != nil {
-			return nil, fmt.Errorf("error converting song row: %w", err)
-		}
-
-		songs = append(songs, *song)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("error iterating song rows: %w", err)
+		songs = append(songs, row.toSong())
 	}
 
 	return songs, nil
@@ -122,61 +127,48 @@ func (r *songRow) scan(row *sql.Row) error {
 	)
 }
 
-func (r *songRow) toSong() (*vibe.Song, error) {
-	var artist *string
-	if r.Artist.Valid {
-		artist = &r.Artist.String
-	}
-
-	var addedByNickname *string
-	if r.AddedByNickname.Valid {
-		addedByNickname = &r.AddedByNickname.String
-	}
-
-	if !r.AddedAt.Valid {
-		return nil, fmt.Errorf("error missing song added_at")
-	}
-
-	duration := 0
-	if r.Duration.Valid {
-		duration = int(r.Duration.Int64)
-	}
-
-	position := 0
-	if r.Position.Valid {
-		position = int(r.Position.Int64)
-	}
-
-	voteCount := 0
-	if r.VoteCount.Valid {
-		voteCount = int(r.VoteCount.Int64)
-	}
-
-	return &vibe.Song{
+func (r *songRow) toSong() vibe.Song {
+	return vibe.Song{
 		ID:              r.ID.String,
 		RoomID:          r.RoomID.String,
 		SourceType:      vibe.SourceType(r.SourceType.String),
 		SourceID:        r.SourceID.String,
 		Title:           r.Title.String,
-		Artist:          artist,
+		Artist:          r.Artist.String,
 		ThumbnailURL:    r.ThumbnailURL.String,
-		Duration:        duration,
+		Duration:        int(r.Duration.Int64),
 		AddedBy:         r.AddedBy.String,
-		AddedByNickname: addedByNickname,
+		AddedByNickname: r.AddedByNickname.String,
 		AddedAt:         r.AddedAt.Time,
-		Position:        position,
-		VoteCount:       voteCount,
-	}, nil
+		Position:        int(r.Position.Int64),
+		VoteCount:       int(r.VoteCount.Int64),
+	}
 }
 
 // prepareGetSongStmt prepares the GetSongStatement.
 func (c *Client) prepareGetSongStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT s.id, s.room_id, s.source_type, s.source_id, s.title, s.artist, s.thumbnail_url, s.duration, s.added_by, s.added_by_nickname, s.added_at, s.position, COUNT(sv.user_id) as vote_count
-		FROM songs s
-		LEFT JOIN song_votes sv ON s.id = sv.song_id AND s.room_id = sv.room_id
-		WHERE s.room_id = ?1 AND s.id = ?2
-		GROUP BY s.id
+		SELECT 
+			a.id, 
+			a.room_id, 
+			a.source_type, 
+			a.source_id, 
+			a.title, 
+			a.artist, 
+			a.thumbnail_url, 
+			a.duration, 
+			a.added_by, 
+			a.added_by_nickname, 
+			a.added_at, 
+			a.position, 
+			COUNT(b.user_id) as vote_count
+		FROM songs a
+		LEFT JOIN song_votes b 
+		ON a.id = b.song_id 
+		AND a.room_id = b.room_id
+		WHERE a.room_id = ?1 
+		AND a.id = ?2
+		GROUP BY a.id
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSongStatement: %w", err)
@@ -195,11 +187,10 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.GetSongStatement.QueryRowContext(cctx, roomID, songID)
+	r := c.GetSongStatement.QueryRowContext(cctx, roomID, songID)
 
-	var scanned songRow
-
-	err := scanned.scan(row)
+	var row songRow
+	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &vibe.Song{}, nil
@@ -208,22 +199,12 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 		return nil, fmt.Errorf("error fetching song: %w", err)
 	}
 
-	song, err := scanned.toSong()
-	if err != nil {
-		return nil, fmt.Errorf("error converting song row: %w", err)
-	}
-
-	return song, nil
+	song := row.toSong()
+	return &song, nil
 }
 
 // prepareAddSongStmt prepares the AddSongStatement.
 func (c *Client) prepareAddSongStmt() error {
-	// Try to insert song.
-	// If conflict, we want the ID.
-	// SQLite 3.35+ supports RETURNING.
-	// On conflict do nothing returning id returns NOTHING.
-	// So we use the update trick to ensure ID is returned?
-	// DO UPDATE SET room_id=room_id RETURNING id
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO songs (room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position)
 		VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)
@@ -262,8 +243,8 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 	defer cancel()
 
 	// 1. Insert Song (idempotent, returns ID)
-	var returnedID string
-	err := c.AddSongStatement.QueryRowContext(cctx,
+
+	r := c.AddSongStatement.QueryRowContext(cctx,
 		song.RoomID,
 		string(song.SourceType),
 		song.SourceID,
@@ -275,7 +256,10 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 		song.AddedByNickname,
 		song.AddedAt,
 		song.Position,
-	).Scan(&returnedID)
+	)
+
+	var returnedID string
+	err := r.Scan(&returnedID)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting song: %w", err)
 	}
@@ -350,16 +334,15 @@ func (c *Client) GetMaxPosition(ctx context.Context, roomID string) (int, error)
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.GetMaxPositionStatement.QueryRowContext(cctx, roomID)
+	r := c.GetMaxPositionStatement.QueryRowContext(cctx, roomID)
 
-	var scanned maxPositionRow
-
-	err := scanned.scan(row)
+	var row maxPositionRow
+	err := row.scan(r)
 	if err != nil {
 		return 0, fmt.Errorf("error getting max position: %w", err)
 	}
 
-	return scanned.toMaxPosition(), nil
+	return row.toMaxPosition(), nil
 }
 
 type maxPositionRow struct {
@@ -367,14 +350,12 @@ type maxPositionRow struct {
 }
 
 func (r *maxPositionRow) scan(row *sql.Row) error {
-	return row.Scan(&r.MaxPosition)
+	return row.Scan(
+		&r.MaxPosition,
+	)
 }
 
 func (r *maxPositionRow) toMaxPosition() int {
-	if !r.MaxPosition.Valid {
-		return 0
-	}
-
 	return int(r.MaxPosition.Int64)
 }
 
@@ -403,11 +384,11 @@ func (c *Client) prepareReorderSongsStmt() error {
 			ELSE position
 		END
 		WHERE room_id = ?4
-			AND (
-				id = ?1
-				OR (?2 < ?3 AND position >= ?2 AND position < ?3)
-				OR (?2 > ?3 AND position > ?3 AND position <= ?2)
-			)
+		AND (
+			id = ?1
+			OR (?2 < ?3 AND position >= ?2 AND position < ?3)
+			OR (?2 > ?3 AND position > ?3 AND position <= ?2)
+		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ReorderSongsStatement: %w", err)
@@ -489,7 +470,9 @@ func (c *Client) VoteSong(ctx context.Context, roomID, songID, userID string) er
 	}
 
 	if rows == 0 {
-		return vibe.ErrAlreadyVoted
+		return internalerror.ErrAlreadyVoted{
+			Err: fmt.Errorf("error voting for song: %w", err),
+		}
 	}
 
 	return nil
@@ -527,12 +510,28 @@ func (c *Client) clearVotesSong(ctx context.Context, roomID, songID string) erro
 // prepareGetNextSongStmt prepares the GetNextSongStatement.
 func (c *Client) prepareGetNextSongStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT s.id, s.room_id, s.source_type, s.source_id, s.title, s.artist, s.thumbnail_url, s.duration, s.added_by, s.added_by_nickname, s.added_at, s.position, COUNT(sv.user_id) as vote_count
-		FROM songs s
-		LEFT JOIN song_votes sv ON s.id = sv.song_id AND s.room_id = sv.room_id
-		WHERE s.room_id = ?1 AND s.position > ?2
-		GROUP BY s.id
-		ORDER BY s.position ASC
+		SELECT 
+			a.id,
+			a.room_id,
+			a.source_type,
+			a.source_id,
+			a.title,
+			a.artist,
+			a.thumbnail_url,
+			a.duration,
+			a.added_by,
+			a.added_by_nickname,
+			a.added_at,
+			a.position,
+			COUNT(b.user_id) as vote_count
+		FROM songs a
+		LEFT JOIN song_votes b 
+		ON a.id = b.song_id 
+		AND a.room_id = b.room_id
+		WHERE a.room_id = ?1 
+		AND a.position > ?2
+		GROUP BY a.id
+		ORDER BY a.position ASC
 		LIMIT 1
 	`)
 	if err != nil {
@@ -552,11 +551,10 @@ func (c *Client) GetNextSong(ctx context.Context, roomID string, currentPosition
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.GetNextSongStatement.QueryRowContext(cctx, roomID, currentPosition)
+	r := c.GetNextSongStatement.QueryRowContext(cctx, roomID, currentPosition)
 
-	var scanned songRow
-
-	err := scanned.scan(row)
+	var row songRow
+	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return &vibe.Song{}, nil
@@ -565,10 +563,6 @@ func (c *Client) GetNextSong(ctx context.Context, roomID string, currentPosition
 		return nil, fmt.Errorf("error getting next song: %w", err)
 	}
 
-	song, err := scanned.toSong()
-	if err != nil {
-		return nil, fmt.Errorf("error converting song row: %w", err)
-	}
-
-	return song, nil
+	song := row.toSong()
+	return &song, nil
 }

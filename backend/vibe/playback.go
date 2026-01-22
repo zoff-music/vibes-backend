@@ -7,13 +7,12 @@ import (
 
 // PlaybackState represents the current playback state of a room
 type PlaybackState struct {
-	RoomID        string    `json:"-"`
-	CurrentSongID *string   `json:"currentSongId"`
-	CurrentSong   *Song     `json:"currentSong"`
-	IsPlaying     bool      `json:"isPlaying"`
-	PositionMs    int64     `json:"positionMs"`
-	UpdatedAt     time.Time `json:"updatedAt"`
-	ServerTimeMs  int64     `json:"serverTimeMs"`
+	RoomID       string    `json:"-"`
+	CurrentSong  *Song     `json:"currentSong"`
+	IsPlaying    bool      `json:"isPlaying"`
+	PositionMs   int       `json:"positionMs"`
+	UpdatedAt    time.Time `json:"updatedAt"`
+	ServerTimeMs int       `json:"serverTimeMs"`
 }
 
 // RoomAction represents a playback action
@@ -30,7 +29,7 @@ const (
 // RoomActionRequest is the request payload for room actions.
 type RoomActionRequest struct {
 	Action     RoomAction `json:"action"`
-	PositionMs int64      `json:"positionMs,omitempty"`
+	PositionMs int        `json:"positionMs,omitempty"`
 }
 
 // PlaybackFetcher fetches playback state
@@ -40,8 +39,8 @@ type PlaybackFetcher interface {
 
 // PlaybackStateUpdater defines the interface for updating playback state
 type RoomGetterPlaybackUpdater interface {
-	GetRoom(ctx context.Context, roomID string) (*Room, error)
-	UpdatePlayback(ctx context.Context, roomID string, userID string, action RoomAction, positionMs int64) (*PlaybackState, error)
+	GetRoom(ctx context.Context, roomID string, userID string) (*Room, error)
+	UpdatePlayback(ctx context.Context, roomID string, userID string, action RoomAction, positionMs int) (*PlaybackState, error)
 }
 
 // PlaybackController controls playback
