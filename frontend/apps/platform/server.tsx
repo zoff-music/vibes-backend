@@ -7,18 +7,22 @@ import App from './src/App';
 const port = process.env.PORT || 3000;
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Load manifest for hashed filenames (same format as cast app)
+// Load manifest for hashed filenames (only in production)
 let manifest: Record<string, string> = {};
-try {
-  const manifestFile = Bun.file('./dist/manifest.json');
-  if (await manifestFile.exists()) {
-    manifest = await manifestFile.json();
-    console.log('[SSR] Loaded manifest:', manifest);
-  } else {
-    console.warn('[SSR] Manifest file not found at ./dist/manifest.json');
+if (!isDev) {
+  try {
+    const manifestFile = Bun.file('./dist/manifest.json');
+    if (await manifestFile.exists()) {
+      manifest = await manifestFile.json();
+      console.log('[SSR] Loaded manifest:', manifest);
+    } else {
+      console.warn('[SSR] Manifest file not found at ./dist/manifest.json');
+    }
+  } catch (err) {
+    console.warn('[SSR] Could not load manifest.json:', err);
   }
-} catch (err) {
-  console.warn('[SSR] Could not load manifest.json:', err);
+} else {
+  console.log('[SSR] Development mode: skipping manifest loading');
 }
 
 function createHTMLShell(
@@ -174,7 +178,7 @@ Bun.serve({
     }
   },
   websocket: {
-    message() {},
+    message() { },
     open() {
       console.log('[HMR] Client connected');
     },

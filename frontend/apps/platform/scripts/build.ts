@@ -16,6 +16,8 @@ const defines: Record<string, string> = {
 // Map all VITE_ variables and common ones
 for (const [key, value] of Object.entries(envVars)) {
   if (key.startsWith('VITE_')) {
+    // For platform client, we don't bake in API_URL - it should use origin fallback
+    if (key === 'VITE_API_URL') continue;
     defines[`import.meta.env.${key}`] = JSON.stringify(value);
   } else if (
     ['CAST_APP_ID', 'CAST_RECEIVER_URL', 'FRONTEND_URL'].includes(key)
@@ -44,7 +46,7 @@ async function runBuild() {
     outdir: './dist/assets/platform',
     minify: isProd,
     define: defines,
-    naming: '[dir]/[name]-[hash].[ext]', // Always use hashes for cache busting
+    naming: isProd ? '[dir]/[name]-[hash].[ext]' : '[dir]/[name].[ext]', // Only use hashes in production
     splitting: false, // Disable code splitting to avoid duplicate exports
   });
 
@@ -90,7 +92,7 @@ async function runBuild() {
       new Bun.Glob('*.css').scan({ cwd: './dist/assets/platform' }),
     );
 
-    if (cssFiles.length > 0) {
+    if (cssFiles.length > 0 && cssFiles[0]) {
       manifest['index.css'] = cssFiles[0]; // Take the first CSS file
       console.log(`[Build] Found CSS file: ${cssFiles[0]}`);
     }

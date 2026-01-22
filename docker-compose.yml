@@ -14,6 +14,8 @@ services:
     environment:
       - BACKEND_UPSTREAM=backend:8080
       - PLATFORM_UPSTREAM=frontend-platform:3000
+      - CAST_UPSTREAM=frontend-cast:${FRONTEND_CAST_INTERNAL_PORT:-3001}
+      - CAST_DEV_MODE=${CAST_DEV_MODE:-true}
       - CAST_ROOT=${CAST_ROOT:-/srv/cast/blue}
     depends_on:
       - backend
@@ -70,6 +72,7 @@ services:
     command: ${FRONTEND_PLATFORM_CMD_OVERRIDE:-sh -c "bun install && bun --filter @vibez/platform ${FRONTEND_CMD:-dev}"}
     environment:
       - PORT=3000
+      - VITE_API_URL=${VITE_API_URL:-http://localhost:8080}
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000"]
       interval: 10s

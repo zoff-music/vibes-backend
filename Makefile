@@ -87,8 +87,8 @@ local-dev: setup-caddy
 	@echo "Starting local development services..."
 	@sh -c 'trap "kill 0" INT TERM EXIT; \
 	PORT=8080 sh -c "cd migrator && go run main.go -db ../data/db/vibes.db && cd ../backend && DATABASE_PATH=../data/db/vibes.db exec go run cmd/server/main.go" & \
-	sh -c "cd frontend/apps/platform && FORCE_COLOR=1 exec bun run dev" & \
-	sh -c "cd frontend/apps/cast && FORCE_COLOR=1 exec bun run dev" & \
+	VITE_API_URL=http://localhost:8080 sh -c "cd frontend/apps/platform && FORCE_COLOR=1 exec bun run dev" & \
+	VITE_API_URL=https://localhost sh -c "cd frontend/apps/cast && FORCE_COLOR=1 exec bun run dev" & \
 	CAST_DEV_MODE=true exec caddy run --config Caddyfile & \
 	wait'
 

@@ -94,10 +94,16 @@ RUN bun install --frozen-lockfile
 
 # Platform build
 FROM frontend-builder AS platform-builder
+ARG VITE_CAST_APP_ID
+ARG VITE_CAST_RECEIVER_URL
+ARG VITE_APP_TITLE
 WORKDIR /app/apps/platform
 COPY frontend/apps/platform .
 # Build CSS, client, and server bundles
-RUN bun run build
+RUN VITE_CAST_APP_ID=$VITE_CAST_APP_ID \
+    VITE_CAST_RECEIVER_URL=$VITE_CAST_RECEIVER_URL \
+    VITE_APP_TITLE=$VITE_APP_TITLE \
+    bun run build
 
 # Cast build
 FROM frontend-builder AS cast-builder
