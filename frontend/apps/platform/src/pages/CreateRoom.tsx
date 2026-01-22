@@ -128,7 +128,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
         <div className="mb-8">
           <button
             onClick={() => navigate(-1)}
-            className="group mb-6 inline-flex items-center gap-2 text-ink/60 transition-colors hover:text-ink"
+            className="group mb-6 inline-flex cursor-pointer items-center gap-2 text-ink/60 transition-colors hover:text-ink"
           >
             <svg
               className="h-5 w-5 transition-transform group-hover:-translate-x-1"
@@ -184,7 +184,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
               <button
                 type="button"
                 onClick={() => setMode('server')}
-                className={`rounded-xl border-2 p-4 text-left transition-all ${
+                className={`cursor-pointer rounded-xl border-2 p-4 text-left transition-all ${
                   mode === 'server'
                     ? 'border-primary bg-primary/10 text-ink'
                     : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
@@ -198,7 +198,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
               <button
                 type="button"
                 onClick={() => setMode('host')}
-                className={`rounded-xl border-2 p-4 text-left transition-all ${
+                className={`cursor-pointer rounded-xl border-2 p-4 text-left transition-all ${
                   mode === 'host'
                     ? 'border-secondary bg-secondary/10 text-ink'
                     : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
@@ -346,7 +346,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
         <button
           onClick={handleCreate}
           disabled={!name.trim() || isLoading}
-          className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-black text-base text-white tracking-wide transition-all hover:bg-primary-muted hover:shadow-retro-pink active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
+          className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-black text-base text-white tracking-wide transition-all hover:bg-primary-muted hover:shadow-retro-pink active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
           style={{ fontFamily: 'Poppins' }}
         >
           {isLoading ? (

@@ -20,7 +20,9 @@ export const useRoom = (roomId: string) => {
     setIsLoading(true);
     const key = `fetchRoom:${roomId}`;
 
-    const cachedPromise = IN_FLIGHT_REQUESTS.get(key) as Promise<[Error | null, any]> | undefined;
+    const cachedPromise = IN_FLIGHT_REQUESTS.get(key) as
+      | Promise<[Error | null, any]>
+      | undefined;
     let promise: Promise<[Error | null, any]>;
     if (!cachedPromise) {
       promise = api.get('/rooms/{id}', { id: roomId });
@@ -53,7 +55,9 @@ export const useRoom = (roomId: string) => {
       setIsLoading(true);
       const key = `joinRoom:${roomId}`;
 
-      const cachedPromise = IN_FLIGHT_REQUESTS.get(key) as Promise<[Error | null, any]> | undefined;
+      const cachedPromise = IN_FLIGHT_REQUESTS.get(key) as
+        | Promise<[Error | null, any]>
+        | undefined;
       let promise: Promise<[Error | null, any]>;
       if (!cachedPromise) {
         promise = api.post(

@@ -233,7 +233,7 @@ Bun.serve({
     });
   },
   websocket: {
-    message() { },
+    message() {},
     open() {
       console.log('[HMR] Connected');
     },

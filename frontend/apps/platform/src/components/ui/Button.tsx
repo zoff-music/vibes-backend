@@ -20,7 +20,7 @@ export const Button: React.FC<Props> = ({
   className = '',
 }) => {
   const baseClasses =
-    'inline-flex items-center justify-center rounded-lg font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90';
+    'inline-flex items-center justify-center rounded-lg font-medium transition-opacity disabled:opacity-50 disabled:cursor-not-allowed hover:opacity-90 cursor-pointer';
 
   const variantClasses = {
     primary: 'bg-primary text-text-inverse',

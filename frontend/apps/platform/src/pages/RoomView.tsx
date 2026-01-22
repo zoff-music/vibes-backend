@@ -293,7 +293,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
         <div className="mx-auto flex max-w-7xl items-center justify-between">
           <button
             onClick={() => navigate(-1)}
-            className="group inline-flex items-center gap-2 text-ink/60 transition-colors hover:text-ink dark:text-dark-text-muted dark:hover:text-dark-text"
+            className="group inline-flex cursor-pointer items-center gap-2 text-ink/60 transition-colors hover:text-ink dark:text-dark-text-muted dark:hover:text-dark-text"
           >
             <svg
               className="h-5 w-5 transition-transform group-hover:-translate-x-1"
@@ -313,7 +313,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
           <button
             onClick={() => setShowRoomInfo(!showRoomInfo)}
-            className="mx-4 flex flex-1 items-center justify-center gap-2 transition-opacity hover:opacity-70"
+            className="mx-4 flex flex-1 cursor-pointer items-center justify-center gap-2 transition-opacity hover:opacity-70"
           >
             <h1
               className="truncate font-black text-ink text-lg dark:text-dark-text"
@@ -342,7 +342,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
             {/* Dark Mode Toggle */}
             <button
               onClick={toggleDarkMode}
-              className={`rounded-xl border-2 p-2.5 transition-all ${
+              className={`cursor-pointer rounded-xl border-2 p-2.5 transition-all ${
                 isDarkMode
                   ? 'border-primary bg-primary text-white shadow-neon-pink'
                   : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'
@@ -385,7 +385,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
             <div className="relative">
               <button
                 onClick={() => setShowShare(!showShare)}
-                className={`rounded-xl border-2 p-2.5 transition-all ${showShare ? 'border-ink bg-ink text-white dark:border-primary dark:bg-primary' : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'}`}
+                className={`cursor-pointer rounded-xl border-2 p-2.5 transition-all ${showShare ? 'border-ink bg-ink text-white dark:border-primary dark:bg-primary' : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'}`}
                 title="Share Room"
               >
                 <svg
@@ -444,7 +444,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               ]);
                               setShowShare(false);
                             }}
-                            className="rounded-lg bg-ink p-1 px-2 font-bold text-[10px] text-white transition-all hover:scale-105 active:scale-95 dark:bg-primary"
+                            className="cursor-pointer rounded-lg bg-ink p-1 px-2 font-bold text-[10px] text-white transition-all hover:scale-105 active:scale-95 dark:bg-primary"
                           >
                             Copy
                           </button>
@@ -459,7 +459,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
             <div className="relative ml-1">
               <button
                 onClick={() => setShowSettings(!showSettings)}
-                className={`rounded-xl border-2 p-2.5 transition-all ${showSettings ? 'border-ink bg-ink text-white dark:border-primary dark:bg-primary' : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'}`}
+                className={`cursor-pointer rounded-xl border-2 p-2.5 transition-all ${showSettings ? 'border-ink bg-ink text-white dark:border-primary dark:bg-primary' : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'}`}
                 title="Room Settings"
               >
                 <svg
@@ -515,7 +515,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               skipAllowed: !room.settings.skipAllowed,
                             })
                           }
-                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.skipAllowed ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                          className={`relative h-6 w-12 cursor-pointer rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.skipAllowed ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                         >
                           <div
                             className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.skipAllowed ? 'right-1.5' : 'left-1.5'}`}
@@ -543,7 +543,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               democraticSkip: !room.settings.democraticSkip,
                             })
                           }
-                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.democraticSkip ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                          className={`relative h-6 w-12 cursor-pointer rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.democraticSkip ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                         >
                           <div
                             className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.democraticSkip ? 'right-1.5' : 'left-1.5'}`}
@@ -571,7 +571,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               loopQueue: !room.settings.loopQueue,
                             })
                           }
-                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.loopQueue ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                          className={`relative h-6 w-12 cursor-pointer rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.loopQueue ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                         >
                           <div
                             className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.loopQueue ? 'right-1.5' : 'left-1.5'}`}
@@ -599,7 +599,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               removeOnPlay: !room.settings.removeOnPlay,
                             })
                           }
-                          className={`relative h-6 w-12 rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.removeOnPlay ? 'bg-ink dark:bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                          className={`relative h-6 w-12 cursor-pointer rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.removeOnPlay ? 'bg-ink dark:bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                         >
                           <div
                             className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.removeOnPlay ? 'right-1.5' : 'left-1.5'}`}
@@ -630,7 +630,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                             <button
                               onClick={handleJoinAdmin}
                               disabled={isAuthenticating || !adminPassword}
-                              className="rounded-xl bg-ink p-2 px-4 font-bold text-white text-xs transition-all hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary"
+                              className="cursor-pointer rounded-xl bg-ink p-2 px-4 font-bold text-white text-xs transition-all hover:bg-primary disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary"
                             >
                               {isAuthenticating ? '...' : 'Go'}
                             </button>
@@ -671,7 +671,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                   </code>
                   <button
                     onClick={() => navigator.clipboard.writeText(id || '')}
-                    className="rounded-lg border-2 border-transparent p-2 transition-colors hover:border-ink/10 hover:bg-ink/5"
+                    className="cursor-pointer rounded-lg border-2 border-transparent p-2 transition-colors hover:border-ink/10 hover:bg-ink/5"
                     title="Copy code"
                   >
                     <svg
@@ -757,7 +757,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
             <div className="flex gap-4">
               <button
                 onClick={() => fetchRoom()}
-                className="glass-elevated rounded-xl border-2 border-ink/10 px-8 py-3.5 font-bold text-ink transition-all hover:shadow-retro"
+                className="glass-elevated cursor-pointer rounded-xl border-2 border-ink/10 px-8 py-3.5 font-bold text-ink transition-all hover:shadow-retro"
               >
                 Try Again
               </button>
@@ -778,7 +778,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                           `/rooms/create?name=${encodeURIComponent(id || '')}`,
                         )
                       }
-                      className="rounded-xl border-2 border-primary bg-primary px-8 py-3.5 font-bold text-white transition-all hover:bg-primary-muted hover:shadow-retro-pink"
+                      className="cursor-pointer rounded-xl border-2 border-primary bg-primary px-8 py-3.5 font-bold text-white transition-all hover:bg-primary-muted hover:shadow-retro-pink"
                     >
                       Create Room
                     </button>
