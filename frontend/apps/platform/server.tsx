@@ -4,66 +4,40 @@ import { safeWrap } from '@vibez/shared';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router';
 import App from './src/App';
-import { readdirSync, existsSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 
 const port = process.env.PORT || 3000;
 const isDev = process.env.NODE_ENV !== 'production';
 
-// Load manifest for hashed filenames (only in production)
+// Load manifest for hashed filenames (Synchronously at startup for absolute reliability)
 let manifest: Record<string, string> = {};
 if (!isDev) {
-  console.log('[SSR] --- Production Startup Diagnostics ---');
+  console.log('[SSR] --- Production Startup (Final Refinement) ---');
   console.log('[SSR] CWD:', process.cwd());
   console.log('[SSR] import.meta.dir:', import.meta.dir);
 
-  try {
-    // List files recursively for debugging (non-blocking enough for startup)
-    const listFiles = (dir: string, depth = 0) => {
-      if (depth > 3 || !existsSync(dir)) return;
-      try {
-        const files = readdirSync(dir, { withFileTypes: true });
-        for (const file of files) {
-          const fullPath = join(dir, file.name);
-          console.log(`[SSR] [DIR-SCN] ${'  '.repeat(depth)}${file.isDirectory() ? '[D]' : '[F]'} ${file.name} (${fullPath})`);
-          if (file.isDirectory() && !file.name.includes('node_modules')) {
-            listFiles(fullPath, depth + 1);
-          }
-        }
-      } catch (e) { }
-    };
+  const pathsToTry = [
+    '/app/apps/platform/dist/manifest.json', // Exact confirmed path in container
+    join(import.meta.dir, '../manifest.json'), // Relative to server.js
+    join(process.cwd(), 'dist/manifest.json'), // CWD based
+  ];
 
-    console.log('[SSR] Scanning current directory structure...');
-    listFiles(process.cwd());
-
-    const findManifest = async () => {
-      const pathsToTry = [
-        join(import.meta.dir, '../manifest.json'), // Platform production: dist/manifest.json
-        join(process.cwd(), 'dist/manifest.json'),
-        join(import.meta.dir, 'manifest.json'),
-        '/app/apps/platform/dist/manifest.json',
-      ];
-
-      for (const p of pathsToTry) {
-        console.log('[SSR] Checking manifest at:', p);
-        const file = Bun.file(p);
-        if (await file.exists()) {
-          const content = await file.json();
-          console.log('[SSR] Manifest SUCCESS at:', p);
-          console.log('[SSR] Manifest content:', content);
-          return content;
-        }
+  for (const p of pathsToTry) {
+    try {
+      console.log(`[SSR] Attempting manifest load: ${p}`);
+      if (existsSync(p)) {
+        const content = readFileSync(p, 'utf8');
+        manifest = JSON.parse(content);
+        console.log(`[SSR] Manifest SUCCESS from ${p}:`, manifest);
+        break;
       }
-      return null;
-    };
-
-    const loadedManifest = await findManifest();
-    if (loadedManifest) {
-      manifest = loadedManifest;
-    } else {
-      console.error('[SSR] CRITICAL: Manifest not found anywhere!');
+    } catch (e) {
+      console.error(`[SSR] Failed to read manifest at ${p}:`, e);
     }
-  } catch (err) {
-    console.error('[SSR] Error during startup diagnostics/manifest loading:', err);
+  }
+
+  if (Object.keys(manifest).length === 0) {
+    console.error('[SSR] CRITICAL: No manifest loaded! Assets will 404.');
   }
 }
 
@@ -97,28 +71,33 @@ async function handleStaticFiles(path: string) {
   if (path.startsWith('/assets/platform/')) {
     const assetPath = path.replace('/assets/platform/', '');
 
-    // Check locations relative to the server entry point (dist/server/server.js)
-    // Assets are in dist/assets/platform/
-    const p1 = join(import.meta.dir, '../assets/platform', assetPath);
-    const p2 = join(process.cwd(), 'dist/assets/platform', assetPath);
+    // Confirmed paths in container
+    const paths = [
+      join('/app/apps/platform/dist/assets/platform', assetPath),
+      join(import.meta.dir, '../assets/platform', assetPath),
+      join(process.cwd(), 'dist/assets/platform', assetPath),
+    ];
 
-    for (const p of [p1, p2]) {
-      const file = Bun.file(p);
-      if (await file.exists()) {
+    for (const p of paths) {
+      if (existsSync(p)) {
+        const file = Bun.file(p);
         const headers: Record<string, string> = {};
         if (assetPath.endsWith('.css')) headers['Content-Type'] = 'text/css';
         else if (assetPath.endsWith('.js')) headers['Content-Type'] = 'application/javascript';
         else if (assetPath.endsWith('.ico')) headers['Content-Type'] = 'image/x-icon';
         else if (assetPath.endsWith('.png')) headers['Content-Type'] = 'image/png';
+
+        console.log(`[SSR] Serving: ${path} -> ${p}`);
         return new Response(file, { headers });
       }
     }
-    console.warn(`[SSR] Asset 404: ${path} (Checked ${p1}, ${p2})`);
+    console.warn(`[SSR] NOT FOUND: ${path} (Checked: ${paths})`);
     return new Response('Not Found', { status: 404 });
   }
 
-  const publicFile = Bun.file(join(process.cwd(), 'public', path));
-  if (await publicFile.exists()) return new Response(publicFile);
+  // Handle public files
+  const publicPath = join(process.cwd(), 'public', path);
+  if (existsSync(publicPath)) return new Response(Bun.file(publicPath));
 
   return null;
 }
@@ -182,7 +161,7 @@ Bun.serve({
   },
   websocket: {
     message() { },
-    open() { console.log('[HMR] Client connected'); },
+    open() { console.log('[HMR] Connected'); },
   },
 });
 
