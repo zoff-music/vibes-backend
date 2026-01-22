@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bun run build:css --watch & bun scripts/build.ts --watch & bun scripts/dev-server.ts",
     "build": "bun run build:css && bun run build:static",
-    "build:css": "bunx @tailwindcss/cli -i src/index.css -o dist/index.css --minify",
+    "build:css": "bun run tailwindcss -i src/index.css -o dist/index.css --minify",
     "build:static": "NODE_ENV=production bun scripts/build.ts",
     "start": "echo 'Cast app is now static - serve via Caddy'",
     "lint": "bunx biome check .",
