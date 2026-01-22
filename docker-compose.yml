@@ -2,8 +2,6 @@ services:
   caddy:
     image: caddy:2.9.1
     ports:
-      - "${CADDY_HTTP_PORT:-80}:80"
-      - "${CADDY_HTTPS_PORT:-443}:443"
       - "${CADDY_PORT:-42069}:42069"
     volumes:
       - ./${CADDYFILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
