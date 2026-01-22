@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"time"
 
@@ -242,12 +243,14 @@ func UpdateRoomSettings(
 			return
 		}
 
-		if req.Settings != nil {
+		// Only update settings if they are provided and not empty
+		if req.Settings != nil && !req.Settings.IsEmpty() {
 			room.Settings = *req.Settings
 		}
 		if req.Mode != "" {
 			room.Mode = req.Mode
 		}
+
 		updated, err := db.UpdateRoom(ctx, room)
 		if err != nil {
 			handleError(
@@ -294,6 +297,7 @@ func UpdateRoomSettings(
 // CreateSession handles POST /api/v1/rooms/:id/sessions
 func CreateSession(
 	db vibe.SessionCreatorGetter,
+	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -335,7 +339,7 @@ func CreateSession(
 		}
 
 		// Authenticate and elevate in the DB
-		isAdmin, err := db.AuthenticateAdmin(ctx, roomID, session.UserID, req.Password)
+		isAdmin, isFirstTimeSetup, err := db.AuthenticateAdmin(ctx, roomID, session.UserID, req.Password)
 		if err != nil {
 			handleError(
 				w,
@@ -366,6 +370,29 @@ func CreateSession(
 				true,
 			)
 			return
+		}
+
+		// If this was a first-time password setup, notify all clients
+		if isFirstTimeSetup {
+			// Fetch room without user-specific data for broadcast
+			neutralRoom, err := db.GetRoom(ctx, roomID, "")
+			if err != nil {
+				log.Printf("CreateSession: failed to fetch neutral room for notification: %v", err)
+			} else {
+				body, err := json.Marshal(neutralRoom)
+				if err != nil {
+					log.Printf("CreateSession: failed to marshal room for notification: %v", err)
+				} else {
+					err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+						Type:    vibe.SettingsUpdate,
+						Payload: body,
+						UserID:  session.UserID, // Include the user who set the password
+					})
+					if err != nil {
+						log.Printf("CreateSession: failed to notify room password setup: %v", err)
+					}
+				}
+			}
 		}
 
 		resp := vibe.SessionResponse{

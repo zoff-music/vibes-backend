@@ -28,5 +28,5 @@ type SessionCreatorGetter interface {
 	UpdateRoom(ctx context.Context, room *Room) (*Room, error)
 	CreateUser(ctx context.Context, user *User) (*User, error)
 	GetUser(ctx context.Context, roomID, userID string) (*User, error)
-	AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (bool, error)
+	AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (bool, bool, error)
 }

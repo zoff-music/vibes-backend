@@ -36,6 +36,28 @@ func SkipSong(
 
 		state, err := db.SkipSong(ctx, roomID, userID, isAdmin)
 		if err != nil {
+			// Check if it's a host mode restriction error
+			if err.Error() == "only hosts can skip in host mode" {
+				handleError(
+					w,
+					fmt.Errorf("only hosts can skip in host mode"),
+					http.StatusForbidden,
+					false,
+				)
+				return
+			}
+			
+			// Check if skipping is disabled
+			if err.Error() == "skipping is disabled in this room" {
+				handleError(
+					w,
+					fmt.Errorf("skipping is disabled in this room"),
+					http.StatusForbidden,
+					false,
+				)
+				return
+			}
+			
 			handleError(
 				w,
 				fmt.Errorf("skip failed: %w", err),

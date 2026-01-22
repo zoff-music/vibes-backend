@@ -39,6 +39,7 @@ type PlaybackFetcher interface {
 
 // PlaybackStateUpdater defines the interface for updating playback state
 type RoomGetterPlaybackUpdater interface {
+	PlaybackFetcher
 	GetRoom(ctx context.Context, roomID string, userID string) (*Room, error)
 	UpdatePlayback(ctx context.Context, roomID string, userID string, action RoomAction, positionMs int) (*PlaybackState, error)
 }

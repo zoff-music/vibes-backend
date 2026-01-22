@@ -256,6 +256,43 @@ PATCH /rooms/:id/songs/reorder
 
 ### Room Actions
 
+#### Get Playback State
+```
+GET /rooms/:id/states
+```
+
+**Response:** `200 OK`
+```json
+{
+  "currentSongId": "song-uuid",
+  "currentSong": {
+    "id": "song-uuid",
+    "sourceType": "youtube",
+    "sourceId": "dQw4w9WgXcQ",
+    "title": "Rick Astley - Never Gonna Give You Up",
+    "artist": "Rick Astley",
+    "thumbnailUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg",
+    "duration": 212,
+    "addedBy": "user-uuid",
+    "addedByNickname": "DJ Cool",
+    "addedAt": "2024-01-15T20:05:00Z",
+    "position": 0
+  },
+  "isPlaying": true,
+  "positionMs": 45000,
+  "updatedAt": "2024-01-15T20:06:30Z",
+  "serverTimeMs": 1705348990000
+}
+```
+
+**Errors:**
+- `401 Unauthorized` - Not authenticated
+- `404 Not Found` - Room doesn't exist
+
+---
+
+### Room Actions
+
 All playback and room control actions use a single endpoint with an `action` discriminator.
 
 ```

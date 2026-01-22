@@ -16,6 +16,11 @@ type RoomSettings struct {
 	AllowDuplicates   bool    `json:"allowDuplicates"`
 }
 
+func (r RoomSettings) IsEmpty() bool {
+	defaultSettings := RoomSettings{}
+	return r == defaultSettings
+}
+
 // DefaultRoomSettings returns sensible defaults
 func DefaultRoomSettings() RoomSettings {
 	return RoomSettings{

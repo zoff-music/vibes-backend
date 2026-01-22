@@ -427,6 +427,7 @@ func (c *Client) prepareUpdateRoomStmt() error {
 			name = ?1,
 			mode = ?10,
 			host_id = ?11,
+			admin_password_hash = ?12,
 			skip_allowed = ?3,
 			democratic_skip = ?4,
 			skip_vote_threshold = ?5,
@@ -465,12 +466,19 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		boolToInt(room.Settings.AllowDuplicates),
 		room.Mode,
 		room.HostID,
+		room.AdminPasswordHash,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error updating room: %w", err)
 	}
 
-	return room, nil
+	// Fetch and return the updated room to ensure we have the latest data
+	updatedRoom, err := c.GetRoom(ctx, room.ID, room.UserID)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching updated room: %w", err)
+	}
+
+	return updatedRoom, nil
 }
 
 func boolToInt(value bool) int {
