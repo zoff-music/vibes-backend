@@ -29,7 +29,6 @@ export const addSongRequestSchema = yup.object({
   artist: yup.string().optional(),
   thumbnailUrl: yup.string().required(),
   duration: yup.number().required(),
-  addedBy: yup.string().required(),
 });
 export type AddSongRequest = yup.InferType<typeof addSongRequestSchema>;
 

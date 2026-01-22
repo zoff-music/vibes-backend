@@ -49,7 +49,7 @@ test('verify network requests on room join', async ({ page }) => {
 
   // Navigate to a random room to ensure we hit the "join" logic
   const roomId = `test-room-${Math.floor(Math.random() * 10000)}`;
-  await page.goto(`/room/${roomId}`);
+  await page.goto(`/rooms/${roomId}`);
 
   // Wait for the room to load (look for specific UI element)
   await page.waitForSelector('h1', { timeout: 10000 });

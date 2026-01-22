@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -55,7 +56,7 @@ func SkipSong(
 			return
 		}
 
-		state.ServerTimeMs = time.Now().UnixMilli()
+		state.ServerTimeMs = int(time.Now().UnixMilli())
 
 		// Notify room updates
 		// We have to marshal payloads manually now
@@ -71,7 +72,7 @@ func SkipSong(
 			statePayload = []byte("{}")
 		}
 
-		err = ips.NotifyRoomUpdates(ctx, roomID, []vibe.RoomEvent{
+		err = ips.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
 			{
 				Type:    vibe.QueueReordered,
 				Payload: songsPayload,

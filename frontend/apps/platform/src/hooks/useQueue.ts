@@ -2,12 +2,10 @@ import { api } from '@vibez/api';
 import { SourceType, usePlaybackStore } from '@vibez/shared';
 import { useCallback, useRef } from 'react';
 import { useQueueStore } from '../stores/queueStore';
-import { useRoomStore } from '../stores/roomStore';
 
 export const useQueue = (roomId: string) => {
   const { songs, setSongs, addSong, removeSong, reorderSongs } =
     useQueueStore();
-  const { userId } = useRoomStore();
   const { setPlaybackState } = usePlaybackStore();
   const lastAddTimestamp = useRef<number>(0);
 
@@ -37,8 +35,6 @@ export const useQueue = (roomId: string) => {
       duration: number,
       artist?: string,
     ) => {
-      if (!userId) return null;
-
       const timestamp = Date.now();
       lastAddTimestamp.current = timestamp;
 
@@ -52,13 +48,12 @@ export const useQueue = (roomId: string) => {
           thumbnailUrl,
           duration,
           artist,
-          addedBy: userId,
         },
       );
 
       if (data) {
         const shouldAutoPlay =
-          songs.length === 0 && !usePlaybackStore.getState().currentSongId;
+          songs.length === 0 && !usePlaybackStore.getState().currentSong;
         addSong(data);
 
         if (shouldAutoPlay) {
@@ -82,7 +77,7 @@ export const useQueue = (roomId: string) => {
 
       return null;
     },
-    [roomId, userId, addSong],
+    [roomId, addSong],
   );
 
   const removeFromQueue = useCallback(

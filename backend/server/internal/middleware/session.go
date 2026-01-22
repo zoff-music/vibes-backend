@@ -7,39 +7,43 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/google/uuid"
 	"github.com/zoff-music/vibes/server/internal/helper"
 )
 
-// SessionMiddleware extracts the session from the "session" cookie and adds it to the context
+// SessionMiddleware extracts the session from the "session" cookie or creates a new one
 func SessionMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("session")
-		if err != nil {
-			// No cookie, proceed without session
-			log.Println("SessionMiddleware: no session cookie found")
-			next.ServeHTTP(w, r)
-			return
-		}
-
-		log.Printf("SessionMiddleware: found session cookie: %s", cookie.Value)
-
-		decoded, err := base64.StdEncoding.DecodeString(cookie.Value)
-		if err != nil {
-			// Invalid encoding, ignore
-			log.Printf("SessionMiddleware: failed to decode cookie: %v", err)
-			next.ServeHTTP(w, r)
-			return
-		}
-
 		var payload helper.SessionPayload
-		if err := json.Unmarshal(decoded, &payload); err != nil {
-			// Invalid JSON, ignore
-			log.Printf("SessionMiddleware: failed to unmarshal payload: %v", err)
-			next.ServeHTTP(w, r)
-			return
+		hasSession := false
+
+		cookie, err := r.Cookie("session")
+		if err == nil {
+			decoded, err := base64.StdEncoding.DecodeString(cookie.Value)
+			err = json.Unmarshal(decoded, &payload)
+			if err == nil && payload.UserID != "" {
+				hasSession = true
+			}
 		}
 
-		log.Printf("SessionMiddleware: parsed userID=%s", payload.UserID)
+		if !hasSession {
+			// No valid session, create a new one
+			payload.UserID = uuid.New().String()
+			log.Printf("SessionMiddleware: generated new userID=%s", payload.UserID)
+
+			sessionJSON, _ := json.Marshal(payload)
+			sessionEncoded := base64.StdEncoding.EncodeToString(sessionJSON)
+
+			http.SetCookie(w, &http.Cookie{
+				Name:     "session",
+				Value:    sessionEncoded,
+				Path:     "/",
+				HttpOnly: true,
+				Secure:   false,
+				SameSite: http.SameSiteLaxMode,
+			})
+		}
+
 		ctx := context.WithValue(r.Context(), helper.SessionKey, payload)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})

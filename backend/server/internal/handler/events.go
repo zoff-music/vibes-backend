@@ -40,11 +40,19 @@ func RoomEvents(
 			}
 
 			count := len(active)
-			payload, _ := json.Marshal(count)
-			_ = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+			payload, err := json.Marshal(count)
+			if err != nil {
+				log.Printf("failed to marshal active participants count: %v", err)
+				return
+			}
+
+			err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 				Type:    vibe.UsersUpdate,
 				Payload: payload,
 			})
+			if err != nil {
+				log.Printf("failed to notify room update: %v", err)
+			}
 		}
 
 		// Set SSE headers
@@ -97,12 +105,22 @@ func RoomEvents(
 		if state != nil {
 			// Project position to current time if playing
 			if state.IsPlaying && state.UpdatedAt.Before(time.Now()) {
-				state.PositionMs += time.Since(state.UpdatedAt).Milliseconds()
+				state.PositionMs += int(time.Since(state.UpdatedAt).Milliseconds())
 				state.UpdatedAt = time.Now()
 			}
-			state.ServerTimeMs = time.Now().UnixMilli()
+			state.ServerTimeMs = int(time.Now().UnixMilli())
 
-			data, _ := json.Marshal(state)
+			data, err := json.Marshal(state)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshalling playback state: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
 			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.PlaybackUpdate, data)
 			flusher.Flush()
 		}

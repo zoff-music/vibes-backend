@@ -67,14 +67,13 @@ type Client struct {
 	DeleteExpiredAccessTokensStatement *sql.Stmt
 
 	// Pending OAuth state statements
-	SavePendingOAuthStateStatement              *sql.Stmt
-	ValidateAndDeletePendingOAuthStateStatement *sql.Stmt
-	DeletePendingOAuthStateStatement            *sql.Stmt
-	DeleteExpiredPendingOAuthStatesStatement    *sql.Stmt
+	SavePendingOAuthStateStatement           *sql.Stmt
+	ValidatePendingOAuthStateStatement       *sql.Stmt
+	DeletePendingOAuthStateStatement         *sql.Stmt
+	DeleteExpiredPendingOAuthStatesStatement *sql.Stmt
 
 	// Token cleanup statements
 	ClaimAndGetExpiredTokenForRefreshStatement *sql.Stmt
-	UpdateLastCheckedStatement                 *sql.Stmt
 
 	// Participant statements
 	UpdateParticipantStatement          *sql.Stmt
@@ -188,11 +187,10 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareGetAccessTokenStmt,
 		c.prepareDeleteExpiredAccessTokensStmt,
 		c.prepareSavePendingOAuthStateStmt,
-		c.prepareValidateAndDeletePendingOAuthStateStmt,
+		c.prepareValidatePendingOAuthStateStmt,
 		c.prepareDeletePendingOAuthStateStmt,
 		c.prepareDeleteExpiredPendingOAuthStatesStmt,
 		c.prepareClaimAndGetExpiredTokenForRefreshStmt,
-		c.prepareUpdateLastCheckedStmt,
 		// Participant statements
 		c.prepareUpdateParticipantStmt,
 		c.prepareGetActiveParticipantsStmt,
@@ -245,11 +243,10 @@ func (c *Client) Close() error {
 		c.GetAccessTokenStatement,
 		c.DeleteExpiredAccessTokensStatement,
 		c.SavePendingOAuthStateStatement,
-		c.ValidateAndDeletePendingOAuthStateStatement,
+		c.ValidatePendingOAuthStateStatement,
 		c.DeletePendingOAuthStateStatement,
 		c.DeleteExpiredPendingOAuthStatesStatement,
 		c.ClaimAndGetExpiredTokenForRefreshStatement,
-		c.UpdateLastCheckedStatement,
 		c.UpdateParticipantStatement,
 		c.GetActiveParticipantsStatement,
 		c.SetRoomHostStatement,

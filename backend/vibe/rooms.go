@@ -40,6 +40,8 @@ type Room struct {
 	Settings          RoomSettings `json:"settings"`
 	CreatedAt         time.Time    `json:"createdAt"`
 	UserCount         int          `json:"userCount,omitempty"`
+	IsAdmin           bool         `json:"isAdmin"`
+	UserID            string       `json:"userId,omitempty"`
 	ActiveSources     []string     `json:"activeSources"`
 }
 
@@ -58,9 +60,10 @@ const (
 
 // CreateRoomRequest is the request payload for creating a room.
 type CreateRoomRequest struct {
-	Name     string `json:"name"`
-	Mode     string `json:"mode,omitempty"`
-	Password string `json:"password,omitempty"`
+	Name     string        `json:"name"`
+	Mode     string        `json:"mode,omitempty"`
+	Password string        `json:"password,omitempty"`
+	Settings *RoomSettings `json:"settings,omitempty"`
 }
 
 // UpdateRoomRequest is the request payload for updating a room.
@@ -76,13 +79,13 @@ func (r *Room) IsEmpty() bool {
 
 // RoomFetcher fetches room data
 type RoomFetcher interface {
-	GetRoom(ctx context.Context, id string) (*Room, error)
+	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
 }
 
 // RoomCreator creates rooms
 type RoomCreator interface {
 	CreateRoom(ctx context.Context, room *Room) (*Room, error)
-	GetRoomByName(ctx context.Context, name string) (*Room, error)
+	GetRoomByName(ctx context.Context, name string, userID string) (*Room, error)
 }
 
 // RoomUpdater updates room data

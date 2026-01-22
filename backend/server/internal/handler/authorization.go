@@ -21,20 +21,35 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 		// Get user ID from session
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
-			handleError(w, fmt.Errorf("error user not authenticated"), http.StatusUnauthorized, true)
+			handleError(
+				w,
+				fmt.Errorf("error user not authenticated"),
+				http.StatusUnauthorized,
+				true,
+			)
 			return
 		}
 
 		// Store state in database
 		if err := db.SavePendingOAuthState(ctx, session.UserID, state); err != nil {
-			handleError(w, fmt.Errorf("error saving pending oauth state: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error saving pending oauth state: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		fmt.Printf("DEBUG: Authorize - UserID: %s, State: %s\n", session.UserID, state)
 
 		redirectURL := oa.GetOAuthURL(state)
-		http.Redirect(w, r, redirectURL, http.StatusTemporaryRedirect)
+		http.Redirect(
+			w,
+			r,
+			redirectURL,
+			http.StatusTemporaryRedirect,
+		)
 	}
 }
 
@@ -49,19 +64,34 @@ func OAuthCallback(db vibe.CodeValidatorUserter, oa vibe.OAuthExchanger, provide
 		// Validate state from database (stateless check to handle cross-domain cookies)
 		userID, err := db.ValidateAndDeletePendingOAuthState(ctx, state)
 		if err != nil {
-			handleError(w, fmt.Errorf("error validating state: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error validating state: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		if userID == "" {
-			handleError(w, fmt.Errorf("invalid state parameter"), http.StatusBadRequest, true)
+			handleError(
+				w,
+				fmt.Errorf("invalid state parameter"),
+				http.StatusBadRequest,
+				true,
+			)
 			return
 		}
 
 		// Exchange code for tokens
 		tokenResp, err := oa.ExchangeCode(ctx, code)
 		if err != nil {
-			handleError(w, fmt.Errorf("error exchanging code for token: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error exchanging code for token: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -73,14 +103,24 @@ func OAuthCallback(db vibe.CodeValidatorUserter, oa vibe.OAuthExchanger, provide
 		authExpiresAt := time.Now().UTC().Add(24 * time.Hour)
 		err = db.UpsertAuthToken(ctx, userID, providerName, code, state, authExpiresAt)
 		if err != nil {
-			handleError(w, fmt.Errorf("error storing auth token: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error storing auth token: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		// Store access tokens
 		err = db.UpsertAccessToken(ctx, userID, providerName, tokenResp.AccessToken, tokenResp.RefreshToken, expiresAt, refreshExpiresAt)
 		if err != nil {
-			handleError(w, fmt.Errorf("error storing access token: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error storing access token: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -100,7 +140,12 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 		ctx := r.Context()
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
-			handleError(w, fmt.Errorf("error user not authenticated"), http.StatusUnauthorized, true)
+			handleError(
+				w,
+				fmt.Errorf("error user not authenticated"),
+				http.StatusUnauthorized,
+				true,
+			)
 			return
 		}
 
@@ -108,7 +153,12 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 		token, err := db.GetAccessToken(ctx, session.UserID, providerName)
 		if err != nil {
 			// If not found or error, return 403
-			handleError(w, fmt.Errorf("error getting access token: %w", err), http.StatusForbidden, false)
+			handleError(
+				w,
+				fmt.Errorf("error getting access token: %w", err),
+				http.StatusForbidden,
+				false,
+			)
 			return
 		}
 
@@ -121,7 +171,12 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 
 			body, err := json.Marshal(resp)
 			if err != nil {
-				handleError(w, fmt.Errorf("error marshalling response: %w", err), http.StatusInternalServerError, true)
+				handleError(
+					w,
+					fmt.Errorf("error marshalling response: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
 				return
 			}
 
@@ -133,20 +188,35 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 
 		// Access token expired, check refresh token
 		if token.RefreshToken == "" {
-			handleError(w, fmt.Errorf("no refresh token available"), http.StatusForbidden, false)
+			handleError(
+				w,
+				fmt.Errorf("no refresh token available"),
+				http.StatusForbidden,
+				false,
+			)
 			return
 		}
 
 		// Check Refresh Token expiration if we track it (optional check, provider will fail anyway)
 		if !token.RefreshExpiresAt.IsZero() && token.RefreshExpiresAt.Before(time.Now().UTC()) {
-			handleError(w, fmt.Errorf("refresh token expired"), http.StatusForbidden, false)
+			handleError(
+				w,
+				fmt.Errorf("refresh token expired"),
+				http.StatusForbidden,
+				false,
+			)
 			return
 		}
 
 		// Refresh token
 		tokenResp, err := oa.RefreshToken(ctx, token.RefreshToken)
 		if err != nil {
-			handleError(w, fmt.Errorf("error refreshing token: %w", err), http.StatusForbidden, false)
+			handleError(
+				w,
+				fmt.Errorf("error refreshing token: %w", err),
+				http.StatusForbidden,
+				false,
+			)
 			return
 		}
 
@@ -160,7 +230,12 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 
 		err = db.UpsertAccessToken(ctx, token.UserID, providerName, tokenResp.AccessToken, newRefreshToken, newExpiresAt, newRefreshExpiresAt)
 		if err != nil {
-			handleError(w, fmt.Errorf("error updating access token: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error updating access token: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -171,7 +246,12 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 
 		body, err := json.Marshal(resp)
 		if err != nil {
-			handleError(w, fmt.Errorf("error marshalling response: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error marshalling response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 

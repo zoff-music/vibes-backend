@@ -84,21 +84,21 @@ func TestLoopQueueAndRemoveOnPlay(t *testing.T) {
 
 	// Verify Song 1 is playing
 	state := getPlaybackState(t, env, roomID)
-	if state.CurrentSongID == nil || *state.CurrentSongID != song1.ID {
-		t.Errorf("expected song 1 to be playing, got %v", state.CurrentSongID)
+	if state.CurrentSong == nil || state.CurrentSong.ID != song1.ID {
+		t.Errorf("expected song 1 to be playing, got %v", getSongIDStr(state))
 	}
 
 	// 4. Skip to Song 2
 	skipTrack(t, env, roomID)
 	state = getPlaybackState(t, env, roomID)
-	if state.CurrentSongID == nil || *state.CurrentSongID != song2.ID {
+	if state.CurrentSong == nil || state.CurrentSong.ID != song2.ID {
 		t.Errorf("expected song 2 to be playing after skip, got %v", getSongIDStr(state))
 	}
 
 	// 5. Skip again - should loop back to Song 1
 	skipTrack(t, env, roomID)
 	state = getPlaybackState(t, env, roomID)
-	if state.CurrentSongID == nil || *state.CurrentSongID != song1.ID {
+	if state.CurrentSong == nil || state.CurrentSong.ID != song1.ID {
 		t.Errorf("expected song 1 to be playing after loop skip, got %v", getSongIDStr(state))
 	}
 
@@ -112,7 +112,7 @@ func TestLoopQueueAndRemoveOnPlay(t *testing.T) {
 	// 7. Skip Song 1 - it should be removed, Song 2 should play
 	skipTrack(t, env, roomID)
 	state = getPlaybackState(t, env, roomID)
-	if state.CurrentSongID == nil || *state.CurrentSongID != song2.ID {
+	if state.CurrentSong == nil || state.CurrentSong.ID != song2.ID {
 		t.Errorf("expected song 2 to be playing after removal skip, got %v", getSongIDStr(state))
 	}
 
@@ -126,8 +126,8 @@ func TestLoopQueueAndRemoveOnPlay(t *testing.T) {
 	// 8. Skip Song 2 - it should be removed, queue should be empty
 	skipTrack(t, env, roomID)
 	state = getPlaybackState(t, env, roomID)
-	if state.CurrentSongID != nil {
-		t.Errorf("expected queue to be empty, but song %v is playing", *state.CurrentSongID)
+	if state.CurrentSong != nil {
+		t.Errorf("expected queue to be empty, but song %v is playing", state.CurrentSong.ID)
 	}
 	if state.IsPlaying {
 		t.Errorf("expected playback to stop when queue is empty")
@@ -141,10 +141,10 @@ func TestLoopQueueAndRemoveOnPlay(t *testing.T) {
 }
 
 func getSongIDStr(state *vibe.PlaybackState) string {
-	if state == nil || state.CurrentSongID == nil {
+	if state == nil || state.CurrentSong == nil {
 		return "nil"
 	}
-	return *state.CurrentSongID
+	return state.CurrentSong.ID
 }
 
 // Helpers

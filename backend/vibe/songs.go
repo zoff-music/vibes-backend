@@ -2,12 +2,8 @@ package vibe
 
 import (
 	"context"
-	"errors"
 	"time"
 )
-
-// ErrAlreadyVoted is returned when a user tries to vote for a song they have already voted for
-var ErrAlreadyVoted = errors.New("already voted")
 
 // Song represents a song in the queue
 type Song struct {
@@ -16,11 +12,11 @@ type Song struct {
 	SourceType      SourceType `json:"sourceType"`
 	SourceID        string     `json:"sourceId"`
 	Title           string     `json:"title"`
-	Artist          *string    `json:"artist,omitempty"`
+	Artist          string     `json:"artist,omitempty"`
 	ThumbnailURL    string     `json:"thumbnailUrl"`
 	Duration        int        `json:"duration"`
 	AddedBy         string     `json:"addedBy"`
-	AddedByNickname *string    `json:"addedByNickname,omitempty"`
+	AddedByNickname string     `json:"addedByNickname,omitempty"`
 	AddedAt         time.Time  `json:"addedAt"`
 	Position        int        `json:"position"`
 	VoteCount       int        `json:"voteCount"`
@@ -34,7 +30,6 @@ type AddSongRequest struct {
 	Artist     string     `json:"artist,omitempty"`
 	Thumbnail  string     `json:"thumbnailUrl"`
 	Duration   int        `json:"duration"`
-	AddedBy    string     `json:"addedBy"`
 }
 
 // ReorderSongsRequest is the request payload for reordering songs.

@@ -12,9 +12,9 @@ import (
 
 func (c *Client) prepareUpdateParticipantStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO room_participants (room_id, user_id, last_seen_at, is_active_listener)
+		INSERT INTO room_users (room_id, id, last_seen_at, is_active_listener)
 		VALUES (?1, ?2, ?3, ?4)
-		ON CONFLICT(room_id, user_id) DO UPDATE SET last_seen_at = ?3, is_active_listener = ?4
+		ON CONFLICT(id, room_id) DO UPDATE SET last_seen_at = ?3, is_active_listener = ?4
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateParticipantStatement: %w", err)
@@ -41,8 +41,8 @@ func (c *Client) UpdateParticipant(ctx context.Context, roomID, userID string, i
 
 func (c *Client) prepareGetActiveParticipantsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT room_id, user_id, last_seen_at
-		FROM room_participants
+		SELECT room_id, id, last_seen_at
+		FROM room_users
 		WHERE room_id = ?1 AND last_seen_at > ?2
 		ORDER BY last_seen_at DESC
 	`)
@@ -71,20 +71,44 @@ func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activ
 
 	var participants []vibe.Participant
 	for rows.Next() {
-		var p vibe.Participant
-		err := rows.Scan(&p.RoomID, &p.UserID, &p.LastSeenAt)
+		var row participantRow
+		err := row.scan(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning participant: %w", err)
 		}
-		participants = append(participants, p)
+		participants = append(participants, row.toParticipant())
 	}
 
 	return participants, nil
 }
 
+type participantRow struct {
+	RoomID     string
+	UserID     string
+	LastSeenAt time.Time
+}
+
+func (p *participantRow) scan(rows *sql.Rows) error {
+	return rows.Scan(
+		&p.RoomID,
+		&p.UserID,
+		&p.LastSeenAt,
+	)
+}
+
+func (p *participantRow) toParticipant() vibe.Participant {
+	return vibe.Participant{
+		RoomID:     p.RoomID,
+		UserID:     p.UserID,
+		LastSeenAt: p.LastSeenAt,
+	}
+}
+
 func (c *Client) prepareSetRoomHostStmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE rooms SET host_id = ?1 WHERE id = ?2
+		UPDATE rooms 
+		SET host_id = ?1 
+		WHERE id = ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing SetRoomHostStatement: %w", err)
@@ -116,7 +140,7 @@ func (c *Client) SetRoomHost(ctx context.Context, roomID, userID string) error {
 
 func (c *Client) prepareRemoveParticipantStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM room_participants WHERE room_id = ?1 AND user_id = ?2
+		DELETE FROM room_users WHERE room_id = ?1 AND id = ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing RemoveParticipantStatement: %w", err)
@@ -143,7 +167,7 @@ func (c *Client) RemoveParticipant(ctx context.Context, roomID, userID string) e
 
 func (c *Client) prepareDeleteInactiveParticipantsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM room_participants WHERE last_seen_at < ?1
+		DELETE FROM room_users WHERE last_seen_at < ?1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing DeleteInactiveParticipantsStatement: %w", err)
@@ -153,7 +177,7 @@ func (c *Client) prepareDeleteInactiveParticipantsStmt() error {
 }
 
 // DeleteInactiveParticipants removes participants who haven't been seen within the duration
-func (c *Client) DeleteInactiveParticipants(ctx context.Context, olderThan time.Duration) (int64, error) {
+func (c *Client) DeleteInactiveParticipants(ctx context.Context, olderThan time.Duration) (int, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "DeleteInactiveParticipants")
 	defer span.Finish()
 
@@ -168,5 +192,5 @@ func (c *Client) DeleteInactiveParticipants(ctx context.Context, olderThan time.
 	}
 
 	rowsAffected, _ := result.RowsAffected()
-	return rowsAffected, nil
+	return int(rowsAffected), nil
 }

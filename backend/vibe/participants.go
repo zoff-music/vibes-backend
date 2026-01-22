@@ -24,7 +24,7 @@ type ParticipantStorage interface {
 	// RemoveParticipant removes a participant from a room
 	RemoveParticipant(ctx context.Context, roomID, userID string) error
 	// DeleteInactiveParticipants removes participants who haven't been seen within the duration
-	DeleteInactiveParticipants(ctx context.Context, olderThan time.Duration) (int64, error)
+	DeleteInactiveParticipants(ctx context.Context, olderThan time.Duration) (int, error)
 }
 
 // RoomEventParticipantStorage defines the requirements for the SSE event handler

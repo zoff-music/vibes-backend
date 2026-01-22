@@ -8,7 +8,6 @@ import (
 type User struct {
 	ID         string    `json:"id"`
 	RoomID     string    `json:"-"`
-	Nickname   *string   `json:"nickname,omitempty"`
 	IsAdmin    bool      `json:"isAdmin"`
 	JoinedAt   time.Time `json:"joinedAt"`
 	LastSeenAt time.Time `json:"lastSeenAt"`

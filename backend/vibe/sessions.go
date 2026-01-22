@@ -18,6 +18,15 @@ type SessionResponse struct {
 
 // SessionCreator creates sessions for rooms.
 type SessionCreator interface {
-	GetRoom(ctx context.Context, id string) (*Room, error)
+	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
 	CreateUser(ctx context.Context, user *User) (*User, error)
+}
+
+// SessionCreatorGetter creates sessions for rooms and can get rooms and users.
+type SessionCreatorGetter interface {
+	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
+	UpdateRoom(ctx context.Context, room *Room) (*Room, error)
+	CreateUser(ctx context.Context, user *User) (*User, error)
+	GetUser(ctx context.Context, roomID, userID string) (*User, error)
+	AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (bool, error)
 }

@@ -6,13 +6,13 @@ export default function Home() {
   const navigate = useNavigate();
 
   const handleCreateRoom = () => {
-    navigate('/room/create');
+    navigate('/rooms/create');
   };
 
   const handleJoinRoom = () => {
     if (roomCode.trim()) {
       const slug = roomCode.trim().toLowerCase().replace(/\s+/g, '-');
-      navigate(`/room/${slug}`);
+      navigate(`/rooms/${slug}`);
     }
   };
 

@@ -46,13 +46,7 @@ export const useRoom = (roomId: string) => {
   }, [roomId, setRoom]);
 
   const joinRoom = useCallback(
-    async (nickname?: string, password?: string) => {
-      const currentUserId = useRoomStore.getState().userId;
-      if (currentUserId && useRoomStore.getState().room?.id === roomId) {
-        console.log('[Room] Already joined, skipping join request');
-        return { userId: currentUserId };
-      }
-
+    async (password?: string) => {
       setIsLoading(true);
       const key = `joinRoom:${roomId}`;
 
@@ -61,7 +55,7 @@ export const useRoom = (roomId: string) => {
         promise = api.post(
           '/rooms/{id}/sessions',
           { id: roomId },
-          { nickname, password },
+          { password },
         );
         IN_FLIGHT_REQUESTS.set(key, promise);
       }
@@ -85,6 +79,7 @@ export const useRoom = (roomId: string) => {
       }
 
       if (data) {
+        // userId and nickname might be returned, but we mainly care about isAdmin
         setSession(data.userId, data.isAdmin, data.nickname as any);
         setRoom(data.room);
         return data;
