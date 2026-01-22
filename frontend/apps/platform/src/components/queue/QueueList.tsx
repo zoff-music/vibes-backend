@@ -1,6 +1,6 @@
 import { Song } from '@vibez/shared';
 import { AnimatePresence } from 'framer-motion';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { QueueItem } from './QueueItem';
 
 interface Props {
@@ -17,12 +17,18 @@ const QueueListComponent: React.FC<Props> = ({
   onVote,
   isAdmin,
 }) => {
+  const [isSSR, setIsSSR] = useState(true);
+
+  useEffect(() => {
+    setIsSSR(false);
+  }, []);
+
   if (songs.length === 0) {
     return (
-      <div className="glass animate-fade-in rounded-3xl border-2 border-ink/10 bg-white/50 p-12 text-center">
-        <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-ink/20 bg-white shadow-retro">
+      <div className="glass animate-fade-in rounded-3xl border-2 border-ink/10 dark:border-primary/20 bg-white/50 dark:bg-dark-surface/60 p-12 text-center">
+        <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-ink/20 dark:border-primary/20 bg-white dark:bg-dark-surfaceElevated shadow-retro">
           <svg
-            className="h-10 w-10 text-ink/40"
+            className="h-10 w-10 text-ink/40 dark:text-dark-text-muted"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -36,25 +42,40 @@ const QueueListComponent: React.FC<Props> = ({
           </svg>
         </div>
         <h3
-          className="mb-2 font-black text-ink text-xl"
+          className="mb-2 font-black text-ink dark:text-dark-text text-xl"
           style={{ fontFamily: 'Poppins' }}
         >
           Queue is Empty
         </h3>
-        <p className="mb-2 font-medium text-ink/60">
+        <p className="mb-2 font-medium text-ink/60 dark:text-dark-text-muted">
           Add some songs to get the party started
         </p>
-        <p className="jp-art text-ink/40 text-sm">曲を追加</p>
+        <p className="jp-art text-ink/40 dark:text-dark-text-subtle text-sm">曲を追加</p>
       </div>
     );
   }
 
+  const queueSongs = songs.filter((song) => song.position > 0); // Filter out current playing song (position 0)
+
   return (
     <div className="space-y-3">
-      <AnimatePresence initial={false} mode="popLayout">
-        {songs
-          .filter((song) => song.position > 0) // Filter out current playing song (position 0)
-          .map((song, index) => (
+      {isSSR ? (
+        // SSR: Render without animations
+        queueSongs.map((song, index) => (
+          <QueueItem
+            key={song.id}
+            song={song}
+            position={index + 1}
+            onRemove={onRemove}
+            onVote={onVote}
+            isAdmin={isAdmin}
+            isSSR={true}
+          />
+        ))
+      ) : (
+        // Client: Render with animations
+        <AnimatePresence initial={false} mode="popLayout">
+          {queueSongs.map((song, index) => (
             <QueueItem
               key={song.id}
               song={song}
@@ -62,9 +83,11 @@ const QueueListComponent: React.FC<Props> = ({
               onRemove={onRemove}
               onVote={onVote}
               isAdmin={isAdmin}
+              isSSR={false}
             />
           ))}
-      </AnimatePresence>
+        </AnimatePresence>
+      )}
     </div>
   );
 };

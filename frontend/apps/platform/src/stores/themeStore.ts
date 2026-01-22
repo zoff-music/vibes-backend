@@ -1,5 +1,4 @@
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
 
 // Theme definitions - easy to add new themes by adding to this object
 export const themes = {
@@ -33,14 +32,52 @@ export const themes = {
 export type ThemeId = keyof typeof themes;
 export type Theme = (typeof themes)[ThemeId];
 
+interface Preferences {
+  theme: ThemeId;
+  version: number;
+}
+
 interface ThemeState {
   themeId: ThemeId;
-  setTheme: (themeId: ThemeId) => void;
-  toggleDarkMode: () => void; // Convenience method for simple light/dark toggle
-  // Computed helpers
   isDarkMode: boolean;
   currentTheme: Theme;
+  setTheme: (themeId: ThemeId) => void;
+  toggleDarkMode: () => void; // Convenience method for simple light/dark toggle
 }
+
+// Cookie utilities
+const COOKIE_NAME = 'preferences';
+const CURRENT_VERSION = 1;
+
+const setCookie = (name: string, value: string, days: number = 365) => {
+  if (typeof document === 'undefined') return;
+  const expires = new Date();
+  expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+};
+
+const getCookie = (name: string): string | null => {
+  if (typeof document === 'undefined') return null;
+  const nameEQ = name + '=';
+  const ca = document.cookie.split(';');
+  for (let i = 0; i < ca.length; i++) {
+    let c = ca[i];
+    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+  }
+  return null;
+};
+
+const savePreferences = (preferences: Preferences) => {
+  const encoded = btoa(JSON.stringify(preferences));
+  setCookie(COOKIE_NAME, encoded);
+};
+
+// Detect system preference - but only use as fallback for client-only rendering
+const getSystemTheme = (): ThemeId => {
+  if (typeof window === 'undefined') return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+};
 
 // Apply theme class to document
 const applyTheme = (themeId: ThemeId) => {
@@ -61,43 +98,58 @@ const applyTheme = (themeId: ThemeId) => {
   }
 };
 
-export const useThemeStore = create<ThemeState>()(
-  persist(
-    (set, get) => ({
-      themeId: 'light',
+// Initialize theme by checking the actual DOM state (what SSR rendered)
+const getInitialThemeSync = (): ThemeId => {
+  if (typeof document === 'undefined') {
+    return 'light'; // Server-side fallback
+  }
+  
+  // Check if the HTML element has the 'dark' class (what SSR actually rendered)
+  const hasDarkClass = document.documentElement.classList.contains('dark');
+  console.log('[Theme] DOM has dark class:', hasDarkClass);
+  
+  return hasDarkClass ? 'dark' : 'light';
+};
 
-      setTheme: (themeId: ThemeId) => {
-        applyTheme(themeId);
-        set({ themeId });
-      },
+// Initialize theme immediately - before any React rendering
+const INITIAL_THEME = getInitialThemeSync();
 
-      toggleDarkMode: () => {
-        const current = get().themeId;
-        const newTheme = current === 'dark' ? 'light' : 'dark';
-        applyTheme(newTheme);
-        set({ themeId: newTheme });
-      },
+// No need to apply theme here since SSR already set it correctly
+console.log('[Theme] Initial theme detected from DOM:', INITIAL_THEME);
 
-      // Computed getters
-      get isDarkMode() {
-        return get().themeId === 'dark';
-      },
+export const useThemeStore = create<ThemeState>((set, get) => {
+  console.log('[Theme] Store initialized with theme:', INITIAL_THEME);
 
-      get currentTheme() {
-        return themes[get().themeId];
-      },
-    }),
-    {
-      name: 'vibes-theme',
-      onRehydrateStorage: () => (state) => {
-        // Apply saved theme on page load
-        if (state?.themeId) {
-          applyTheme(state.themeId);
-        }
-      },
+  return {
+    themeId: INITIAL_THEME,
+    isDarkMode: INITIAL_THEME === 'dark',
+    currentTheme: themes[INITIAL_THEME],
+
+    setTheme: (themeId: ThemeId) => {
+      console.log('[Theme] Setting theme to:', themeId);
+      applyTheme(themeId);
+      savePreferences({ theme: themeId, version: CURRENT_VERSION });
+      set({ 
+        themeId, 
+        isDarkMode: themeId === 'dark',
+        currentTheme: themes[themeId]
+      });
     },
-  ),
-);
+
+    toggleDarkMode: () => {
+      const current = get().themeId;
+      const newTheme = current === 'dark' ? 'light' : 'dark';
+      console.log('[Theme] Toggling from', current, 'to', newTheme);
+      applyTheme(newTheme);
+      savePreferences({ theme: newTheme, version: CURRENT_VERSION });
+      set({ 
+        themeId: newTheme, 
+        isDarkMode: newTheme === 'dark',
+        currentTheme: themes[newTheme]
+      });
+    },
+  };
+});
 
 // Export helper to get all available themes (for theme selector UI)
 export const getAvailableThemes = () => Object.values(themes);

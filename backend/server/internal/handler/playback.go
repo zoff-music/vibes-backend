@@ -13,6 +13,56 @@ import (
 	"github.com/zoff-music/vibes/vibe"
 )
 
+// GetPlaybackState handles GET /rooms/{id}/states
+func GetPlaybackState(
+	db vibe.PlaybackFetcher,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		vars := mux.Vars(r)
+		roomID := vars["id"]
+
+		session, ok := helper.GetSessionFromContext(ctx)
+		if !ok || session.UserID == "" {
+			handleError(
+				w,
+				fmt.Errorf("unauthorized"),
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+
+		state, err := db.GetPlaybackState(ctx, roomID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("failed to fetch playback state: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		state.ServerTimeMs = int(time.Now().UnixMilli())
+
+		body, err := json.Marshal(state)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}
+}
+
 // UpdatePlaybackState handles PUT /rooms/{id}/states
 func UpdatePlaybackState(
 	db vibe.RoomGetterPlaybackUpdater,
@@ -20,12 +70,10 @@ func UpdatePlaybackState(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		vars := mux.Vars(r)
-		roomID := vars["id"]
+		roomID := mux.Vars(r)["id"]
 
 		var req vibe.RoomActionRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
-		if err != nil {
+		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 			handleError(
 				w,
 				fmt.Errorf("invalid request body: %w", err),
@@ -37,7 +85,7 @@ func UpdatePlaybackState(
 
 		switch req.Action {
 		case vibe.RoomActionPlay, vibe.RoomActionPause, vibe.RoomActionSeek:
-			// Allowed actions
+			// Allowed
 		default:
 			handleError(
 				w,
@@ -73,11 +121,99 @@ func UpdatePlaybackState(
 
 		log.Printf("Room %s: User %s attempting %s", roomID, userID, req.Action)
 
-		state, err := db.UpdatePlayback(ctx, roomID, userID, req.Action, req.PositionMs)
+		var state *vibe.PlaybackState // adjust if your type name differs
+
+		// ----------------------------
+		// Server mode: do NOT broadcast.
+		// ----------------------------
+		if room.Mode == vibe.RoomModeServer {
+			state, err = db.GetPlaybackState(ctx, roomID)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("failed to get playback state: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			// Cases where we actually update DB in server mode:
+			// 1) play when no current song (kick off first song from queue)
+			// 2) seek (allowed)
+			shouldPersist := req.Action == vibe.RoomActionSeek ||
+				(req.Action == vibe.RoomActionPlay && state.CurrentSong == nil)
+
+			if shouldPersist {
+				state, err = db.UpdatePlayback(ctx, roomID, userID, req.Action, req.PositionMs)
+				if err != nil {
+					handleError(
+						w,
+						fmt.Errorf("action %s failed: %w", req.Action, err),
+						http.StatusInternalServerError,
+						true,
+					)
+					return
+				}
+
+				// fallthrough to response writing
+			}
+
+			// For pause/play when there's already a current song:
+			// compute current position (only if server thinks it's playing),
+			// then only modify the *response* IsPlaying flag for this user.
+
+			if state.CurrentSong != nil && state.IsPlaying {
+				elapsed := time.Since(state.UpdatedAt).Milliseconds()
+
+				currentPosition := state.PositionMs + int(elapsed)
+
+				if state.CurrentSong.Duration > 0 {
+					max := state.CurrentSong.Duration * 1000
+					if currentPosition > max {
+						currentPosition = max
+					}
+				}
+				if currentPosition < 0 {
+					currentPosition = 0
+				}
+				state.PositionMs = currentPosition
+			}
+
+			switch req.Action {
+			case vibe.RoomActionPause:
+				state.IsPlaying = false
+			case vibe.RoomActionPlay:
+				state.IsPlaying = true
+			}
+
+			state.ServerTimeMs = int(time.Now().UnixMilli())
+
+			body, err := json.Marshal(state)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshalling response in update playback state handler: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(body)
+			return
+		}
+
+		// ----------------------------
+		// Non-server modes: update DB.
+		// ----------------------------
+		state, err = db.UpdatePlayback(ctx, roomID, userID, req.Action, req.PositionMs)
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("action %s failed: %w", req.Action, err),
+				fmt.Errorf("error updating playback: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -86,12 +222,10 @@ func UpdatePlaybackState(
 
 		state.ServerTimeMs = int(time.Now().UnixMilli())
 
-		// Broadcast if in Host mode
+		// Host mode broadcast (best effort; only marshal once)
 		if room.Mode == vibe.RoomModeHost {
-			// Notify room
 			statePayload, err := json.Marshal(state)
 			if err != nil {
-				log.Printf("failed to marshal playback state payload: %v", err)
 				handleError(
 					w,
 					fmt.Errorf("error marshalling playback state payload in update playback state handler: %w", err),
@@ -107,7 +241,7 @@ func UpdatePlaybackState(
 			})
 
 			if err != nil {
-				log.Printf("failed to notify room: %v", err)
+				log.Printf("error notifying room %s of playback update: %v", roomID, err)
 			}
 		}
 
@@ -115,7 +249,7 @@ func UpdatePlaybackState(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshalling response in update playback state handler: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

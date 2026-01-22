@@ -23,7 +23,7 @@ const PlayerControlsComponent: React.FC<Props> = ({
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
 
   const btnClass =
-    'glass p-4 cursor-pointer rounded-xl hover:shadow-retro active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed group border-2 border-ink/10 flex items-center justify-center h-14';
+    'glass p-4 cursor-pointer rounded-xl hover:shadow-retro active:scale-95 transition-all disabled:opacity-30 disabled:cursor-not-allowed group border-2 border-ink/10 dark:border-primary/20 flex items-center justify-center h-14';
 
   return (
     <div className="w-full">
@@ -54,7 +54,7 @@ const PlayerControlsComponent: React.FC<Props> = ({
           title="Skip"
         >
           <svg
-            className="h-6 w-6 text-ink/60 transition-colors group-hover:text-primary"
+            className="h-6 w-6 text-ink/60 transition-colors group-hover:text-primary dark:text-dark-text-muted dark:group-hover:text-primary"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -90,7 +90,7 @@ const PlayerControlsComponent: React.FC<Props> = ({
         {showSpotifyConnect && onConnectSpotify && (
           <button
             onClick={onConnectSpotify}
-            className={`${btnClass} ml-auto gap-2 px-4 text-[#1DB954] hover:border-[#1DB954]/30 hover:bg-[#1DB954]/10`}
+            className={`${btnClass} ml-auto gap-2 px-4 text-[#1DB954] hover:border-[#1DB954]/30 hover:bg-[#1DB954]/10 dark:hover:bg-[#1DB954]/20`}
             title="Connect Spotify"
           >
             <svg className="h-6 w-6" viewBox="0 0 24 24" fill="currentColor">
@@ -105,7 +105,7 @@ const PlayerControlsComponent: React.FC<Props> = ({
         {/* Add Song Button */}
         <button
           onClick={onAddSong}
-          className={`${btnClass} ${!showSpotifyConnect ? 'ml-auto' : ''} gap-2 px-6 text-primary hover:border-primary/30`}
+          className={`${btnClass} ${!showSpotifyConnect ? 'ml-auto' : ''} gap-2 px-6 text-primary hover:border-primary/30 dark:text-primary-light dark:hover:border-primary/40`}
           title="Add Song"
         >
           <svg
@@ -121,7 +121,7 @@ const PlayerControlsComponent: React.FC<Props> = ({
               d="M12 4v16m8-8H4"
             />
           </svg>
-          <span className="whitespace-nowrap font-black text-ink text-sm tracking-wide">
+          <span className="whitespace-nowrap font-black text-ink text-sm tracking-wide dark:text-dark-text">
             Add Song
           </span>
         </button>

@@ -153,6 +153,11 @@ func RoomEvents(
 					continue
 				}
 
+				// Filter out events triggered by the same user (e.g., password setup)
+				if event.UserID != "" && event.UserID == userID {
+					continue // Skip sending this event to the user who triggered it
+				}
+
 				// payloadData is already []byte (JSON), so we can just use it.
 				// However, if we print it as %s, it works.
 				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, event.Payload)

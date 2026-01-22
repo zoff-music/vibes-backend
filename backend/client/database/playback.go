@@ -352,13 +352,11 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 		state.CurrentSong = firstSong
 		state.PositionMs = 0
 	case vibe.RoomActionPause:
-		state.IsPlaying = false
-		if !state.IsPlaying {
-			break
+		if state.IsPlaying {
+			elapsed := time.Since(state.UpdatedAt).Milliseconds()
+			state.PositionMs = state.PositionMs + int(elapsed)
 		}
-
-		elapsed := time.Since(state.UpdatedAt).Milliseconds()
-		state.PositionMs = state.PositionMs + int(elapsed)
+		state.IsPlaying = false
 	case vibe.RoomActionSeek:
 		state.PositionMs = positionMs
 	default:

@@ -20,6 +20,7 @@ export const useSSE = (roomId: string | undefined) => {
   const setUsersCount = useRoomStore((state) => state.setUsersCount);
   const setSongs = useQueueStore((state) => state.setSongs);
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
+  const room = useRoomStore((state) => state.room);
 
   // Use a ref to track if *this specific hook instance* is responsible for a subscription
   const isSubscribedRef = useRef(false);
@@ -74,7 +75,7 @@ export const useSSE = (roomId: string | undefined) => {
                 case 'playback_update': {
                   const [_, error] = safeWrap(() => {
                     const state = message.data as PlaybackState;
-                    setPlaybackState(state);
+                    setPlaybackState(state, room?.mode);
                   });
                   if (error)
                     console.error(

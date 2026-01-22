@@ -191,8 +191,20 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 		return nil, fmt.Errorf("failed to fetch room: %w", err)
 	}
 
-	// 1. Determine if this should be a forced skip
+	// Determine if user is host
 	isHost := room.HostID == userID
+
+	// 1. Check if skipping is allowed at all
+	if !room.Settings.SkipAllowed && !isHost && !isAdmin {
+		return nil, fmt.Errorf("skipping is disabled in this room")
+	}
+
+	// 2. Check host mode restrictions
+	if room.Mode == vibe.RoomModeHost && !isHost && !isAdmin {
+		return nil, fmt.Errorf("only hosts can skip in host mode")
+	}
+
+	// 3. Determine if this should be a forced skip
 	shouldForce := isHost || isAdmin
 	if !room.Settings.DemocraticSkip {
 		shouldForce = true

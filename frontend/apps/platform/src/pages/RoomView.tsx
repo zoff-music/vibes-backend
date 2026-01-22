@@ -19,14 +19,38 @@ import { useRoomStore } from '../stores/roomStore';
 import { useThemeStore } from '../stores/themeStore';
 
 interface RoomViewProps {
-  initialData?: any;
+  initialData?: {
+    room?: any;
+    songs?: any[];
+    playback?: any;
+    theme?: 'light' | 'dark';
+  };
 }
 
 export default function RoomView({ initialData }: RoomViewProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  
   const { currentSong, skip, isPlaying } = usePlayback(id || '');
   const { songs, fetchQueue, voteSong } = useQueue(id || '');
+  
+  // Use songs from store, fallback to initial data for SSR
+  const displaySongs = songs.length > 0 ? songs : (initialData?.songs || []);
+  
+  // Use playing state from store, fallback to initial data for SSR
+  const displayIsPlaying = isPlaying !== undefined ? isPlaying : (initialData?.playback?.isPlaying || false);
+  
+  // Use current song from store, fallback to initial data for SSR
+  const displayCurrentSong = useMemo(() => {
+    if (currentSong) return currentSong;
+    if (initialData?.playback?.currentSong) return initialData.playback.currentSong;
+    // Fallback to finding position 0 song if no playback data
+    if (initialData?.songs && !initialData?.playback?.currentSong) {
+      return initialData.songs.find(s => s.position === 0) || null;
+    }
+    return null;
+  }, [currentSong, initialData?.playback?.currentSong, initialData?.songs?.length]);
+  
   const {
     room,
     fetchRoom,
@@ -36,15 +60,39 @@ export default function RoomView({ initialData }: RoomViewProps) {
     userId,
     users,
     updateRoomSettings,
+    updateRoom,
   } = useRoom(id || '');
-  const { isDarkMode, toggleDarkMode } = useThemeStore();
+  const { toggleDarkMode } = useThemeStore();
+  
+  // Use theme from server-side initialData to avoid hydration mismatch
+  const [isDarkMode, setIsDarkMode] = useState(initialData?.theme === 'dark');
+  
+  // Track if we're in SSR mode to disable animations
+  const [isSSR, setIsSSR] = useState(true);
+
+  // Sync with theme store when toggling
+  const handleToggleDarkMode = () => {
+    toggleDarkMode();
+    setIsDarkMode(!isDarkMode);
+  };
+
+  // Detect client-side hydration
+  useEffect(() => {
+    setIsSSR(false);
+  }, []);
 
   // Handle SSR initial data
   const { setRoom, isAdmin: storeIsAdmin } = useRoomStore();
-  const isAdmin = storeIsAdmin || initialData?.room?.isAdmin || false;
   const { setSongs } = useQueueStore();
   const { setPlaybackState } = usePlaybackStore();
   const [initialized, setInitialized] = useState(false);
+
+  // Use consistent room data between server and client
+  const displayRoom = useMemo(() => {
+    return room || initialData?.room || null;
+  }, [room, initialData?.room]);
+
+  const isAdmin = storeIsAdmin || initialData?.room?.isAdmin || false;
 
   useEffect(() => {
     if (initialData && !initialized) {
@@ -56,8 +104,14 @@ export default function RoomView({ initialData }: RoomViewProps) {
         setRoom(initialData.room);
         console.log('[SSR] Set room. isAdmin:', initialData.room.isAdmin);
       }
-      if (initialData.songs) setSongs(initialData.songs);
-      if (initialData.playback) setPlaybackState(initialData.playback);
+      if (initialData.songs) {
+        console.log('[SSR] Setting songs:', initialData.songs);
+        setSongs(initialData.songs);
+      }
+      if (initialData.playback) {
+        console.log('[SSR] Setting playback state:', initialData.playback);
+        setPlaybackState(initialData.playback);
+      }
       setInitialized(true);
     }
   }, [initialData, initialized, setRoom, setSongs, setPlaybackState]);
@@ -93,8 +147,8 @@ export default function RoomView({ initialData }: RoomViewProps) {
   };
 
   const { actualPositionMs } = usePlayback(id || '');
-  const progress = currentSong
-    ? actualPositionMs / (currentSong.duration * 1000)
+  const progress = displayCurrentSong
+    ? actualPositionMs / (displayCurrentSong.duration * 1000)
     : 0;
 
   useEffect(() => {
@@ -111,8 +165,25 @@ export default function RoomView({ initialData }: RoomViewProps) {
       ]);
     };
 
+    const handleShowToast = (e: any) => {
+      const { message, type } = e.detail;
+      setToasts((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          message,
+          type,
+        },
+      ]);
+    };
+
     window.addEventListener('song-added', handleSongAdded);
-    return () => window.removeEventListener('song-added', handleSongAdded);
+    window.addEventListener('show-toast', handleShowToast);
+    
+    return () => {
+      window.removeEventListener('song-added', handleSongAdded);
+      window.removeEventListener('show-toast', handleShowToast);
+    };
   }, []);
 
   const joinAttemptedRef = useRef<string | null>(null);
@@ -198,8 +269,8 @@ export default function RoomView({ initialData }: RoomViewProps) {
     useProviderToken();
 
   const hasSpotifySongs = useMemo(
-    () => songs.some((s) => s.sourceType === 'spotify'),
-    [songs],
+    () => displaySongs.some((s) => s.sourceType === 'spotify'),
+    [displaySongs],
   );
 
   useEffect(() => {
@@ -287,12 +358,12 @@ export default function RoomView({ initialData }: RoomViewProps) {
   }, [fetchSpotifyToken]);
 
   return (
-    <div className="flex min-h-screen animate-fade-in flex-col">
+    <div className={`flex min-h-screen flex-col ${!isSSR ? 'animate-fade-in' : ''}`}>
       {/* Header */}
       <div className="sticky top-0 z-20 border-ink/10 border-b-4 bg-white/95 px-4 py-5 shadow-retro backdrop-blur-lg transition-colors duration-300 dark:border-primary/20 dark:bg-dark-paper/95">
-        <div className="mx-auto flex max-w-7xl items-center justify-between">
+        <div className="relative mx-auto flex max-w-7xl items-center justify-between">
           <button
-            onClick={() => navigate(-1)}
+            onClick={() => navigate('/')}
             className="group inline-flex cursor-pointer items-center gap-2 text-ink/60 transition-colors hover:text-ink dark:text-dark-text-muted dark:hover:text-dark-text"
           >
             <svg
@@ -311,41 +382,44 @@ export default function RoomView({ initialData }: RoomViewProps) {
             <span className="font-bold text-sm tracking-wide">Leave</span>
           </button>
 
-          <button
-            onClick={() => setShowRoomInfo(!showRoomInfo)}
-            className="mx-4 flex flex-1 cursor-pointer items-center justify-center gap-2 transition-opacity hover:opacity-70"
-          >
-            <h1
-              className="truncate font-black text-ink text-lg dark:text-dark-text"
-              style={{ fontFamily: 'Poppins' }}
+          {/* Room name - absolutely positioned to stay centered */}
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+            <button
+              onClick={() => setShowRoomInfo(!showRoomInfo)}
+              className="flex cursor-pointer items-center justify-center gap-2 transition-opacity hover:opacity-70"
             >
-              {room?.name || 'Loading...'}
-            </h1>
-            <svg
-              className={`h-4 w-4 text-ink/50 transition-transform dark:text-dark-text-muted ${showRoomInfo ? 'rotate-180' : ''}`}
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19 9l-7 7-7-7"
-              />
-            </svg>
-          </button>
+              <h1
+                className="truncate font-black text-ink text-lg dark:text-dark-text whitespace-nowrap"
+                style={{ fontFamily: 'Poppins' }}
+              >
+                {displayRoom?.name || 'Loading...'}
+              </h1>
+              <svg
+                className={`h-4 w-4 text-ink/50 transition-transform dark:text-dark-text-muted ${showRoomInfo ? 'rotate-180' : ''}`}
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+          </div>
 
           <div className="flex items-center gap-2">
             <UserCount />
 
             {/* Dark Mode Toggle */}
             <button
-              onClick={toggleDarkMode}
+              onClick={handleToggleDarkMode}
               className={`cursor-pointer rounded-xl border-2 p-2.5 transition-all ${
                 isDarkMode
                   ? 'border-primary bg-primary text-white shadow-neon-pink'
-                  : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'
+                  : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink'
               }`}
               title={
                 isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
@@ -495,19 +569,34 @@ export default function RoomView({ initialData }: RoomViewProps) {
                         Room Control
                       </h4>
 
+                      {/* Host Mode Disclaimer */}
+                      {room?.mode === 'host' && (
+                        <div className="rounded-lg bg-secondary/10 border border-secondary/20 p-3 dark:bg-secondary/20 dark:border-secondary/30">
+                          <div className="flex items-center gap-2">
+                            <div className="h-2 w-2 rounded-full bg-secondary"></div>
+                            <span className="font-bold text-secondary text-sm dark:text-secondary">
+                              Host Mode Active
+                            </span>
+                          </div>
+                          <p className="mt-1 text-ink/70 text-xs dark:text-dark-text-muted">
+                            In host mode, only the host can skip songs. Skip settings are disabled.
+                          </p>
+                        </div>
+                      )}
+
                       <div className="group flex items-center justify-between">
                         <div className="flex flex-col">
                           <span
-                            className={`font-bold text-sm ${room?.hasPassword && !isAdmin ? 'text-ink/30 dark:text-dark-text-subtle' : 'text-ink dark:text-dark-text'}`}
+                            className={`font-bold text-sm ${(room?.hasPassword && !isAdmin) || room?.mode === 'host' ? 'text-ink/30 dark:text-dark-text-subtle' : 'text-ink dark:text-dark-text'}`}
                           >
                             Allow Skip
                           </span>
                           <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">
-                            Anyone can skip
+                            {room?.mode === 'host' ? 'Host controls skipping' : 'Anyone can skip'}
                           </span>
                         </div>
                         <button
-                          disabled={room?.hasPassword && !isAdmin}
+                          disabled={(room?.hasPassword && !isAdmin) || room?.mode === 'host'}
                           onClick={() =>
                             room &&
                             updateRoomSettings({
@@ -515,7 +604,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               skipAllowed: !room.settings.skipAllowed,
                             })
                           }
-                          className={`relative h-6 w-12 cursor-pointer rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.skipAllowed ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                          className={`relative h-6 w-12 cursor-pointer rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.skipAllowed ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${(room?.hasPassword && !isAdmin) || room?.mode === 'host' ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                         >
                           <div
                             className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.skipAllowed ? 'right-1.5' : 'left-1.5'}`}
@@ -526,16 +615,16 @@ export default function RoomView({ initialData }: RoomViewProps) {
                       <div className="group flex items-center justify-between">
                         <div className="flex flex-col">
                           <span
-                            className={`font-bold text-sm ${room?.hasPassword && !isAdmin ? 'text-ink/30 dark:text-dark-text-subtle' : 'text-ink dark:text-dark-text'}`}
+                            className={`font-bold text-sm ${(room?.hasPassword && !isAdmin) || room?.mode === 'host' ? 'text-ink/30 dark:text-dark-text-subtle' : 'text-ink dark:text-dark-text'}`}
                           >
                             Democratic Skip
                           </span>
                           <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">
-                            Require votes
+                            {room?.mode === 'host' ? 'Host decides skipping' : 'Require votes'}
                           </span>
                         </div>
                         <button
-                          disabled={room?.hasPassword && !isAdmin}
+                          disabled={(room?.hasPassword && !isAdmin) || room?.mode === 'host'}
                           onClick={() =>
                             room &&
                             updateRoomSettings({
@@ -543,7 +632,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               democraticSkip: !room.settings.democraticSkip,
                             })
                           }
-                          className={`relative h-6 w-12 cursor-pointer rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.democraticSkip ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                          className={`relative h-6 w-12 cursor-pointer rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.democraticSkip ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${(room?.hasPassword && !isAdmin) || room?.mode === 'host' ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                         >
                           <div
                             className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.democraticSkip ? 'right-1.5' : 'left-1.5'}`}
@@ -607,6 +696,48 @@ export default function RoomView({ initialData }: RoomViewProps) {
                         </button>
                       </div>
 
+                      <div className="border-ink/5 border-t-2 pt-4 dark:border-primary/20">
+                        <h5 className="mb-3 font-black text-ink text-xs uppercase tracking-wider dark:text-dark-text">
+                          Room Mode
+                        </h5>
+                        
+                        <div className="space-y-2">
+                          <button
+                            disabled={room?.hasPassword && !isAdmin}
+                            onClick={() =>
+                              room && updateRoom({ mode: 'server' })
+                            }
+                            className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left transition-all ${
+                              room?.mode === 'server'
+                                ? 'border-primary bg-primary/10 text-ink dark:border-primary dark:bg-primary/20 dark:text-dark-text'
+                                : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20 dark:border-primary/20 dark:bg-dark-surfaceElevated dark:text-dark-text-muted dark:hover:border-primary/30'
+                            } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                          >
+                            <div className="mb-1 font-bold text-sm">Server Mode</div>
+                            <div className="text-[10px] opacity-70">
+                              Auto-play music 24/7. Perfect for radio stations.
+                            </div>
+                          </button>
+                          
+                          <button
+                            disabled={room?.hasPassword && !isAdmin}
+                            onClick={() =>
+                              room && updateRoom({ mode: 'host' })
+                            }
+                            className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left transition-all ${
+                              room?.mode === 'host'
+                                ? 'border-secondary bg-secondary/10 text-ink dark:border-secondary dark:bg-secondary/20 dark:text-dark-text'
+                                : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20 dark:border-primary/20 dark:bg-dark-surfaceElevated dark:text-dark-text-muted dark:hover:border-primary/30'
+                            } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                          >
+                            <div className="mb-1 font-bold text-sm">Host Mode</div>
+                            <div className="text-[10px] opacity-70">
+                              Host controls playback. Great for parties.
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+
                       {!isAdmin && (
                         <div className="group mt-6 flex flex-col gap-2 border-ink/5 border-t-2 pt-4 dark:border-primary/20">
                           <span className="font-bold text-ink text-sm dark:text-dark-text">
@@ -618,7 +749,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               value={adminPassword}
                               onChange={(e) => setAdminPassword(e.target.value)}
                               placeholder={
-                                room?.hasPassword
+                                displayRoom?.hasPassword
                                   ? 'Login as admin'
                                   : 'Add password'
                               }
@@ -659,7 +790,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
         {/* Room info dropdown */}
         {showRoomInfo && (
-          <div className="glass-elevated mt-4 animate-slide-down rounded-2xl border-2 border-ink/10 p-5 dark:border-primary/20">
+          <div className={`glass-elevated mt-4 rounded-2xl border-2 border-ink/10 p-5 dark:border-primary/20 ${!isSSR ? 'animate-slide-down' : ''}`}>
             <div className="space-y-4">
               <div>
                 <p className="mb-2 font-bold text-ink/60 text-xs uppercase tracking-widest dark:text-dark-text-muted">
@@ -719,7 +850,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
       {/* Main content */}
       {/* Main content - Conditionally rendered */}
-      {isLoading && !room ? (
+      {isLoading && !room && !initialData?.room ? (
         <div className="flex flex-1 items-center justify-center">
           <div className="animate-fade-in text-center">
             <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-ink/20 bg-white shadow-retro">
@@ -793,28 +924,113 @@ export default function RoomView({ initialData }: RoomViewProps) {
           <div className="mx-auto max-w-7xl items-start px-4 py-8 lg:grid lg:grid-cols-[1fr_400px] lg:gap-12">
             {/* Player Section */}
             <div className="space-y-6">
-              {/* Player - only send skip in host mode, server mode backend handles it */}
-              {currentSong?.sourceType === 'spotify' ? (
-                <SpotifyPlayer
-                  onEnded={room?.mode === 'host' ? skip : undefined}
-                  isVisible={true}
-                />
-              ) : currentSong?.sourceType === 'soundcloud' ? (
-                <SoundCloudPlayer
-                  onEnded={room?.mode === 'host' ? skip : undefined}
-                  isVisible={true}
-                />
-              ) : (
-                <VideoPlayer
-                  onEnded={room?.mode === 'host' ? skip : undefined}
-                  isVisible={true}
-                />
-              )}
+              {/* Player - Reserve height to prevent CLS */}
+              <div className="relative w-full bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden" style={{ aspectRatio: '16/9', minHeight: '200px' }}>
+                {displayCurrentSong ? (
+                  // Show actual player when there's a current song
+                  displayCurrentSong.sourceType === 'spotify' ? (
+                    <SpotifyPlayer
+                      onEnded={displayRoom?.mode === 'host' ? skip : undefined}
+                      isVisible={true}
+                    />
+                  ) : displayCurrentSong.sourceType === 'soundcloud' ? (
+                    <SoundCloudPlayer
+                      onEnded={displayRoom?.mode === 'host' ? skip : undefined}
+                      isVisible={true}
+                    />
+                  ) : (
+                    <VideoPlayer
+                      onEnded={displayRoom?.mode === 'host' ? skip : undefined}
+                      isVisible={true}
+                    />
+                  )
+                ) : displaySongs.length > 0 ? (
+                  // State 2: Queue exists but nothing playing - show loading
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20">
+                        <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
+                      </div>
+                      <p className="font-medium text-ink/70 dark:text-dark-text-muted">Loading song...</p>
+                    </div>
+                  </div>
+                ) : (
+                  // State 1: No queue - show dancing 8-bit guy
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="text-center">
+                      {/* Dancing 8-bit character */}
+                      <div className="mb-6">
+                        <svg
+                          width="120"
+                          height="120"
+                          viewBox="0 0 120 120"
+                          className="mx-auto"
+                        >
+                          {/* 8-bit dancing character with CSS animation */}
+                          <g className="animate-bounce">
+                            {/* Head */}
+                            <rect x="40" y="20" width="40" height="40" fill="#FFB366" />
+                            <rect x="35" y="25" width="10" height="10" fill="#FFB366" />
+                            <rect x="75" y="25" width="10" height="10" fill="#FFB366" />
+                            
+                            {/* Eyes */}
+                            <rect x="45" y="30" width="8" height="8" fill="#000" />
+                            <rect x="67" y="30" width="8" height="8" fill="#000" />
+                            
+                            {/* Smile */}
+                            <rect x="50" y="45" width="8" height="4" fill="#000" />
+                            <rect x="58" y="45" width="4" height="4" fill="#000" />
+                            <rect x="62" y="45" width="8" height="4" fill="#000" />
+                            
+                            {/* Body */}
+                            <rect x="35" y="60" width="50" height="35" fill="#4ECDC4" />
+                            
+                            {/* Arms - animated */}
+                            <g className="animate-pulse">
+                              <rect x="20" y="65" width="15" height="8" fill="#FFB366" />
+                              <rect x="85" y="65" width="15" height="8" fill="#FFB366" />
+                            </g>
+                            
+                            {/* Legs */}
+                            <rect x="45" y="95" width="12" height="20" fill="#2C3E50" />
+                            <rect x="63" y="95" width="12" height="20" fill="#2C3E50" />
+                            
+                            {/* Feet */}
+                            <rect x="40" y="115" width="20" height="5" fill="#000" />
+                            <rect x="65" y="115" width="20" height="5" fill="#000" />
+                          </g>
+                          
+                          {/* Musical notes floating around */}
+                          <g className="animate-ping">
+                            <circle cx="25" cy="40" r="3" fill="#FF6B6B" opacity="0.7" />
+                            <rect x="23" y="35" width="2" height="8" fill="#FF6B6B" opacity="0.7" />
+                          </g>
+                          <g className="animate-ping" style={{ animationDelay: '0.5s' }}>
+                            <circle cx="95" cy="50" r="3" fill="#4ECDC4" opacity="0.7" />
+                            <rect x="93" y="45" width="2" height="8" fill="#4ECDC4" opacity="0.7" />
+                          </g>
+                          <g className="animate-ping" style={{ animationDelay: '1s' }}>
+                            <circle cx="15" cy="70" r="3" fill="#FFE66D" opacity="0.7" />
+                            <rect x="13" y="65" width="2" height="8" fill="#FFE66D" opacity="0.7" />
+                          </g>
+                        </svg>
+                      </div>
+                      
+                      <h3 className="mb-2 font-bold text-ink text-xl dark:text-dark-text">
+                        Add a song to get the party started!
+                      </h3>
+                      <p className="text-ink/60 text-sm dark:text-dark-text-muted">
+                        Click the "Add Song" button to start the music
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
 
               {/* Controls (always below video) */}
               <PlayerControls
                 roomId={id || ''}
-                hasSongsInQueue={songs && songs.length > 0}
+                hasSongsInQueue={displaySongs && displaySongs.length > 0}
                 onAddSong={handleAddSong}
                 showSpotifyConnect={hasSpotifySongs && !spotifyToken}
                 onConnectSpotify={handleConnectSpotify}
@@ -825,88 +1041,64 @@ export default function RoomView({ initialData }: RoomViewProps) {
             <div className="mt-8 space-y-8 lg:mt-0">
               <div>
                 {/* Now Playing (Integrated into list style) */}
-                <AnimatePresence mode="wait">
-                  {currentSong && (
-                    <motion.div
-                      key={currentSong.id}
-                      initial={{ opacity: 0, scale: 0.95, y: 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      exit={{ opacity: 0, scale: 1.05, y: -10 }}
-                      transition={{ duration: 0.3 }}
-                      className="mb-8"
-                    >
-                      <div className="mb-3 flex items-center gap-2">
-                        <div
-                          className={`h-2 w-2 rounded-full ${isPlaying ? 'animate-pulse bg-matcha shadow-neon-pink' : 'bg-ink/30'}`}
-                        />
-                        <span className="font-black text-[10px] text-ink/60 uppercase tracking-[0.2em] dark:text-dark-text-muted">
-                          {isPlaying ? 'Now Playing' : 'Paused'}
-                        </span>
-                      </div>
+                {displayCurrentSong && (
+                  <div className="mb-8">
+                    <div className="mb-3 flex items-center gap-2">
+                      <div
+                        className={`h-2 w-2 rounded-full ${displayIsPlaying ? 'animate-pulse bg-matcha shadow-neon-pink' : 'bg-ink/30'}`}
+                      />
+                      <span className="font-black text-[10px] text-ink/60 uppercase tracking-[0.2em] dark:text-dark-text-muted">
+                        {displayIsPlaying ? 'Now Playing' : 'Paused'}
+                      </span>
+                    </div>
 
-                      <div className="glass-elevated group/card relative flex items-center gap-4 overflow-hidden rounded-2xl border-2 border-primary/20 bg-white/40 p-4 shadow-retro-pink/20 backdrop-blur-sm dark:bg-dark-surface/60">
-                        {/* Progress Background */}
-                        <motion.div
-                          className="pointer-events-none absolute inset-y-0 left-0 bg-primary/10 dark:bg-primary/20"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progress * 100}%` }}
-                          transition={{ duration: 0.1, ease: 'linear' }}
-                        />
+                    <div className="glass-elevated group/card relative flex items-center gap-4 overflow-hidden rounded-2xl border-2 border-primary/20 bg-white/40 p-4 shadow-retro-pink/20 backdrop-blur-sm dark:bg-dark-surface/60">
+                      {/* Progress Background - only animate on client */}
+                      <div
+                        className="pointer-events-none absolute inset-y-0 left-0 bg-primary/10 dark:bg-primary/20"
+                        style={{ width: isSSR ? '0%' : `${progress * 100}%` }}
+                      />
 
-                        {currentSong.thumbnailUrl && (
-                          <div className="relative z-10 shrink-0">
-                            <img
-                              src={currentSong.thumbnailUrl}
-                              alt=""
-                              className="h-16 w-16 rounded-xl border-2 border-ink/10 object-cover shadow-xs transition-transform group-hover/card:scale-105 dark:border-primary/20"
-                            />
-                          </div>
-                        )}
-                        <div className="relative z-10 min-w-0 flex-1">
-                          <h3 className="truncate font-bold text-ink text-sm dark:text-dark-text">
-                            {currentSong.title}
-                          </h3>
-                          <p className="truncate font-medium text-ink/60 text-xs dark:text-dark-text-muted">
-                            {currentSong.artist || 'Unknown Artist'} •{' '}
-                            {formatTime(currentSong.duration * 1000)}
-                          </p>
+                      {displayCurrentSong.thumbnailUrl && (
+                        <div className="relative z-10 shrink-0">
+                          <img
+                            src={displayCurrentSong.thumbnailUrl}
+                            alt=""
+                            className="h-16 w-16 rounded-xl border-2 border-ink/10 object-cover shadow-xs transition-transform group-hover/card:scale-105 dark:border-primary/20"
+                          />
                         </div>
+                      )}
+                      <div className="relative z-10 min-w-0 flex-1">
+                        <h3 className="truncate font-bold text-ink text-sm dark:text-dark-text">
+                          {displayCurrentSong.title}
+                        </h3>
+                        <p className="truncate font-medium text-ink/60 text-xs dark:text-dark-text-muted">
+                          {displayCurrentSong.artist || 'Unknown Artist'} •{' '}
+                          {formatTime(displayCurrentSong.duration * 1000)}
+                        </p>
                       </div>
+                    </div>
 
-                      <div className="mt-8 mb-4 h-px bg-ink/10 dark:bg-primary/20" />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                    <div className="mt-8 mb-4 h-px bg-ink/10 dark:bg-primary/20" />
+                  </div>
+                )}
 
                 {/* Up Next List */}
                 <div>
                   <h3 className="mb-4 font-black text-[10px] text-ink/60 uppercase tracking-[0.2em] dark:text-dark-text-muted">
                     Up Next (
                     {
-                      songs.filter(
-                        (s) => s.position > 0 && s.id !== currentSong?.id,
+                      displaySongs.filter(
+                        (s) => s.position > 0 && s.id !== displayCurrentSong?.id,
                       ).length
                     }
                     )
                   </h3>
                   <QueueList
-                    songs={songs.filter((s) => s.id !== currentSong?.id)}
+                    songs={displaySongs.filter((s) => s.id !== displayCurrentSong?.id)}
                     roomId={id || ''}
                     onVote={handleVote}
                   />
-                  {songs.filter(
-                    (s) => s.position > 0 && s.id !== currentSong?.id,
-                  ).length === 0 &&
-                    !currentSong && (
-                      <div className="glass rounded-2xl border-2 border-ink/10 border-dashed py-12 text-center dark:border-primary/20">
-                        <p className="font-bold text-ink/40 dark:text-dark-text-muted">
-                          Queue is empty
-                        </p>
-                        <p className="jp-art text-[10px] text-ink/20 dark:text-dark-text-subtle">
-                          キューは空です
-                        </p>
-                      </div>
-                    )}
                 </div>
               </div>
             </div>
@@ -919,7 +1111,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
         <Toast
           key={toast.id}
           message={toast.message}
-          type={toast.type === 'success' ? 'success' : 'info'}
+          type={toast.type === 'success' ? 'success' : toast.type === 'error' ? 'error' : 'info'}
           onClose={() =>
             setToasts((prev) => prev.filter((t) => t.id !== toast.id))
           }

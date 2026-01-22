@@ -134,43 +134,47 @@ func (c *Client) CreateUser(ctx context.Context, user *vibe.User) (*vibe.User, e
 }
 
 // AuthenticateAdmin handles password verification and admin elevation.
-func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (bool, error) {
+// Returns (isAdmin, isFirstTimeSetup, error)
+func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (bool, bool, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "AuthenticateAdmin")
 	defer span.Finish()
 
 	room, err := c.GetRoom(ctx, roomID, userID)
 	if err != nil {
-		return false, fmt.Errorf("error getting room in authenticate admin: %w", err)
+		return false, false, fmt.Errorf("error getting room in authenticate admin: %w", err)
 	}
 
 	if room.IsEmpty() {
-		return false, fmt.Errorf("room not found in authenticate admin")
+		return false, false, fmt.Errorf("room not found in authenticate admin")
 	}
+
+	isFirstTimeSetup := false
 
 	// Handle initial password setup
 	if !room.HasPassword {
+		isFirstTimeSetup = true
 		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
-			return false, fmt.Errorf("failed to hash password: %w", err)
+			return false, false, fmt.Errorf("failed to hash password: %w", err)
 		}
 		room.AdminPasswordHash = string(hash)
 		_, err = c.UpdateRoom(ctx, room)
 		if err != nil {
-			return false, fmt.Errorf("failed to update room password: %w", err)
+			return false, false, fmt.Errorf("failed to update room password: %w", err)
 		}
 	}
 
 	// Verify existing or newly set password
 	err = bcrypt.CompareHashAndPassword([]byte(room.AdminPasswordHash), []byte(password))
 	if err != nil {
-		return false, nil // Incorrect password
+		return false, false, nil // Incorrect password
 	}
 
 	// Elevate user to admin
 	log.Printf("AuthenticateAdmin: successfully verified password for userID=%s", userID)
 	user, err := c.GetUser(ctx, roomID, userID)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	if user.IsEmpty() {
@@ -187,8 +191,8 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 	log.Printf("AuthenticateAdmin: elevating userID=%s in roomID=%s", userID, roomID)
 	_, err = c.CreateUser(ctx, user)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
-	return true, nil
+	return true, isFirstTimeSetup, nil
 }
