@@ -144,6 +144,9 @@ async function getInitialData(path: string, req: Request) {
   const roomId = roomMatch[1];
   const cookieHeader = req.headers.get('Cookie');
   console.log(`[SSR] Room: ${roomId}, Cookie present: ${!!cookieHeader}`);
+  if (cookieHeader) {
+    console.log(`[SSR] Forwarding Cookie: ${cookieHeader}`);
+  }
 
   const authenticatedApi = cookieHeader
     ? (api as any).withHeaders({ Cookie: cookieHeader })
@@ -230,7 +233,7 @@ Bun.serve({
     });
   },
   websocket: {
-    message() {},
+    message() { },
     open() {
       console.log('[HMR] Connected');
     },

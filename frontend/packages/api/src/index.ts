@@ -370,9 +370,7 @@ const createWrappedClient = (customHeaders: Record<string, string> = {}) => {
     },
   };
 
-  return wrapped as unknown as typeof localBaseClient & {
-    withHeaders: (headers: Record<string, string>) => typeof wrapped;
-  };
+  return wrapped as any;
 };
 
-export const api = createWrappedClient() as any;
+export const api = createWrappedClient();

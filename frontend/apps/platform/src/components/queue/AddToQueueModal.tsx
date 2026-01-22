@@ -163,7 +163,7 @@ export const AddToQueueModal: React.FC<Props> = ({
     if (videoId && selectedProvider === 'youtube') {
       setShowResults(false);
       setIsSearching(true);
-      api.get('/youtube/videos/{id}', { id: videoId }).then(([err, video]) => {
+      api.get('/youtube/videos/{id}', { id: videoId }).then(([err, video]: [Error | null, any]) => {
         setIsSearching(false);
         if (err || !video) {
           setError('Could not find that video');
@@ -298,11 +298,10 @@ export const AddToQueueModal: React.FC<Props> = ({
                   setSearchQuery('');
                   setPreviewVideo(null);
                 }}
-                className={`rounded-full px-4 py-1.5 font-bold text-sm transition-all ${
-                  selectedProvider === p
+                className={`rounded-full px-4 py-1.5 font-bold text-sm transition-all ${selectedProvider === p
                     ? 'bg-ink text-white shadow-lg'
                     : 'bg-surface text-ink/60 hover:bg-ink/5'
-                }`}
+                  }`}
               >
                 {p.charAt(0).toUpperCase() + p.slice(1)}
               </button>

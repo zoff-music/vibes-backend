@@ -49,7 +49,7 @@ export const useSSE = (roomId: string | undefined) => {
             {
               id: roomId,
             },
-            (result) => {
+            (result: [Error | null, any]) => {
               const [err, message] = result;
               if (err) {
                 console.error('SSE Error:', err);
@@ -122,14 +122,16 @@ export const useSSE = (roomId: string | undefined) => {
               }
             },
           );
-          IN_FLIGHT_CONNECTIONS.set(roomId, inFlight);
+          if (inFlight) {
+            IN_FLIGHT_CONNECTIONS.set(roomId, inFlight);
+          }
         } else {
           console.log('[SSE] waiting for in-flight connection for', roomId);
         }
 
         if (!inFlight) return; // Should not happen but satisfies TS
 
-        const [err, unsubscribe] = await inFlight;
+        const [err, unsubscribe] = await (inFlight as Promise<[Error | null, any]>);
 
         // Remove from in-flight since it's resolved
         if (IN_FLIGHT_CONNECTIONS.get(roomId) === inFlight) {
