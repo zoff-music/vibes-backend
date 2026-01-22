@@ -4,6 +4,7 @@ import { safeWrap } from '@vibez/shared';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router';
 import App from './src/App';
+import { readdirSync, existsSync } from 'node:fs';
 
 const port = process.env.PORT || 3000;
 const isDev = process.env.NODE_ENV !== 'production';
@@ -11,28 +12,58 @@ const isDev = process.env.NODE_ENV !== 'production';
 // Load manifest for hashed filenames (only in production)
 let manifest: Record<string, string> = {};
 if (!isDev) {
+  console.log('[SSR] --- Production Startup Diagnostics ---');
+  console.log('[SSR] CWD:', process.cwd());
+  console.log('[SSR] import.meta.dir:', import.meta.dir);
+
   try {
-    // In production, server is in dist/server/server.js
-    // Manifest is at dist/manifest.json
-    const manifestPath = join(import.meta.dir, '../manifest.json');
-    console.log('[SSR] Attempting to load manifest from:', manifestPath);
-    const file = Bun.file(manifestPath);
-    if (await file.exists()) {
-      manifest = await file.json();
-      console.log('[SSR] Manifest SUCCESS:', manifest);
-    } else {
-      console.error('[SSR] CRITICAL: Manifest not found at:', manifestPath);
-      // Fallback to process.cwd()
-      const fallbackPath = join(process.cwd(), 'dist/manifest.json');
-      console.log('[SSR] Trying fallback manifest path:', fallbackPath);
-      const fallbackFile = Bun.file(fallbackPath);
-      if (await fallbackFile.exists()) {
-        manifest = await fallbackFile.json();
-        console.log('[SSR] Manifest SUCCESS (fallback):', manifest);
+    // List files recursively for debugging (non-blocking enough for startup)
+    const listFiles = (dir: string, depth = 0) => {
+      if (depth > 3 || !existsSync(dir)) return;
+      try {
+        const files = readdirSync(dir, { withFileTypes: true });
+        for (const file of files) {
+          const fullPath = join(dir, file.name);
+          console.log(`[SSR] [DIR-SCN] ${'  '.repeat(depth)}${file.isDirectory() ? '[D]' : '[F]'} ${file.name} (${fullPath})`);
+          if (file.isDirectory() && !file.name.includes('node_modules')) {
+            listFiles(fullPath, depth + 1);
+          }
+        }
+      } catch (e) { }
+    };
+
+    console.log('[SSR] Scanning current directory structure...');
+    listFiles(process.cwd());
+
+    const findManifest = async () => {
+      const pathsToTry = [
+        join(import.meta.dir, '../manifest.json'), // Platform production: dist/manifest.json
+        join(process.cwd(), 'dist/manifest.json'),
+        join(import.meta.dir, 'manifest.json'),
+        '/app/apps/platform/dist/manifest.json',
+      ];
+
+      for (const p of pathsToTry) {
+        console.log('[SSR] Checking manifest at:', p);
+        const file = Bun.file(p);
+        if (await file.exists()) {
+          const content = await file.json();
+          console.log('[SSR] Manifest SUCCESS at:', p);
+          console.log('[SSR] Manifest content:', content);
+          return content;
+        }
       }
+      return null;
+    };
+
+    const loadedManifest = await findManifest();
+    if (loadedManifest) {
+      manifest = loadedManifest;
+    } else {
+      console.error('[SSR] CRITICAL: Manifest not found anywhere!');
     }
   } catch (err) {
-    console.error('[SSR] Error loading manifest:', err);
+    console.error('[SSR] Error during startup diagnostics/manifest loading:', err);
   }
 }
 
@@ -46,7 +77,7 @@ function createHTMLShell(
   const dataScriptContent = err ? '{}' : dataScript || '{}';
 
   return `<!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="dark">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
@@ -63,7 +94,6 @@ function createHTMLShell(
 }
 
 async function handleStaticFiles(path: string) {
-  // Handle platform assets from /assets/platform/
   if (path.startsWith('/assets/platform/')) {
     const assetPath = path.replace('/assets/platform/', '');
 
@@ -77,20 +107,16 @@ async function handleStaticFiles(path: string) {
       if (await file.exists()) {
         const headers: Record<string, string> = {};
         if (assetPath.endsWith('.css')) headers['Content-Type'] = 'text/css';
-        else if (assetPath.endsWith('.js'))
-          headers['Content-Type'] = 'application/javascript';
-        else if (assetPath.endsWith('.ico'))
-          headers['Content-Type'] = 'image/x-icon';
-        else if (assetPath.endsWith('.png'))
-          headers['Content-Type'] = 'image/png';
-
+        else if (assetPath.endsWith('.js')) headers['Content-Type'] = 'application/javascript';
+        else if (assetPath.endsWith('.ico')) headers['Content-Type'] = 'image/x-icon';
+        else if (assetPath.endsWith('.png')) headers['Content-Type'] = 'image/png';
         return new Response(file, { headers });
       }
     }
+    console.warn(`[SSR] Asset 404: ${path} (Checked ${p1}, ${p2})`);
     return new Response('Not Found', { status: 404 });
   }
 
-  // Handle public files
   const publicFile = Bun.file(join(process.cwd(), 'public', path));
   if (await publicFile.exists()) return new Response(publicFile);
 
@@ -127,9 +153,7 @@ Bun.serve({
     const path = url.pathname;
 
     if (isDev && path === '/__hmr') {
-      return server.upgrade(req)
-        ? undefined
-        : new Response('Upgrade failed', { status: 400 });
+      return server.upgrade(req) ? undefined : new Response('Upgrade failed', { status: 400 });
     }
 
     const staticResponse = await handleStaticFiles(path);
@@ -138,39 +162,28 @@ Bun.serve({
     const { data: initialData, redirect } = await getInitialData(path, req);
     if (redirect) return redirect;
 
-    // Get the correct asset filenames from manifest
-    const mainJS = manifest['main.js']
-      ? `/assets/platform/${manifest['main.js']}`
-      : '/assets/platform/client.js';
-    const mainCSS = manifest['index.css']
-      ? `/assets/platform/${manifest['index.css']}`
-      : '/assets/platform/index.css';
+    // Get asset filenames from manifest
+    const mainJS = manifest['main.js'] ? `/assets/platform/${manifest['main.js']}` : '/assets/platform/client.js';
+    const mainCSS = manifest['index.css'] ? `/assets/platform/${manifest['index.css']}` : '/assets/platform/index.css';
 
     try {
-      // Render the App component to string
       const appHTML = renderToString(
         <StaticRouter location={path}>
           <App initialData={initialData} />
         </StaticRouter>,
       );
 
-      // Create the full HTML with the rendered app
       const fullHTML = createHTMLShell(appHTML, initialData, mainJS, mainCSS);
-
-      return new Response(fullHTML, {
-        headers: { 'Content-Type': 'text/html' },
-      });
+      return new Response(fullHTML, { headers: { 'Content-Type': 'text/html' } });
     } catch (error) {
       console.error('[SSR Error]', error);
       return new Response('Internal Server Error', { status: 500 });
     }
   },
   websocket: {
-    message() {},
-    open() {
-      console.log('[HMR] Client connected');
-    },
+    message() { },
+    open() { console.log('[HMR] Client connected'); },
   },
 });
 
-console.log(`[SSR] Server running at http://localhost:${port} (Dev: ${isDev})`);
+console.log(`[SSR] Running at http://localhost:${port} (Dev: ${isDev})`);
