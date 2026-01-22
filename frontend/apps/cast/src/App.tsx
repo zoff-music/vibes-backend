@@ -12,11 +12,10 @@ interface RoomInfo {
   participantCount: number;
 }
 
-interface AppProps {
-  initialData?: any;
-}
+// Global flag to prevent multiple Cast receiver initializations
+let isCastReceiverInitialized = false;
 
-const App = ({ initialData: _ }: AppProps) => {
+const App = () => {
   const [roomInfo] = useState<RoomInfo | null>(null);
   const [statusText] = useState('Ready for Casting');
 
@@ -31,6 +30,12 @@ const App = ({ initialData: _ }: AppProps) => {
 
   useEffect(() => {
     const initCast = () => {
+      // Prevent double initialization using global flag
+      if (isCastReceiverInitialized) {
+        console.log('Cast Receiver already initialized globally, skipping...');
+        return;
+      }
+
       console.log('Initializing Cast Receiver...');
       const context = cast.framework.CastReceiverContext.getInstance();
       const playerManager = context.getPlayerManager();
@@ -96,15 +101,23 @@ const App = ({ initialData: _ }: AppProps) => {
 
       const [err] = safeWrap(() => {
         context.start(options);
+        isCastReceiverInitialized = true;
         console.log('Cast Receiver started');
       });
-      if (err) console.error('Failed to start Cast Receiver', err);
+      if (err) {
+        console.error('Failed to start Cast Receiver', err);
+        // Don't reset the global flag on error to prevent retry loops
+      }
     };
 
     // Check availability (CAF is loaded via script tag in index.html)
     if (window.cast?.framework) {
       initCast();
     }
+
+    // Note: We don't cleanup the Cast receiver on unmount because:
+    // 1. It's a singleton that should persist for the entire app lifecycle
+    // 2. Stopping and restarting it can cause issues with active cast sessions
   }, [setIsPlaying, setPlaybackState]);
 
   // Helper from original code

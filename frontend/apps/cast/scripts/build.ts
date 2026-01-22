@@ -34,18 +34,45 @@ if (!defines['import.meta.env.VITE_CAST_RECEIVER_URL']) {
 }
 
 console.log(
-  `[Build] ${isWatch ? 'Watching' : 'Building'} with defines:`,
+  `[Build] ${isWatch ? 'Watching' : 'Building'} static cast app with defines:`,
   Object.keys(defines),
 );
+
+async function generateStaticHTML(jsFilename: string, cssFilename: string) {
+  const html = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vibez Cast Receiver</title>
+    <link rel="stylesheet" href="./${cssFilename}" />
+    <!-- Google Cast Receiver SDK -->
+    <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+  </head>
+  <body>
+    <div id="static-loading" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 0; background-color: #0d0d0f; color: white;">
+      <div style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; font-weight: bold; font-size: 2rem; background: linear-gradient(to right, #ec4899, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Vibez Cast</div>
+      <p style="margin-top: 1rem; opacity: 0.7;">Initializing...</p>
+    </div>
+    <div id="root"></div>
+    <script type="module" src="./${jsFilename}"></script>
+  </body>
+</html>`;
+
+  await Bun.write('./dist/index.html', html);
+  console.log('[Build] Generated static HTML file');
+}
 
 async function runBuild() {
   const result = await Bun.build({
     entrypoints: ['./client.tsx'],
-    outdir: './dist/assets/cast',
+    outdir: './dist',
     minify: isProd,
     define: defines,
-    naming: '[dir]/[name]-[hash].[ext]', // Always use hashes for cache busting
-    splitting: true,
+    naming: isProd ? '[name]-[hash].[ext]' : '[name].[ext]', // Use hashes in production
+    splitting: false, // Keep it simple for static build
   });
 
   if (!result.success) {
@@ -57,11 +84,11 @@ async function runBuild() {
   } else {
     console.log(`[Build] Success! ${new Date().toLocaleTimeString()}`);
 
-    // Copy public files to cast assets directory
+    // Copy public files to dist directory
     const publicDir = join(import.meta.dir, '../public');
     if (existsSync(publicDir)) {
       const [copyErr, _] = await safeWrapAsync(
-        Bun.spawn(['cp', '-r', 'public/.', 'dist/assets/cast/'], {
+        Bun.spawn(['cp', '-r', 'public/.', 'dist/'], {
           cwd: join(import.meta.dir, '..'),
         }).exited,
       );
@@ -70,35 +97,42 @@ async function runBuild() {
       }
     }
 
-    // Write build manifest for SSR to know the hashed filenames
-    const manifest: Record<string, string> = {};
+    // Find the built files
+    let jsFilename = 'client.js';
+    let cssFilename = 'index.css';
 
-    // Find the built files and map them
     for (const output of result.outputs) {
       const filename = output.path.split('/').pop() || '';
-      const fullPath = output.path;
-
-      console.log(`[Build] Processing output: ${fullPath} -> ${filename}`);
+      console.log(`[Build] Processing output: ${filename}`);
 
       if (filename.includes('client') && filename.endsWith('.js')) {
-        manifest['client.js'] = filename;
+        jsFilename = filename;
       }
     }
 
     // Check for CSS files in the output directory
     const cssFiles = await Array.fromAsync(
-      new Bun.Glob('*.css').scan({ cwd: './dist/assets/cast' }),
+      new Bun.Glob('*.css').scan({ cwd: './dist' }),
     );
 
     if (cssFiles.length > 0) {
-      manifest['index.css'] = cssFiles[0]; // Take the first CSS file
-      console.log(`[Build] Found CSS file: ${cssFiles[0]}`);
+      cssFilename = cssFiles[0];
+      console.log(`[Build] Found CSS file: ${cssFilename}`);
     }
 
-    manifest.timestamp = Date.now().toString();
+    // Generate static HTML file
+    await generateStaticHTML(jsFilename, cssFilename);
 
-    console.log(`[Build] Writing manifest:`, manifest);
-    await Bun.write('./dist/manifest.json', JSON.stringify(manifest, null, 2));
+    console.log(`[Build] Static build complete:`);
+    console.log(`  - HTML: dist/index.html`);
+    console.log(`  - JS: dist/${jsFilename}`);
+    console.log(`  - CSS: dist/${cssFilename}`);
+
+    // Trigger HMR reload in development
+    if (isWatch && (globalThis as any).triggerHMR) {
+      console.log(`[Build] Triggering HMR reload...`);
+      (globalThis as any).triggerHMR();
+    }
   }
 }
 

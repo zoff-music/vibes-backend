@@ -13,7 +13,8 @@ services:
     environment:
       - BACKEND_UPSTREAM=backend:8080
       - PLATFORM_UPSTREAM=frontend-platform:3000
-      - CAST_UPSTREAM=frontend-cast:3001
+      - CAST_UPSTREAM=frontend-cast:${FRONTEND_CAST_INTERNAL_PORT:-3001}
+      - CAST_DEV_MODE=${CAST_DEV_MODE:-true}
     depends_on:
       - backend
       - frontend-platform
@@ -46,14 +47,10 @@ services:
   migrator:
     build:
       context: .
-      target: ${BACKEND_BUILD_TARGET:-backend-dev}
-    environment:
-      - DATABASE_PATH=/data/db/vibes.db
+      target: migrator-prod
+    command: ["-db", "/data/db/vibes.db"]
     volumes:
-      - .:/go/src/github.com/zoff-music/vibes:ro
       - db_data:/data/db
-
-    command: ["sh", "-c", "cd /go/src/github.com/zoff-music/vibes/migrator && go run main.go -db /data/db/vibes.db"]
 
   frontend-platform:
     build:
@@ -79,15 +76,15 @@ services:
       context: .
       target: ${FRONTEND_CAST_TARGET:-frontend-dev}
     ports:
-      - "${FRONTEND_CAST_PORT:-3001}:3001"
+      - "${FRONTEND_CAST_PORT:-3001}:${FRONTEND_CAST_INTERNAL_PORT:-3001}"
     volumes:
       - ./frontend:/app
       - frontend_node_modules:/app/node_modules
     command: ["sh", "-c", "bun install && bun --filter @vibez/cast ${FRONTEND_CMD:-dev}"]
     environment:
-      - PORT=3001
+      - PORT=${FRONTEND_CAST_INTERNAL_PORT:-3001}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001"]
+      test: ["CMD", "curl", "-f", "http://localhost:${FRONTEND_CAST_INTERNAL_PORT:-3001}"]
       interval: 10s
       timeout: 5s
       retries: 3
