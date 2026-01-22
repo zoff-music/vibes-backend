@@ -12,52 +12,28 @@ const isDev = process.env.NODE_ENV !== 'production';
 let manifest: Record<string, string> = {};
 if (!isDev) {
   try {
-    const pathsToTry = [
-      join(process.cwd(), 'dist/manifest.json'),
-      join(import.meta.dir, 'dist/manifest.json'),
-      join(process.cwd(), 'apps/platform/dist/manifest.json'),
-    ];
-
-    let loaded = false;
-    for (const manifestPath of pathsToTry) {
-      const manifestFile = Bun.file(manifestPath);
-      console.log('[SSR] Checking manifest at:', manifestPath);
-      if (await manifestFile.exists()) {
-        manifest = await manifestFile.json();
-        console.log('[SSR] Successfully loaded manifest from:', manifestPath);
-        console.log('[SSR] Manifest content:', manifest);
-        loaded = true;
-        break;
-      }
-    }
-
-    if (!loaded) {
-      console.warn(
-        '[SSR] Manifest file not found in any of the expected locations:',
-        pathsToTry,
-      );
-      console.warn('[SSR] Current working directory:', process.cwd());
-      console.warn('[SSR] import.meta.dir:', import.meta.dir);
-
-      // DIAGNOSTIC: List files to see what's actually there
-      try {
-        console.log('[SSR] --- Diagnostic Listing ---');
-        const files = await Array.fromAsync(
-          new Bun.Glob('**/*').scan({ cwd: '.' }),
-        );
-        console.log(
-          '[SSR] Files in project:',
-          files.filter((f) => !f.includes('node_modules')),
-        );
-      } catch (e) {
-        console.warn('[SSR] Diagnostic listing failed:', e);
+    // In production, server is in dist/server/server.js
+    // Manifest is at dist/manifest.json
+    const manifestPath = join(import.meta.dir, '../manifest.json');
+    console.log('[SSR] Attempting to load manifest from:', manifestPath);
+    const file = Bun.file(manifestPath);
+    if (await file.exists()) {
+      manifest = await file.json();
+      console.log('[SSR] Manifest SUCCESS:', manifest);
+    } else {
+      console.error('[SSR] CRITICAL: Manifest not found at:', manifestPath);
+      // Fallback to process.cwd()
+      const fallbackPath = join(process.cwd(), 'dist/manifest.json');
+      console.log('[SSR] Trying fallback manifest path:', fallbackPath);
+      const fallbackFile = Bun.file(fallbackPath);
+      if (await fallbackFile.exists()) {
+        manifest = await fallbackFile.json();
+        console.log('[SSR] Manifest SUCCESS (fallback):', manifest);
       }
     }
   } catch (err) {
-    console.warn('[SSR] Could not load manifest.json:', err);
+    console.error('[SSR] Error loading manifest:', err);
   }
-} else {
-  console.log('[SSR] Development mode: skipping manifest loading');
 }
 
 function createHTMLShell(
@@ -90,84 +66,57 @@ async function handleStaticFiles(path: string) {
   // Handle platform assets from /assets/platform/
   if (path.startsWith('/assets/platform/')) {
     const assetPath = path.replace('/assets/platform/', '');
-    const fullAssetPath = join(
-      process.cwd(),
-      'dist/assets/platform',
-      assetPath,
-    );
-    console.log(
-      `[Platform Server] Resolving static asset: ${path} -> ${fullAssetPath}`,
-    );
-    const distFile = Bun.file(fullAssetPath);
-    if (await distFile.exists()) {
-      const headers: Record<string, string> = {};
-      if (assetPath.endsWith('.css')) {
-        headers['Content-Type'] = 'text/css';
-      } else if (assetPath.endsWith('.js')) {
-        headers['Content-Type'] = 'application/javascript';
-      } else if (assetPath.endsWith('.ico')) {
-        headers['Content-Type'] = 'image/x-icon';
-      } else if (assetPath.endsWith('.png')) {
-        headers['Content-Type'] = 'image/png';
+
+    // Check locations relative to the server entry point (dist/server/server.js)
+    // Assets are in dist/assets/platform/
+    const p1 = join(import.meta.dir, '../assets/platform', assetPath);
+    const p2 = join(process.cwd(), 'dist/assets/platform', assetPath);
+
+    for (const p of [p1, p2]) {
+      const file = Bun.file(p);
+      if (await file.exists()) {
+        const headers: Record<string, string> = {};
+        if (assetPath.endsWith('.css')) headers['Content-Type'] = 'text/css';
+        else if (assetPath.endsWith('.js'))
+          headers['Content-Type'] = 'application/javascript';
+        else if (assetPath.endsWith('.ico'))
+          headers['Content-Type'] = 'image/x-icon';
+        else if (assetPath.endsWith('.png'))
+          headers['Content-Type'] = 'image/png';
+
+        return new Response(file, { headers });
       }
-      return new Response(distFile, { headers });
     }
-    console.warn(`[Platform Server] Asset not found: ${path}`);
     return new Response('Not Found', { status: 404 });
   }
 
   // Handle public files
-  const publicFile = Bun.file(`./public${path}`);
+  const publicFile = Bun.file(join(process.cwd(), 'public', path));
   if (await publicFile.exists()) return new Response(publicFile);
 
   return null;
 }
 
 async function getInitialData(path: string, req: Request) {
-  console.log(`[SSR] Processing path: ${path}`);
-  console.log(`[SSR] Request URL: ${req.url}`);
-
   const roomMatch = path.match(/^\/room\/([^/]+)$/);
-  console.log(`[SSR] Room match:`, roomMatch);
-
   if (!roomMatch || roomMatch[1] === 'create') {
-    console.log(`[SSR] No room match or create page, returning empty data`);
-
-    // If it's the create page, check for query parameters
     if (roomMatch && roomMatch[1] === 'create') {
       const url = new URL(req.url);
       const name = url.searchParams.get('name');
-      console.log(`[SSR] Create page - URL: ${url.toString()}`);
-      console.log(
-        `[SSR] Create page - Query params:`,
-        Object.fromEntries(url.searchParams.entries()),
-      );
-      console.log(`[SSR] Create page - Name parameter: ${name}`);
-      if (name) {
-        console.log(`[SSR] Create page with name parameter: ${name}`);
-        const data = { createRoomName: name };
-        console.log(`[SSR] Returning data:`, data);
-        return { data, redirect: null };
-      }
+      if (name) return { data: { createRoomName: name }, redirect: null };
     }
-
     return { data: {}, redirect: null };
   }
 
   const roomId = roomMatch[1];
-  console.log(`[SSR] Fetching room data for ${roomId}`);
   const [err, room] = await api.get('/rooms/{id}', { id: roomId });
 
   if (err || !room) {
-    console.log(`[SSR] Room ${roomId} not found, redirecting to create...`);
     const createUrl = new URL('/room/create', req.url);
     createUrl.searchParams.set('name', roomId);
-    console.log(`[SSR] Redirect URL: ${createUrl.toString()}`);
-    console.log(`[SSR] Original request URL: ${req.url}`);
     return { data: {}, redirect: Response.redirect(createUrl.toString(), 302) };
   }
 
-  console.log(`[SSR] Room ${roomId} found, returning room data`);
   return { data: { room }, redirect: null };
 }
 
@@ -177,8 +126,6 @@ Bun.serve({
     const url = new URL(req.url);
     const path = url.pathname;
 
-    console.log(`[Platform Server] Request: ${req.method} ${path}`);
-
     if (isDev && path === '/__hmr') {
       return server.upgrade(req)
         ? undefined
@@ -186,24 +133,18 @@ Bun.serve({
     }
 
     const staticResponse = await handleStaticFiles(path);
-    if (staticResponse) {
-      console.log(`[Platform Server] Serving static file: ${path}`);
-      return staticResponse;
-    }
+    if (staticResponse) return staticResponse;
 
-    console.log(`[Platform Server] Processing route: ${path}`);
     const { data: initialData, redirect } = await getInitialData(path, req);
     if (redirect) return redirect;
 
-    // Get the correct asset filenames from manifest (same format as cast app)
+    // Get the correct asset filenames from manifest
     const mainJS = manifest['main.js']
       ? `/assets/platform/${manifest['main.js']}`
       : '/assets/platform/client.js';
     const mainCSS = manifest['index.css']
       ? `/assets/platform/${manifest['index.css']}`
       : '/assets/platform/index.css';
-
-    console.log(`[SSR] Resolved assets: JS=${mainJS}, CSS=${mainCSS}`);
 
     try {
       // Render the App component to string

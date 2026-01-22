@@ -46,7 +46,7 @@ async function runBuild() {
     outdir: './dist/assets/platform',
     minify: isProd,
     define: defines,
-    naming: isProd ? '[dir]/[name]-[hash].[ext]' : '[dir]/[name].[ext]', // Only use hashes in production
+    naming: isProd ? '[name]-[hash].[ext]' : '[name].[ext]', // Simplified naming to match cast app
     splitting: false, // Disable code splitting to avoid duplicate exports
   });
 
