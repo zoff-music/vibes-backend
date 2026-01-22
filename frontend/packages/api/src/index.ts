@@ -37,7 +37,8 @@ const API_BASE_PATH = '/api/v1';
 
 const getApiUrl = () => {
   // If explicitly set via runtime env var (e.g. in SSR), use it first
-  const runtimeApiUrl = typeof process !== 'undefined' ? process.env?.VITE_API_URL : undefined;
+  const runtimeApiUrl =
+    typeof process !== 'undefined' ? process.env?.VITE_API_URL : undefined;
   if (runtimeApiUrl) {
     return runtimeApiUrl;
   }
