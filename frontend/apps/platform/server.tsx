@@ -1,10 +1,10 @@
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { api } from '@vibez/api';
 import { safeWrap } from '@vibez/shared';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router';
 import App from './src/App';
-import { readFileSync, existsSync } from 'node:fs';
 
 const port = process.env.PORT || 3000;
 const isDev = process.env.NODE_ENV !== 'production';
@@ -86,9 +86,12 @@ async function handleStaticFiles(path: string) {
         const file = Bun.file(p);
         const headers: Record<string, string> = {};
         if (assetPath.endsWith('.css')) headers['Content-Type'] = 'text/css';
-        else if (assetPath.endsWith('.js')) headers['Content-Type'] = 'application/javascript';
-        else if (assetPath.endsWith('.ico')) headers['Content-Type'] = 'image/x-icon';
-        else if (assetPath.endsWith('.png')) headers['Content-Type'] = 'image/png';
+        else if (assetPath.endsWith('.js'))
+          headers['Content-Type'] = 'application/javascript';
+        else if (assetPath.endsWith('.ico'))
+          headers['Content-Type'] = 'image/x-icon';
+        else if (assetPath.endsWith('.png'))
+          headers['Content-Type'] = 'image/png';
 
         console.log(`[SSR] Serving: ${path} -> ${p}`);
         return new Response(file, { headers });
@@ -135,7 +138,9 @@ Bun.serve({
     const path = url.pathname;
 
     if (isDev && path === '/__hmr') {
-      return server.upgrade(req) ? undefined : new Response('Upgrade failed', { status: 400 });
+      return server.upgrade(req)
+        ? undefined
+        : new Response('Upgrade failed', { status: 400 });
     }
 
     const staticResponse = await handleStaticFiles(path);
@@ -145,8 +150,12 @@ Bun.serve({
     if (redirect) return redirect;
 
     // Get asset filenames from manifest
-    const mainJS = manifest['main.js'] ? `/assets/platform/${manifest['main.js']}` : '/assets/platform/client.js';
-    const mainCSS = manifest['index.css'] ? `/assets/platform/${manifest['index.css']}` : '/assets/platform/index.css';
+    const mainJS = manifest['main.js']
+      ? `/assets/platform/${manifest['main.js']}`
+      : '/assets/platform/client.js';
+    const mainCSS = manifest['index.css']
+      ? `/assets/platform/${manifest['index.css']}`
+      : '/assets/platform/index.css';
 
     try {
       const appHTML = renderToString(
@@ -156,15 +165,19 @@ Bun.serve({
       );
 
       const fullHTML = createHTMLShell(appHTML, initialData, mainJS, mainCSS);
-      return new Response(fullHTML, { headers: { 'Content-Type': 'text/html' } });
+      return new Response(fullHTML, {
+        headers: { 'Content-Type': 'text/html' },
+      });
     } catch (error) {
       console.error('[SSR Error]', error);
       return new Response('Internal Server Error', { status: 500 });
     }
   },
   websocket: {
-    message() { },
-    open() { console.log('[HMR] Connected'); },
+    message() {},
+    open() {
+      console.log('[HMR] Connected');
+    },
   },
 });
 
