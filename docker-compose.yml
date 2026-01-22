@@ -33,7 +33,7 @@ services:
       context: .
       target: ${BACKEND_BUILD_TARGET:-backend-dev}
     ports:
-      - "${BACKEND_PORT:-42070}:8080"
+      - "${BACKEND_PORT_MAPPING:-42070:8080}"
     env_file:
       - ${ENV_FILE:-.env}
     environment:
@@ -65,7 +65,7 @@ services:
       context: .
       target: ${FRONTEND_PLATFORM_TARGET:-frontend-dev}
     ports:
-      - "${FRONTEND_PLATFORM_PORT:-3000}:3000"
+      - "${FRONTEND_PLATFORM_PORT_MAPPING:-3000:3000}"
     volumes:
       - ${FRONTEND_MOUNT_SRC:-./frontend}:${FRONTEND_MOUNT_DEST:-/app}
       - frontend_node_modules:/app/node_modules
@@ -85,7 +85,7 @@ services:
       context: .
       target: ${FRONTEND_CAST_TARGET:-frontend-dev}
     ports:
-      - "${FRONTEND_CAST_PORT:-3001}:${FRONTEND_CAST_INTERNAL_PORT:-3001}"
+      - "${FRONTEND_CAST_PORT_MAPPING:-3001:3001}"
     volumes:
       - ${FRONTEND_MOUNT_SRC:-./frontend}:${FRONTEND_MOUNT_DEST:-/app}
       - frontend_node_modules:/app/node_modules
@@ -95,7 +95,7 @@ services:
     environment:
       - PORT=${FRONTEND_CAST_INTERNAL_PORT:-3001}
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:${FRONTEND_CAST_INTERNAL_PORT:-3001}"]
+      test: ["CMD", "sh", "-c", "${FRONTEND_CAST_HEALTHCHECK_CMD:-curl -f http://localhost:3001}"]
       interval: 10s
       timeout: 5s
       retries: 3
