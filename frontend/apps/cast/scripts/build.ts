@@ -111,11 +111,12 @@ async function runBuild() {
     }
 
     // Check for CSS files in the output directory
+    console.log(`[Build] Scanning for CSS files in ./dist...`);
     const cssFiles = await Array.fromAsync(
       new Bun.Glob('*.css').scan({ cwd: './dist' }),
     );
 
-    if (cssFiles.length > 0) {
+    if (cssFiles.length > 0 && cssFiles[0]) {
       cssFilename = cssFiles[0];
       console.log(`[Build] Found CSS file: ${cssFilename}`);
     }
