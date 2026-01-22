@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { api } from '@vibez/api';
 import { safeWrap } from '@vibez/shared';
@@ -71,6 +71,10 @@ function createHTMLShell(
 }
 
 async function handleStaticFiles(path: string) {
+  // Never handle root or empty paths as static files
+  if (path === '/' || path === '') return null;
+
+  // Handle platform assets from /assets/platform/
   if (path.startsWith('/assets/platform/')) {
     const assetPath = path.replace('/assets/platform/', '');
 
@@ -83,27 +87,41 @@ async function handleStaticFiles(path: string) {
 
     for (const p of paths) {
       if (existsSync(p)) {
-        const file = Bun.file(p);
-        const headers: Record<string, string> = {};
-        if (assetPath.endsWith('.css')) headers['Content-Type'] = 'text/css';
-        else if (assetPath.endsWith('.js'))
-          headers['Content-Type'] = 'application/javascript';
-        else if (assetPath.endsWith('.ico'))
-          headers['Content-Type'] = 'image/x-icon';
-        else if (assetPath.endsWith('.png'))
-          headers['Content-Type'] = 'image/png';
+        try {
+          const stats = statSync(p);
+          if (stats.isFile()) {
+            const file = Bun.file(p);
+            const headers: Record<string, string> = {};
+            if (assetPath.endsWith('.css'))
+              headers['Content-Type'] = 'text/css';
+            else if (assetPath.endsWith('.js'))
+              headers['Content-Type'] = 'application/javascript';
+            else if (assetPath.endsWith('.ico'))
+              headers['Content-Type'] = 'image/x-icon';
+            else if (assetPath.endsWith('.png'))
+              headers['Content-Type'] = 'image/png';
 
-        console.log(`[SSR] Serving: ${path} -> ${p}`);
-        return new Response(file, { headers });
+            console.log(`[SSR] Serving: ${path} -> ${p}`);
+            return new Response(file, { headers });
+          }
+        } catch (_e) {}
       }
     }
-    console.warn(`[SSR] NOT FOUND: ${path} (Checked: ${paths})`);
-    return new Response('Not Found', { status: 404 });
+
+    // Don't log 404 for obvious non-assets or favicon
+    if (path.endsWith('.js') || path.endsWith('.css')) {
+      console.warn(`[SSR] Asset NOT FOUND: ${path}`);
+    }
+    return null;
   }
 
-  // Handle public files
+  // Handle public files if they exist and are actual files
   const publicPath = join(process.cwd(), 'public', path);
-  if (existsSync(publicPath)) return new Response(Bun.file(publicPath));
+  try {
+    if (existsSync(publicPath) && statSync(publicPath).isFile()) {
+      return new Response(Bun.file(publicPath));
+    }
+  } catch (_e) {}
 
   return null;
 }
@@ -143,8 +161,17 @@ Bun.serve({
         : new Response('Upgrade failed', { status: 400 });
     }
 
+    // Try static files first (skipping root)
     const staticResponse = await handleStaticFiles(path);
     if (staticResponse) return staticResponse;
+
+    // If it's a known non-route that isn't a static file, return 404 early
+    if (
+      path === '/favicon.ico' ||
+      (path.includes('.') && !path.startsWith('/room/'))
+    ) {
+      return new Response('Not Found', { status: 404 });
+    }
 
     const { data: initialData, redirect } = await getInitialData(path, req);
     if (redirect) return redirect;
