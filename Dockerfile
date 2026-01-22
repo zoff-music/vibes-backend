@@ -101,9 +101,17 @@ RUN bun run build
 
 # Cast build
 FROM frontend-builder AS cast-builder
+ARG VITE_CAST_APP_ID
+ARG VITE_CAST_RECEIVER_URL
+ARG VITE_API_URL
+ARG VITE_APP_TITLE
 WORKDIR /app/apps/cast
 COPY frontend/apps/cast .
-RUN bun run build
+RUN VITE_CAST_APP_ID=$VITE_CAST_APP_ID \
+    VITE_CAST_RECEIVER_URL=$VITE_CAST_RECEIVER_URL \
+    VITE_API_URL=$VITE_API_URL \
+    VITE_APP_TITLE=$VITE_APP_TITLE \
+    bun run build
 
 # Platform production image
 FROM oven/bun:1.2.0-slim AS frontend-platform-prod
@@ -128,14 +136,12 @@ WORKDIR /app/apps/platform
 EXPOSE 3000
 CMD ["bun", "run", "start"]
 
-# Cast production image - now serves static files
-FROM caddy:2.9.1-alpine AS frontend-cast-prod
-WORKDIR /srv
-COPY --from=cast-builder /app/apps/cast/dist .
-# Simple Caddyfile for serving static files
-RUN echo "file_server" > /etc/caddy/Caddyfile
-EXPOSE 80
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
+# Cast production image - just provides static files
+FROM debian:bookworm-slim AS frontend-cast-prod
+WORKDIR /app
+COPY --from=cast-builder /app/apps/cast/dist ./static
+# Keep container running so assets can be accessed via volumes
+CMD ["tail", "-f", "/dev/null"]
 
 # Production image for migrator
 FROM debian:bookworm-slim AS migrator-prod
