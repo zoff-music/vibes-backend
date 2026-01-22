@@ -109,16 +109,18 @@ RUN bun run build
 FROM oven/bun:1.2.0-slim AS frontend-platform-prod
 WORKDIR /app
 
-# Copy the entire platform app structure
-COPY --from=platform-builder /app/apps/platform ./apps/platform
-
-# Copy workspace packages that are imported by server.tsx
-COPY --from=frontend-builder /app/packages ./packages
+# Copy workspace structure
 COPY --from=frontend-builder /app/package.json .
 COPY --from=frontend-builder /app/bun.lock .
 
-# Install only production dependencies
-RUN bun install --production --frozen-lockfile
+# Copy workspace packages with their node_modules
+COPY --from=frontend-builder /app/packages ./packages
+
+# Copy the built platform app
+COPY --from=platform-builder /app/apps/platform ./apps/platform
+
+# Copy node_modules from builder (already has all dependencies)
+COPY --from=frontend-builder /app/node_modules ./node_modules
 
 # Set working directory to platform app
 WORKDIR /app/apps/platform
