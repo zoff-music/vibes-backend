@@ -54,7 +54,7 @@ function createHTMLShell(
   const dataScriptContent = err ? '{}' : dataScript || '{}';
 
   return `<!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
