@@ -94,3 +94,4 @@ volumes:
   caddy_config:
   db_data:
     name: vibes_db_shared
+    external: true
