@@ -109,4 +109,6 @@ volumes:
     name: vibes_db_shared
     external: true
   cast_static_blue:
+    name: vibes_cast_static_blue
   cast_static_green:
+    name: vibes_cast_static_green
