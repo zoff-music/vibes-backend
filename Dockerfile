@@ -11,6 +11,19 @@ WORKDIR /go/src/github.com/zoff-music/vibes/backend
 EXPOSE 8080
 CMD ["go", "run", "cmd/server/main.go"]
 
+FROM golang:1.25.5 AS migrator-dev
+
+WORKDIR /go/src/github.com/zoff-music/vibes
+
+COPY migrator/go.mod migrator/go.sum ./migrator/
+RUN cd migrator && go mod download
+
+COPY . .
+
+WORKDIR /go/src/github.com/zoff-music/vibes/migrator
+ENV CGO_ENABLED=1
+CMD ["go", "run", "main.go", "-db", "/data/db/vibes.db"]
+
 FROM golang:1.25.5 AS migrator-builder
 RUN apt-get update && apt-get install -y build-essential
 WORKDIR /go/src/github.com/zoff-music/vibes/migrator
@@ -102,14 +115,29 @@ COPY --from=platform-builder /app/apps/platform/server.tsx .
 EXPOSE 3000
 CMD ["bun", "run", "start"]
 
-# Cast production image
-FROM oven/bun:1.2.0-slim AS frontend-cast-prod
+# Cast production image - now serves static files
+FROM caddy:2.9.1-alpine AS frontend-cast-prod
+WORKDIR /srv
+COPY --from=cast-builder /app/apps/cast/dist .
+# Simple Caddyfile for serving static files
+RUN echo "file_server" > /etc/caddy/Caddyfile
+EXPOSE 80
+CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
+
+# Production image for migrator
+FROM debian:bookworm-slim AS migrator-prod
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
 WORKDIR /app
-COPY --from=cast-builder /app/apps/cast/dist ./dist
-COPY --from=cast-builder /app/apps/cast/package.json .
-COPY --from=cast-builder /app/apps/cast/server.tsx .
-EXPOSE 3001
-CMD ["bun", "run", "start"]
+COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrator-bin /app/migrator-bin
+COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrations /app/migrations
+
+RUN chmod +x /app/migrator-bin
+RUN mkdir -p /data/db
+
+ENTRYPOINT ["/app/migrator-bin"]
 
 # Production image for backend application
 FROM debian:bookworm-slim AS backend-prod
@@ -120,14 +148,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY --from=backend-builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
-COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrator-bin /app/migrator-bin
-COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrations /app/migrations
 
-RUN chmod +x /app/main /app/migrator-bin
+RUN chmod +x /app/main
 RUN mkdir -p /data/db
 
 EXPOSE 8080
-# Migrations are handled by the migrator service in docker-compose, 
-# but we keep this as a fallback or for standalone runs.
 ENTRYPOINT ["/bin/sh", "-c", "/app/main"]
 

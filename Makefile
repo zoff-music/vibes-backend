@@ -13,7 +13,7 @@ build:
 
 ## build-migrator: builds the migrator
 build-migrator:
-	cd migrator && go build -a -ldflags '-w -s' -o ../backend/migrator-bin main.go
+	cd migrator && go build -a -ldflags '-w -s' -o migrator-bin main.go
 
 ## migrate-up: Runs all up migrations
 migrate-up:
@@ -67,11 +67,13 @@ frontend:
 setup-caddy:
 	@command -v caddy >/dev/null 2>&1 || (echo "Caddy not found. Installing via Homebrew..." && brew install caddy)
 	@echo "Ensuring local Caddy CA is trusted (may require password)..."
+	@echo "Validating Caddyfile..."
+	@caddy validate --config Caddyfile || (echo "Caddyfile validation failed" && exit 1)
 	@echo "Starting Caddy temporarily to fetch CA info..."
-	@caddy start --config Caddyfile >/dev/null 2>&1
+	@caddy start --config Caddyfile >/dev/null 2>&1 || true
 	@sleep 2
-	@sudo caddy trust
-	@caddy stop >/dev/null 2>&1
+	@sudo caddy trust || echo "Failed to trust CA, continuing anyway..."
+	@caddy stop >/dev/null 2>&1 || true
 
 
 ## local-dev: Runs backend + frontend locally with env ports set and Caddy for SSL
@@ -87,7 +89,7 @@ local-dev: setup-caddy
 	PORT=8080 sh -c "cd migrator && go run main.go -db ../data/db/vibes.db && cd ../backend && DATABASE_PATH=../data/db/vibes.db exec go run cmd/server/main.go" & \
 	sh -c "cd frontend/apps/platform && FORCE_COLOR=1 exec bun run dev" & \
 	sh -c "cd frontend/apps/cast && FORCE_COLOR=1 exec bun run dev" & \
-	exec caddy run --config Caddyfile & \
+	CAST_DEV_MODE=true exec caddy run --config Caddyfile & \
 	wait'
 
 
