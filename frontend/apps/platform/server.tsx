@@ -22,11 +22,16 @@ if (!isDev) {
       console.warn('[SSR] Manifest file not found at:', manifestPath);
       // Check if we are in the wrong directory
       console.warn('[SSR] Current working directory:', process.cwd());
-      console.warn('[SSR] __dirname/import.meta.dir equivalent:', import.meta.dir);
+      console.warn(
+        '[SSR] __dirname/import.meta.dir equivalent:',
+        import.meta.dir,
+      );
       const distExists = await Bun.file(join(process.cwd(), 'dist')).exists();
       console.warn('[SSR] ./dist exists:', distExists);
       if (distExists) {
-        const distFiles = await Array.fromAsync(new Bun.Glob('**/*').scan({ cwd: join(process.cwd(), 'dist') }));
+        const distFiles = await Array.fromAsync(
+          new Bun.Glob('**/*').scan({ cwd: join(process.cwd(), 'dist') }),
+        );
         console.log('[SSR] Files in ./dist:', distFiles);
       }
     }
@@ -67,8 +72,14 @@ async function handleStaticFiles(path: string) {
   // Handle platform assets from /assets/platform/
   if (path.startsWith('/assets/platform/')) {
     const assetPath = path.replace('/assets/platform/', '');
-    const fullAssetPath = join(process.cwd(), 'dist/assets/platform', assetPath);
-    console.log(`[Platform Server] Resolving static asset: ${path} -> ${fullAssetPath}`);
+    const fullAssetPath = join(
+      process.cwd(),
+      'dist/assets/platform',
+      assetPath,
+    );
+    console.log(
+      `[Platform Server] Resolving static asset: ${path} -> ${fullAssetPath}`,
+    );
     const distFile = Bun.file(fullAssetPath);
     if (await distFile.exists()) {
       const headers: Record<string, string> = {};
@@ -196,7 +207,7 @@ Bun.serve({
     }
   },
   websocket: {
-    message() { },
+    message() {},
     open() {
       console.log('[HMR] Client connected');
     },
