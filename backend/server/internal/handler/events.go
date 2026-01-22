@@ -93,7 +93,6 @@ func RoomEvents(
 			_ = db.UpdateParticipant(ctx, roomID, userID, true)
 			notifyUsers(ctx)
 			defer notifyUsers(context.Background())
-			defer db.RemoveParticipant(context.Background(), roomID, userID)
 		}
 
 		// Send initial playback state

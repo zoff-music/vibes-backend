@@ -20,10 +20,13 @@ export const useRoom = (roomId: string) => {
     setIsLoading(true);
     const key = `fetchRoom:${roomId}`;
 
-    let promise = IN_FLIGHT_REQUESTS.get(key);
-    if (!promise) {
+    const cachedPromise = IN_FLIGHT_REQUESTS.get(key) as Promise<[Error | null, any]> | undefined;
+    let promise: Promise<[Error | null, any]>;
+    if (!cachedPromise) {
       promise = api.get('/rooms/{id}', { id: roomId });
       IN_FLIGHT_REQUESTS.set(key, promise);
+    } else {
+      promise = cachedPromise;
     }
 
     const [wrapErr, result] = await safeWrapAsync(promise);
@@ -50,14 +53,17 @@ export const useRoom = (roomId: string) => {
       setIsLoading(true);
       const key = `joinRoom:${roomId}`;
 
-      let promise = IN_FLIGHT_REQUESTS.get(key);
-      if (!promise) {
+      const cachedPromise = IN_FLIGHT_REQUESTS.get(key) as Promise<[Error | null, any]> | undefined;
+      let promise: Promise<[Error | null, any]>;
+      if (!cachedPromise) {
         promise = api.post(
           '/rooms/{id}/sessions',
           { id: roomId },
           { password },
         );
         IN_FLIGHT_REQUESTS.set(key, promise);
+      } else {
+        promise = cachedPromise;
       }
 
       const [wrapErr, result] = await safeWrapAsync(promise);

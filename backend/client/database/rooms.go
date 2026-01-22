@@ -192,6 +192,8 @@ func (c *Client) GetRoomByName(ctx context.Context, name string, userID string) 
 		return nil, fmt.Errorf("error filling active sources: %w", err)
 	}
 
+	room.UserID = userID
+
 	active, err := c.GetActiveParticipants(ctx, room.ID, 15*time.Second)
 	if err == nil {
 		room.UserCount = len(active)
@@ -269,6 +271,8 @@ func (c *Client) GetRoom(ctx context.Context, id string, userID string) (*vibe.R
 	if err != nil {
 		return nil, fmt.Errorf("error filling active sources: %w", err)
 	}
+
+	room.UserID = userID
 
 	active, err := c.GetActiveParticipants(ctx, room.ID, 15*time.Second)
 	if err == nil {

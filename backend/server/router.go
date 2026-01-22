@@ -70,8 +70,11 @@ func (s *Server) setupRoutes() {
 }
 
 func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
+	sm := middleware.SessionMiddleware{
+		Secret: s.Config.CookieSecret,
+	}
 	for _, r := range routers {
-		r.Use(middleware.SessionMiddleware)
+		r.Use(sm.Middleware)
 	}
 }
 

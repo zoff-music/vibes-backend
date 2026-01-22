@@ -44,6 +44,7 @@ type Config struct {
 
 	// User session settings
 	UserInactivityTimeout time.Duration `envconfig:"USER_INACTIVITY_TIMEOUT" default:"30m"`
+	CookieSecret          string        `envconfig:"COOKIE_SECRET" default:"vibes-default-secret-change-me"`
 }
 
 // LoadConfig reads environment variables and populates Config.
