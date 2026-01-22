@@ -128,6 +128,16 @@ async function runBuild() {
       }
     } else {
       console.warn(`[Build] No CSS files found in ${distAssetsDir}`);
+      manifest['index.css'] = 'tailwind.css'; // Fallback key
+    }
+
+    // Ensure main.js key exists
+    if (!manifest['main.js']) {
+      const jsFiles = await Array.fromAsync(
+        new Bun.Glob('*.js').scan({ cwd: distAssetsDir }),
+      );
+      const clientJS = jsFiles.find((f) => f.includes('client'));
+      manifest['main.js'] = clientJS || 'client.js';
     }
 
     manifest.timestamp = Date.now().toString();

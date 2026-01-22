@@ -130,7 +130,7 @@ const App = () => {
   };
 
   return (
-    <div className="dark relative flex h-screen w-screen animate-fade-in flex-col items-center justify-center overflow-hidden bg-theme text-theme">
+    <div className="relative flex h-screen w-screen animate-fade-in flex-col items-center justify-center overflow-hidden bg-theme text-theme">
       {/* Dynamic Background Elements */}
       <div className="pointer-events-none absolute inset-0 overflow-hidden">
         <div className="absolute top-[-10%] left-[-10%] h-[40%] w-[40%] animate-float rounded-full bg-primary/10 blur-[120px]" />
