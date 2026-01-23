@@ -11,6 +11,9 @@ const envVars = Bun.env;
 // Map variables to VITE_ prefix
 const defines: Record<string, string> = {
   'process.env.NODE_ENV': JSON.stringify(isProd ? 'production' : 'development'),
+  'import.meta.env.DEV': JSON.stringify(!isProd),
+  'import.meta.env.PROD': JSON.stringify(isProd),
+  'import.meta.env.MODE': JSON.stringify(isProd ? 'production' : 'development'),
 };
 
 // Map all VITE_ variables and common ones
