@@ -1,6 +1,6 @@
+import { api } from '@vibez/api';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { api } from '@vibez/api';
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState('');
@@ -14,8 +14,8 @@ export default function Home() {
     setIsValidating(true);
 
     // Check if room exists before navigating
-    const [err, room] = await api.get('/rooms/{id}', { id: slug });
-    
+    const [err] = await api.get('/rooms/{id}', { id: slug });
+
     setIsValidating(false);
 
     if (err) {

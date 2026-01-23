@@ -10,7 +10,9 @@ export const UserCount = () => {
       <div className="h-2 w-2 animate-pulse rounded-full bg-success" />
       <span className="font-medium text-xs dark:text-dark-text">
         <span className="sm:hidden">{usersCount}</span>
-        <span className="hidden sm:inline">{usersCount} {usersCount === 1 ? 'Listener' : 'Listeners'}</span>
+        <span className="hidden sm:inline">
+          {usersCount} {usersCount === 1 ? 'Listener' : 'Listeners'}
+        </span>
       </span>
     </div>
   );

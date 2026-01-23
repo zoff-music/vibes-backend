@@ -874,7 +874,8 @@ export default function RoomView({ initialData }: RoomViewProps) {
               {users && users.length > 0 && (
                 <div>
                   <p className="mb-2 font-bold text-ink/60 text-xs uppercase tracking-widest">
-                    <span className="hidden sm:inline">Listeners </span>({users.length})
+                    <span className="hidden sm:inline">Listeners </span>(
+                    {users.length})
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {users.slice(0, 8).map((user: any) => (
@@ -1056,7 +1057,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                               .blink { animation: blink 3s steps(2, end) infinite; }
                             `}
                           </style>
-                          
+
                           {/* 8-bit dancing character with leg movement animation */}
                           <g className="dance-body">
                             {/* Head */}
@@ -1134,7 +1135,10 @@ export default function RoomView({ initialData }: RoomViewProps) {
                             />
 
                             {/* Arms - animated */}
-                            <g className="dance-arms" style={{ transformOrigin: '45px 69px' }}>
+                            <g
+                              className="dance-arms"
+                              style={{ transformOrigin: '45px 69px' }}
+                            >
                               <rect
                                 x="35"
                                 y="65"
@@ -1143,7 +1147,13 @@ export default function RoomView({ initialData }: RoomViewProps) {
                                 fill="#FFB366"
                               />
                             </g>
-                            <g className="dance-arms" style={{ transformOrigin: '115px 69px', animationDelay: '0.4s' }}>
+                            <g
+                              className="dance-arms"
+                              style={{
+                                transformOrigin: '115px 69px',
+                                animationDelay: '0.4s',
+                              }}
+                            >
                               <rect
                                 x="105"
                                 y="65"
