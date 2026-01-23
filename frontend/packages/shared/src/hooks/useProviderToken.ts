@@ -4,8 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { safeWrapAsync } from '../utils/wrap';
 
 const tokenCache: Record<string, { token: string; expiresAt: string }> = {};
-// Using any here as simple placeholder promise type
-const pendingRequests: Record<string, Promise<any> | undefined> = {};
+const pendingRequests: Record<string, Promise<ProviderToken> | undefined> = {};
 const listeners = new Set<(provider: string, token: string | null) => void>();
 
 const emitChange = (provider: string, token: string | null) => {
@@ -84,10 +83,13 @@ export function useProviderToken() {
     const tokenRequest = async () => {
       const [err, data] = await api.get('/tokens/{provider}', { provider });
       if (err) {
-        if ((err as any).status === 403) {
+        if (err.message.includes('Status: 403')) {
           throw new Error("You don't seem to have premium");
         }
-        throw new Error((err as any).message || 'Failed to fetch token');
+        throw new Error(err.message || 'Failed to fetch token');
+      }
+      if (!data) {
+        throw new Error('Failed to fetch token');
       }
       return data;
     };

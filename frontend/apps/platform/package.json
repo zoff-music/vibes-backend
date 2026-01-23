@@ -21,6 +21,7 @@
   "dependencies": {
     "@vibez/api": "workspace:*",
     "@vibez/models": "workspace:*",
+    "@vibez/player": "workspace:*",
     "@vibez/shared": "workspace:*",
     "framer-motion": "^12.26.2",
     "qrcode.react": "^4.2.0",

@@ -1,7 +1,12 @@
-import { usePlaybackStore, useProviderToken } from '@vibez/shared';
+import {
+  safeWrapAsync,
+  usePlaybackStore,
+  useProviderToken,
+} from '@vibez/shared';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import SpotifyWebPlayer, {
   type CallbackState,
+  type SpotifyPlayer as SpotifySdkPlayer,
 } from 'react-spotify-web-playback';
 import { AuthOverlay } from './AuthOverlay';
 
@@ -26,6 +31,8 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
   const [isReady, setIsReady] = useState(false);
   const lastPositionRef = useRef<number>(0);
   const hasEndedRef = useRef<boolean>(false);
+  const sdkPlayerRef = useRef<SpotifySdkPlayer | null>(null);
+  const pendingSeekMsRef = useRef<number | null>(null);
 
   // Fetch access token on mount or when song changes
   useEffect(() => {
@@ -39,8 +46,40 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
     setIsReady(false);
     hasEndedRef.current = false;
     lastPositionRef.current = 0;
+    pendingSeekMsRef.current = usePlaybackStore.getState().actualPositionMs;
     setError(null);
   }, [currentSong?.id]);
+
+  useEffect(() => {
+    if (
+      !isReady ||
+      !sdkPlayerRef.current ||
+      pendingSeekMsRef.current === null ||
+      !currentSong ||
+      currentSong.sourceType !== 'spotify'
+    ) {
+      return;
+    }
+
+    const targetMs = pendingSeekMsRef.current;
+    pendingSeekMsRef.current = null;
+
+    if (Math.abs(lastPositionRef.current - targetMs) <= 1000) {
+      return;
+    }
+
+    void (async () => {
+      const player = sdkPlayerRef.current;
+      if (!player) return;
+
+      const [seekError] = await safeWrapAsync(player.seek(targetMs));
+      if (seekError) {
+        console.error('[SpotifyPlayer] Failed to seek:', seekError);
+      } else {
+        lastPositionRef.current = targetMs;
+      }
+    })();
+  }, [currentSong, isReady]);
 
   // Handle player state changes
   const handleCallback = useCallback(
@@ -89,6 +128,10 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
     },
     [onEnded],
   );
+
+  const handleGetPlayer = useCallback((player: SpotifySdkPlayer) => {
+    sdkPlayerRef.current = player;
+  }, []);
 
   const handleAuthorize = () => {
     // Open popup for auth
@@ -237,6 +280,7 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
           uris={[spotifyUri]}
           play={isPlaying}
           callback={handleCallback}
+          getPlayer={handleGetPlayer}
           initialVolume={0.5}
           name="Vibes Player"
           styles={{

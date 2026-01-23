@@ -7,7 +7,17 @@
   "scripts": {
     "typecheck": "tsc --noEmit"
   },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "dependencies": {
+    "@vibez/api": "workspace:*",
+    "@vibez/models": "workspace:*",
+    "zustand": "^5.0.10"
+  },
   "devDependencies": {
+    "@types/react": "^19.0.0",
     "typescript": "^5.3.0"
   }
 }
