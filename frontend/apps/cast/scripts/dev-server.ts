@@ -27,16 +27,22 @@ Bun.serve({
         const html = await indexFile.text();
         const hmrScript = `
 <script>
-  // Simple HMR client
-  const ws = new WebSocket('ws://localhost:${port}/__hmr');
+  // Simple HMR client that works through proxy
+  const isProxied = window.location.protocol === 'https:' && window.location.hostname === 'localhost';
+  const wsUrl = isProxied 
+    ? 'wss://localhost/casting/receiver/__hmr'
+    : 'ws://localhost:${port}/__hmr';
+  
+  const ws = new WebSocket(wsUrl);
   ws.onmessage = (event) => {
     if (event.data === 'reload') {
-      console.log('[HMR] Reloading page...');
+      console.log('[Cast HMR] Reloading page...');
       window.location.reload();
     }
   };
-  ws.onopen = () => console.log('[HMR] Connected');
-  ws.onclose = () => console.log('[HMR] Disconnected');
+  ws.onopen = () => console.log('[Cast HMR] Connected to', wsUrl);
+  ws.onclose = () => console.log('[Cast HMR] Disconnected');
+  ws.onerror = (error) => console.log('[Cast HMR] Error:', error);
 </script>`;
 
         const modifiedHtml = html.replace('</body>', `${hmrScript}</body>`);

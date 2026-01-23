@@ -10,11 +10,14 @@ http://localhost {
 }
 
 localhost, 127.0.0.1 {
-	# Handle live reload check endpoint
-	handle /__live_reload_check {
-		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3001} {
-			header_up Host {host}
-		}
+	# Handle Platform app Vite HMR WebSocket
+	handle /vite-hmr* {
+		reverse_proxy localhost:3002
+	}
+
+	# Handle Cast app HMR WebSocket (when accessed via /casting/receiver/)
+	handle /casting/receiver/__hmr {
+		reverse_proxy localhost:3000
 	}
 
 	# Handle platform assets - proxy to Vite dev server

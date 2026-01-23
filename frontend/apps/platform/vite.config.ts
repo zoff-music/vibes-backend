@@ -2,54 +2,8 @@ import * as path from 'node:path';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
-// Simple live reload plugin for proxy usage
-function liveReloadPlugin() {
-  return {
-    name: 'live-reload',
-    configureServer(server) {
-      // Add live reload script to HTML
-      server.middlewares.use((req, res, next) => {
-        if (req.url === '/' || req.url?.endsWith('.html')) {
-          const originalSend = res.send;
-          res.send = function(body) {
-            if (typeof body === 'string' && body.includes('<head>')) {
-              const liveReloadScript = `
-                <script>
-                  // Simple live reload for proxy usage
-                  let lastModified = Date.now();
-                  setInterval(async () => {
-                    try {
-                      const response = await fetch('/__live_reload_check');
-                      const data = await response.json();
-                      if (data.modified > lastModified) {
-                        console.log('[Live Reload] Reloading page...');
-                        window.location.reload();
-                      }
-                    } catch (e) {
-                      // Ignore errors
-                    }
-                  }, 1000);
-                </script>
-              `;
-              body = body.replace('<head>', `<head>${liveReloadScript}`);
-            }
-            return originalSend.call(this, body);
-          };
-        }
-        next();
-      });
-
-      // Add endpoint for checking modifications
-      server.middlewares.use('/__live_reload_check', (req, res) => {
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ modified: Date.now() }));
-      });
-    },
-  };
-}
-
 export default defineConfig({
-  plugins: [react(), liveReloadPlugin()],
+  plugins: [react()],
   root: '.',
   publicDir: 'public',
   build: {
@@ -67,7 +21,12 @@ export default defineConfig({
   server: {
     port: 3001,
     host: '0.0.0.0',
-    hmr: false, // Disable Vite's built-in HMR
+    hmr: {
+      port: 3002,
+      host: 'localhost', // Use localhost instead of 0.0.0.0
+      clientPort: 443, // Tell client to connect to HTTPS port
+      path: '/vite-hmr', // Use a specific path
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
