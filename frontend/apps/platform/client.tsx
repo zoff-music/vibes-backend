@@ -7,7 +7,8 @@ import './src/index.css';
 
 // Check if we're in development mode with Vite HMR
 const isDev = import.meta.env.DEV;
-const isSSR = typeof window !== 'undefined' && document.getElementById('ssr-data');
+const isSSR =
+  typeof window !== 'undefined' && document.getElementById('ssr-data');
 
 // Read initial data from script tag if present (SSR mode)
 let initialData = {};
@@ -16,7 +17,7 @@ if (isSSR) {
   const [parseErr, data] = safeWrap(() =>
     JSON.parse(dataElement?.textContent || '{}'),
   );
-  
+
   if (parseErr) {
     console.error('Failed to parse initial data:', parseErr);
   } else {

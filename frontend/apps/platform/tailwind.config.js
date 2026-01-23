@@ -1,10 +1,10 @@
 /** @type {import('tailwindcss').Config} */
 export default {
   content: [
-    "./src/**/*.{js,ts,jsx,tsx}",
-    "./client.tsx",
-    "./server.tsx",
-    "../../../packages/**/*.{js,ts,jsx,tsx}",
+    './src/**/*.{js,ts,jsx,tsx}',
+    './client.tsx',
+    './server.tsx',
+    '../../../packages/**/*.{js,ts,jsx,tsx}',
   ],
   // Enable all variants to ensure responsive classes are generated
   safelist: [
