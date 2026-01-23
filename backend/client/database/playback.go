@@ -254,10 +254,8 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 		return nil, fmt.Errorf("skip track: get room: %w", err)
 	}
 
-	currentPosition := -1
 	var currentSongID string
 	if state.CurrentSong != nil {
-		currentPosition = state.CurrentSong.Position
 		currentSongID = state.CurrentSong.ID
 	}
 
@@ -280,18 +278,24 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 			if err != nil {
 				return nil, fmt.Errorf("skip track: remove song: %w", err)
 			}
+		} else {
+			// If song stays in queue, update its added_at timestamp to treat it as "new"
+			err = c.updateSongAddedAt(ctx, roomID, currentSongID)
+			if err != nil {
+				return nil, fmt.Errorf("skip track: update song added_at: %w", err)
+			}
 		}
 	}
 
-	nextSong, err := c.GetNextSong(ctx, roomID, currentPosition)
+	nextSong, err := c.GetNextSong(ctx, roomID, 0)
 	if err != nil {
 		return nil, fmt.Errorf("skip track: get next song: %w", err)
 	}
 
 	// 3. Handle LoopQueue if no next song found
 	if nextSong.IsEmpty() && room.Settings.LoopQueue {
-		// Try to get the first song in the queue (position > -1)
-		nextSong, err = c.GetNextSong(ctx, roomID, -1)
+		// Try to get the first song in the queue
+		nextSong, err = c.GetNextSong(ctx, roomID, 0)
 		if err != nil {
 			return nil, fmt.Errorf("skip track: get first song for loop: %w", err)
 		}
@@ -356,7 +360,7 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 		}
 
 		// If no song is selected, try to play the first one
-		firstSong, err := c.GetNextSong(ctx, roomID, -1)
+		firstSong, err := c.GetNextSong(ctx, roomID, 0)
 		if err != nil {
 			return nil, fmt.Errorf("update playback: get next song: %w", err)
 		}
@@ -414,7 +418,7 @@ func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.
 	defer span.Finish()
 
 	// 1. Check if we have songs in the queue
-	firstSong, err := c.GetNextSong(ctx, roomID, -1)
+	firstSong, err := c.GetNextSong(ctx, roomID, 0)
 	if err != nil {
 		return nil, fmt.Errorf("start playback if idle: get first song: %w", err)
 	}

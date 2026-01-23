@@ -3,7 +3,7 @@ import { Song, usePlaybackStore } from '@vibez/shared';
 import { AnimatePresence, motion } from 'framer-motion';
 import { QRCodeSVG } from 'qrcode.react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { getHttpError } from 'wiretyped';
 import { PlayerControls } from '../components/player/PlayerControls';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
@@ -48,10 +48,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
     if (currentSong) return currentSong;
     if (initialData?.playback?.currentSong)
       return initialData.playback.currentSong;
-    // Fallback to finding position 0 song if no playback data
-    if (initialData?.songs && !initialData?.playback?.currentSong) {
-      return initialData.songs.find((s) => s.position === 0) || null;
-    }
+    // No fallback needed since currentSong comes from playback state
     return null;
   }, [
     currentSong,
@@ -372,8 +369,8 @@ export default function RoomView({ initialData }: RoomViewProps) {
       {/* Header */}
       <div className="sticky top-0 z-20 border-ink/10 border-b-4 bg-white/95 px-4 py-5 shadow-retro backdrop-blur-lg transition-colors duration-300 dark:border-primary/20 dark:bg-dark-paper/95">
         <div className="relative mx-auto flex max-w-7xl items-center justify-between">
-          <button
-            onClick={() => navigate('/')}
+          <Link
+            to="/"
             className="group inline-flex cursor-pointer items-center gap-2 text-ink/60 transition-colors hover:text-ink dark:text-dark-text-muted dark:hover:text-dark-text"
           >
             <svg
@@ -390,7 +387,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
               />
             </svg>
             <span className="font-bold text-sm tracking-wide">Leave</span>
-          </button>
+          </Link>
 
           {/* Room name - absolutely positioned to stay centered */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
@@ -1254,8 +1251,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                     Up Next (
                     {
                       displaySongs.filter(
-                        (s) =>
-                          s.position > 0 && s.id !== displayCurrentSong?.id,
+                        (s) => s.id !== displayCurrentSong?.id,
                       ).length
                     }
                     )

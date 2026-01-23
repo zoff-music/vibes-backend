@@ -4,8 +4,7 @@ import { useCallback, useRef } from 'react';
 import { useQueueStore } from '../stores/queueStore';
 
 export const useQueue = (roomId: string) => {
-  const { songs, setSongs, addSong, removeSong, reorderSongs } =
-    useQueueStore();
+  const { songs, setSongs, addSong, removeSong } = useQueueStore();
   const { setPlaybackState } = usePlaybackStore();
   const lastAddTimestamp = useRef<number>(0);
 
@@ -98,25 +97,6 @@ export const useQueue = (roomId: string) => {
     [roomId, removeSong, fetchQueue],
   );
 
-  const moveInQueue = useCallback(
-    async (songId: string, newPosition: number) => {
-      // Optimistic update
-      reorderSongs(songId, newPosition);
-
-      const [err, _] = await api.patch(
-        '/rooms/{id}/songs/{songId}',
-        { id: roomId, songId },
-        { newPosition },
-      );
-
-      if (err) {
-        // Rollback or re-fetch on error
-        fetchQueue();
-      }
-    },
-    [roomId, reorderSongs, fetchQueue],
-  );
-
   const voteSong = useCallback(
     async (songId: string) => {
       // Optimistic update could happen here if store supports it
@@ -149,7 +129,6 @@ export const useQueue = (roomId: string) => {
     fetchQueue,
     addToQueue,
     removeFromQueue,
-    moveInQueue,
     voteSong,
   };
 };

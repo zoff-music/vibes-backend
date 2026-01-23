@@ -8,14 +8,12 @@ interface QueueState {
   addSong: (song: Song) => void;
   removeSong: (songId: string) => void;
   updateSong: (song: Song) => void;
-  reorderSongs: (songId: string, newPosition: number) => void;
 }
 
 export const useQueueStore = create<QueueState>((set) => ({
   songs: [],
 
-  setSongs: (songs) =>
-    set({ songs: [...songs].sort((a, b) => a.position - b.position) }),
+  setSongs: (songs) => set({ songs: [...songs] }), // Songs are already sorted by backend (vote_count DESC, added_at ASC)
 
   addSong: (song) =>
     set((state) => {
@@ -23,7 +21,7 @@ export const useQueueStore = create<QueueState>((set) => ({
         return state;
       }
       return {
-        songs: [...state.songs, song].sort((a, b) => a.position - b.position),
+        songs: [...state.songs, song], // Backend handles sorting
       };
     }),
 
@@ -34,25 +32,6 @@ export const useQueueStore = create<QueueState>((set) => ({
 
   updateSong: (song) =>
     set((state) => ({
-      songs: state.songs
-        .map((s) => (s.id === song.id ? song : s))
-        .sort((a, b) => a.position - b.position),
+      songs: state.songs.map((s) => (s.id === song.id ? song : s)),
     })),
-
-  reorderSongs: (songId, newPosition) =>
-    set((state) => {
-      // Basic local reorder for immediate feedback
-      const newSongs = [...state.songs];
-      const index = newSongs.findIndex((s) => s.id === songId);
-      if (index === -1) return state;
-
-      const [song] = newSongs.splice(index, 1);
-      song.position = newPosition;
-      newSongs.splice(newPosition, 0, song);
-
-      // Refresh all positions to be safe
-      return {
-        songs: newSongs.map((s, i) => ({ ...s, position: i })),
-      };
-    }),
 }));

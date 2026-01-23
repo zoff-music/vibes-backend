@@ -15,7 +15,6 @@ import {
   playbackStateSchema,
   providersSchema,
   providerTokenSchema,
-  reorderSongsRequestSchema,
   roomActionRequestSchema,
   roomSchema,
   roomUpdateSchema,
@@ -137,10 +136,6 @@ const endpoints = {
       response: emptyObjectSchema,
     },
     post: {
-      response: emptyObjectSchema,
-    },
-    patch: {
-      request: reorderSongsRequestSchema,
       response: emptyObjectSchema,
     },
   },

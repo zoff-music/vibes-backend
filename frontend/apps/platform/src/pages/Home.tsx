@@ -1,13 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState('');
   const navigate = useNavigate();
-
-  const handleCreateRoom = () => {
-    navigate('/rooms/create');
-  };
 
   const handleJoinRoom = () => {
     if (roomCode.trim()) {
@@ -69,9 +65,9 @@ export default function Home() {
         {/* Main actions */}
         <div className="space-y-5">
           {/* Create room button - primary action */}
-          <button
-            onClick={handleCreateRoom}
-            className="group glass-elevated w-full cursor-pointer rounded-2xl p-6 transition-all hover:scale-[1.02] hover:shadow-retro-pink active:scale-[0.98]"
+          <Link
+            to="/rooms/create"
+            className="group glass-elevated block w-full cursor-pointer rounded-2xl p-6 transition-all hover:scale-[1.02] hover:shadow-retro-pink active:scale-[0.98]"
           >
             <div className="flex items-center justify-between">
               <div className="text-left">
@@ -101,7 +97,7 @@ export default function Home() {
                 </svg>
               </div>
             </div>
-          </button>
+          </Link>
 
           {/* Divider with Japanese accent */}
           <div className="flex items-center gap-4 py-2">
