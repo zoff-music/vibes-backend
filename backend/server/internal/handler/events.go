@@ -17,6 +17,8 @@ import (
 func RoomEvents(
 	ips vibe.SubscriberPublisher,
 	db vibe.ParticipantGetterUpdaterPlaybackGetter,
+	adminNotifier vibe.AdminEventNotifier,
+	adminLister vibe.AdminRoomLister,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -52,6 +54,26 @@ func RoomEvents(
 			})
 			if err != nil {
 				log.Printf("failed to notify room update: %v", err)
+			}
+
+			rooms, err := adminLister.ListAdminRooms(ctx)
+			if err != nil {
+				log.Printf("failed to fetch admin rooms: %v", err)
+				return
+			}
+
+			adminPayload, err := json.Marshal(rooms)
+			if err != nil {
+				log.Printf("failed to marshal admin rooms: %v", err)
+				return
+			}
+
+			err = adminNotifier.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
+				Type:    vibe.AdminRoomsUpdate,
+				Payload: adminPayload,
+			})
+			if err != nil {
+				log.Printf("failed to notify admin update: %v", err)
 			}
 		}
 

@@ -47,6 +47,20 @@ func (c *Client) NotifyRoomUpdate(ctx context.Context, roomID string, event vibe
 	return c.NotifyTopic(ctx, topicName, data)
 }
 
+const adminTopicName string = "admin"
+
+func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyAdminUpdate")
+	defer span.Finish()
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("error marshaling admin event: %w", err)
+	}
+
+	return c.NotifyTopic(ctx, adminTopicName, data)
+}
+
 func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []vibe.RoomEvent) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyRoomUpdates")
 	defer span.Finish()

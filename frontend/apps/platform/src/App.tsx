@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router';
+import Admin from './pages/Admin';
 import Callback from './pages/Callback';
 import CreateRoom from './pages/CreateRoom';
 import Home from './pages/Home';
@@ -28,6 +29,7 @@ export default function App({ initialData }: AppProps) {
         element={<RoomView initialData={initialData} />}
       />
       <Route path="/callback" element={<Callback />} />
+      <Route path="/admin" element={<Admin initialData={initialData} />} />
     </Routes>
   );
 }

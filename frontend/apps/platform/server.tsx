@@ -133,6 +133,27 @@ async function handleStaticFiles(path: string) {
 }
 
 async function getInitialData(path: string, req: Request) {
+  if (path === '/admin' || path === '/admin/') {
+    const cookieHeader = req.headers.get('Cookie');
+    console.log('[SSR Admin] Handling admin SSR path:', path);
+    const [roomsErr, rooms] = await api.get('/admin/rooms', {
+      headers: { Cookie: cookieHeader },
+    });
+    if (roomsErr) {
+      console.log('[SSR Admin] /admin/rooms failed:', roomsErr.message);
+    } else {
+      console.log('[SSR Admin] /admin/rooms success:', rooms?.length ?? 0);
+    }
+
+    return {
+      data: {
+        adminRooms: roomsErr ? [] : rooms || [],
+        adminAuthorized: !roomsErr,
+      },
+      redirect: null,
+    };
+  }
+
   const roomMatch = path.match(/^\/rooms\/([^/]+)$/);
   if (!roomMatch || roomMatch[1] === 'create') {
     if (roomMatch && roomMatch[1] === 'create') {
@@ -249,6 +270,8 @@ Bun.serve({
     ) {
       return new Response('Not Found', { status: 404 });
     }
+
+    console.log('pepepe');
 
     const { data: initialData, redirect } = await getInitialData(path, req);
     if (redirect) return redirect;
