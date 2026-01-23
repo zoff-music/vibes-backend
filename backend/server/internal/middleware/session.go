@@ -62,7 +62,7 @@ func (m *SessionMiddleware) extractSession(r *http.Request) (helper.SessionPaylo
 	return payload, true
 }
 
-func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, r *http.Request) helper.SessionPayload {
+func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, _ *http.Request) helper.SessionPayload {
 	userID := uuid.New().String()
 	payload := helper.SessionPayload{UserID: userID}
 
@@ -75,7 +75,7 @@ func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, r *http.Requ
 		Value:    signed,
 		Path:     "/",
 		HttpOnly: true,
-		Secure:   false,
+		Secure:   true,
 		SameSite: http.SameSiteLaxMode,
 	})
 

@@ -264,8 +264,10 @@ func UpdatePlaybackState(
 
 // ReviewRoomPlayback handles playback monitoring for server-mode rooms
 type ReviewRoomPlayback struct {
-	DB  vibe.ExpiredPlaybackProcessor
-	IPS vibe.RoomBatchEventNotifier
+	DB            vibe.ExpiredPlaybackProcessor
+	IPS           vibe.RoomBatchEventNotifier
+	AdminNotifier vibe.AdminEventNotifier
+	AdminLister   vibe.AdminRoomLister
 }
 
 // Handle checks for rooms that need to auto-advance
@@ -288,6 +290,26 @@ func (h *ReviewRoomPlayback) Handle(ctx context.Context, data []byte) error {
 	})
 	if err != nil {
 		return fmt.Errorf("error notifying room %s update: %w", state.RoomID, err)
+	}
+
+	if h.AdminLister != nil && h.AdminNotifier != nil {
+		rooms, listErr := h.AdminLister.ListAdminRooms(ctx)
+		if listErr != nil {
+			return fmt.Errorf("error listing admin rooms: %w", listErr)
+		}
+
+		payload, marshalErr := json.Marshal(rooms)
+		if marshalErr != nil {
+			return fmt.Errorf("error marshaling admin rooms: %w", marshalErr)
+		}
+
+		notifyErr := h.AdminNotifier.NotifyAdminUpdate(ctx, vibe.AdminEvent{
+			Type:    vibe.AdminRoomsUpdate,
+			Payload: payload,
+		})
+		if notifyErr != nil {
+			return fmt.Errorf("error notifying admin rooms update: %w", notifyErr)
+		}
 	}
 
 	return nil

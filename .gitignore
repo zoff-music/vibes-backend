@@ -175,3 +175,5 @@ test-youtube-search.sh
 
 # Generated files
 Caddyfile.prod
+
+!.env.sample

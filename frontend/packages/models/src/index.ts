@@ -1,3 +1,4 @@
+export * from './schemas/admin';
 export * from './schemas/authorization';
 export * from './schemas/casting';
 export * from './schemas/common';

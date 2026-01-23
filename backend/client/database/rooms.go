@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 
 	"github.com/zoff-music/vibes/internalerror"
@@ -211,6 +212,86 @@ func (c *Client) prepareGetActiveSourcesStmt() error {
 	}
 	c.GetActiveSourcesStatement = stmt
 	return nil
+}
+
+func (c *Client) prepareGetAdminRoomsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT
+			r.id,
+			r.name,
+			(SELECT COUNT(*) FROM room_users ru WHERE ru.room_id = r.id AND ru.is_active_listener = 1 AND ru.last_seen_at >= ?1) as user_count,
+			(SELECT COUNT(*) FROM songs s WHERE s.room_id = r.id) as song_count,
+			(SELECT GROUP_CONCAT(DISTINCT s.source_type) FROM songs s WHERE s.room_id = r.id) as active_sources
+		FROM rooms r
+		ORDER BY user_count DESC, song_count DESC
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetAdminRoomsStatement: %w", err)
+	}
+
+	c.GetAdminRoomsStatement = stmt
+	return nil
+}
+
+func (c *Client) ListAdminRooms(ctx context.Context) ([]vibe.AdminRoomSummary, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "ListAdminRooms")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	cutoff := time.Now().Add(-15 * time.Second)
+	rows, err := c.GetAdminRoomsStatement.QueryContext(cctx, cutoff)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching admin rooms: %w", err)
+	}
+	defer rows.Close()
+
+	rooms := []vibe.AdminRoomSummary{}
+	for rows.Next() {
+		var row adminRoomRow
+		err := row.scanRows(rows)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning admin room: %w", err)
+		}
+
+		rooms = append(rooms, row.toSummary())
+	}
+
+	return rooms, nil
+}
+
+type adminRoomRow struct {
+	ID            sql.NullString
+	Name          sql.NullString
+	UserCount     sql.NullInt64
+	SongCount     sql.NullInt64
+	ActiveSources sql.NullString
+}
+
+func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
+	return rows.Scan(
+		&r.ID,
+		&r.Name,
+		&r.UserCount,
+		&r.SongCount,
+		&r.ActiveSources,
+	)
+}
+
+func (r *adminRoomRow) toSummary() vibe.AdminRoomSummary {
+	sources := []string{}
+	if r.ActiveSources.Valid && r.ActiveSources.String != "" {
+		sources = strings.Split(r.ActiveSources.String, ",")
+	}
+
+	return vibe.AdminRoomSummary{
+		ID:            r.ID.String,
+		Name:          r.Name.String,
+		UserCount:     int(r.UserCount.Int64),
+		SongCount:     int(r.SongCount.Int64),
+		ActiveSources: sources,
+	}
 }
 
 func (c *Client) fillActiveSources(ctx context.Context, room vibe.Room) (*vibe.Room, error) {

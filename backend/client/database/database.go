@@ -85,6 +85,7 @@ type Client struct {
 	// Additional room statements
 	ElectNewHostStatement     *sql.Stmt
 	GetActiveSourcesStatement *sql.Stmt
+	GetAdminRoomsStatement    *sql.Stmt
 
 	// Additional song statements
 	InsertSongVoteStatement *sql.Stmt
@@ -153,6 +154,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareProcessNextAbandonedHostStmt,
 		c.prepareElectNewHostStmt,
 		c.prepareGetActiveSourcesStmt,
+		c.prepareGetAdminRoomsStmt,
 		// Song statements
 		c.prepareGetSongsStmt,
 		c.prepareGetSongStmt,

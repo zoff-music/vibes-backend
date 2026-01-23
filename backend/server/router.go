@@ -19,22 +19,22 @@ func (s *Server) setupRoutes() {
 	api := s.Router.PathPrefix(v1API).Subrouter()
 
 	// Room routes
-	api.HandleFunc("/rooms", handler.CreateRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
+	api.HandleFunc("/rooms", handler.CreateRoom(s.DB, s.InternalPubSub, s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
 	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoom")
 	api.HandleFunc("/rooms/{id}/settings", handler.UpdateRoomSettings(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoomSettings")
-	api.HandleFunc("/rooms/{id}/skips", handler.SkipSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("SkipSong")
+	api.HandleFunc("/rooms/{id}/skips", handler.SkipSong(s.DB, s.InternalPubSub, s.InternalPubSub, s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("SkipSong")
 	api.HandleFunc("/rooms/{id}/states", handler.GetPlaybackState(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetPlaybackState")
 	api.HandleFunc("/rooms/{id}/states", handler.UpdatePlaybackState(s.DB, s.InternalPubSub)).Methods(http.MethodPut, http.MethodOptions).Name("UpdatePlaybackState")
 	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
 
 	// Song routes
 	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSongs")
-	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("AddSong")
-	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions).Name("RemoveSong")
+	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.InternalPubSub, s.InternalPubSub, s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("AddSong")
+	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.InternalPubSub, s.InternalPubSub, s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("RemoveSong")
 	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.VoteSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("VoteSong")
 
 	// SSE route
-	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
+	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub, s.DB, s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
 
 	// YouTube routes
 	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
@@ -63,8 +63,15 @@ func (s *Server) setupRoutes() {
 	// Config routes
 	api.HandleFunc("/providers", handler.GetProviders(s.Config)).Methods(http.MethodGet, http.MethodOptions).Name("GetProviders")
 
+	// Admin routes
+	api.HandleFunc("/admin/sessions", handler.AdminLogin(&s.Config.AdminPassword, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
+	api.HandleFunc("/admin/sessions", handler.AdminLogout()).Methods(http.MethodDelete, http.MethodOptions).Name("AdminLogout")
+	api.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
+	api.HandleFunc("/admin/events", handler.AdminEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
+
 	s.addSessionMiddleware(api)
 	s.addPermissionMiddleware(api)
+	s.addAdminMiddleware(api)
 	s.addTracingAndMetrics(api)
 	s.addCORSMiddleware(s.Router)
 }
@@ -99,6 +106,21 @@ func (s *Server) addPermissionMiddleware(routers ...*mux.Router) {
 		DB: s.DB,
 		ProtectedRoutes: map[string]bool{
 			"UpdateRoomSettings": true,
+		},
+	}
+
+	for _, r := range routers {
+		r.Use(am.Middleware)
+	}
+}
+
+func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
+	am := middleware.AdminMiddleware{
+		AdminPassword: &s.Config.AdminPassword,
+		CookieSecret:  s.Config.CookieSecret,
+		ProtectedRoutes: map[string]bool{
+			"AdminRooms":         true,
+			"AdminEvents":        true,
 		},
 	}
 

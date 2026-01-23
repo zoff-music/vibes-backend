@@ -17,6 +17,8 @@ import (
 // CreateRoom handles POST /api/v1/rooms
 func CreateRoom(
 	db vibe.RoomCreator,
+	adminNotifier vibe.AdminEventNotifier,
+	adminLister vibe.AdminRoomLister,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -141,6 +143,20 @@ func CreateRoom(
 				true,
 			)
 			return
+		}
+
+		rooms, err := adminLister.ListAdminRooms(ctx)
+		if err == nil {
+			payload, marshalErr := json.Marshal(rooms)
+			if marshalErr == nil {
+				notifyErr := adminNotifier.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
+					Type:    vibe.AdminRoomsUpdate,
+					Payload: payload,
+				})
+				if notifyErr != nil {
+					log.Printf("failed to notify admin rooms update: %v", notifyErr)
+				}
+			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")

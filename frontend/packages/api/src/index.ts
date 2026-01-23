@@ -7,6 +7,9 @@ declare const process:
 
 import {
   addSongRequestSchema,
+  adminLoginRequestSchema,
+  adminRoomsSchema,
+  adminSessionResponseSchema,
   connectedSchema,
   createRoomRequestSchema,
   createSessionRequestSchema,
@@ -192,6 +195,28 @@ const endpoints = {
   '/providers': {
     get: {
       response: providersSchema,
+    },
+  },
+  '/admin/sessions': {
+    post: {
+      request: adminLoginRequestSchema,
+      response: adminSessionResponseSchema,
+    },
+    delete: {
+      response: adminSessionResponseSchema,
+    },
+  },
+  '/admin/rooms': {
+    get: {
+      response: adminRoomsSchema,
+    },
+  },
+  '/admin/events': {
+    sse: {
+      events: {
+        connected: connectedSchema,
+        admin_rooms_update: adminRoomsSchema,
+      },
     },
   },
   '/spotify/search': {
