@@ -57,9 +57,7 @@ export const QueueItem: React.FC<Props> = ({
           </span>
           {(song.voteCount || 0) > 0 && (
             <>
-              <span className="text-ink/40 dark:text-dark-text-subtle">
-                •
-              </span>
+              <span className="text-ink/40 dark:text-dark-text-subtle">•</span>
               <span className="flex items-center gap-1 font-bold text-primary text-xs">
                 <svg
                   className="h-3 w-3"
@@ -108,18 +106,21 @@ export const QueueItem: React.FC<Props> = ({
   if (isSSR) {
     // SSR: Render without motion.div
     return (
-      <div
+      <button
+        type="button"
         onClick={() => onVote?.(song.id)}
-        className="group glass cursor-pointer rounded-2xl border-2 border-ink/10 bg-white/50 p-4 backdrop-blur-sm transition-shadow hover:shadow-retro dark:border-primary/15 dark:bg-dark-surface/50"
+        className="group glass cursor-pointer rounded-2xl border-2 border-ink/10 bg-white/50 p-4 backdrop-blur-sm transition-shadow hover:shadow-retro focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:border-primary/15 dark:bg-dark-surface/50 dark:focus:ring-offset-gray-800"
+        aria-label={`Vote for ${song.title} by ${song.artist || 'Unknown Artist'}`}
       >
         {content}
-      </div>
+      </button>
     );
   }
 
-  // Client: Render with motion.div
+  // Client: Render with motion.div - using motion.button for semantic consistency
   return (
-    <motion.div
+    <motion.button
+      type="button"
       layout
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
@@ -132,9 +133,10 @@ export const QueueItem: React.FC<Props> = ({
         opacity: { duration: 0.2 },
       }}
       onClick={() => onVote?.(song.id)}
-      className="group glass cursor-pointer rounded-2xl border-2 border-ink/10 bg-white/50 p-4 backdrop-blur-sm transition-shadow hover:shadow-retro dark:border-primary/15 dark:bg-dark-surface/50"
+      className="group glass cursor-pointer rounded-2xl border-2 border-ink/10 bg-white/50 p-4 backdrop-blur-sm transition-shadow hover:shadow-retro focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:border-primary/15 dark:bg-dark-surface/50 dark:focus:ring-offset-gray-800"
+      aria-label={`Vote for ${song.title} by ${song.artist || 'Unknown Artist'}`}
     >
       {content}
-    </motion.div>
+    </motion.button>
   );
 };

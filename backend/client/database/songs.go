@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/zoff-music/vibes/internalerror"
@@ -499,9 +500,19 @@ func (c *Client) clearVotesSong(ctx context.Context, roomID, songID string) erro
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.ClearVotesSongStatement.ExecContext(cctx, roomID, songID)
+	log.Printf("[DEBUG-VOTES] Clearing votes for song %s in room %s", songID, roomID)
+
+	result, err := c.ClearVotesSongStatement.ExecContext(cctx, roomID, songID)
 	if err != nil {
+		log.Printf("[DEBUG-VOTES] Error clearing votes for song %s in room %s: %v", songID, roomID, err)
 		return fmt.Errorf("error clearing votes for song: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		log.Printf("[DEBUG-VOTES] Error getting rows affected for song %s in room %s: %v", songID, roomID, err)
+	} else {
+		log.Printf("[DEBUG-VOTES] Cleared %d votes for song %s in room %s", rowsAffected, songID, roomID)
 	}
 
 	return nil
