@@ -10,9 +10,9 @@ http://localhost {
 }
 
 localhost, 127.0.0.1 {
-	# Handle platform assets - proxy to platform server
+	# Handle platform assets - proxy to Vite dev server
 	handle /assets/platform/* {
-		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3000} {
+		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3001} {
 			header_up Host {host}
 		}
 	}
@@ -47,7 +47,7 @@ localhost, 127.0.0.1 {
 	handle /casting/receiver/* {
 		# In development, proxy to the cast dev server
 		@dev `{$CAST_DEV_MODE:false}` == `true`
-		reverse_proxy @dev {$CAST_UPSTREAM:localhost:3001} {
+		reverse_proxy @dev {$CAST_UPSTREAM:localhost:3000} {
 			header_up Host {host}
 		}
 
@@ -61,7 +61,10 @@ localhost, 127.0.0.1 {
 		}
 	}
 
+	# Main platform app - proxy to Vite dev server
 	handle {
-		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3000}
+		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3001} {
+			header_up Host {host}
+		}
 	}
 }

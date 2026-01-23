@@ -59,9 +59,29 @@ dev:
 dev-down:
 	docker compose down
 
-## frontend: Runs frontend dev server locally
+## frontend: Runs frontend dev server locally with HMR
 frontend:
-	cd frontend && bun dev
+	cd frontend/apps/platform && bun run dev
+
+## dev-platform: Runs platform app with backend for optimal HMR (no proxy)
+dev-platform:
+	@echo "🚀 Starting Platform Development (Optimal HMR)"
+	@echo "Stopping any existing processes..."
+	@-lsof -ti :3001,8080 | xargs kill -9 2>/dev/null || true
+	@echo "Ensuring database directory exists..."
+	@mkdir -p data/db
+	@echo "Starting backend and platform..."
+	@echo ""
+	@echo "🌐 Access URLs:"
+	@echo "  📍 Platform (with HMR): http://localhost:3001"
+	@echo "  📍 Backend API: http://localhost:8080"
+	@echo ""
+	@echo "💡 This setup provides the best HMR experience!"
+	@echo ""
+	@sh -c 'trap "kill 0" INT TERM EXIT; \
+	PORT=8080 sh -c "cd migrator && go run main.go -db ../data/db/vibes.db && cd ../backend && DATABASE_PATH=../data/db/vibes.db exec go run cmd/server/main.go" & \
+	sh -c "cd frontend/apps/platform && FORCE_COLOR=1 exec bun run dev" & \
+	wait'
 
 ## setup-caddy: Installs Caddy and trusts local CA (MacOS only)
 setup-caddy:
@@ -78,17 +98,29 @@ setup-caddy:
 
 ## local-dev: Runs backend + frontend locally with env ports set and Caddy for SSL
 local-dev: setup-caddy
+	@echo "🚀 Starting Vibez Development Environment with HMR"
 	@echo "Stopping any existing dev processes..."
-	@-lsof -ti :3000,3001,8080 | xargs kill -9 2>/dev/null || true
+	@-lsof -ti :3000,3001,3002,8080 | xargs kill -9 2>/dev/null || true
 	@echo "Ensuring dependencies are up to date..."
 	@cd frontend && bun install
+	@cd frontend/apps/platform && bun install
 	@echo "Ensuring database directory exists..."
 	@mkdir -p data/db
 	@echo "Starting local development services..."
+	@echo ""
+	@echo "🌐 Access URLs:"
+	@echo "  📍 Platform (BEST HMR): http://localhost:3001"
+	@echo "  📍 Platform (via HTTPS): https://localhost"
+	@echo "  📍 Cast App: http://localhost:3000"
+	@echo "  📍 Backend API: http://localhost:8080"
+	@echo ""
+	@echo "💡 For best HMR experience, use http://localhost:3001 directly"
+	@echo "🔄 Hot Module Replacement enabled - changes update automatically!"
+	@echo ""
 	@sh -c 'trap "kill 0" INT TERM EXIT; \
 	PORT=8080 sh -c "cd migrator && go run main.go -db ../data/db/vibes.db && cd ../backend && DATABASE_PATH=../data/db/vibes.db exec go run cmd/server/main.go" & \
-	VITE_API_URL=http://localhost:8080 sh -c "cd frontend/apps/platform && FORCE_COLOR=1 exec bun run dev" & \
-	VITE_API_URL=https://localhost sh -c "cd frontend/apps/cast && FORCE_COLOR=1 exec bun run dev" & \
+	sh -c "cd frontend/apps/platform && FORCE_COLOR=1 exec bun run dev" & \
+	sh -c "cd frontend/apps/cast && FORCE_COLOR=1 exec bun run dev" & \
 	CAST_DEV_MODE=true exec caddy run --config Caddyfile & \
 	wait'
 

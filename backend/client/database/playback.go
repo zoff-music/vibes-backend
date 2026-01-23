@@ -294,8 +294,8 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 
 	// 3. Handle LoopQueue if no next song found
 	if nextSong.IsEmpty() && room.Settings.LoopQueue {
-		// Try to get the first song in the queue
-		nextSong, err = c.GetNextSong(ctx, roomID, 0)
+		// Try to get the first song in the queue (excluding current song)
+		nextSong, err = c.GetNextSongExcluding(ctx, roomID, currentSongID)
 		if err != nil {
 			return nil, fmt.Errorf("skip track: get first song for loop: %w", err)
 		}

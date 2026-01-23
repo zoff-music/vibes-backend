@@ -34,6 +34,7 @@ type Client struct {
 	AddSongStatement            *sql.Stmt
 	RemoveSongStatement         *sql.Stmt
 	GetNextSongStatement        *sql.Stmt
+	GetNextSongExcludingStatement *sql.Stmt
 	VoteSongStatement           *sql.Stmt
 	ClearVotesSongStatement     *sql.Stmt
 	UpdateSongAddedAtStatement  *sql.Stmt
@@ -157,6 +158,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareAddSongStmt,
 		c.prepareRemoveSongStmt,
 		c.prepareGetNextSongStmt,
+		c.prepareGetNextSongExcludingStmt,
 		c.prepareVoteSongStmt,
 		c.prepareInsertSongVoteStmt,
 		c.prepareClearVotesSongStmt,
@@ -217,6 +219,7 @@ func (c *Client) Close() error {
 		c.AddSongStatement,
 		c.RemoveSongStatement,
 		c.GetNextSongStatement,
+		c.GetNextSongExcludingStatement,
 		c.VoteSongStatement,
 		c.ClearVotesSongStatement,
 		c.UpdateSongAddedAtStatement,

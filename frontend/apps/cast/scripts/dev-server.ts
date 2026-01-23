@@ -1,4 +1,4 @@
-const port = process.env.PORT || 3001;
+const port = process.env.PORT || 3000;
 const _isDev = true;
 
 console.log('[Cast Dev Server] Starting development server...');
