@@ -56,6 +56,9 @@ cd frontend && bun dev
 - **Frontend Rules**: [frontend/AGENTS.md](./frontend/AGENTS.md)
 - **Backend Rules**: [backend/AGENTS.md](./backend/AGENTS.md)
 
+## ⚖️ Database Transactions
+Vibes generally avoids database transactions to keep logic simple and high-performance. However, the `AddSong` method is a documented exception to this rule to ensure consistent duplicate song handling based on room settings.
+
 ## 🔧 Environment Setup
 
 Copy the sample environment file and configure your API keys:

@@ -4,7 +4,7 @@ CREATE TABLE auth_tokens (
     code TEXT NOT NULL,
     state TEXT NOT NULL,
     expires_at DATETIME NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT now,
+    updated_at DATETIME DEFAULT now,
     PRIMARY KEY (user_id, provider)
 );

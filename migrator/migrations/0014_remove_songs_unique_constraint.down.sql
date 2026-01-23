@@ -1,7 +1,7 @@
--- Make position field optional in songs table and add unique constraint for duplicate prevention
--- The application uses vote-based ordering, not position-based ordering
+-- Rollback: Add back the unique constraint on songs table
+-- This will fail if there are duplicate songs in the database
 
--- Create new songs table without NOT NULL constraint on position and with unique constraint
+-- Create new songs table with the unique constraint
 CREATE TABLE songs_new (
 	id TEXT PRIMARY KEY DEFAULT (LOWER(HEX(RANDOMBLOB(4))) || '-' || LOWER(HEX(RANDOMBLOB(2))) || '-4' || SUBSTR(LOWER(HEX(RANDOMBLOB(2))),2) || '-' || SUBSTR('89ab',ABS(RANDOM()) % 4 + 1, 1) || SUBSTR(LOWER(HEX(RANDOMBLOB(2))),2) || '-' || LOWER(HEX(RANDOMBLOB(6)))),
 	room_id TEXT NOT NULL,
@@ -14,12 +14,12 @@ CREATE TABLE songs_new (
 	added_by TEXT NOT NULL,
 	added_by_nickname TEXT,
 	added_at DATETIME DEFAULT now,
-	position INTEGER, -- Removed NOT NULL constraint
+	position INTEGER,
 	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
-	UNIQUE(room_id, source_type, source_id) -- Add unique constraint for duplicate prevention
+	UNIQUE(room_id, source_type, source_id) -- Add back unique constraint
 );
 
--- Copy data from old table to new table
+-- Copy data from old table to new table (this may fail if duplicates exist)
 INSERT INTO songs_new (id, room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position)
 SELECT id, room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at, position
 FROM songs;

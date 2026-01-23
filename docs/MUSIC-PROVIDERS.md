@@ -284,7 +284,7 @@ CREATE TABLE access_tokens (
   refresh_token TEXT,
   expires_at DATETIME,
   refresh_expires_at DATETIME,
-  last_checked_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_checked_at DATETIME DEFAULT now,
   PRIMARY KEY (user_id, provider)
 );
 ```

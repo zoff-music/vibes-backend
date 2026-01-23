@@ -17,7 +17,7 @@ CREATE TABLE song_votes (
     room_id TEXT NOT NULL,
     song_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT now,
     PRIMARY KEY (room_id, song_id, user_id),
     FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
     FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE

@@ -5,7 +5,7 @@ CREATE TABLE access_tokens (
     refresh_token TEXT NOT NULL,
     expires_at DATETIME NOT NULL,
     refresh_expires_at DATETIME NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    created_at DATETIME DEFAULT now,
+    updated_at DATETIME DEFAULT now,
     PRIMARY KEY (user_id, provider)
 );

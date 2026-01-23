@@ -196,12 +196,12 @@ func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
 func (c *Client) prepareUpsertPlaybackStateStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO playback_state (room_id, current_song_id, is_playing, position_ms, updated_at)
-		VALUES (?1, ?2, ?3, ?4, ?5)
+		VALUES (?1, ?2, ?3, ?4, CURRENT_TIMESTAMP)
 		ON CONFLICT(room_id) DO UPDATE SET
-			current_song_id = excluded.current_song_id,
-			is_playing = excluded.is_playing,
-			position_ms = excluded.position_ms,
-			updated_at = excluded.updated_at
+			current_song_id = EXCLUDED.current_song_id,
+			is_playing = EXCLUDED.is_playing,
+			position_ms = EXCLUDED.position_ms,
+			updated_at = EXCLUDED.updated_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpsertPlaybackStateStatement: %w", err)
@@ -230,7 +230,6 @@ func (c *Client) UpsertPlaybackState(ctx context.Context, state *vibe.PlaybackSt
 		currentSongID,
 		boolToInt(state.IsPlaying),
 		state.PositionMs,
-		state.UpdatedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("error upserting playback state: %w", err)
@@ -262,7 +261,7 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 	// Clear votes for the current song when it ends/is skipped
 	if currentSongID != "" {
 		log.Printf("[DEBUG-VOTES] Clearing votes for current song %s in room %s during skip", currentSongID, roomID)
-		
+
 		err = c.clearSkipVotes(ctx, roomID, currentSongID)
 		if err != nil {
 			return nil, fmt.Errorf("skip track: clear skip votes: %w", err)
@@ -280,6 +279,7 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 			}
 		} else {
 			// If song stays in queue, update its added_at timestamp to treat it as "new"
+			// This prevents it from being immediately replayed and moves it to the end of the queue.
 			err = c.updateSongAddedAt(ctx, roomID, currentSongID)
 			if err != nil {
 				return nil, fmt.Errorf("skip track: update song added_at: %w", err)
@@ -292,12 +292,25 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 		return nil, fmt.Errorf("skip track: get next song: %w", err)
 	}
 
+	log.Printf("[DEBUG-SKIP] next-song %+v", nextSong)
+
 	// 3. Handle LoopQueue if no next song found
 	if nextSong.IsEmpty() && room.Settings.LoopQueue {
-		// Try to get the first song in the queue (excluding current song)
-		nextSong, err = c.GetNextSongExcluding(ctx, roomID, currentSongID)
-		if err != nil {
-			return nil, fmt.Errorf("skip track: get first song for loop: %w", err)
+		// If we're looping and there's no next song, get the first song in the queue
+		// Don't exclude the current song if RemoveOnPlay is false, since it should stay in queue
+		if room.Settings.RemoveOnPlay {
+			// Current song was removed, so get any song from the queue
+			nextSong, err = c.GetNextSong(ctx, roomID, 0)
+			if err != nil {
+				return nil, fmt.Errorf("skip track: get first song for loop after removal: %w", err)
+			}
+		} else {
+			// Current song is still in queue, so we can play it again or get the next one
+			// Since we updated its added_at timestamp, it should be treated as "new"
+			nextSong, err = c.GetNextSong(ctx, roomID, 0)
+			if err != nil {
+				return nil, fmt.Errorf("skip track: get first song for loop: %w", err)
+			}
 		}
 	}
 
@@ -314,24 +327,6 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 	err = c.UpsertPlaybackState(ctx, state)
 	if err != nil {
 		return nil, fmt.Errorf("skip track: upsert playback state: %w", err)
-	}
-
-	return state, nil
-}
-
-// SkipTrack skips the current track to the next one in the queue.
-func (c *Client) SkipTrack(ctx context.Context, roomID string, userID string) (*vibe.PlaybackState, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SkipTrack")
-	defer span.Finish()
-
-	err := c.checkHostPermissions(ctx, roomID, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	state, err := c.skipTrack(ctx, roomID)
-	if err != nil {
-		return nil, fmt.Errorf("skip track: %w", err)
 	}
 
 	return state, nil
@@ -398,8 +393,8 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 		UPDATE playback_state
 		SET current_song_id = ?1,
 		is_playing = 1,
-		updated_at = ?2
-		WHERE room_id = ?3
+		updated_at = CURRENT_TIMESTAMP
+		WHERE room_id = ?2
 		AND current_song_id IS NULL
 	`)
 	if err != nil {
@@ -432,8 +427,7 @@ func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	now := time.Now()
-	res, err := c.StartPlaybackIfIdleStatement.ExecContext(cctx, firstSong.ID, now, roomID)
+	res, err := c.StartPlaybackIfIdleStatement.ExecContext(cctx, firstSong.ID, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("start playback if idle: exec: %w", err)
 	}
@@ -448,6 +442,7 @@ func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.
 		return c.getPlaybackState(ctx, roomID)
 	}
 
+	now := time.Now().UTC()
 	// 3. Successfully started, return the new state
 	return &vibe.PlaybackState{
 		RoomID:       roomID,

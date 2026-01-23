@@ -60,7 +60,7 @@ func ensureMigrationTable(db *sql.DB) error {
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		version INTEGER NOT NULL,
 		dirty BOOLEAN NOT NULL DEFAULT 0,
-		applied_at DATETIME DEFAULT CURRENT_TIMESTAMP
+		applied_at DATETIME DEFAULT now
 	);
 	`
 	_, err := db.Exec(query)
@@ -146,7 +146,7 @@ func getMigrationFiles() ([]string, error) {
 		}
 		migrationFiles = append(migrationFiles, filepath.Join(dir, f.Name()))
 	}
-	
+
 	log.Printf("Found %d migration files", len(migrationFiles))
 	return migrationFiles, nil
 }

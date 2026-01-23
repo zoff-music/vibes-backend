@@ -56,6 +56,7 @@ cp .env.sample .env
 - **Error handling**: All errors wrapped with context
 - **Database**: Prepared statements with 1:1 naming convention
 - **HTTP clients only**: All external integrations under `client/`
+- **Database Transactions**: No transactions are allowed, with the sole exception of the `AddSong` method to handle duplicate song logic correctly.
 
 ---
 

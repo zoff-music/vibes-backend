@@ -32,8 +32,7 @@ func (e ErrExpected) Unwrap() error {
 	return e.Err
 }
 
-// ErrAlreadyVoted is an error type for errors that are expected and don't
-// need to appear in metrics.
+// ErrAlreadyVoted is an error type for errors where a user has already voted on a song.
 type ErrAlreadyVoted struct {
 	Err error
 }
@@ -43,5 +42,18 @@ func (e ErrAlreadyVoted) Error() string {
 }
 
 func (e ErrAlreadyVoted) Unwrap() error {
+	return e.Err
+}
+
+// ErrDuplicateSong is an error type for errors where a duplicate song is added.
+type ErrDuplicateSong struct {
+	Err error
+}
+
+func (e ErrDuplicateSong) Error() string {
+	return fmt.Sprintf("Duplicate song error: %v", e.Err)
+}
+
+func (e ErrDuplicateSong) Unwrap() error {
 	return e.Err
 }

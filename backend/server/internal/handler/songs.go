@@ -55,7 +55,7 @@ func GetSongs(
 
 // AddSong handles the addition of a new song to the room
 func AddSong(
-	db vibe.SongAdderDB,
+	db vibe.SongManager,
 	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -208,7 +208,7 @@ func AddSong(
 
 // RemoveSong handles the removal of a song from the room
 func RemoveSong(
-	db vibe.SongRemoverDB,
+	db vibe.SongQueueManager,
 	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -265,7 +265,7 @@ func RemoveSong(
 
 // VoteSong handles voting for a song
 func VoteSong(
-	db vibe.SongVoterDB,
+	db vibe.SongVoteManager,
 	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

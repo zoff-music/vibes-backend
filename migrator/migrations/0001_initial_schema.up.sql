@@ -3,7 +3,7 @@ CREATE TABLE IF NOT EXISTS rooms (
 	id TEXT PRIMARY KEY DEFAULT (LOWER(HEX(RANDOMBLOB(4))) || '-' || LOWER(HEX(RANDOMBLOB(2))) || '-4' || SUBSTR(LOWER(HEX(RANDOMBLOB(2))),2) || '-' || SUBSTR('89ab',ABS(RANDOM()) % 4 + 1, 1) || SUBSTR(LOWER(HEX(RANDOMBLOB(2))),2) || '-' || LOWER(HEX(RANDOMBLOB(6)))),
 	name TEXT NOT NULL,
 	admin_password_hash TEXT,
-	created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+	created_at DATETIME DEFAULT now
 );
 
 -- Room settings table
@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS songs (
 	duration INTEGER NOT NULL,
 	added_by TEXT NOT NULL,
 	added_by_nickname TEXT,
-	added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	added_at DATETIME DEFAULT now,
 	position INTEGER NOT NULL,
 	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS playback_state (
 	current_song_id TEXT,
 	is_playing INTEGER DEFAULT 0,
 	position_ms INTEGER DEFAULT 0,
-	updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	updated_at DATETIME DEFAULT now,
 	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );
 
@@ -55,8 +55,8 @@ CREATE TABLE IF NOT EXISTS room_users (
 	room_id TEXT NOT NULL,
 	nickname TEXT,
 	is_admin INTEGER DEFAULT 0,
-	joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-	last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	joined_at DATETIME DEFAULT now,
+	last_seen_at DATETIME DEFAULT now,
 	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );
 
@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS skip_votes (
 	room_id TEXT NOT NULL,
 	song_id TEXT NOT NULL,
 	user_id TEXT NOT NULL,
-	created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	created_at DATETIME DEFAULT now,
 	PRIMARY KEY (room_id, song_id, user_id),
 	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
 	FOREIGN KEY (song_id) REFERENCES songs(id) ON DELETE CASCADE
