@@ -36,7 +36,7 @@ backend/
 
 ### Key Backend Conventions
 
-- **Domain types**: ALL in `vibe/vibe.go` - never in handlers
+- **Domain types**: ALL in `vibe/` directory - never in handlers
 - **No service layers**: Direct client usage via interfaces
 - **Client pattern**: External integrations under `client/`
 - **Handler pattern**: Functions returning `http.HandlerFunc`
@@ -90,13 +90,13 @@ migrator/
 - **API Contract**: `docs/API.md` - Complete API specification
 - **Backend Rules**: `backend/AGENTS.md` - Non-negotiable coding conventions
 - **Frontend Rules**: `frontend/AGENTS.md` - TypeScript and React conventions
-- **Domain Types**: `backend/vibe/vibe.go` - ALL business logic types
+- **Domain Types**: `backend/vibe/` directory - ALL business logic types
 - **API Schemas**: `frontend/apps/platform/src/api/schemas/` - Yup validation schemas
 
 ## Development Workflow
 
 1. **API First**: Changes start with `docs/API.md` updates
 2. **Schema Validation**: Frontend uses Yup schemas matching API contract
-3. **Domain Types**: Backend types defined in `vibe/vibe.go`
+3. **Domain Types**: Backend types defined in `vibe/` directory
 4. **Database Changes**: Migrations in `migrator/migrations/`
 5. **Testing**: Backend tests with `go test`, frontend with type checking

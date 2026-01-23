@@ -5,8 +5,8 @@ This document explains the SSR implementation used in Vibez for both the platfor
 ## Overview
 
 Vibez uses a unified SSR approach across both React applications:
-- **Platform App**: Main collaborative music queue interface
-- **Cast Receiver**: Chromecast receiver application
+- **Platform App**: Main collaborative music queue interface (`frontend/apps/platform/`)
+- **Cast Receiver**: Chromecast receiver application (`frontend/apps/cast/`)
 
 Both apps use identical build systems and SSR patterns for consistency and maintainability.
 
@@ -50,16 +50,18 @@ Each app runs its own SSR server using Bun runtime:
 #### Server Responsibilities
 - **SSR Rendering**: Convert React components to HTML strings
 - **Asset Serving**: Serve hashed static files (JS, CSS, images)
-- **Data Fetching**: Pre-fetch data for initial page load
+- **Data Fetching**: Pre-fetch data for initial page load (e.g., room details from URL params)
 - **Manifest Resolution**: Map logical asset names to hashed filenames
+- **Hydration Data**: Inject initial data into HTML for client hydration
 
 ### 3. Client Hydration (`client.tsx`)
 
 Client-side hydration handles:
-- **React Hydration**: Attach React to server-rendered HTML
-- **Initial Data**: Extract SSR data from script tag
-- **Router Setup**: Initialize client-side routing
+- **React Hydration**: Attach React to server-rendered HTML using `hydrateRoot()`
+- **Initial Data**: Extract SSR data from `window.__INITIAL_DATA__` script tag
+- **Router Setup**: Initialize React Router with browser history
 - **Error Suppression**: Handle hydration mismatches gracefully
+- **Store Initialization**: Populate Zustand stores with SSR data
 
 ### 4. Asset Management
 
@@ -88,6 +90,76 @@ const mainJS = manifest['main.js']
   : '/assets/platform/client.js';
 ```
 
+## SSR Data Flow
+
+### 1. Server-Side Data Fetching
+
+The SSR server pre-fetches data based on the route:
+
+```typescript
+// Example: CreateRoom page with URL params
+const url = new URL(request.url);
+const searchParams = url.searchParams;
+const roomName = searchParams.get('name');
+
+const initialData = {
+  createRoomName: roomName || '',
+  // Other route-specific data
+};
+```
+
+### 2. Data Injection
+
+Initial data is injected into the HTML:
+
+```html
+<script>
+  window.__INITIAL_DATA__ = {
+    "createRoomName": "My Room",
+    "theme": "dark"
+  };
+</script>
+```
+
+### 3. Client Hydration
+
+The client extracts and uses the SSR data:
+
+```typescript
+// Extract SSR data
+const initialData = (window as any).__INITIAL_DATA__ || {};
+
+// Initialize component state
+const [name, setName] = useState(() => {
+  if (initialData?.createRoomName) {
+    return initialData.createRoomName;
+  }
+  // Fallback to URL params for client-side navigation
+  return '';
+});
+```
+
+### 4. Hydration Mismatch Prevention
+
+To prevent hydration mismatches:
+
+```typescript
+const [isHydrated, setIsHydrated] = useState(false);
+
+useEffect(() => {
+  setIsHydrated(true);
+  // Fix hydration mismatch: ensure client state matches server state
+  if (initialData?.createRoomName) {
+    setName(initialData.createRoomName);
+  }
+}, []);
+
+// Render different content during hydration
+if (!isHydrated) {
+  return <div>Loading...</div>;
+}
+```
+
 ## Development Workflow
 
 ### Local Development Setup
@@ -96,6 +168,11 @@ const mainJS = manifest['main.js']
    ```bash
    make local-dev
    ```
+   This starts:
+   - Backend API server (port 8080)
+   - Platform SSR server (port 3000)
+   - Cast SSR server (port 3001)
+   - Caddy reverse proxy (HTTPS on port 443)
 
 2. **Individual App Development**:
    ```bash
@@ -130,6 +207,11 @@ handle /assets/cast/* {
 # Cast receiver routes
 handle /casting/receiver/* {
     reverse_proxy localhost:3001
+}
+
+# API routes
+handle /api/* {
+    reverse_proxy localhost:8080
 }
 
 # Default to platform app
@@ -189,6 +271,26 @@ Consistent TypeScript setup across apps:
 }
 ```
 
+### 5. Store Hydration
+
+Zustand stores are initialized with SSR data:
+
+```typescript
+// Room store hydration
+useEffect(() => {
+  if (initialData?.room) {
+    setRoom(initialData.room);
+  }
+}, []);
+
+// Theme store hydration
+useEffect(() => {
+  if (initialData?.theme) {
+    setTheme(initialData.theme);
+  }
+}, []);
+```
+
 ## Production Deployment
 
 ### Build Process
@@ -216,7 +318,7 @@ dist/
 ```
 
 ### Server Deployment
-- Each app runs its own SSR server
+- Each app runs its own SSR server (Bun runtime)
 - Reverse proxy (Caddy/nginx) routes requests
 - Static assets served with proper caching headers
 - Manifest-based asset resolution
@@ -234,11 +336,17 @@ dist/
    - Check SSR data serialization
    - Verify client/server environment differences
    - Review conditional rendering logic
+   - Ensure `isHydrated` state is used correctly
 
 3. **Build Failures**
    - Check TypeScript configuration
    - Verify import paths and dependencies
    - Review build script configuration
+
+4. **SSR Data Issues**
+   - Verify `window.__INITIAL_DATA__` injection
+   - Check data extraction in components
+   - Ensure fallbacks for missing data
 
 ### Debug Commands
 
@@ -254,6 +362,9 @@ curl -k https://localhost/assets/platform/client-[hash].js
 
 # Check SSR output
 curl -k https://localhost/ | grep -A5 -B5 "script\|link"
+
+# Test SSR data injection
+curl -k https://localhost/rooms/create?name=test | grep "__INITIAL_DATA__"
 ```
 
 ## Best Practices
@@ -267,6 +378,7 @@ curl -k https://localhost/ | grep -A5 -B5 "script\|link"
 - Serialize data safely (avoid XSS)
 - Handle missing data gracefully
 - Keep initial data minimal
+- Use `isHydrated` state to prevent mismatches
 
 ### 3. Error Handling
 - Implement fallbacks for SSR failures
@@ -277,6 +389,12 @@ curl -k https://localhost/ | grep -A5 -B5 "script\|link"
 - Minimize initial bundle size
 - Use proper caching headers
 - Optimize asset loading order
+- Pre-fetch critical data during SSR
+
+### 5. State Management
+- Initialize stores with SSR data
+- Handle client-side navigation separately
+- Use consistent data structures between server and client
 
 ## Future Improvements
 
@@ -284,3 +402,4 @@ curl -k https://localhost/ | grep -A5 -B5 "script\|link"
 - **Edge Deployment**: Deploy SSR servers to edge locations
 - **Bundle Analysis**: Add bundle size monitoring
 - **Performance Metrics**: Track SSR performance metrics
+- **Data Caching**: Implement SSR data caching strategies
