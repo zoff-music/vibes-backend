@@ -268,7 +268,7 @@ const VideoPlayerComponent = ({ isVisible = true, onEnded }: Props) => {
       )}
       <div className="absolute inset-0 h-full w-full">
         <YouTube
-          key={videoId}
+          key={currentSong.id}
           videoId={videoId}
           opts={opts}
           onReady={handleReady as YouTubeProps['onReady']}

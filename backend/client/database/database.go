@@ -5,7 +5,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -121,24 +120,6 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	db.SetConnMaxLifetime(30 * time.Minute)
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
-
-	var v string
-	if err := db.QueryRow(`SELECT sqlite_version()`).Scan(&v); err != nil {
-		log.Fatal(err)
-	}
-	log.Println("sqlite_version:", v)
-
-	rows, err := db.Query(`PRAGMA compile_options;`)
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var opt string
-		_ = rows.Scan(&opt)
-		log.Println("compile_option:", opt)
-	}
 
 	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()

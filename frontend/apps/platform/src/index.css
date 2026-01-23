@@ -337,6 +337,9 @@
     /* Glass effect */
     --theme-glass-bg: #ffffff;
     --theme-glass-border: rgba(45, 49, 66, 0.1);
+
+    /* Layout helpers */
+    --room-header-height: 0px;
   }
 
   /* ===== DARK THEME ===== */

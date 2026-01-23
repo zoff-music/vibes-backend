@@ -46,7 +46,7 @@ export const QueueItem: React.FC<Props> = ({
 
       {/* Song info */}
       <div className="min-w-0 flex-1">
-        <h4 className="mb-1 truncate font-bold text-ink text-sm transition-colors group-hover:text-primary dark:text-dark-text">
+        <h4 className="mb-1 truncate text-left font-bold text-ink text-sm transition-colors group-hover:text-primary dark:text-dark-text">
           {song.title}
         </h4>
         <div className="flex items-center gap-2 font-medium text-ink/60 text-xs dark:text-dark-text-muted">

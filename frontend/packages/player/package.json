@@ -10,6 +10,7 @@
     "lint": "bunx biome check ."
   },
   "peerDependencies": {
+    "framer-motion": "^11.0.0 || ^12.0.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-player": "^2.16.0",
@@ -19,6 +20,7 @@
     "@vibez/shared": "workspace:*",
     "lucide-react": "^0.468.0",
     "clsx": "^2.0.0",
+    "react-youtube": "^10.1.0",
     "tailwind-merge": "^2.0.0"
   },
   "devDependencies": {

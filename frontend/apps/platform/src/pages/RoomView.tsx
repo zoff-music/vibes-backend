@@ -34,6 +34,8 @@ export default function RoomView({ initialData }: RoomViewProps) {
   const { currentSong, skip, isPlaying } = usePlayback(id || '');
   const { songs, fetchQueue, voteSong } = useQueue(id || '');
 
+  const headerRef = useRef<HTMLDivElement | null>(null);
+
   // Use songs from store, fallback to initial data for SSR
   const displaySongs = songs.length > 0 ? songs : initialData?.songs || [];
 
@@ -74,6 +76,33 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
   // Track if we're in SSR mode to disable animations
   const [isSSR, setIsSSR] = useState(true);
+
+  useEffect(() => {
+    const header = headerRef.current;
+    if (!header) return;
+
+    const updateHeaderHeight = () => {
+      const height = header.getBoundingClientRect().height;
+      document.documentElement.style.setProperty(
+        '--room-header-height',
+        `${height}px`,
+      );
+    };
+
+    updateHeaderHeight();
+
+    const resizeObserver = new ResizeObserver(() => {
+      updateHeaderHeight();
+    });
+    resizeObserver.observe(header);
+
+    window.addEventListener('resize', updateHeaderHeight);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', updateHeaderHeight);
+    };
+  }, []);
 
   // Sync with theme store when toggling
   const handleToggleDarkMode = () => {
@@ -367,7 +396,10 @@ export default function RoomView({ initialData }: RoomViewProps) {
       className={`flex min-h-screen flex-col ${!isSSR ? 'animate-fade-in' : ''}`}
     >
       {/* Header */}
-      <div className="sticky top-0 z-20 border-ink/10 border-b-4 bg-white/95 px-4 py-5 shadow-retro backdrop-blur-lg transition-colors duration-300 dark:border-primary/20 dark:bg-dark-paper/95">
+      <div
+        ref={headerRef}
+        className="sticky top-0 z-20 border-ink/10 border-b-4 bg-white/95 px-4 py-5 shadow-retro backdrop-blur-lg transition-colors duration-300 dark:border-primary/20 dark:bg-dark-paper/95"
+      >
         <div className="relative mx-auto flex max-w-7xl items-center justify-between">
           <Link
             to="/"
@@ -421,49 +453,51 @@ export default function RoomView({ initialData }: RoomViewProps) {
             <UserCount />
 
             {/* Dark Mode Toggle */}
-            <button
-              onClick={handleToggleDarkMode}
-              className={`cursor-pointer rounded-xl border-2 p-2.5 transition-all ${
-                isDarkMode
-                  ? 'border-primary bg-primary text-white shadow-neon-pink'
-                  : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink'
-              }`}
-              title={
-                isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
-              }
-            >
-              {isDarkMode ? (
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                  />
-                </svg>
-              ) : (
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                  />
-                </svg>
-              )}
-            </button>
+            <div className="hidden sm:block">
+              <button
+                onClick={handleToggleDarkMode}
+                className={`cursor-pointer rounded-xl border-2 p-2.5 transition-all ${
+                  isDarkMode
+                    ? 'border-primary bg-primary text-white shadow-neon-pink'
+                    : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink'
+                }`}
+                title={
+                  isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
+                }
+              >
+                {isDarkMode ? (
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2.5}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                    />
+                  </svg>
+                )}
+              </button>
+            </div>
 
-            <div className="relative">
+            <div className="relative hidden sm:block">
               <button
                 onClick={() => setShowShare(!showShare)}
                 className={`cursor-pointer rounded-xl border-2 p-2.5 transition-all ${showShare ? 'border-ink bg-ink text-white dark:border-primary dark:bg-primary' : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'}`}
@@ -569,9 +603,130 @@ export default function RoomView({ initialData }: RoomViewProps) {
                     initial={{ opacity: 0, y: 10, scale: 0.95 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
                     exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                    className="absolute right-0 z-50 mt-3 w-72 rounded-3xl border-4 border-ink bg-white p-5 shadow-2xl dark:border-primary dark:bg-dark-surface"
+                    className="fixed top-[var(--room-header-height)] right-0 left-0 z-50 h-[calc(100dvh-var(--room-header-height))] w-full overflow-y-auto overscroll-contain border-ink border-t-4 bg-white p-5 shadow-2xl sm:absolute sm:top-auto sm:right-0 sm:left-auto sm:mt-3 sm:h-auto sm:w-72 sm:overflow-visible sm:rounded-3xl sm:border-4 dark:border-primary dark:bg-dark-surface"
                   >
                     <div className="space-y-4">
+                      <div className="space-y-3 sm:hidden">
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={() => setShowShare(!showShare)}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-xl border-2 p-3 font-bold text-xs transition-all ${
+                              showShare
+                                ? 'border-ink bg-ink text-white dark:border-primary dark:bg-primary'
+                                : 'border-ink/10 text-ink/70 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'
+                            }`}
+                            title="Share Room"
+                          >
+                            <svg
+                              className="h-4 w-4"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={2.5}
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z"
+                              />
+                            </svg>
+                            Share
+                          </button>
+
+                          <button
+                            onClick={handleToggleDarkMode}
+                            className={`flex flex-1 items-center justify-center gap-2 rounded-xl border-2 p-3 font-bold text-xs transition-all ${
+                              isDarkMode
+                                ? 'border-primary bg-primary text-white shadow-neon-pink'
+                                : 'border-ink/10 text-ink/70 hover:border-ink/20 hover:text-ink'
+                            }`}
+                            title={
+                              isDarkMode
+                                ? 'Switch to Light Mode'
+                                : 'Switch to Dark Mode'
+                            }
+                          >
+                            {isDarkMode ? (
+                              <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                                />
+                              </svg>
+                            ) : (
+                              <svg
+                                className="h-4 w-4"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke="currentColor"
+                                strokeWidth={2.5}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                                />
+                              </svg>
+                            )}
+                            Theme
+                          </button>
+                        </div>
+
+                        {showShare && (
+                          <div className="rounded-2xl border-2 border-ink/10 bg-white p-4 dark:border-primary/20 dark:bg-dark-surfaceElevated">
+                            <div className="space-y-4 text-center">
+                              <div className="inline-block rounded-2xl bg-sakura/20 p-4 ring-2 ring-ink/5">
+                                <QRCodeSVG
+                                  value={window.location.href}
+                                  size={180}
+                                  bgColor="#fff0f2"
+                                  fgColor="#2d3142"
+                                  level="H"
+                                />
+                              </div>
+                              <div>
+                                <p className="mb-1 font-black text-ink text-sm dark:text-dark-text">
+                                  Invite Friends
+                                </p>
+                                <div className="flex items-center gap-2 rounded-xl bg-ink/5 p-2 dark:bg-dark-surface">
+                                  <p className="flex-1 truncate text-left font-mono text-[10px] text-ink/60 dark:text-dark-text-muted">
+                                    {window.location.href}
+                                  </p>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(
+                                        window.location.href,
+                                      );
+                                      setToasts((prev) => [
+                                        ...prev,
+                                        {
+                                          id: Math.random()
+                                            .toString(36)
+                                            .substr(2, 9),
+                                          message: 'Link copied!',
+                                          type: 'success',
+                                        },
+                                      ]);
+                                      setShowShare(false);
+                                    }}
+                                    className="cursor-pointer rounded-lg bg-ink p-1 px-2 font-bold text-[10px] text-white transition-all hover:scale-105 active:scale-95 dark:bg-primary"
+                                  >
+                                    Copy
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
                       <h4 className="border-ink/5 border-b-2 pb-2 font-black text-ink text-sm uppercase tracking-wider dark:border-primary/20 dark:text-dark-text">
                         Room Control
                       </h4>

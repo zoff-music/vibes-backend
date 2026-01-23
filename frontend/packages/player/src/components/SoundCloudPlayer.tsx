@@ -131,6 +131,7 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
       {/* Hidden ReactPlayer - controls playback */}
       <div className="absolute right-0 bottom-0 left-0 h-0 overflow-hidden opacity-0">
         <ReactPlayer
+          key={currentSong.id}
           ref={playerRef}
           src={soundcloudUrl}
           playing={isPlaying}
