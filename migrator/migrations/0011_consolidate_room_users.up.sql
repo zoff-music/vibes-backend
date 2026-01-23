@@ -11,8 +11,8 @@ CREATE TABLE room_users_consolidated (
     room_id TEXT NOT NULL,
     is_admin INTEGER DEFAULT 0,
     is_active_listener INTEGER DEFAULT 0,
-    joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    joined_at DATETIME DEFAULT now,
+    last_seen_at DATETIME DEFAULT now,
     PRIMARY KEY (id, room_id),
     FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );

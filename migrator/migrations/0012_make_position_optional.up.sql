@@ -13,7 +13,7 @@ CREATE TABLE songs_new (
 	duration INTEGER NOT NULL,
 	added_by TEXT NOT NULL,
 	added_by_nickname TEXT,
-	added_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	added_at DATETIME DEFAULT now,
 	position INTEGER, -- Removed NOT NULL constraint
 	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE,
 	UNIQUE(room_id, source_type, source_id) -- Add unique constraint for duplicate prevention

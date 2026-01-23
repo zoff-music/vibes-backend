@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"time"
@@ -29,15 +30,16 @@ type Client struct {
 	ProcessNextAbandonedHostStatement *sql.Stmt
 
 	// Song statements
-	GetSongsStatement           *sql.Stmt
-	GetSongStatement            *sql.Stmt
-	AddSongStatement            *sql.Stmt
-	RemoveSongStatement         *sql.Stmt
-	GetNextSongStatement        *sql.Stmt
+	GetSongsStatement             *sql.Stmt
+	GetSongStatement              *sql.Stmt
+	AddSongStatement              *sql.Stmt
+	RemoveSongStatement           *sql.Stmt
+	GetNextSongStatement          *sql.Stmt
 	GetNextSongExcludingStatement *sql.Stmt
-	VoteSongStatement           *sql.Stmt
-	ClearVotesSongStatement     *sql.Stmt
-	UpdateSongAddedAtStatement  *sql.Stmt
+	VoteSongStatement             *sql.Stmt
+	CheckSongExistsStatement      *sql.Stmt
+	ClearVotesSongStatement       *sql.Stmt
+	UpdateSongAddedAtStatement    *sql.Stmt
 
 	// Playback statements
 	GetPlaybackStateStatement           *sql.Stmt
@@ -120,6 +122,24 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	db.SetMaxOpenConns(1)
 	db.SetMaxIdleConns(1)
 
+	var v string
+	if err := db.QueryRow(`SELECT sqlite_version()`).Scan(&v); err != nil {
+		log.Fatal(err)
+	}
+	log.Println("sqlite_version:", v)
+
+	rows, err := db.Query(`PRAGMA compile_options;`)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var opt string
+		_ = rows.Scan(&opt)
+		log.Println("compile_option:", opt)
+	}
+
 	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
 	_, err = db.ExecContext(cctx, "PRAGMA journal_mode = WAL;")
@@ -160,6 +180,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareGetNextSongStmt,
 		c.prepareGetNextSongExcludingStmt,
 		c.prepareVoteSongStmt,
+		c.prepareCheckSongExistsStmt,
 		c.prepareInsertSongVoteStmt,
 		c.prepareClearVotesSongStmt,
 		c.prepareUpdateSongAddedAtStmt,
@@ -223,6 +244,7 @@ func (c *Client) Close() error {
 		c.VoteSongStatement,
 		c.ClearVotesSongStatement,
 		c.UpdateSongAddedAtStatement,
+		c.CheckSongExistsStatement,
 		c.GetPlaybackStateStatement,
 		c.UpsertPlaybackStateStatement,
 		c.ProcessNextExpiredPlaybackStatement,

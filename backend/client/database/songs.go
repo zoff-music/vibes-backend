@@ -198,24 +198,6 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 	return &song, nil
 }
 
-// prepareAddSongStmt prepares the AddSongStatement.
-func (c *Client) prepareAddSongStmt() error {
-	stmt, err := c.DB.Prepare(`
-		INSERT INTO songs (room_id, source_type, source_id, title, artist, thumbnail_url, duration, added_by, added_by_nickname, added_at)
-		VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)
-		ON CONFLICT(room_id, source_type, source_id) DO UPDATE SET
-			room_id = excluded.room_id
-		RETURNING id
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing AddSongStatement: %w", err)
-	}
-
-	c.AddSongStatement = stmt
-
-	return nil
-}
-
 func (c *Client) prepareInsertSongVoteStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO song_votes (room_id, song_id, user_id)
@@ -229,6 +211,44 @@ func (c *Client) prepareInsertSongVoteStmt() error {
 	return nil
 }
 
+// prepareAddSongStmt prepares the AddSongStatement.
+func (c *Client) prepareAddSongStmt() error {
+	stmt, err := c.DB.Prepare(`
+		INSERT INTO songs (
+			room_id, source_type, source_id, title, artist, thumbnail_url,
+			duration, added_by, added_by_nickname, added_at
+		)
+		VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, CURRENT_TIMESTAMP)
+		RETURNING id
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing AddSongStatement: %w", err)
+	}
+
+	c.AddSongStatement = stmt
+
+	return nil
+}
+
+// prepareCheckSongExistsStmt prepares the CheckSongExistsStatement.
+func (c *Client) prepareCheckSongExistsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT id
+		FROM songs
+		WHERE room_id = ?1
+		AND source_type = ?2
+		AND source_id = ?3
+		LIMIT 1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing CheckSongExistsStatement: %w", err)
+	}
+
+	c.CheckSongExistsStatement = stmt
+
+	return nil
+}
+
 // AddSong adds a song to the queue.
 func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "AddSong")
@@ -237,9 +257,45 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// 1. Insert Song (idempotent, returns ID)
+	// Get room settings to check if duplicates are allowed
+	room, err := c.GetRoom(ctx, song.RoomID, song.AddedBy)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching room settings: %w", err)
+	}
 
-	r := c.AddSongStatement.QueryRowContext(cctx,
+	// This is an exception to the no-transactions rule as we need to ensure
+	// that we don't add duplicate songs when room settings forbid it.
+	// See README.md for more details.
+	tx, err := c.DB.BeginTx(cctx, nil)
+	if err != nil {
+		return nil, fmt.Errorf("error beginning transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	if !room.Settings.AllowDuplicates {
+		var existingID string
+		stmt := tx.StmtContext(cctx, c.CheckSongExistsStatement)
+		r := stmt.QueryRowContext(
+			cctx,
+			song.RoomID,
+			string(song.SourceType),
+			song.SourceID,
+		)
+
+		err := r.Scan(&existingID)
+		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("error checking if song exists: %w", err)
+		}
+		if err == nil {
+			return nil, internalerror.ErrDuplicateSong{
+				Err: fmt.Errorf("song already exists"),
+			}
+		}
+	}
+
+	stmt := tx.StmtContext(cctx, c.AddSongStatement)
+	// 1. Insert Song
+	r := stmt.QueryRowContext(cctx,
 		song.RoomID,
 		string(song.SourceType),
 		song.SourceID,
@@ -249,21 +305,27 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 		song.Duration,
 		song.AddedBy,
 		song.AddedByNickname,
-		song.AddedAt,
 	)
 
-	var returnedID string
-	err := r.Scan(&returnedID)
+	err = r.Scan(&song.ID)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting song: %w", err)
 	}
 
-	song.ID = returnedID
-
-	// 2. Insert Vote
-	_, err = c.InsertSongVoteStatement.ExecContext(cctx, song.RoomID, song.ID, song.AddedBy)
+	stmt = tx.StmtContext(cctx, c.InsertSongVoteStatement)
+	_, err = stmt.ExecContext(
+		cctx,
+		song.RoomID,
+		song.ID,
+		song.AddedBy,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error inserting vote: %w", err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return nil, fmt.Errorf("error committing transaction: %w", err)
 	}
 
 	// 3. Fetch full song details to get accurate vote count

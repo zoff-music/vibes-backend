@@ -7,8 +7,8 @@ CREATE TABLE IF NOT EXISTS room_users_old (
 	room_id TEXT NOT NULL,
 	nickname TEXT,
 	is_admin INTEGER DEFAULT 0,
-	joined_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-	last_seen_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+	joined_at DATETIME DEFAULT now,
+	last_seen_at DATETIME DEFAULT now,
 	FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );
 

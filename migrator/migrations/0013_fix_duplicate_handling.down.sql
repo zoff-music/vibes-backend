@@ -1,0 +1,2 @@
+-- Rollback: Remove the unique index (though it should stay for data integrity)
+-- This is a no-op since we want to keep the constraint

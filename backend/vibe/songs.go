@@ -56,21 +56,22 @@ type SongVoter interface {
 	VoteSong(ctx context.Context, roomID, songID, userID string) error
 }
 
-// SongAdderDB combines interfaces needed for adding songs
-type SongAdderDB interface {
+// SongManager combines interfaces needed for adding songs
+type SongManager interface {
 	SongAdder
 	SongsFetcher
 	PlaybackController
+	RoomFetcher
 }
 
-// SongRemoverDB combines interfaces needed for removing songs
-type SongRemoverDB interface {
+// SongQueueManager combines interfaces needed for removing songs
+type SongQueueManager interface {
 	SongRemover
 	SongsFetcher
 }
 
-// SongVoterDB combines interfaces needed for voting on songs
-type SongVoterDB interface {
+// SongVoteManager combines interfaces needed for voting on songs
+type SongVoteManager interface {
 	SongVoter
 	SongsFetcher
 }

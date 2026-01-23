@@ -230,6 +230,8 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 		return nil, fmt.Errorf("error skipping song: get playback state: %w", err)
 	}
 
+	log.Printf("[DEBUG-SKIP] Current-playing %+v", state.CurrentSong)
+
 	if state.CurrentSong == nil {
 		return state, nil
 	}
@@ -241,6 +243,7 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 	}
 
 	if voted {
+		log.Printf("[DEBUG-SKIP] User has voted %+v", voted)
 		return state, nil
 	}
 
