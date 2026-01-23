@@ -462,6 +462,40 @@ func (c *Client) prepareGetNextSongStmt() error {
 	return nil
 }
 
+// prepareGetNextSongExcludingStmt prepares the GetNextSongExcludingStatement.
+func (c *Client) prepareGetNextSongExcludingStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT 
+			a.id,
+			a.room_id,
+			a.source_type,
+			a.source_id,
+			a.title,
+			a.artist,
+			a.thumbnail_url,
+			a.duration,
+			a.added_by,
+			a.added_by_nickname,
+			a.added_at,
+			COUNT(b.user_id) as vote_count
+		FROM songs a
+		LEFT JOIN song_votes b 
+		ON a.id = b.song_id 
+		AND a.room_id = b.room_id
+		WHERE a.room_id = ?1 AND a.id != ?2
+		GROUP BY a.id
+		ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
+		LIMIT 1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetNextSongExcludingStatement: %w", err)
+	}
+
+	c.GetNextSongExcludingStatement = stmt
+
+	return nil
+}
+
 // GetNextSong gets the next song in the queue (highest voted, earliest added as tiebreaker).
 func (c *Client) GetNextSong(ctx context.Context, roomID string, currentPosition int) (*vibe.Song, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "GetNextSong")
@@ -480,6 +514,30 @@ func (c *Client) GetNextSong(ctx context.Context, roomID string, currentPosition
 		}
 
 		return nil, fmt.Errorf("error getting next song: %w", err)
+	}
+
+	song := row.toSong()
+	return &song, nil
+}
+
+// GetNextSongExcluding gets the next song in the queue excluding a specific song ID.
+func (c *Client) GetNextSongExcluding(ctx context.Context, roomID string, excludeSongID string) (*vibe.Song, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "GetNextSongExcluding")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	r := c.GetNextSongExcludingStatement.QueryRowContext(cctx, roomID, excludeSongID)
+
+	var row songRow
+	err := row.scan(r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return &vibe.Song{}, nil
+		}
+
+		return nil, fmt.Errorf("error getting next song excluding %s: %w", excludeSongID, err)
 	}
 
 	song := row.toSong()
