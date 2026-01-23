@@ -2,8 +2,17 @@ import { api } from '@vibez/api';
 import {
   formatDuration,
   parseISODuration,
+  type SourceType,
   usePlaybackStore,
 } from '@vibez/shared';
+import {
+  AlertCircleIcon,
+  CheckIcon,
+  CloseIcon,
+  InfoIcon,
+  PlusIcon,
+  SearchIcon,
+} from '@vibez/ui';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuthCache } from '../../hooks/useAuthCache';
 import { useQueue } from '../../hooks/useQueue';
@@ -24,6 +33,24 @@ interface SearchResult {
   duration?: string;
   url?: string;
   source?: string;
+}
+
+interface SearchApiResult {
+  id: string;
+  title: string;
+  channelTitle?: string;
+  thumbnailUrl: string;
+  duration?: string;
+  url?: string;
+  source?: string;
+}
+
+interface VideoApiResult {
+  id: string;
+  title: string;
+  channelTitle: string;
+  thumbnailUrl: string;
+  duration?: string;
 }
 
 export const AddToQueueModal: React.FC<Props> = ({
@@ -48,9 +75,15 @@ export const AddToQueueModal: React.FC<Props> = ({
     currentSong?.sourceType === 'spotify';
 
   const { providers, fetchProviders } = useAuthCache();
-  const providerList = providers || [];
+  const providerList = (providers || []).filter(
+    (provider): provider is SourceType =>
+      provider === 'youtube' ||
+      provider === 'spotify' ||
+      provider === 'soundcloud',
+  );
 
-  const [selectedProvider, setSelectedProvider] = useState<string>('youtube');
+  const [selectedProvider, setSelectedProvider] =
+    useState<SourceType>('youtube');
 
   useRoom(roomId);
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -59,7 +92,12 @@ export const AddToQueueModal: React.FC<Props> = ({
   useEffect(() => {
     // Fetch available providers and authorizations via cache
     const loadData = async () => {
-      const pData = await fetchProviders();
+      const pData = (await fetchProviders()).filter(
+        (provider): provider is SourceType =>
+          provider === 'youtube' ||
+          provider === 'spotify' ||
+          provider === 'soundcloud',
+      );
       // Set default selected provider if not set or invalid
       if (
         pData.length > 0 &&
@@ -110,20 +148,30 @@ export const AddToQueueModal: React.FC<Props> = ({
     setIsSearching(true);
     setError(null);
 
-    let err, results;
+    let err: Error | null = null;
+    let results: SearchApiResult[] | null = null;
 
     if (selectedProvider === 'youtube') {
-      [err, results] = await api.get('/youtube/search', {
+      const [providerErr, providerResults] = await api.get('/youtube/search', {
         $search: { q: query },
       });
+      err = providerErr;
+      results = providerResults as SearchApiResult[] | null;
     } else if (selectedProvider === 'spotify') {
-      [err, results] = await api.get('/spotify/search', {
+      const [providerErr, providerResults] = await api.get('/spotify/search', {
         $search: { q: query },
       });
+      err = providerErr;
+      results = providerResults as SearchApiResult[] | null;
     } else if (selectedProvider === 'soundcloud') {
-      [err, results] = await api.get('/soundcloud/search', {
-        $search: { q: query },
-      });
+      const [providerErr, providerResults] = await api.get(
+        '/soundcloud/search',
+        {
+          $search: { q: query },
+        },
+      );
+      err = providerErr;
+      results = providerResults as SearchApiResult[] | null;
     }
 
     setIsSearching(false);
@@ -137,7 +185,7 @@ export const AddToQueueModal: React.FC<Props> = ({
 
     // Backend returns MusicTracks with { id, title, artist, duration, thumbnail, url }
     // We map it to SearchResult { id, title, artist, thumbnailUrl, duration, url }
-    const mappedResults: SearchResult[] = results.map((r: any) => ({
+    const mappedResults: SearchResult[] = results.map((r) => ({
       id: r.id,
       title: r.title,
       artist: r.channelTitle || 'Unknown',
@@ -165,7 +213,8 @@ export const AddToQueueModal: React.FC<Props> = ({
       setIsSearching(true);
       api
         .get('/youtube/videos/{id}', { id: videoId })
-        .then(([err, video]: [Error | null, any]) => {
+        .then((result: [Error | null, VideoApiResult | null]) => {
+          const [err, video] = result;
           setIsSearching(false);
           if (err || !video) {
             setError('Could not find that video');
@@ -205,7 +254,7 @@ export const AddToQueueModal: React.FC<Props> = ({
     // Determine sourceType from selectedProvider (which is 'youtube', 'spotify', etc.)
     // Assuming selectedProvider matches sourceType strings.
     const success = await addToQueue(
-      selectedProvider as any, // Cast to any or SourceType
+      selectedProvider,
       result.id,
       result.title,
       result.thumbnailUrl,
@@ -254,7 +303,7 @@ export const AddToQueueModal: React.FC<Props> = ({
       />
 
       {/* Modal content */}
-      <div className="relative mx-4 w-full max-w-lg animate-scale-in rounded-3xl border-4 border-ink bg-white p-7 shadow-retro-pink">
+      <div className="relative mx-4 w-full max-w-lg animate-scale-in rounded-3xl border-2 border-ink/20 bg-white p-7 shadow-retro-pink">
         {/* Header */}
         <div className="mb-6">
           <div className="mb-4 flex items-center justify-between">
@@ -273,19 +322,7 @@ export const AddToQueueModal: React.FC<Props> = ({
               onClick={onClose}
               className="cursor-pointer rounded-xl border-2 border-transparent p-2 transition-colors hover:border-ink/10 hover:bg-ink/5"
             >
-              <svg
-                className="h-5 w-5 text-ink/60"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M6 18L18 6M6 6l12 12"
-                />
-              </svg>
+              <CloseIcon className="h-5 w-5 text-ink/60" />
             </button>
           </div>
 
@@ -317,19 +354,7 @@ export const AddToQueueModal: React.FC<Props> = ({
           <div className="mb-6 animate-slide-down rounded-2xl border-2 border-sakura/30 bg-sakura/10 p-4 transition-all">
             <div className="flex gap-3">
               <div className="mt-0.5 text-primary">
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+                <InfoIcon className="h-5 w-5" />
               </div>
               <p className="font-medium text-ink/80 text-sm leading-relaxed">
                 <span className="font-bold text-primary">Note:</span> By adding
@@ -350,19 +375,7 @@ export const AddToQueueModal: React.FC<Props> = ({
               {isSearching ? (
                 <div className="h-5 w-5 animate-spin rounded-full border-2 border-ink/20 border-t-primary" />
               ) : (
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2.5}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                  />
-                </svg>
+                <SearchIcon className="h-5 w-5" />
               )}
             </div>
             <input
@@ -380,75 +393,54 @@ export const AddToQueueModal: React.FC<Props> = ({
                 onClick={() => handleSearchChange('')}
                 className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1.5 transition-colors hover:bg-ink/5"
               >
-                <svg
-                  className="h-5 w-5 text-ink/40"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 18L18 6M6 6l12 12"
-                  />
-                </svg>
+                <CloseIcon className="h-5 w-5 text-ink/40" strokeWidth={2} />
               </button>
             )}
           </div>
 
           {error && (
             <div className="mt-3 flex animate-slide-down items-start gap-2 font-medium text-error text-sm">
-              <svg
-                className="mt-0.5 h-4 w-4 shrink-0"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+              <AlertCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{error}</span>
             </div>
           )}
 
           {/* Search Results Dropdown */}
-          {showResults && searchResults.length > 0 && (
-            <div className="absolute top-full right-0 left-0 z-10 mt-2 max-h-96 animate-scale-in overflow-hidden overflow-y-auto rounded-2xl border-3 border-ink bg-white shadow-retro-pink">
-              {searchResults.map((result, index) => (
-                <button
-                  key={result.id}
-                  onClick={() => handleSelectResult(result)}
-                  className={`flex w-full cursor-pointer gap-3 p-4 text-left transition-all hover:bg-sakura/20 ${index > 0 ? 'border-ink/10 border-t-2' : ''}`}
-                >
-                  <div className="relative shrink-0">
-                    <img
-                      src={result.thumbnailUrl}
-                      alt={result.title}
-                      className="h-20 w-28 rounded-xl bg-surface object-cover ring-2 ring-ink/20"
-                    />
-                    {result.duration && (
-                      <div className="absolute right-1.5 bottom-1.5 rounded-md bg-ink/90 px-2 py-0.5 font-bold text-white text-xs backdrop-blur-sm">
-                        {formatDuration(parseISODuration(result.duration))}
-                      </div>
-                    )}
-                  </div>
-                  <div className="flex min-w-0 flex-1 flex-col justify-center">
-                    <h4 className="mb-1.5 line-clamp-2 font-bold text-ink text-sm leading-snug">
-                      {result.title}
-                    </h4>
-                    <p className="line-clamp-1 font-medium text-ink/60 text-xs">
-                      {result.artist}
-                    </p>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
+          {showResults &&
+            searchResults.length > 0 &&
+            !isLoading &&
+            !justAdded && (
+              <div className="mt-2 max-h-96 w-full animate-scale-in overflow-hidden overflow-y-auto rounded-2xl border-3 border-ink bg-white shadow-retro-pink">
+                {searchResults.map((result, index) => (
+                  <button
+                    key={result.id}
+                    onClick={() => handleSelectResult(result)}
+                    className={`flex w-full cursor-pointer gap-3 p-4 text-left transition-all hover:bg-sakura/20 ${index > 0 ? 'border-ink/10 border-t-2' : ''}`}
+                  >
+                    <div className="relative shrink-0">
+                      <img
+                        src={result.thumbnailUrl}
+                        alt={result.title}
+                        className="h-20 w-28 rounded-xl bg-surface object-cover ring-2 ring-ink/20"
+                      />
+                      {result.duration && (
+                        <div className="absolute right-1.5 bottom-1.5 rounded-md bg-ink/90 px-2 py-0.5 font-bold text-white text-xs backdrop-blur-sm">
+                          {formatDuration(parseISODuration(result.duration))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex min-w-0 flex-1 flex-col justify-center">
+                      <h4 className="mb-1.5 line-clamp-2 font-bold text-ink text-sm leading-snug">
+                        {result.title}
+                      </h4>
+                      <p className="line-clamp-1 font-medium text-ink/60 text-xs">
+                        {result.artist}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
         </div>
 
         {/* Loading State */}
@@ -493,19 +485,7 @@ export const AddToQueueModal: React.FC<Props> = ({
         {justAdded && (
           <div className="glass animate-scale-in rounded-2xl border-2 border-matcha p-10 text-center">
             <div className="mb-4 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-matcha/40 bg-matcha/20">
-              <svg
-                className="h-10 w-10 text-matcha"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={3}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M5 13l4 4L19 7"
-                />
-              </svg>
+              <CheckIcon className="h-10 w-10 text-matcha" />
             </div>
             <h3
               className="mb-2 font-black text-ink text-xl"
@@ -542,19 +522,7 @@ export const AddToQueueModal: React.FC<Props> = ({
                 </>
               ) : (
                 <>
-                  <svg
-                    className="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                    strokeWidth={2.5}
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M12 4v16m8-8H4"
-                    />
-                  </svg>
+                  <PlusIcon className="h-5 w-5" />
                   <span>Add to Queue</span>
                 </>
               )}

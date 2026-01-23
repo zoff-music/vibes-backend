@@ -20,8 +20,8 @@ Non-negotiable conventions. Follow strictly.
 ```
 apps/platform/src/
 ├── components/
-│   ├── ui/                # Button, Input, Card, etc.
-│   ├── player/            # VideoPlayer, PlayerControls
+│   ├── ui/                # Deprecated; shared UI now lives in @vibez/ui
+│   ├── player/            # Deprecated; shared player UI now lives in @vibez/ui
 │   ├── queue/             # QueueItem, QueueList, AddToQueueModal
 │   ├── cast/              # CastButton, DeviceSelector
 │   └── room/              # UserCount, room components
@@ -48,7 +48,7 @@ packages/
 │   ├── src/stores/        # Shared Zustand stores (playbackStore)
 │   ├── src/hooks/         # Shared hooks (useProviderToken)
 │   └── src/constants.ts   # Shared constants
-└── player/                # Video player components (SpotifyPlayer, SoundCloudPlayer, VideoPlayer)
+└── ui/                    # Shared UI + player components (PlayerControls, SpotifyPlayer, VideoPlayer)
 ```
 
 ## Packages
@@ -56,7 +56,7 @@ packages/
 - `@vibez/api`: API client (`import { api } from '@vibez/api'`)
 - `@vibez/models`: Shared types and schemas (`import { Room, Song, PlaybackState } from '@vibez/models'`)
 - `@vibez/shared`: Shared utilities (`import { safeWrap, usePlaybackStore, SourceType } from '@vibez/shared'`)
-- `@vibez/player`: Video player components (`import { SpotifyPlayer, VideoPlayer } from '@vibez/player'`)
+- `@vibez/ui`: Shared UI + player components (`import { SpotifyPlayer, VideoPlayer, Toast } from '@vibez/ui'`)
 
 ## Error Handling
 

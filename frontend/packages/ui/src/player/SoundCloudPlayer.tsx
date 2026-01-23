@@ -14,18 +14,15 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const playerRef = useRef<any>(null);
+  const playerRef = useRef<ReactPlayer | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset state when song changes
   useEffect(() => {
     setIsReady(false);
     setError(null);
   }, [currentSong?.id]);
 
-  // Sync position check loop (every 1s)
   useEffect(() => {
     const interval = setInterval(() => {
       if (!isReady || !playerRef.current) {
@@ -58,7 +55,6 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
     setIsReady(true);
     setError(null);
 
-    // Sync initial position
     const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
     if (actualPositionMs > 0 && playerRef.current) {
       const targetTime = actualPositionMs / 1000;
@@ -74,12 +70,10 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
     return null;
   }
 
-  // Only render for SoundCloud sources
   if (currentSong.sourceType !== 'soundcloud') {
     return null;
   }
 
-  // Construct the SoundCloud track URL
   const soundcloudUrl = `https://api.soundcloud.com/tracks/${currentSong.sourceId}`;
 
   return (
@@ -99,7 +93,6 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
         </div>
       )}
 
-      {/* Album art and track info overlay */}
       <div className="absolute inset-0 z-10 flex items-center justify-center p-8">
         <div className="flex max-w-full items-center gap-6">
           {currentSong.thumbnailUrl && (
@@ -128,7 +121,6 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Hidden ReactPlayer - controls playback */}
       <div className="absolute right-0 bottom-0 left-0 h-0 overflow-hidden opacity-0">
         <ReactPlayer
           key={currentSong.id}
@@ -143,7 +135,6 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
         />
       </div>
 
-      {/* Loading overlay */}
       {!isReady && !error && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
           <div className="text-center">

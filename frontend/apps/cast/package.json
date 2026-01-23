@@ -18,8 +18,8 @@
   },
   "dependencies": {
     "@vibez/models": "workspace:*",
-    "@vibez/player": "workspace:*",
     "@vibez/shared": "workspace:*",
+    "@vibez/ui": "workspace:*",
     "framer-motion": "^11.0.0",
     "lucide-react": "^0.468.0",
     "react": "^19.0.0",

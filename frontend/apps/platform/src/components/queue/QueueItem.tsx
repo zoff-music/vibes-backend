@@ -1,4 +1,5 @@
 import { Song } from '@vibez/shared';
+import { TrashIcon, VoteIcon } from '@vibez/ui';
 import { motion } from 'framer-motion';
 import React from 'react';
 
@@ -59,13 +60,7 @@ export const QueueItem: React.FC<Props> = ({
             <>
               <span className="text-ink/40 dark:text-dark-text-subtle">•</span>
               <span className="flex items-center gap-1 font-bold text-primary text-xs">
-                <svg
-                  className="h-3 w-3"
-                  fill="currentColor"
-                  viewBox="0 0 20 20"
-                >
-                  <path d="M2 10.5a1.5 1.5 0 113 0v6a1.5 1.5 0 01-3 0v-6zM6 10.333v5.43a2 2 0 001.106 1.79l.05.025A4 4 0 008.943 18h5.416a2 2 0 001.962-1.608l1.2-6A2 2 0 0015.56 8H12V4a2 2 0 00-2-2 1 1 0 00-1 1v7.333l-2.62 1.53M6 14a1 1 0 011-1h1v1H7a1 1 0 01-1-1z" />
-                </svg>
+                <VoteIcon className="h-3 w-3" />
                 {song.voteCount}
               </span>
             </>
@@ -84,19 +79,7 @@ export const QueueItem: React.FC<Props> = ({
             className="cursor-pointer rounded-lg border-2 border-transparent p-2.5 text-ink/40 transition-all hover:border-error/20 hover:bg-error/10 hover:text-error dark:text-dark-text-subtle"
             title="Remove from queue"
           >
-            <svg
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-              />
-            </svg>
+            <TrashIcon className="h-5 w-5" />
           </button>
         )}
       </div>
