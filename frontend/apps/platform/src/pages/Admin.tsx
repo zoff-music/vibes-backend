@@ -28,6 +28,9 @@ export default function Admin({ initialData }: AdminProps) {
   const [isAuthorized, setIsAuthorized] = useState<boolean>(
     initialData?.adminAuthorized ?? false,
   );
+  const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(
+    initialData?.adminAuthorized ? false : true,
+  );
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -98,6 +101,33 @@ export default function Admin({ initialData }: AdminProps) {
     };
   }, [isAuthorized]);
 
+  useEffect(() => {
+    let isMounted = true;
+
+    if (initialData?.adminAuthorized) {
+      setIsCheckingAuth(false);
+      return;
+    }
+
+    const checkAuth = async () => {
+      const [err, data] = await api.get('/admin/rooms', {});
+      if (!isMounted) {
+        return;
+      }
+      if (!err && data) {
+        setRooms(data);
+        setIsAuthorized(true);
+      }
+      setIsCheckingAuth(false);
+    };
+
+    checkAuth();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initialData?.adminAuthorized]);
+
   const handleLogin = async () => {
     if (!password.trim() || isLoading) {
       return;
@@ -141,6 +171,19 @@ export default function Admin({ initialData }: AdminProps) {
     setIsAuthorized(false);
     setRooms([]);
   };
+
+  if (isCheckingAuth) {
+    return (
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
+        <div className="glass rounded-3xl border-2 border-ink/10 p-8 text-center dark:border-gray-700">
+          <div className="mb-4 h-10 w-10 animate-spin rounded-full border-2 border-ink/20 border-t-primary" />
+          <p className="text-ink/60 text-sm dark:text-gray-400">
+            Checking admin session...
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   if (!isAuthorized) {
     return (
