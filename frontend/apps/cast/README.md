@@ -109,7 +109,7 @@ This app is built with:
 - **React 19**: Modern component architecture with SSR streaming
 - **Bun**: Ultra-fast runtime and package manager
 - **Tailwind CSS v4**: Theme-driven styling with enhanced dark mode
-- **@vibez/player**: Shared playback engine across platform and cast apps
+- **@vibez/ui**: Shared UI + playback engine across platform and cast apps
 - **@vibez/shared**: Shared hooks, stores, and utilities
 - **@vibez/models**: Type-safe API schemas and validation
 

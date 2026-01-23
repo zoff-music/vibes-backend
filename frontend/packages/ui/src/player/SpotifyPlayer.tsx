@@ -34,14 +34,12 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
   const sdkPlayerRef = useRef<SpotifySdkPlayer | null>(null);
   const pendingSeekMsRef = useRef<number | null>(null);
 
-  // Fetch access token on mount or when song changes
   useEffect(() => {
     if (currentSong?.sourceType === 'spotify') {
       fetchToken('spotify');
     }
   }, [currentSong?.sourceType, fetchToken]);
 
-  // Reset state when song changes
   useEffect(() => {
     setIsReady(false);
     hasEndedRef.current = false;
@@ -81,15 +79,12 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
     })();
   }, [currentSong, isReady]);
 
-  // Handle player state changes
   const handleCallback = useCallback(
     (state: CallbackState) => {
-      // Track ready state
       if (state.isActive) {
         setIsReady(true);
       }
 
-      // Check if track ended
       if (
         state.progressMs !== undefined &&
         state.track?.durationMs !== undefined
@@ -110,7 +105,6 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
         lastPositionRef.current = state.progressMs;
       }
 
-      // Handle errors
       if (state.errorType) {
         console.error('[SpotifyPlayer] Error:', state.errorType);
         const errType = String(state.errorType);
@@ -134,13 +128,11 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
   }, []);
 
   const handleAuthorize = () => {
-    // Open popup for auth
     const width = 600;
     const height = 800;
     const left = window.screen.width / 2 - width / 2;
     const top = window.screen.height / 2 - height / 2;
 
-    // Using direct URL for improved reliability with popups
     const popup = window.open(
       '/api/v1/authorizations/spotify',
       'SpotifyAuth',
@@ -149,16 +141,13 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
 
     let timer: ReturnType<typeof setInterval> | null = null;
 
-    // Cleanup function
     const cleanup = () => {
       if (timer) clearInterval(timer);
       window.removeEventListener('message', handleMessage);
-      // Re-fetch token and clear error
       fetchToken('spotify', true);
       setError(null);
     };
 
-    // Message handler
     const handleMessage = (event: MessageEvent) => {
       console.log('[SpotifyPlayer] Received message:', event.data);
       if (
@@ -175,7 +164,6 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
 
     window.addEventListener('message', handleMessage);
 
-    // Polling fallback
     timer = setInterval(() => {
       if (popup?.closed) {
         console.log('[SpotifyPlayer] Popup closed detected via polling');
@@ -190,7 +178,6 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
 
   const spotifyUri = `spotify:track:${currentSong.sourceId}`;
 
-  // Show auth overlay if we have an error related to auth, premium, OR completely missing token
   const showOverlay =
     error &&
     (error.includes('auth') || error.includes('premium') || !accessToken);
@@ -244,7 +231,6 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
         minHeight: '200px',
       }}
     >
-      {/* Album art and track info overlay */}
       <div className="absolute inset-0 flex items-center justify-center p-8">
         <div className="flex max-w-full items-center gap-6">
           {currentSong.thumbnailUrl && (
@@ -273,7 +259,6 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Hidden Spotify player - controls playback */}
       <div className="absolute right-0 bottom-0 left-0 h-0 overflow-hidden opacity-0">
         <SpotifyWebPlayer
           token={accessToken}
@@ -291,7 +276,6 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
         />
       </div>
 
-      {/* Loading overlay */}
       {!isReady && !error && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
           <div className="text-center">

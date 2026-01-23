@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CheckIcon } from '../icons';
 
 interface ToastProps {
   message: string;
@@ -18,11 +19,11 @@ export const Toast = ({
   useEffect(() => {
     const timer = setTimeout(() => {
       setIsVisible(false);
-      setTimeout(onClose, 300); // Wait for fade out animation
+      setTimeout(onClose, 300);
     }, duration);
 
     return () => clearTimeout(timer);
-  }, [duration]); // Removed onClose to prevent timer reset during parent re-renders
+  }, [duration]);
 
   const bgColors = {
     success: 'bg-matcha border-matcha/20 text-ink',
@@ -39,21 +40,7 @@ export const Toast = ({
       <div
         className={`flex items-center gap-3 rounded-2xl border-2 px-6 py-3 shadow-retro backdrop-blur-md ${bgColors[type]}`}
       >
-        {type === 'success' && (
-          <svg
-            className="h-5 w-5"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={3}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M5 13l4 4L19 7"
-            />
-          </svg>
-        )}
+        {type === 'success' && <CheckIcon className="h-5 w-5" />}
         <span className="font-bold tracking-wide">{message}</span>
       </div>
     </div>

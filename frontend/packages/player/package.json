@@ -18,6 +18,7 @@
   },
   "dependencies": {
     "@vibez/shared": "workspace:*",
+    "@vibez/ui": "workspace:*",
     "lucide-react": "^0.468.0",
     "clsx": "^2.0.0",
     "react-youtube": "^10.1.0",

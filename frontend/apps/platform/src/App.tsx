@@ -2,7 +2,6 @@ import { Route, Routes } from 'react-router';
 import Callback from './pages/Callback';
 import CreateRoom from './pages/CreateRoom';
 import Home from './pages/Home';
-import PlayerTest from './pages/PlayerTest';
 import RoomView from './pages/RoomView';
 
 interface AppProps {
@@ -28,7 +27,6 @@ export default function App({ initialData }: AppProps) {
         path="/rooms/:id"
         element={<RoomView initialData={initialData} />}
       />
-      <Route path="/player-test" element={<PlayerTest />} />
       <Route path="/callback" element={<Callback />} />
     </Routes>
   );

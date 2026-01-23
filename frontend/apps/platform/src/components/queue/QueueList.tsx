@@ -1,4 +1,5 @@
 import { Song } from '@vibez/shared';
+import { QueueEmptyIcon } from '@vibez/ui';
 import { AnimatePresence } from 'framer-motion';
 import React, { useEffect, useState } from 'react';
 import { QueueItem } from './QueueItem';
@@ -27,19 +28,7 @@ const QueueListComponent: React.FC<Props> = ({
     return (
       <div className="glass animate-fade-in rounded-3xl border-2 border-ink/10 bg-white/50 p-12 text-center dark:border-primary/20 dark:bg-dark-surface/60">
         <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-ink/20 bg-white shadow-retro dark:border-primary/20 dark:bg-dark-surfaceElevated">
-          <svg
-            className="h-10 w-10 text-ink/40 dark:text-dark-text-muted"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-            strokeWidth={2}
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-            />
-          </svg>
+          <QueueEmptyIcon className="h-10 w-10 text-ink/40 dark:text-dark-text-muted" />
         </div>
         <h3
           className="mb-2 font-black text-ink text-xl dark:text-dark-text"

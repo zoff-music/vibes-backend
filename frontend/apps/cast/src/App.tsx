@@ -1,7 +1,7 @@
 /// <reference types="chromecast-caf-receiver" />
 
-import { SoundCloudPlayer, SpotifyPlayer, VideoPlayer } from '@vibez/player';
 import { safeWrap, setCachedToken, usePlaybackStore } from '@vibez/shared';
+import { SoundCloudPlayer, SpotifyPlayer, VideoPlayer } from '@vibez/ui';
 import type { framework } from 'chromecast-caf-receiver';
 import { useEffect, useRef, useState } from 'react';
 
