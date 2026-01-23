@@ -18,7 +18,6 @@ type Song struct {
 	AddedBy         string     `json:"addedBy"`
 	AddedByNickname string     `json:"addedByNickname,omitempty"`
 	AddedAt         time.Time  `json:"addedAt"`
-	Position        int        `json:"position"`
 	VoteCount       int        `json:"voteCount"`
 }
 
@@ -32,11 +31,6 @@ type AddSongRequest struct {
 	Duration   int        `json:"duration"`
 }
 
-// ReorderSongsRequest is the request payload for reordering songs.
-type ReorderSongsRequest struct {
-	NewPosition int `json:"newPosition"`
-}
-
 // IsEmpty returns true if the song is empty/not found
 func (s *Song) IsEmpty() bool {
 	return s.ID == ""
@@ -45,16 +39,6 @@ func (s *Song) IsEmpty() bool {
 // SongsFetcher fetches songs from the queue
 type SongsFetcher interface {
 	GetSongs(ctx context.Context, roomID string) ([]Song, error)
-}
-
-// MaxPositionGetter gets the max position in a queue
-type MaxPositionGetter interface {
-	GetMaxPosition(ctx context.Context, roomID string) (int, error)
-}
-
-// PlaybackStateUpserter upserts playback state
-type PlaybackStateUpserter interface {
-	UpsertPlaybackState(ctx context.Context, state *PlaybackState) error
 }
 
 // SongAdder adds songs to the queue
@@ -67,11 +51,6 @@ type SongRemover interface {
 	RemoveSong(ctx context.Context, roomID, songID string) error
 }
 
-// SongsReorderer reorders songs in the queue
-type SongsReorderer interface {
-	ReorderSongs(ctx context.Context, roomID, songID string, newPosition int) error
-}
-
 // SongVoter votes for a song
 type SongVoter interface {
 	VoteSong(ctx context.Context, roomID, songID, userID string) error
@@ -80,9 +59,8 @@ type SongVoter interface {
 // SongAdderDB combines interfaces needed for adding songs
 type SongAdderDB interface {
 	SongAdder
-	MaxPositionGetter
 	SongsFetcher
-	PlaybackStateUpserter
+	PlaybackController
 }
 
 // SongRemoverDB combines interfaces needed for removing songs
@@ -94,11 +72,5 @@ type SongRemoverDB interface {
 // SongVoterDB combines interfaces needed for voting on songs
 type SongVoterDB interface {
 	SongVoter
-	SongsFetcher
-}
-
-// SongsReordererDB combines interfaces needed for reordering songs
-type SongsReordererDB interface {
-	SongsReorderer
 	SongsFetcher
 }

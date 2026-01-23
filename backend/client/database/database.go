@@ -33,12 +33,10 @@ type Client struct {
 	GetSongStatement            *sql.Stmt
 	AddSongStatement            *sql.Stmt
 	RemoveSongStatement         *sql.Stmt
-	GetMaxPositionStatement     *sql.Stmt
-	UpdateSongPositionStatement *sql.Stmt
 	GetNextSongStatement        *sql.Stmt
-	ReorderSongsStatement       *sql.Stmt
 	VoteSongStatement           *sql.Stmt
 	ClearVotesSongStatement     *sql.Stmt
+	UpdateSongAddedAtStatement  *sql.Stmt
 
 	// Playback statements
 	GetPlaybackStateStatement           *sql.Stmt
@@ -158,13 +156,11 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareGetSongStmt,
 		c.prepareAddSongStmt,
 		c.prepareRemoveSongStmt,
-		c.prepareGetMaxPositionStmt,
-		c.prepareUpdateSongPositionStmt,
 		c.prepareGetNextSongStmt,
-		c.prepareReorderSongsStmt,
 		c.prepareVoteSongStmt,
 		c.prepareInsertSongVoteStmt,
 		c.prepareClearVotesSongStmt,
+		c.prepareUpdateSongAddedAtStmt,
 		// Playback statements
 		c.prepareGetPlaybackStateStmt,
 		c.prepareUpsertPlaybackStateStmt,
@@ -220,12 +216,10 @@ func (c *Client) Close() error {
 		c.GetSongStatement,
 		c.AddSongStatement,
 		c.RemoveSongStatement,
-		c.GetMaxPositionStatement,
-		c.UpdateSongPositionStatement,
 		c.GetNextSongStatement,
-		c.ReorderSongsStatement,
 		c.VoteSongStatement,
 		c.ClearVotesSongStatement,
+		c.UpdateSongAddedAtStatement,
 		c.GetPlaybackStateStatement,
 		c.UpsertPlaybackStateStatement,
 		c.ProcessNextExpiredPlaybackStatement,

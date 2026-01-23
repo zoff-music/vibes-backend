@@ -46,10 +46,10 @@ export const QueueItem: React.FC<Props> = ({
 
       {/* Song info */}
       <div className="min-w-0 flex-1">
-        <h4 className="mb-1 truncate font-bold text-ink transition-colors group-hover:text-primary dark:text-dark-text">
+        <h4 className="mb-1 truncate font-bold text-ink text-sm transition-colors group-hover:text-primary dark:text-dark-text">
           {song.title}
         </h4>
-        <div className="flex items-center gap-2 font-medium text-ink/60 text-sm dark:text-dark-text-muted">
+        <div className="flex items-center gap-2 font-medium text-ink/60 text-xs dark:text-dark-text-muted">
           <span className="truncate">{song.artist || 'Unknown Artist'}</span>
           <span className="text-ink/40 dark:text-dark-text-subtle">•</span>
           <span className="shrink-0 font-mono text-xs">
@@ -109,7 +109,7 @@ export const QueueItem: React.FC<Props> = ({
       <button
         type="button"
         onClick={() => onVote?.(song.id)}
-        className="group glass cursor-pointer rounded-2xl border-2 border-ink/10 bg-white/50 p-4 backdrop-blur-sm transition-shadow hover:shadow-retro focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:border-primary/15 dark:bg-dark-surface/50 dark:focus:ring-offset-gray-800"
+        className="group glass w-full cursor-pointer rounded-2xl border-2 border-ink/10 bg-white/50 p-4 backdrop-blur-sm transition-shadow hover:shadow-retro focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:border-primary/15 dark:bg-dark-surface/50 dark:focus:ring-offset-gray-800"
         aria-label={`Vote for ${song.title} by ${song.artist || 'Unknown Artist'}`}
       >
         {content}
@@ -133,7 +133,7 @@ export const QueueItem: React.FC<Props> = ({
         opacity: { duration: 0.2 },
       }}
       onClick={() => onVote?.(song.id)}
-      className="group glass cursor-pointer rounded-2xl border-2 border-ink/10 bg-white/50 p-4 backdrop-blur-sm transition-shadow hover:shadow-retro focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:border-primary/15 dark:bg-dark-surface/50 dark:focus:ring-offset-gray-800"
+      className="group glass w-full cursor-pointer rounded-2xl border-2 border-ink/10 bg-white/50 p-4 backdrop-blur-sm transition-shadow hover:shadow-retro focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:border-primary/15 dark:bg-dark-surface/50 dark:focus:ring-offset-gray-800"
       aria-label={`Vote for ${song.title} by ${song.artist || 'Unknown Artist'}`}
     >
       {content}

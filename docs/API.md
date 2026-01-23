@@ -202,7 +202,6 @@ GET /rooms/{id}/songs
     "addedBy": "user-uuid",
     "addedByNickname": "DJ Mike",
     "addedAt": "2024-01-15T20:30:00Z",
-    "position": 1,
     "voteCount": 3
   }
 ]
@@ -251,28 +250,17 @@ DELETE /rooms/{id}/songs/{songId}
 POST /rooms/{id}/songs/{songId}
 ```
 
-**Response:** `200 OK`
-```json
-{
-  "voteCount": 4
-}
-```
+Vote for a song in the queue. Songs are ordered by vote count (highest first), with `added_at` timestamp used as a tiebreaker for songs with equal votes.
+
+**Response:** `204 No Content`
+
+**Notes:**
+- Users can only vote once per song
+- Voting affects queue ordering - songs with more votes appear higher in the queue
+- Votes are cleared when a song is skipped or removed
+- Queue is automatically reordered by: `vote_count DESC, added_at ASC`
 
 ---
-
-#### Reorder Song in Queue
-```
-PATCH /rooms/{id}/songs/{songId}
-```
-
-**Request:**
-```json
-{
-  "newPosition": 2
-}
-```
-
-**Response:** `200 OK`
 
 ---
 
@@ -297,7 +285,6 @@ GET /rooms/{id}/states
     "addedBy": "user-uuid",
     "addedByNickname": "DJ Mike",
     "addedAt": "2024-01-15T20:30:00Z",
-    "position": 0,
     "voteCount": 0
   },
   "isPlaying": true,
@@ -628,8 +615,7 @@ GET /rooms/:id/songs
       "duration": 212,
       "addedBy": "user-uuid",
       "addedByNickname": "DJ Cool",
-      "addedAt": "2024-01-15T20:05:00Z",
-      "position": 0
+      "addedAt": "2024-01-15T20:05:00Z"
     }
   ],
   "totalCount": 1
@@ -662,8 +648,7 @@ POST /rooms/:id/songs
   "thumbnailUrl": "https://i.ytimg.com/vi/dQw4w9WgXcQ/default.jpg",
   "duration": 212,
   "addedBy": "user-uuid",
-  "addedAt": "2024-01-15T20:05:00Z",
-  "position": 5
+  "addedAt": "2024-01-15T20:05:00Z"
 }
 ```
 
@@ -686,28 +671,6 @@ DELETE /rooms/:id/songs/:songId
 - `404 Not Found` - Item doesn't exist
 
 ---
-
-#### Reorder Songs (Admin)
-```
-PATCH /rooms/:id/songs/reorder
-```
-
-**Headers:** `X-Admin-Token: <token>`
-
-**Request:**
-```json
-{
-  "itemId": "item-uuid",
-  "newPosition": 0
-}
-```
-
-**Response:** `200 OK`
-```json
-{
-  "items": [ ... ]
-}
-```
 
 ---
 
@@ -732,8 +695,7 @@ GET /rooms/:id/states
     "duration": 212,
     "addedBy": "user-uuid",
     "addedByNickname": "DJ Cool",
-    "addedAt": "2024-01-15T20:05:00Z",
-    "position": 0
+    "addedAt": "2024-01-15T20:05:00Z"
   },
   "isPlaying": true,
   "positionMs": 45000,

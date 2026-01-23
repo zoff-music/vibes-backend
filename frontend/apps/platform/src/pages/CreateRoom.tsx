@@ -1,6 +1,6 @@
 import { api } from '@vibez/api';
 import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 
 const DEFAULT_SETTINGS = {
   skipAllowed: true,
@@ -122,13 +122,13 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
   };
 
   return (
-    <div className="min-h-screen overflow-y-auto px-4 pt-8 pb-12">
+    <div className="min-h-screen overflow-y-auto bg-theme px-4 pt-8 pb-12">
       <div className="mx-auto max-w-xl animate-fade-in">
         {/* Header */}
         <div className="mb-8">
-          <button
-            onClick={() => navigate(-1)}
-            className="group mb-6 inline-flex cursor-pointer items-center gap-2 text-ink/60 transition-colors hover:text-ink"
+          <Link
+            to="/"
+            className="group mb-6 inline-flex cursor-pointer items-center gap-2 text-theme-muted transition-colors hover:text-theme"
           >
             <svg
               className="h-5 w-5 transition-transform group-hover:-translate-x-1"
@@ -144,24 +144,26 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
               />
             </svg>
             <span className="font-bold text-sm tracking-wide">Back</span>
-          </button>
+          </Link>
           <h1
-            className="mb-2 font-black text-4xl text-ink"
+            className="mb-2 font-black text-4xl text-theme"
             style={{ fontFamily: 'Poppins' }}
           >
             Create Session
           </h1>
-          <p className="mt-2 font-medium text-ink/60">
+          <p className="mt-2 font-medium text-theme-muted">
             Set up your shared music room
           </p>
-          <p className="jp-art mt-1 text-ink/40 text-sm">セッションを作成</p>
+          <p className="jp-art mt-1 text-sm text-theme-subtle">
+            セッションを作成
+          </p>
         </div>
 
         {/* Form */}
         <div className="space-y-5">
           {/* Room name */}
-          <div className="glass rounded-2xl border-2 border-ink/10 p-6">
-            <label className="mb-3 block font-bold text-ink/80 text-sm tracking-wide">
+          <div className="glass rounded-2xl border-2 border-theme p-6">
+            <label className="mb-3 block font-bold text-sm text-theme-muted tracking-wide">
               Session Name
             </label>
             <input
@@ -170,14 +172,14 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
               value={name}
               onChange={(e) => setName(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              className="w-full rounded-xl border-2 border-ink/20 bg-surface px-4 py-4 text-base text-ink transition-all placeholder:text-ink/40 focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] focus:outline-hidden"
+              className="w-full rounded-xl border-2 border-theme bg-theme-surface px-4 py-4 text-base text-theme transition-all placeholder:text-theme-subtle focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] focus:outline-hidden"
               autoFocus
             />
           </div>
 
           {/* Room Mode */}
-          <div className="glass rounded-2xl border-2 border-ink/10 p-6">
-            <label className="mb-3 block font-bold text-ink/80 text-sm tracking-wide">
+          <div className="glass rounded-2xl border-2 border-theme p-6">
+            <label className="mb-3 block font-bold text-sm text-theme-muted tracking-wide">
               Room Mode
             </label>
             <div className="grid grid-cols-2 gap-4">
@@ -186,8 +188,8 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                 onClick={() => setMode('server')}
                 className={`cursor-pointer rounded-xl border-2 p-4 text-left transition-all ${
                   mode === 'server'
-                    ? 'border-primary bg-primary/10 text-ink'
-                    : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
+                    ? 'border-primary bg-primary/10 text-theme'
+                    : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
                 }`}
               >
                 <div className="mb-1 font-bold">Server Mode</div>
@@ -200,8 +202,8 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                 onClick={() => setMode('host')}
                 className={`cursor-pointer rounded-xl border-2 p-4 text-left transition-all ${
                   mode === 'host'
-                    ? 'border-secondary bg-secondary/10 text-ink'
-                    : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20'
+                    ? 'border-secondary bg-secondary/10 text-theme'
+                    : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
                 }`}
               >
                 <div className="mb-1 font-bold">Host Mode</div>
@@ -213,33 +215,33 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
           </div>
 
           {/* Optional password */}
-          <div className="glass rounded-2xl border-2 border-ink/10 p-6">
-            <label className="mb-3 block font-bold text-ink/80 text-sm tracking-wide">
+          <div className="glass rounded-2xl border-2 border-theme p-6">
+            <label className="mb-3 block font-bold text-sm text-theme-muted tracking-wide">
               Admin Password{' '}
-              <span className="font-normal text-ink/40">(optional)</span>
+              <span className="font-normal text-theme-subtle">(optional)</span>
             </label>
             <input
               type="password"
               placeholder="For room control"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border-2 border-ink/20 bg-surface px-4 py-4 text-base text-ink transition-all placeholder:text-ink/40 focus:border-secondary focus:shadow-[0_0_0_3px_rgba(0,217,255,0.1)] focus:outline-hidden"
+              className="w-full rounded-xl border-2 border-theme bg-theme-surface px-4 py-4 text-base text-theme transition-all placeholder:text-theme-subtle focus:border-secondary focus:shadow-[0_0_0_3px_rgba(0,217,255,0.1)] focus:outline-hidden"
             />
-            <p className="mt-3 font-medium text-ink/50 text-xs">
+            <p className="mt-3 font-medium text-theme-subtle text-xs">
               Leave empty to allow anyone to control playback
             </p>
           </div>
 
           {/* Settings */}
           <div className="mt-8 space-y-3">
-            <h2 className="mb-4 font-bold text-ink/70 text-sm uppercase tracking-widest">
+            <h2 className="mb-4 font-bold text-sm text-theme-muted uppercase tracking-widest">
               Playback Settings
             </h2>
 
-            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-ink/10 p-5 transition-all hover:shadow-retro">
+            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-theme p-5 transition-all hover:shadow-retro">
               <div className="mr-4 flex-1">
-                <div className="font-bold text-base text-ink">Allow Skip</div>
-                <div className="mt-0.5 font-medium text-ink/60 text-sm">
+                <div className="font-bold text-base text-theme">Allow Skip</div>
+                <div className="mt-0.5 font-medium text-sm text-theme-muted">
                   Anyone can skip songs
                 </div>
               </div>
@@ -252,16 +254,16 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   }
                   className="peer sr-only"
                 />
-                <div className="peer h-7 w-12 rounded-full bg-ink/10 shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-ink/60 after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
+                <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-muted after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
               </label>
             </div>
 
-            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-ink/10 p-5 transition-all hover:shadow-retro">
+            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-theme p-5 transition-all hover:shadow-retro">
               <div className="mr-4 flex-1">
-                <div className="font-bold text-base text-ink">
+                <div className="font-bold text-base text-theme">
                   Democratic Skip
                 </div>
-                <div className="mt-0.5 font-medium text-ink/60 text-sm">
+                <div className="mt-0.5 font-medium text-sm text-theme-muted">
                   Require votes to skip
                 </div>
               </div>
@@ -274,14 +276,14 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   }
                   className="peer sr-only"
                 />
-                <div className="peer h-7 w-12 rounded-full bg-ink/10 shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-ink/60 after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
+                <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-muted after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
               </label>
             </div>
 
-            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-ink/10 p-5 transition-all hover:shadow-retro">
+            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-theme p-5 transition-all hover:shadow-retro">
               <div className="mr-4 flex-1">
-                <div className="font-bold text-base text-ink">Loop Queue</div>
-                <div className="mt-0.5 font-medium text-ink/60 text-sm">
+                <div className="font-bold text-base text-theme">Loop Queue</div>
+                <div className="mt-0.5 font-medium text-sm text-theme-muted">
                   Restart when queue ends
                 </div>
               </div>
@@ -292,16 +294,16 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   onChange={(e) => updateSetting('loopQueue', e.target.checked)}
                   className="peer sr-only"
                 />
-                <div className="peer h-7 w-12 rounded-full bg-ink/10 shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-ink/60 after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
+                <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-muted after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
               </label>
             </div>
 
-            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-ink/10 p-5 transition-all hover:shadow-retro">
+            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-theme p-5 transition-all hover:shadow-retro">
               <div className="mr-4 flex-1">
-                <div className="font-bold text-base text-ink">
+                <div className="font-bold text-base text-theme">
                   Remove Played
                 </div>
-                <div className="mt-0.5 font-medium text-ink/60 text-sm">
+                <div className="mt-0.5 font-medium text-sm text-theme-muted">
                   Removed after play
                 </div>
               </div>
@@ -314,7 +316,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   }
                   className="peer sr-only"
                 />
-                <div className="peer h-7 w-12 rounded-full bg-ink/10 shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-ink/60 after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
+                <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-muted after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
               </label>
             </div>
           </div>
@@ -346,7 +348,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
         <button
           onClick={handleCreate}
           disabled={!name.trim() || isLoading}
-          className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-black text-base text-white tracking-wide transition-all hover:bg-primary-muted hover:shadow-retro-pink active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30"
+          className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-black text-base text-white tracking-wide transition-all hover:bg-primary-muted hover:shadow-retro-pink active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-theme-surface disabled:text-theme-subtle"
           style={{ fontFamily: 'Poppins' }}
         >
           {isLoading ? (

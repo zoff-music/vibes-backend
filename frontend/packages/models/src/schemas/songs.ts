@@ -17,7 +17,6 @@ export const songSchema = yup.object({
   addedBy: yup.string().required(),
   addedByNickname: yup.string().optional(),
   addedAt: yup.string().required(),
-  position: yup.number().required(),
   voteCount: yup.number().optional(),
 });
 export type Song = yup.InferType<typeof songSchema>;
@@ -34,10 +33,3 @@ export type AddSongRequest = yup.InferType<typeof addSongRequestSchema>;
 
 export const songsListSchema = yup.array(songSchema).required();
 export type SongsList = yup.InferType<typeof songsListSchema>;
-
-export const reorderSongsRequestSchema = yup.object({
-  newPosition: yup.number().required(),
-});
-export type ReorderSongsRequest = yup.InferType<
-  typeof reorderSongsRequestSchema
->;
