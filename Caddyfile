@@ -10,6 +10,13 @@ http://localhost {
 }
 
 localhost, 127.0.0.1 {
+	# Handle live reload check endpoint
+	handle /__live_reload_check {
+		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3001} {
+			header_up Host {host}
+		}
+	}
+
 	# Handle platform assets - proxy to Vite dev server
 	handle /assets/platform/* {
 		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3001} {
