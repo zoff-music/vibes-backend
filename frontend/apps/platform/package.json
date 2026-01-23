@@ -6,11 +6,10 @@
   "scripts": {
     "dev": "vite",
     "dev:old": "concurrently \"bun run tailwindcss -i src/index.css -o dist/assets/platform/index.css --config tailwind.config.js --watch\" \"bun scripts/build.ts --watch\" \"bun run --hot server.tsx\"",
-    "build": "bun run build:css && vite build && bun run build:server",
-    "build:old": "bun run build:css && bun run build:client && bun run build:server",
+    "build": "bun run build:css && bun run build:client && bun run build:server",
     "build:css": "bun run tailwindcss -i src/index.css -o dist/assets/platform/index.css --minify --config tailwind.config.js",
     "build:client": "NODE_ENV=production bun scripts/build.ts",
-    "build:server": "bun build server.tsx --outdir ./dist/server --target bun --minify",
+    "build:server": "bun build server.tsx --outdir ./dist/server --target bun --minify --external react-player",
     "start": "NODE_ENV=production bun dist/server/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "bunx biome check src",

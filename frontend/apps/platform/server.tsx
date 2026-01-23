@@ -68,7 +68,7 @@ function createHTMLShell(
     <meta charset="UTF-8" />
     <link rel="icon" type="image/png" href="/favicon.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nori - Shared Music Queue</title>
+    <title>ノリ - Shared Music Queue</title>
     <link rel="stylesheet" href="${mainCSS}" />
     <script id="ssr-data" type="application/json">${dataScriptContent}</script>
   </head>
