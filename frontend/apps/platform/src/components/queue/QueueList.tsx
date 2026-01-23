@@ -26,22 +26,17 @@ const QueueListComponent: React.FC<Props> = ({
 
   if (songs.length === 0) {
     return (
-      <div className="glass animate-fade-in rounded-3xl border-2 border-ink/10 bg-white/50 p-12 text-center dark:border-primary/20 dark:bg-dark-surface/60">
-        <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-ink/20 bg-white shadow-retro dark:border-primary/20 dark:bg-dark-surfaceElevated">
-          <QueueEmptyIcon className="h-10 w-10 text-ink/40 dark:text-dark-text-muted" />
+      <div className="panel-surface animate-fade-in rounded-3xl p-12 text-center">
+        <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border border-theme bg-theme-surface">
+          <QueueEmptyIcon className="h-10 w-10 text-theme-muted" />
         </div>
-        <h3
-          className="mb-2 font-black text-ink text-xl dark:text-dark-text"
-          style={{ fontFamily: 'Poppins' }}
-        >
+        <h3 className="mb-2 font-display text-base text-theme">
           Queue is Empty
         </h3>
-        <p className="mb-2 font-medium text-ink/60 dark:text-dark-text-muted">
+        <p className="mb-2 text-sm text-theme-muted">
           Add some songs to get the party started
         </p>
-        <p className="jp-art text-ink/40 text-sm dark:text-dark-text-subtle">
-          曲を追加
-        </p>
+        <p className="jp-art text-theme-subtle text-xs">曲を追加</p>
       </div>
     );
   }

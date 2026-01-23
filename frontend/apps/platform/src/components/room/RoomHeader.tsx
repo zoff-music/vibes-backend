@@ -75,30 +75,29 @@ export const RoomHeader = ({
   return (
     <div
       ref={headerRef}
-      className="sticky top-0 z-20 border-ink/10 border-b-4 bg-white/95 px-4 py-5 shadow-retro backdrop-blur-lg transition-colors duration-300 dark:border-primary/20 dark:bg-dark-paper/95"
+      className="panel-surface sticky top-0 z-20 border-theme border-b px-4 py-4"
     >
       <div className="relative mx-auto flex max-w-7xl items-center justify-between">
         <Link
           to="/"
-          className="group inline-flex cursor-pointer items-center gap-2 text-ink/60 transition-colors hover:text-ink dark:text-dark-text-muted dark:hover:text-dark-text"
+          className="group inline-flex cursor-pointer items-center gap-2 text-theme-muted transition-colors hover:text-theme"
         >
           <ArrowLeftIcon className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
-          <span className="font-bold text-sm tracking-wide">Leave</span>
+          <span className="font-display text-[10px] tracking-[0.3em]">
+            Leave
+          </span>
         </Link>
 
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
           <button
             onClick={onToggleRoomInfo}
-            className="flex cursor-pointer items-center justify-center gap-2 transition-opacity hover:opacity-70"
+            className="flex cursor-pointer items-center justify-center gap-2 transition-opacity hover:opacity-80"
           >
-            <h1
-              className="truncate whitespace-nowrap font-black text-ink text-lg dark:text-dark-text"
-              style={{ fontFamily: 'Poppins' }}
-            >
+            <h1 className="truncate whitespace-nowrap font-display text-sm text-theme sm:text-base">
               {displayRoom?.name || 'Loading...'}
             </h1>
             <ChevronDownIcon
-              className={`h-4 w-4 text-ink/50 transition-transform dark:text-dark-text-muted ${
+              className={`h-4 w-4 text-theme-muted transition-transform ${
                 showRoomInfo ? 'rotate-180' : ''
               }`}
             />
@@ -111,10 +110,10 @@ export const RoomHeader = ({
           <div className="hidden sm:block">
             <button
               onClick={onToggleDarkMode}
-              className={`cursor-pointer rounded-xl border-2 p-2.5 transition-all ${
+              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
                 isDarkMode
-                  ? 'border-primary bg-primary text-white shadow-neon-pink'
-                  : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink'
+                  ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_18px_rgba(0,217,255,0.35)]'
+                  : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
               }`}
               title={
                 isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
@@ -131,10 +130,10 @@ export const RoomHeader = ({
           <div className="relative hidden sm:block">
             <button
               onClick={onToggleShare}
-              className={`cursor-pointer rounded-xl border-2 p-2.5 transition-all ${
+              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
                 showShare
-                  ? 'border-ink bg-ink text-white dark:border-primary dark:bg-primary'
-                  : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'
+                  ? 'border-theme-strong bg-theme-surface text-theme'
+                  : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
               }`}
               title="Share Room"
             >
@@ -147,7 +146,7 @@ export const RoomHeader = ({
                   initial={{ opacity: 0, y: 10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                  className="absolute right-0 z-50 mt-3 w-72 rounded-3xl border-4 border-ink bg-white p-4 shadow-2xl dark:border-primary dark:bg-dark-surface"
+                  className="panel-strong absolute right-0 z-50 mt-3 w-72 rounded-3xl p-4 shadow-2xl"
                 >
                   <RoomSharePanel url={shareUrl} onCopy={onCopyShareLink} />
                 </motion.div>
@@ -159,10 +158,10 @@ export const RoomHeader = ({
             <button
               ref={settingsButtonRef}
               onClick={onToggleSettings}
-              className={`cursor-pointer rounded-xl border-2 p-2.5 transition-all ${
+              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
                 showSettings
-                  ? 'border-ink bg-ink text-white dark:border-primary dark:bg-primary'
-                  : 'border-ink/10 text-ink/60 hover:border-ink/20 hover:text-ink dark:border-primary/20 dark:text-dark-text-muted dark:hover:text-dark-text'
+                  ? 'border-theme-strong bg-theme-surface text-theme'
+                  : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
               }`}
               title="Room Settings"
             >
@@ -195,31 +194,31 @@ export const RoomHeader = ({
 
       {showRoomInfo && (
         <div
-          className={`glass-elevated mt-4 rounded-2xl border-2 border-ink/10 p-5 dark:border-primary/20 ${
+          className={`panel-surface mt-4 rounded-2xl p-5 ${
             !isSSR ? 'animate-slide-down' : ''
           }`}
         >
           <div className="space-y-4">
             <div>
-              <p className="mb-2 font-bold text-ink/60 text-xs uppercase tracking-widest dark:text-dark-text-muted">
+              <p className="mb-2 font-display text-[10px] text-theme-muted tracking-[0.3em]">
                 Room Code
               </p>
               <div className="flex items-center gap-2">
-                <code className="rounded-xl border-2 border-ink/20 bg-surface px-4 py-2 font-bold font-mono text-ink text-sm dark:border-primary/20 dark:bg-dark-surfaceElevated dark:text-dark-text">
+                <code className="rounded-xl border border-theme bg-theme-surface px-4 py-2 font-mono text-sm text-theme">
                   {roomId}
                 </code>
                 <button
                   onClick={() => navigator.clipboard.writeText(roomId || '')}
-                  className="cursor-pointer rounded-lg border-2 border-transparent p-2 transition-colors hover:border-ink/10 hover:bg-ink/5"
+                  className="cursor-pointer rounded-lg border border-transparent p-2 transition-colors hover:border-theme-strong hover:bg-theme-surface"
                   title="Copy code"
                 >
-                  <CopyIcon className="h-5 w-5 text-ink/60" />
+                  <CopyIcon className="h-5 w-5 text-theme-muted" />
                 </button>
               </div>
             </div>
             {users && users.length > 0 && (
               <div>
-                <p className="mb-2 font-bold text-ink/60 text-xs uppercase tracking-widest">
+                <p className="mb-2 font-display text-[10px] text-theme-muted tracking-[0.3em]">
                   <span className="hidden sm:inline">Listeners </span>(
                   {users.length})
                 </p>
@@ -227,13 +226,13 @@ export const RoomHeader = ({
                   {users.slice(0, 8).map((user: RoomUser) => (
                     <div
                       key={user.id}
-                      className="rounded-full border border-sakura/50 bg-sakura/30 px-3 py-1.5 font-medium text-ink/70 text-xs"
+                      className="rounded-full border border-theme bg-theme-surface px-3 py-1.5 text-theme text-xs"
                     >
                       {user.nickname || `User ${user.id.slice(0, 4)}`}
                     </div>
                   ))}
                   {users.length > 8 && (
-                    <div className="rounded-full bg-ink/10 px-3 py-1.5 font-medium text-ink/50 text-xs">
+                    <div className="rounded-full bg-theme-surface px-3 py-1.5 text-theme-muted text-xs">
                       +{users.length - 8} more
                     </div>
                   )}

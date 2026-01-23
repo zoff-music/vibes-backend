@@ -66,7 +66,11 @@ function createHTMLShell(
 <html lang="en" class="${themeClass}">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/png" href="/favicon.png" />
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ノリ - Shared Music Queue</title>
     <link rel="stylesheet" href="${mainCSS}" />
@@ -134,7 +138,7 @@ async function handleStaticFiles(path: string) {
 
 async function getInitialData(path: string, req: Request) {
   if (path === '/admin' || path === '/admin/') {
-    const cookieHeader = req.headers.get('Cookie');
+    const cookieHeader = req.headers.get('cookie') ?? req.headers.get('Cookie');
     console.log('[SSR Admin] Handling admin SSR path:', path);
     const [roomsErr, rooms] = await api.get('/admin/rooms', {
       headers: { Cookie: cookieHeader },
@@ -165,7 +169,7 @@ async function getInitialData(path: string, req: Request) {
   }
 
   const roomId = roomMatch[1];
-  const cookieHeader = req.headers.get('Cookie');
+  const cookieHeader = req.headers.get('cookie') ?? req.headers.get('Cookie');
   console.log(`[SSR] Room: ${roomId}, Cookie present: ${!!cookieHeader}`);
   if (cookieHeader) {
     console.log(`[SSR] Forwarding Cookie: ${cookieHeader}`);
@@ -204,32 +208,42 @@ async function getInitialData(path: string, req: Request) {
 }
 
 function getThemeFromCookies(cookieHeader: string | null): string {
+  console.log('COOKIEHEADER', cookieHeader);
   if (!cookieHeader) {
     return ''; // Default to light mode (no class)
   }
 
   try {
-    // Parse cookies
-    const cookies = cookieHeader.split(';').reduce(
-      (acc, cookie) => {
-        const [name, value] = cookie.trim().split('=');
-        if (name && value) {
-          acc[name] = decodeURIComponent(value);
-        }
+    const cookies = cookieHeader
+      .split(';')
+      .reduce<Record<string, string>>((acc, cookie) => {
+        const trimmed = cookie.trim();
+        if (!trimmed) return acc;
+        const separatorIndex = trimmed.indexOf('=');
+        if (separatorIndex === -1) return acc;
+        const name = trimmed.slice(0, separatorIndex);
+        const value = trimmed.slice(separatorIndex + 1);
+        if (!name || !value) return acc;
+        acc[name] = decodeURIComponent(value);
         return acc;
-      },
-      {} as Record<string, string>,
-    );
+      }, {});
 
-    const preferencesEncoded = cookies.preferences;
+    let preferencesEncoded = cookies.preferences;
     if (!preferencesEncoded) {
       return ''; // Default to light mode (no class)
     }
 
-    // Decode base64 JSON - use Buffer for Node.js compatibility
-    const preferencesJson = Buffer.from(preferencesEncoded, 'base64').toString(
-      'utf-8',
-    );
+    // Strip optional quotes around cookie values
+    if (
+      preferencesEncoded.startsWith('"') &&
+      preferencesEncoded.endsWith('"')
+    ) {
+      preferencesEncoded = preferencesEncoded.slice(1, -1);
+    }
+
+    // Decode base64 JSON - try both standard and URL-safe base64
+    const normalized = preferencesEncoded.replace(/-/g, '+').replace(/_/g, '/');
+    const preferencesJson = Buffer.from(normalized, 'base64').toString('utf-8');
     const preferences = JSON.parse(preferencesJson);
 
     // Only return 'dark' if explicitly set to dark, otherwise default to light
@@ -271,13 +285,11 @@ Bun.serve({
       return new Response('Not Found', { status: 404 });
     }
 
-    console.log('pepepe');
-
     const { data: initialData, redirect } = await getInitialData(path, req);
     if (redirect) return redirect;
 
     // Get theme from cookies for SSR
-    const cookieHeader = req.headers.get('Cookie');
+    const cookieHeader = req.headers.get('cookie') ?? req.headers.get('Cookie');
     const themeClass = getThemeFromCookies(cookieHeader);
 
     // Add theme to initialData for all routes

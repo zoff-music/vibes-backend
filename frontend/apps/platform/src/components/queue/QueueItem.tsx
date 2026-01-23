@@ -30,7 +30,7 @@ export const QueueItem: React.FC<Props> = ({
     <div className="flex items-center gap-4">
       {/* Position number */}
       <div className="w-8 shrink-0 text-center">
-        <span className="font-black text-ink/50 text-lg dark:text-dark-text-subtle">
+        <span className="font-display text-theme-subtle text-xs">
           {position}
         </span>
       </div>
@@ -40,26 +40,26 @@ export const QueueItem: React.FC<Props> = ({
         <img
           src={song.thumbnailUrl}
           alt={song.title}
-          className="h-16 w-16 rounded-xl bg-surface object-cover ring-2 ring-ink/20 dark:bg-dark-surfaceElevated dark:ring-primary/20"
+          className="h-16 w-16 rounded-xl border border-theme bg-theme-surface object-cover"
           loading="lazy"
         />
       </div>
 
       {/* Song info */}
       <div className="min-w-0 flex-1">
-        <h4 className="mb-1 truncate text-left font-bold text-ink text-sm transition-colors group-hover:text-primary dark:text-dark-text">
+        <h4 className="mb-1 truncate text-left font-display text-theme text-xs">
           {song.title}
         </h4>
-        <div className="flex items-center gap-2 font-medium text-ink/60 text-xs dark:text-dark-text-muted">
+        <div className="flex items-center gap-2 text-theme-muted text-xs">
           <span className="truncate">{song.artist || 'Unknown Artist'}</span>
-          <span className="text-ink/40 dark:text-dark-text-subtle">•</span>
-          <span className="shrink-0 font-mono text-xs">
+          <span className="text-theme-subtle">•</span>
+          <span className="shrink-0 font-mono text-theme-subtle text-xs">
             {formatDuration(song.duration)}
           </span>
           {(song.voteCount || 0) > 0 && (
             <>
-              <span className="text-ink/40 dark:text-dark-text-subtle">•</span>
-              <span className="flex items-center gap-1 font-bold text-primary text-xs">
+              <span className="text-theme-subtle">•</span>
+              <span className="flex items-center gap-1 font-display text-[10px] text-secondary">
                 <VoteIcon className="h-3 w-3" />
                 {song.voteCount}
               </span>
@@ -76,7 +76,7 @@ export const QueueItem: React.FC<Props> = ({
               e.stopPropagation();
               onRemove?.(song.id);
             }}
-            className="cursor-pointer rounded-lg border-2 border-transparent p-2.5 text-ink/40 transition-all hover:border-error/20 hover:bg-error/10 hover:text-error dark:text-dark-text-subtle"
+            className="cursor-pointer rounded-lg border border-transparent p-2.5 text-theme-subtle transition-all hover:border-error/40 hover:bg-error/10 hover:text-error"
             title="Remove from queue"
           >
             <TrashIcon className="h-5 w-5" />
@@ -92,7 +92,7 @@ export const QueueItem: React.FC<Props> = ({
       <button
         type="button"
         onClick={() => onVote?.(song.id)}
-        className="group glass w-full cursor-pointer rounded-2xl border-2 border-ink/10 bg-white/50 p-4 backdrop-blur-sm transition-shadow hover:shadow-retro focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:border-primary/15 dark:bg-dark-surface/50 dark:focus:ring-offset-gray-800"
+        className="group w-full cursor-pointer rounded-2xl border border-theme bg-theme-surface p-4 transition-shadow hover:shadow-[0_0_20px_rgba(255,46,151,0.2)] focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:ring-offset-2 focus:ring-offset-transparent"
         aria-label={`Vote for ${song.title} by ${song.artist || 'Unknown Artist'}`}
       >
         {content}
@@ -116,7 +116,7 @@ export const QueueItem: React.FC<Props> = ({
         opacity: { duration: 0.2 },
       }}
       onClick={() => onVote?.(song.id)}
-      className="group glass w-full cursor-pointer rounded-2xl border-2 border-ink/10 bg-white/50 p-4 backdrop-blur-sm transition-shadow hover:shadow-retro focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:border-primary/15 dark:bg-dark-surface/50 dark:focus:ring-offset-gray-800"
+      className="group w-full cursor-pointer rounded-2xl border border-theme bg-theme-surface p-4 transition-shadow hover:shadow-[0_0_20px_rgba(255,46,151,0.2)] focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:ring-offset-2 focus:ring-offset-transparent"
       aria-label={`Vote for ${song.title} by ${song.artist || 'Unknown Artist'}`}
     >
       {content}
