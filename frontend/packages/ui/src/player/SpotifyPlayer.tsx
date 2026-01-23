@@ -29,15 +29,27 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
   } = useProviderToken();
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
+  const [isFetchingToken, setIsFetchingToken] = useState(false);
   const lastPositionRef = useRef<number>(0);
   const hasEndedRef = useRef<boolean>(false);
   const sdkPlayerRef = useRef<SpotifySdkPlayer | null>(null);
   const pendingSeekMsRef = useRef<number | null>(null);
 
   useEffect(() => {
+    let isActive = true;
+
     if (currentSong?.sourceType === 'spotify') {
-      fetchToken('spotify');
+      setIsFetchingToken(true);
+      void fetchToken('spotify').finally(() => {
+        if (isActive) setIsFetchingToken(false);
+      });
+    } else {
+      setIsFetchingToken(false);
     }
+
+    return () => {
+      isActive = false;
+    };
   }, [currentSong?.sourceType, fetchToken]);
 
   useEffect(() => {
@@ -179,40 +191,16 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
   const spotifyUri = `spotify:track:${currentSong.sourceId}`;
 
   const showOverlay =
-    error &&
-    (error.includes('auth') || error.includes('premium') || !accessToken);
+    (!accessToken && !isFetchingToken) ||
+    !!tokenError ||
+    (error && (error.includes('auth') || error.includes('premium')));
 
-  if (showOverlay) {
-    return (
-      <div
-        className="relative w-full overflow-hidden rounded-xl bg-black"
-        style={{ aspectRatio: '16/9' }}
-      >
-        <AuthOverlay
-          provider="spotify"
-          errorMessage={
-            (tokenError?.includes('premium') ? tokenError : null) ||
-            (error?.includes('premium') ? error : null)
-          }
-          onAuthorize={handleAuthorize}
-        />
-      </div>
-    );
-  }
+  const overlayErrorMessage =
+    (tokenError?.includes('premium') ? tokenError : null) ||
+    (error?.includes('premium') ? error : null) ||
+    (error?.includes('auth') ? error : null);
 
-  if (tokenError) {
-    return (
-      <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-black">
-        <AuthOverlay
-          provider="spotify"
-          errorMessage={tokenError.includes('premium') ? tokenError : null}
-          onAuthorize={handleAuthorize}
-        />
-      </div>
-    );
-  }
-
-  if (!accessToken) {
+  if (!accessToken && isFetchingToken) {
     return (
       <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-900 to-black">
         <div className="text-center">
@@ -231,6 +219,14 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
         minHeight: '200px',
       }}
     >
+      {showOverlay && (
+        <AuthOverlay
+          provider="spotify"
+          errorMessage={overlayErrorMessage}
+          onAuthorize={handleAuthorize}
+        />
+      )}
+
       <div className="absolute inset-0 flex items-center justify-center p-8">
         <div className="flex max-w-full items-center gap-6">
           {currentSong.thumbnailUrl && (
@@ -260,23 +256,25 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
       </div>
 
       <div className="absolute right-0 bottom-0 left-0 h-0 overflow-hidden opacity-0">
-        <SpotifyWebPlayer
-          token={accessToken}
-          uris={[spotifyUri]}
-          play={isPlaying}
-          callback={handleCallback}
-          getPlayer={handleGetPlayer}
-          initialVolume={0.5}
-          name="Vibes Player"
-          styles={{
-            bgColor: 'transparent',
-            color: '#fff',
-            trackNameColor: '#fff',
-          }}
-        />
+        {accessToken && (
+          <SpotifyWebPlayer
+            token={accessToken}
+            uris={[spotifyUri]}
+            play={isPlaying}
+            callback={handleCallback}
+            getPlayer={handleGetPlayer}
+            initialVolume={0.5}
+            name="Vibes Player"
+            styles={{
+              bgColor: 'transparent',
+              color: '#fff',
+              trackNameColor: '#fff',
+            }}
+          />
+        )}
       </div>
 
-      {!isReady && !error && (
+      {!isReady && !error && !showOverlay && (
         <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
           <div className="text-center">
             <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-green-500/30 border-t-green-500" />
