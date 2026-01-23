@@ -33,3 +33,4 @@ ALTER TABLE songs_new RENAME TO songs;
 -- Recreate indexes
 CREATE INDEX IF NOT EXISTS idx_songs_room_id ON songs(room_id);
 CREATE INDEX IF NOT EXISTS idx_songs_room_position ON songs(room_id, position);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_songs_unique_source ON songs(room_id, source_type, source_id);
