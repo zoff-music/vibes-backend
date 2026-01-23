@@ -29,7 +29,7 @@ export default function Admin({ initialData }: AdminProps) {
     initialData?.adminAuthorized ?? false,
   );
   const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(
-    initialData?.adminAuthorized ? false : true,
+    !initialData?.adminAuthorized,
   );
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

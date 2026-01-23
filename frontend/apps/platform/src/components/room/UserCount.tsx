@@ -6,9 +6,9 @@ export const UserCount = () => {
   if (usersCount === 0) return null;
 
   return (
-    <div className="flex items-center gap-1.5 rounded-xl border-2 border-ink/10 px-3 py-3 dark:border-primary/20">
-      <div className="h-2 w-2 animate-pulse rounded-full bg-success" />
-      <span className="font-medium text-xs dark:text-dark-text">
+    <div className="flex h-11 items-center gap-1.5 rounded-xl border border-theme bg-theme-surface px-3 text-theme">
+      <div className="h-2 w-2 animate-pulse rounded-full bg-secondary" />
+      <span className="text-[10px] tracking-[0.2em]">
         <span className="sm:hidden">{usersCount}</span>
         <span className="hidden sm:inline">
           {usersCount} {usersCount === 1 ? 'Listener' : 'Listeners'}

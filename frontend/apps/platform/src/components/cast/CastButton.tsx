@@ -1,6 +1,7 @@
 import { safeWrapAsync } from '@vibez/shared';
 import React, { useEffect } from 'react';
 import { useCastStore } from '../../stores/castStore';
+import { CastIcon } from '../icons/CastIcon';
 
 interface CastButtonProps {
   onDeviceSelect?: () => void;
@@ -67,29 +68,10 @@ export const CastButton: React.FC<CastButtonProps> = ({
       : 'w-6 h-6 text-gray-600 dark:text-gray-300 group-hover:text-primary dark:group-hover:text-primary-light transition-colors duration-200';
 
     if (isConnected) {
-      return (
-        <svg
-          className={iconClasses}
-          fill="currentColor"
-          viewBox="0 0 24 24"
-          aria-hidden="true"
-        >
-          <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" />
-          <circle cx="6" cy="18" r="2" />
-        </svg>
-      );
+      return <CastIcon className={iconClasses} isActive={true} />;
     }
 
-    return (
-      <svg
-        className={iconClasses}
-        fill="currentColor"
-        viewBox="0 0 24 24"
-        aria-hidden="true"
-      >
-        <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" />
-      </svg>
-    );
+    return <CastIcon className={iconClasses} />;
   };
 
   const getButtonText = () => {

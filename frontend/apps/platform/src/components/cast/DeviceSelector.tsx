@@ -2,6 +2,13 @@ import type { CastDevice } from '@vibez/models';
 import { safeWrapAsync, usePlaybackStore } from '@vibez/shared';
 import React, { useState } from 'react';
 import { useCastStore } from '../../stores/castStore';
+import { CastDeviceIcon } from '../icons/CastDeviceIcon';
+import { CheckCircleIcon } from '../icons/CheckCircleIcon';
+import { CheckIcon } from '../icons/CheckIcon';
+import { CloseIcon } from '../icons/CloseIcon';
+import { InfoCircleIcon } from '../icons/InfoCircleIcon';
+import { PlayIcon } from '../icons/PlayIcon';
+import { SpinnerIcon } from '../icons/SpinnerIcon';
 
 interface DeviceSelectorProps {
   isOpen: boolean;
@@ -96,19 +103,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
             onClick={onClose}
             className="cursor-pointer text-gray-400 transition-colors duration-200 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
           >
-            <svg
-              className="h-6 w-6"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M6 18L18 6M6 6l12 12"
-              />
-            </svg>
+            <CloseIcon className="h-6 w-6" />
           </button>
         </div>
 
@@ -142,36 +137,12 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                 >
                   {isCasting ? (
                     <>
-                      <svg
-                        className="h-4 w-4 animate-spin"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                      >
-                        <circle
-                          className="opacity-25"
-                          cx="12"
-                          cy="12"
-                          r="10"
-                          stroke="currentColor"
-                          strokeWidth="4"
-                        ></circle>
-                        <path
-                          className="opacity-75"
-                          fill="currentColor"
-                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                        ></path>
-                      </svg>
+                      <SpinnerIcon className="h-4 w-4 animate-spin" />
                       <span>Casting...</span>
                     </>
                   ) : (
                     <>
-                      <svg
-                        className="h-4 w-4"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M8 5v14l11-7z" />
-                      </svg>
+                      <PlayIcon className="h-4 w-4" />
                       <span>Cast Current Song</span>
                     </>
                   )}
@@ -184,13 +155,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                 {currentSong.sourceType === 'youtube' && (
                   <div className="mt-2 rounded border border-blue-300 bg-blue-100 p-3 text-blue-800 text-xs transition-colors duration-200 dark:border-blue-700/30 dark:bg-blue-900/20 dark:text-blue-400">
                     <div className="flex items-start gap-2">
-                      <svg
-                        className="mt-0.5 h-4 w-4 shrink-0"
-                        fill="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-6h2v6zm0-8h-2V7h2v2z" />
-                      </svg>
+                      <InfoCircleIcon className="mt-0.5 h-4 w-4 shrink-0" />
                       <div>
                         <div className="font-medium">Custom Receiver Ready</div>
                         <div className="mt-1">
@@ -237,13 +202,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                   }}
                   className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg bg-gray-600 px-4 py-2 text-white text-xs transition-colors duration-200 hover:bg-gray-700"
                 >
-                  <svg
-                    className="h-3 w-3"
-                    fill="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path d="M8 5v14l11-7z" />
-                  </svg>
+                  <PlayIcon className="h-3 w-3" />
                   <span>Test Cast (Demo Video)</span>
                 </button>
               </div>
@@ -267,13 +226,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
 
           {availableDevices.length === 0 ? (
             <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-              <svg
-                className="mx-auto mb-2 h-12 w-12 text-gray-300 dark:text-gray-600"
-                fill="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" />
-              </svg>
+              <CastDeviceIcon className="mx-auto mb-2 h-12 w-12 text-gray-300 dark:text-gray-600" />
               <div className="font-medium text-gray-500 dark:text-gray-400">
                 No Chromecast devices found
               </div>
@@ -307,21 +260,9 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                   <div className="flex items-center space-x-3">
                     <div className="shrink-0">
                       {device.type === 'chromecast' ? (
-                        <svg
-                          className="h-6 w-6 text-gray-600 dark:text-gray-300"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M1 18v3h3c0-1.66-1.34-3-3-3zm0-4v2c2.76 0 5 2.24 5 5h2c0-3.87-3.13-7-7-7zm0-4v2c4.97 0 9 4.03 9 9h2c0-6.08-4.93-11-11-11zm20-7H3c-1.1 0-2 .9-2 2v3h2V5h18v14h-7v2h7c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z" />
-                        </svg>
+                        <CastDeviceIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
                       ) : (
-                        <svg
-                          className="h-6 w-6 text-gray-600 dark:text-gray-300"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
-                        </svg>
+                        <CheckCircleIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
                       )}
                     </div>
                     <div className="flex-1">
@@ -334,36 +275,12 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                     </div>
                     {isConnecting === device.id && (
                       <div className="shrink-0">
-                        <svg
-                          className="h-4 w-4 animate-spin text-primary dark:text-primary-light"
-                          fill="none"
-                          viewBox="0 0 24 24"
-                        >
-                          <circle
-                            className="opacity-25"
-                            cx="12"
-                            cy="12"
-                            r="10"
-                            stroke="currentColor"
-                            strokeWidth="4"
-                          ></circle>
-                          <path
-                            className="opacity-75"
-                            fill="currentColor"
-                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                          ></path>
-                        </svg>
+                        <SpinnerIcon className="h-4 w-4 animate-spin text-primary dark:text-primary-light" />
                       </div>
                     )}
                     {isConnected && currentSession?.deviceId === device.id && (
                       <div className="shrink-0">
-                        <svg
-                          className="h-4 w-4 text-primary dark:text-primary-light"
-                          fill="currentColor"
-                          viewBox="0 0 24 24"
-                        >
-                          <path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z" />
-                        </svg>
+                        <CheckIcon className="h-4 w-4 text-primary dark:text-primary-light" />
                       </div>
                     )}
                   </div>

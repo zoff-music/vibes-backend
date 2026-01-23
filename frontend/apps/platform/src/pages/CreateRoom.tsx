@@ -1,6 +1,9 @@
 import { api } from '@vibez/api';
+import { AlertCircleIcon } from '@vibez/ui';
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
+import { ArrowLeftIcon } from '../components/icons/ArrowLeftIcon';
+import { ArrowRightIcon } from '../components/icons/ArrowRightIcon';
 
 const DEFAULT_SETTINGS = {
   skipAllowed: true,
@@ -11,7 +14,9 @@ const DEFAULT_SETTINGS = {
 };
 
 interface CreateRoomProps {
-  initialData?: any;
+  initialData?: {
+    createRoomName?: string;
+  };
 }
 
 const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
@@ -123,281 +128,262 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
   };
 
   return (
-    <div className="min-h-screen overflow-y-auto bg-theme px-4 pt-8 pb-12">
-      <div className="mx-auto max-w-xl animate-fade-in">
-        {/* Header */}
-        <div className="mb-8">
+    <div className="relative min-h-screen overflow-hidden bg-theme text-theme">
+      <div className="synth-sky pointer-events-none fixed inset-0" />
+      <div className="synth-haze pointer-events-none fixed inset-0" />
+      <div className="vhs-scanlines pointer-events-none fixed inset-0" />
+      <div className="sun-hero sunset-orb pointer-events-none fixed" />
+      <div className="retro-grid pointer-events-none fixed bottom-0 left-1/2 z-10 h-[45vh] w-[140%]" />
+
+      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-6 py-10">
+        <div className="mb-8 flex items-center justify-between">
           <Link
             to="/"
-            className="group mb-6 inline-flex cursor-pointer items-center gap-2 text-theme-muted transition-colors hover:text-theme"
+            className="group inline-flex cursor-pointer items-center gap-2 text-theme-muted transition-colors hover:text-theme"
           >
-            <svg
-              className="h-5 w-5 transition-transform group-hover:-translate-x-1"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M15 19l-7-7 7-7"
-              />
-            </svg>
-            <span className="font-bold text-sm tracking-wide">Back</span>
+            <ArrowLeftIcon className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
+            <span className="font-display text-xs tracking-[0.3em]">Back</span>
           </Link>
-          <h1
-            className="mb-2 font-black text-4xl text-theme"
-            style={{ fontFamily: 'Poppins' }}
-          >
-            Create Session
-          </h1>
-          <p className="mt-2 font-medium text-theme-muted">
-            Set up your shared music room
-          </p>
-          <p className="jp-art mt-1 text-sm text-theme-subtle">
-            セッションを作成
-          </p>
+          <div className="text-right text-theme-muted text-xs tracking-[0.3em]">
+            CREATE A SESSION
+          </div>
         </div>
 
-        {/* Form */}
-        <div className="space-y-5">
-          {/* Room name */}
-          <div className="glass rounded-2xl border-2 border-theme p-6">
-            <label className="mb-3 block font-bold text-sm text-theme-muted tracking-wide">
-              Session Name
-            </label>
-            <input
-              type="text"
-              placeholder="Friday Night Vibes"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
-              className="w-full rounded-xl border-2 border-theme bg-theme-surface px-4 py-4 text-base text-theme transition-all placeholder:text-theme-subtle focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] focus:outline-hidden"
-              autoFocus
-            />
-          </div>
-
-          {/* Room Mode */}
-          <div className="glass rounded-2xl border-2 border-theme p-6">
-            <label className="mb-3 block font-bold text-sm text-theme-muted tracking-wide">
-              Room Mode
-            </label>
-            <div className="grid grid-cols-2 gap-4">
-              <button
-                type="button"
-                onClick={() => setMode('server')}
-                className={`cursor-pointer rounded-xl border-2 p-4 text-left transition-all ${
-                  mode === 'server'
-                    ? 'border-primary bg-primary/10 text-theme'
-                    : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                }`}
-              >
-                <div className="mb-1 font-bold">Server Mode</div>
-                <div className="text-xs opacity-70">
-                  Auto-play music 24/7. Perfect for radio stations.
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('host')}
-                className={`cursor-pointer rounded-xl border-2 p-4 text-left transition-all ${
-                  mode === 'host'
-                    ? 'border-secondary bg-secondary/10 text-theme'
-                    : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                }`}
-              >
-                <div className="mb-1 font-bold">Host Mode</div>
-                <div className="text-xs opacity-70">
-                  Host controls playback. Great for parties.
-                </div>
-              </button>
-            </div>
-          </div>
-
-          {/* Optional password */}
-          <div className="glass rounded-2xl border-2 border-theme p-6">
-            <label className="mb-3 block font-bold text-sm text-theme-muted tracking-wide">
-              Admin Password{' '}
-              <span className="font-normal text-theme-subtle">(optional)</span>
-            </label>
-            <input
-              type="password"
-              placeholder="For room control"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-xl border-2 border-theme bg-theme-surface px-4 py-4 text-base text-theme transition-all placeholder:text-theme-subtle focus:border-secondary focus:shadow-[0_0_0_3px_rgba(0,217,255,0.1)] focus:outline-hidden"
-            />
-            <p className="mt-3 font-medium text-theme-subtle text-xs">
-              Leave empty to allow anyone to control playback
+        <div className="crt-frame rounded-[36px] p-6 sm:p-10">
+          <div className="mb-10 text-center">
+            <h1 className="font-display text-4xl text-theme sm:text-5xl">
+              CREATE A SESSION
+            </h1>
+            <p className="mt-3 text-sm text-theme-muted">
+              Build a neon listening room in seconds.
+            </p>
+            <p className="jp-art mt-2 text-theme-subtle text-xs">
+              セッションを作成
             </p>
           </div>
 
-          {/* Settings */}
-          <div className="mt-8 space-y-3">
-            <h2 className="mb-4 font-bold text-sm text-theme-muted uppercase tracking-widest">
-              Playback Settings
-            </h2>
+          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="space-y-6">
+              <div className="panel-surface rounded-[24px] p-6">
+                <label className="mb-3 block font-display text-[10px] text-theme-muted tracking-[0.3em]">
+                  SESSION NAME
+                </label>
+                <input
+                  type="text"
+                  placeholder="Friday Night Vibes"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleCreate()}
+                  className="w-full rounded-2xl border border-theme bg-theme-surface px-4 py-4 text-base text-theme placeholder:text-theme-subtle focus:border-secondary focus:outline-hidden focus:ring-2 focus:ring-secondary/30"
+                  autoFocus
+                />
+              </div>
 
-            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-theme p-5 transition-all hover:shadow-retro">
-              <div className="mr-4 flex-1">
-                <div className="font-bold text-base text-theme">Allow Skip</div>
-                <div className="mt-0.5 font-medium text-sm text-theme-muted">
-                  Anyone can skip songs
+              <div className="panel-surface rounded-[24px] p-6">
+                <label className="mb-4 block font-display text-[10px] text-theme-muted tracking-[0.3em]">
+                  ROOM MODE
+                </label>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <button
+                    type="button"
+                    onClick={() => setMode('server')}
+                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${
+                      mode === 'server'
+                        ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_18px_rgba(0,217,255,0.35)]'
+                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                    }`}
+                  >
+                    <div className="mb-2 font-display text-xs tracking-[0.2em]">
+                      SERVER MODE
+                    </div>
+                    <div className="text-theme-muted text-xs">
+                      Auto-play music 24/7 for radio rooms.
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMode('host')}
+                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${
+                      mode === 'host'
+                        ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_18px_rgba(255,46,151,0.35)]'
+                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                    }`}
+                  >
+                    <div className="mb-2 font-display text-xs tracking-[0.2em]">
+                      HOST MODE
+                    </div>
+                    <div className="text-theme-muted text-xs">
+                      Host controls playback for parties.
+                    </div>
+                  </button>
                 </div>
               </div>
-              <label className="relative inline-flex cursor-pointer items-center">
+
+              <div className="panel-surface rounded-[24px] p-6">
+                <label className="mb-3 block font-display text-[10px] text-theme-muted tracking-[0.3em]">
+                  ADMIN PASSWORD
+                  <span className="ml-2 text-theme-subtle">(optional)</span>
+                </label>
                 <input
-                  type="checkbox"
-                  checked={settings.skipAllowed}
-                  onChange={(e) =>
-                    updateSetting('skipAllowed', e.target.checked)
-                  }
-                  className="peer sr-only"
+                  type="password"
+                  placeholder="For room control"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="w-full rounded-2xl border border-theme bg-theme-surface px-4 py-4 text-base text-theme placeholder:text-theme-subtle focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/30"
                 />
-                <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-muted after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
-              </label>
+                <p className="mt-3 text-theme-subtle text-xs">
+                  Leave empty to allow anyone to control playback.
+                </p>
+              </div>
             </div>
 
-            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-theme p-5 transition-all hover:shadow-retro">
-              <div className="mr-4 flex-1">
-                <div className="font-bold text-base text-theme">
-                  Democratic Skip
+            <div className="panel-surface rounded-[24px] p-6">
+              <h2 className="mb-6 font-display text-[11px] text-theme-muted tracking-[0.4em]">
+                PLAYBACK SETTINGS
+              </h2>
+              <div className="space-y-4">
+                <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
+                  <div className="mr-4 flex-1">
+                    <div className="font-display text-theme text-xs tracking-[0.2em]">
+                      ALLOW SKIP
+                    </div>
+                    <div className="mt-1 text-theme-muted text-xs">
+                      Anyone can skip songs
+                    </div>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={settings.skipAllowed}
+                      onChange={(e) =>
+                        updateSetting('skipAllowed', e.target.checked)
+                      }
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-[0_0_10px_rgba(0,0,0,0.1)] after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-subtle after:transition-all after:content-[''] peer-checked:bg-secondary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-secondary/30"></div>
+                  </label>
                 </div>
-                <div className="mt-0.5 font-medium text-sm text-theme-muted">
-                  Require votes to skip
-                </div>
-              </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={settings.democraticSkip}
-                  onChange={(e) =>
-                    updateSetting('democraticSkip', e.target.checked)
-                  }
-                  className="peer sr-only"
-                />
-                <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-muted after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
-              </label>
-            </div>
 
-            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-theme p-5 transition-all hover:shadow-retro">
-              <div className="mr-4 flex-1">
-                <div className="font-bold text-base text-theme">Loop Queue</div>
-                <div className="mt-0.5 font-medium text-sm text-theme-muted">
-                  Restart when queue ends
+                <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
+                  <div className="mr-4 flex-1">
+                    <div className="font-display text-theme text-xs tracking-[0.2em]">
+                      DEMOCRATIC SKIP
+                    </div>
+                    <div className="mt-1 text-theme-muted text-xs">
+                      Require votes to skip
+                    </div>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={settings.democraticSkip}
+                      onChange={(e) =>
+                        updateSetting('democraticSkip', e.target.checked)
+                      }
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-[0_0_10px_rgba(0,0,0,0.1)] after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-subtle after:transition-all after:content-[''] peer-checked:bg-secondary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-secondary/30"></div>
+                  </label>
                 </div>
-              </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={settings.loopQueue}
-                  onChange={(e) => updateSetting('loopQueue', e.target.checked)}
-                  className="peer sr-only"
-                />
-                <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-muted after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
-              </label>
-            </div>
 
-            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-theme p-5 transition-all hover:shadow-retro">
-              <div className="mr-4 flex-1">
-                <div className="font-bold text-base text-theme">
-                  Remove Played
+                <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
+                  <div className="mr-4 flex-1">
+                    <div className="font-display text-theme text-xs tracking-[0.2em]">
+                      LOOP QUEUE
+                    </div>
+                    <div className="mt-1 text-theme-muted text-xs">
+                      Restart when queue ends
+                    </div>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={settings.loopQueue}
+                      onChange={(e) =>
+                        updateSetting('loopQueue', e.target.checked)
+                      }
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-[0_0_10px_rgba(0,0,0,0.1)] after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-subtle after:transition-all after:content-[''] peer-checked:bg-secondary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-secondary/30"></div>
+                  </label>
                 </div>
-                <div className="mt-0.5 font-medium text-sm text-theme-muted">
-                  Removed after play
-                </div>
-              </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={settings.removeOnPlay}
-                  onChange={(e) =>
-                    updateSetting('removeOnPlay', e.target.checked)
-                  }
-                  className="peer sr-only"
-                />
-                <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-muted after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
-              </label>
-            </div>
 
-            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-theme p-5 transition-all hover:shadow-retro">
-              <div className="mr-4 flex-1">
-                <div className="font-bold text-base text-theme">
-                  Allow Duplicates
+                <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
+                  <div className="mr-4 flex-1">
+                    <div className="font-display text-theme text-xs tracking-[0.2em]">
+                      REMOVE PLAYED
+                    </div>
+                    <div className="mt-1 text-theme-muted text-xs">
+                      Removed after play
+                    </div>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={settings.removeOnPlay}
+                      onChange={(e) =>
+                        updateSetting('removeOnPlay', e.target.checked)
+                      }
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-[0_0_10px_rgba(0,0,0,0.1)] after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-subtle after:transition-all after:content-[''] peer-checked:bg-secondary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-secondary/30"></div>
+                  </label>
                 </div>
-                <div className="mt-0.5 font-medium text-sm text-theme-muted">
-                  Same song multiple times
+
+                <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
+                  <div className="mr-4 flex-1">
+                    <div className="font-display text-theme text-xs tracking-[0.2em]">
+                      ALLOW DUPLICATES
+                    </div>
+                    <div className="mt-1 text-theme-muted text-xs">
+                      Same song multiple times
+                    </div>
+                  </div>
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={settings.allowDuplicates}
+                      onChange={(e) =>
+                        updateSetting('allowDuplicates', e.target.checked)
+                      }
+                      className="peer sr-only"
+                    />
+                    <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-[0_0_10px_rgba(0,0,0,0.1)] after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-subtle after:transition-all after:content-[''] peer-checked:bg-secondary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-secondary/30"></div>
+                  </label>
                 </div>
               </div>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  checked={settings.allowDuplicates}
-                  onChange={(e) =>
-                    updateSetting('allowDuplicates', e.target.checked)
-                  }
-                  className="peer sr-only"
-                />
-                <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-muted after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
-              </label>
             </div>
           </div>
-        </div>
 
-        {/* Error */}
-        {error && (
-          <div className="glass-elevated mt-6 animate-scale-in rounded-2xl border-2 border-error/30 p-5">
-            <div className="flex items-start gap-3">
-              <svg
-                className="mt-0.5 h-5 w-5 shrink-0 text-error"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
-              <p className="flex-1 font-medium text-error text-sm">{error}</p>
+          {/* Error */}
+          {error && (
+            <div className="mt-6 rounded-2xl border border-error/40 bg-error/10 p-5 text-error text-sm">
+              <div className="flex items-start gap-3">
+                <AlertCircleIcon className="mt-0.5 h-5 w-5 shrink-0 text-error" />
+                <p className="flex-1">{error}</p>
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Create button */}
-        <button
-          onClick={handleCreate}
-          disabled={!name.trim() || isLoading}
-          className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2 rounded-2xl bg-primary py-4 font-black text-base text-white tracking-wide transition-all hover:bg-primary-muted hover:shadow-retro-pink active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-theme-surface disabled:text-theme-subtle"
-          style={{ fontFamily: 'Poppins' }}
-        >
-          {isLoading ? (
-            <>
-              <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              <span>Creating...</span>
-            </>
-          ) : (
-            <>
-              <span>Create Session</span>
-              <svg
-                className="h-5 w-5"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-                strokeWidth={2.5}
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M13 7l5 5m0 0l-5 5m5-5H6"
-                />
-              </svg>
-            </>
           )}
-        </button>
+
+          {/* Create button */}
+          <button
+            onClick={handleCreate}
+            disabled={!name.trim() || isLoading}
+            className="mt-8 flex w-full cursor-pointer items-center justify-center gap-3 rounded-2xl bg-primary px-6 py-4 font-display text-sm text-white shadow-[0_0_24px_rgba(255,46,151,0.45)] transition-all hover:-translate-y-0.5 hover:bg-primary-muted disabled:cursor-not-allowed disabled:bg-theme-surface disabled:text-theme-subtle"
+          >
+            {isLoading ? (
+              <>
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                <span>Creating...</span>
+              </>
+            ) : (
+              <>
+                <span>Start Session</span>
+                <ArrowRightIcon className="h-5 w-5" />
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
