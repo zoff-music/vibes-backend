@@ -7,7 +7,7 @@ Complete API specification for frontend-backend communication.
 ## Base URL
 
 ```
-Development: https://127.0.0.1/api/v1 (via make local-dev)
+Development: https://localhost/api/v1 (via make local-dev)
 Production: https://api.vibez.app/api/v1
 ```
 
@@ -15,14 +15,34 @@ Production: https://api.vibez.app/api/v1
 
 ## Authentication
 
-- **Room Admin**: Password-based, returns session token in cookie
-- **Regular User**: Anonymous session, auto-created on room join
+- **Room Admin**: Password-based authentication via `POST /rooms/{id}/sessions`
+- **Regular User**: Anonymous session auto-created via middleware on first request
+- **Session Storage**: HTTP-only cookie with UUID-based user ID
+- **OAuth**: Spotify, YouTube, SoundCloud via OAuth 2.0 flow
+
+---
+
+## Room Modes
+
+### Server Mode (`"server"`)
+- Server controls playback automatically
+- Auto-plays first song when added to empty queue
+- Continues to next song when current ends
+- Perfect for 24/7 radio stations
+- Skip settings apply to all users
+
+### Host Mode (`"host"`)
+- Only the host can control playback (play/pause/seek/skip)
+- Other users can only add songs and vote
+- Host is the room creator or assigned user
+- Great for parties with a DJ
+- Democratic skip voting disabled (host decides)
 
 ---
 
 ## Endpoints
 
-### Rooms
+### Room Management
 
 #### Create Room
 ```
@@ -33,10 +53,11 @@ POST /rooms
 ```json
 {
   "name": "Friday Night Vibes",
-  "adminPassword": "optional-password",
+  "mode": "server",
+  "password": "optional-admin-password",
   "settings": {
     "skipAllowed": true,
-    "democraticSkip": false,
+    "democraticSkip": true,
     "skipVoteThreshold": 0.5,
     "maxContinuousAdds": 3,
     "removeOnPlay": true,
@@ -51,9 +72,20 @@ POST /rooms
 {
   "id": "friday-night-vibes-a1b2",
   "name": "Friday Night Vibes",
+  "mode": "server",
   "createdAt": "2024-01-15T20:00:00Z",
   "hasPassword": true,
-  "settings": { ... }
+  "hostId": "user-uuid-if-host-mode",
+  "activeSources": ["youtube", "spotify"],
+  "settings": {
+    "skipAllowed": true,
+    "democraticSkip": true,
+    "skipVoteThreshold": 0.5,
+    "maxContinuousAdds": 3,
+    "removeOnPlay": true,
+    "loopQueue": false,
+    "allowDuplicates": false
+  }
 }
 ```
 
@@ -61,7 +93,7 @@ POST /rooms
 
 #### Get Room
 ```
-GET /rooms/:id
+GET /rooms/{id}
 ```
 
 **Response:** `200 OK`
@@ -69,35 +101,460 @@ GET /rooms/:id
 {
   "id": "friday-night-vibes-a1b2",
   "name": "Friday Night Vibes",
+  "mode": "server",
   "createdAt": "2024-01-15T20:00:00Z",
   "hasPassword": true,
+  "hostId": "user-uuid-if-host-mode",
+  "activeSources": ["youtube", "spotify", "soundcloud"],
+  "userCount": 5,
+  "isAdmin": false,
+  "userId": "current-user-uuid",
   "settings": {
     "skipAllowed": true,
-    "democraticSkip": false,
+    "democraticSkip": true,
     "skipVoteThreshold": 0.5,
     "maxContinuousAdds": 3,
     "removeOnPlay": true,
     "loopQueue": false,
     "allowDuplicates": false
-  },
-  "userCount": 5
+  }
 }
 ```
 
 ---
 
-#### Update Room (Admin)
+#### Authenticate as Admin
 ```
-PATCH /rooms/:id
+POST /rooms/{id}/sessions
 ```
 
-**Headers:** `X-Admin-Token: <token>`
+**Purpose:** Authenticate as room admin using the admin password. Regular users join rooms automatically via session middleware - no explicit join endpoint needed.
 
 **Request:**
 ```json
 {
-  "name": "Updated Name",
+  "password": "admin-password",
+  "nickname": "DJ Mike"
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "userId": "user-uuid",
+  "isAdmin": true,
+  "nickname": "DJ Mike"
+}
+```
+
+**Note:** Regular room participation happens automatically when accessing any room endpoint. This endpoint is only used when a user wants to authenticate as the room admin.
+
+---
+
+#### Update Room Settings (Admin Only)
+```
+PATCH /rooms/{id}/settings
+```
+
+**Request:**
+```json
+{
+  "mode": "host",
   "settings": {
+    "skipAllowed": false,
+    "democraticSkip": false,
+    "skipVoteThreshold": 0.6,
+    "maxContinuousAdds": 5,
+    "removeOnPlay": false,
+    "loopQueue": true,
+    "allowDuplicates": true
+  }
+}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "settings": { /* updated settings */ }
+}
+```
+
+---
+
+### Queue Management
+
+#### Get Queue
+```
+GET /rooms/{id}/songs
+```
+
+**Response:** `200 OK`
+```json
+[
+  {
+    "id": "song-uuid",
+    "sourceType": "youtube",
+    "sourceId": "dQw4w9WgXcQ",
+    "title": "Never Gonna Give You Up",
+    "artist": "Rick Astley",
+    "thumbnailUrl": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+    "duration": 213,
+    "addedBy": "user-uuid",
+    "addedByNickname": "DJ Mike",
+    "addedAt": "2024-01-15T20:30:00Z",
+    "position": 1,
+    "voteCount": 3
+  }
+]
+```
+
+---
+
+#### Add Song to Queue
+```
+POST /rooms/{id}/songs
+```
+
+**Request:**
+```json
+{
+  "sourceType": "youtube",
+  "sourceId": "dQw4w9WgXcQ",
+  "title": "Never Gonna Give You Up",
+  "artist": "Rick Astley",
+  "thumbnailUrl": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+  "duration": 213
+}
+```
+
+**Response:** `201 Created`
+```json
+{
+  "id": "song-uuid",
+  "position": 5
+}
+```
+
+---
+
+#### Remove Song from Queue
+```
+DELETE /rooms/{id}/songs/{songId}
+```
+
+**Response:** `204 No Content`
+
+---
+
+#### Vote for Song
+```
+POST /rooms/{id}/songs/{songId}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "voteCount": 4
+}
+```
+
+---
+
+#### Reorder Song in Queue
+```
+PATCH /rooms/{id}/songs/{songId}
+```
+
+**Request:**
+```json
+{
+  "newPosition": 2
+}
+```
+
+**Response:** `200 OK`
+
+---
+
+### Playback Control
+
+#### Get Playback State
+```
+GET /rooms/{id}/states
+```
+
+**Response:** `200 OK`
+```json
+{
+  "currentSong": {
+    "id": "song-uuid",
+    "sourceType": "youtube",
+    "sourceId": "dQw4w9WgXcQ",
+    "title": "Never Gonna Give You Up",
+    "artist": "Rick Astley",
+    "thumbnailUrl": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+    "duration": 213,
+    "addedBy": "user-uuid",
+    "addedByNickname": "DJ Mike",
+    "addedAt": "2024-01-15T20:30:00Z",
+    "position": 0,
+    "voteCount": 0
+  },
+  "isPlaying": true,
+  "positionMs": 45000,
+  "updatedAt": "2024-01-15T20:30:45Z",
+  "serverTimeMs": 1705349445000
+}
+```
+
+---
+
+#### Update Playback State
+```
+PUT /rooms/{id}/states
+```
+
+**Request:**
+```json
+{
+  "action": "play",
+  "positionMs": 45000
+}
+```
+
+**Actions:**
+- `"play"` - Start playback
+- `"pause"` - Pause playback  
+- `"seek"` - Seek to position (requires `positionMs`)
+
+**Response:** `200 OK` (same as Get Playback State)
+
+---
+
+#### Skip Song
+```
+POST /rooms/{id}/skips
+```
+
+**Response:** `200 OK` (returns updated playback state)
+
+**Skip Logic:**
+- **Force Skip**: Admin or host can skip immediately
+- **Vote Skip**: Regular users vote; requires threshold of active participants
+- **Minimum 2 votes**: Enforced to prevent single-user skips in groups
+- **Single participant**: Can skip alone
+- **Vote clearing**: Votes cleared when song skips or is removed
+
+---
+
+### Real-time Events (SSE)
+
+#### Subscribe to Room Events
+```
+GET /rooms/{id}/events
+```
+
+**Response:** Server-Sent Events stream
+
+**Event Types:**
+- `playback_update` - Playback state changed
+- `song_added` - Song added to queue
+- `song_removed` - Song removed from queue
+- `songs_update` - Queue reordered
+- `new_host` - Host changed (host mode)
+- `user_joined` - User joined room
+- `user_left` - User left room
+- `users_update` - User count updated
+- `settings_update` - Room settings changed
+
+**Event Format:**
+```
+event: playback_update
+data: {"type":"playback_update","payload":{"currentSong":{...},"isPlaying":true,"positionMs":45000},"userId":"triggering-user-id"}
+
+event: users_update
+data: {"type":"users_update","payload":5}
+```
+
+---
+
+### Music Search & Track Details
+
+#### Search YouTube
+```
+GET /youtube/search?q=never+gonna+give+you+up
+```
+
+**Response:** `200 OK`
+```json
+{
+  "results": [
+    {
+      "id": "dQw4w9WgXcQ",
+      "title": "Rick Astley - Never Gonna Give You Up (Official Video)",
+      "artist": "Rick Astley",
+      "thumbnailUrl": "https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg",
+      "duration": 213,
+      "sourceType": "youtube"
+    }
+  ]
+}
+```
+
+---
+
+#### Get YouTube Track Details
+```
+GET /youtube/videos/{id}
+```
+
+**Response:** `200 OK` (same format as search result)
+
+---
+
+#### Search Spotify
+```
+GET /spotify/search?q=never+gonna+give+you+up
+```
+
+**Response:** `200 OK` (same format as YouTube search)
+
+---
+
+#### Get Spotify Track Details
+```
+GET /spotify/tracks/{id}
+```
+
+**Response:** `200 OK` (same format as search result)
+
+---
+
+#### Search SoundCloud
+```
+GET /soundcloud/search?q=never+gonna+give+you+up
+```
+
+**Response:** `200 OK` (same format as YouTube search)
+
+---
+
+#### Get SoundCloud Track Details
+```
+GET /soundcloud/tracks/{id}
+```
+
+**Response:** `200 OK` (same format as search result)
+
+---
+
+### OAuth & Authorization
+
+#### Start OAuth Flow
+```
+GET /authorizations/{provider}
+```
+
+**Providers:** `spotify`, `youtube`, `soundcloud`
+
+**Response:** `302 Redirect` to provider's OAuth URL
+
+---
+
+#### OAuth Callback
+```
+GET /callbacks/{provider}?code=auth_code&state=csrf_token
+```
+
+**Response:** `200 OK` with postMessage to parent window
+
+---
+
+#### Get/Refresh Access Token
+```
+GET /tokens/{provider}
+```
+
+**Response:** `200 OK`
+```json
+{
+  "accessToken": "provider-access-token",
+  "expiresAt": "2024-01-15T21:00:00Z"
+}
+```
+
+---
+
+#### Get Enabled Providers
+```
+GET /providers
+```
+
+**Response:** `200 OK`
+```json
+{
+  "youtube": {
+    "enabled": true,
+    "requiresAuth": false
+  },
+  "spotify": {
+    "enabled": true,
+    "requiresAuth": true
+  },
+  "soundcloud": {
+    "enabled": true,
+    "requiresAuth": true
+  }
+}
+```
+
+---
+
+## Error Responses
+
+All endpoints return consistent error format:
+
+```json
+{
+  "error": "Error message",
+  "code": "ERROR_CODE"
+}
+```
+
+**Common Status Codes:**
+- `400` - Bad Request (validation errors)
+- `401` - Unauthorized (missing/invalid session)
+- `403` - Forbidden (insufficient permissions)
+- `404` - Not Found (room/song not found)
+- `409` - Conflict (duplicate song, rate limiting)
+- `500` - Internal Server Error
+
+---
+
+## Rate Limiting
+
+- **Add Song**: Max 3 continuous adds per user (configurable via `maxContinuousAdds`)
+- **Skip Votes**: One vote per user per song
+- **Search**: No explicit limits (relies on provider limits)
+
+---
+
+## Data Types
+
+### SourceType
+```
+"youtube" | "spotify" | "soundcloud"
+```
+
+### RoomMode
+```
+"server" | "host"
+```
+
+### RoomAction
+```
+"play" | "pause" | "seek" | "skip" | "vote"
+```
     "skipAllowed": false
   }
 }
