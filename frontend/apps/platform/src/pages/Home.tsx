@@ -1,13 +1,28 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { api } from '@vibez/api';
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState('');
+  const [isValidating, setIsValidating] = useState(false);
   const navigate = useNavigate();
 
-  const handleJoinRoom = () => {
-    if (roomCode.trim()) {
-      const slug = roomCode.trim().toLowerCase().replace(/\s+/g, '-');
+  const handleJoinRoom = async () => {
+    if (!roomCode.trim() || isValidating) return;
+
+    const slug = roomCode.trim().toLowerCase().replace(/\s+/g, '-');
+    setIsValidating(true);
+
+    // Check if room exists before navigating
+    const [err, room] = await api.get('/rooms/{id}', { id: slug });
+    
+    setIsValidating(false);
+
+    if (err) {
+      // Room doesn't exist, redirect to create room page with the name pre-filled
+      navigate(`/rooms/create?name=${encodeURIComponent(roomCode.trim())}`);
+    } else {
+      // Room exists, navigate to it
       navigate(`/rooms/${slug}`);
     }
   };
@@ -121,10 +136,11 @@ export default function Home() {
                   value={roomCode}
                   onChange={(e) => setRoomCode(e.target.value.toLowerCase())}
                   onKeyDown={(e) => e.key === 'Enter' && handleJoinRoom()}
-                  className="w-full rounded-xl border-2 border-ink/20 bg-surface px-4 py-4 font-mono text-base text-ink tracking-wider transition-all placeholder:text-ink/40 focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] focus:outline-hidden dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-500"
+                  disabled={isValidating}
+                  className="w-full rounded-xl border-2 border-ink/20 bg-surface px-4 py-4 font-mono text-base text-ink tracking-wider transition-all placeholder:text-ink/40 focus:border-primary focus:shadow-[0_0_0_3px_rgba(255,46,151,0.1)] focus:outline-hidden disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder:text-gray-500"
                   maxLength={20}
                 />
-                {roomCode && (
+                {roomCode && !isValidating && (
                   <button
                     onClick={() => setRoomCode('')}
                     className="absolute top-1/2 right-3 -translate-y-1/2 cursor-pointer rounded-lg p-1 text-ink/40 transition-colors hover:bg-ink/5 hover:text-ink dark:text-gray-500 dark:hover:bg-gray-600 dark:hover:text-gray-300"
@@ -148,11 +164,18 @@ export default function Home() {
             </div>
             <button
               onClick={handleJoinRoom}
-              disabled={!roomCode.trim()}
+              disabled={!roomCode.trim() || isValidating}
               className="w-full cursor-pointer rounded-xl bg-secondary py-4 font-bold text-white tracking-wide transition-all hover:bg-secondary/90 hover:shadow-retro-cyan active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30 dark:bg-primary dark:text-white dark:disabled:bg-gray-700 dark:disabled:text-gray-500 dark:hover:bg-primary/90"
               style={{ fontFamily: 'Poppins' }}
             >
-              Join Session
+              {isValidating ? (
+                <div className="flex items-center justify-center gap-2">
+                  <div className="h-5 w-5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  <span>Checking...</span>
+                </div>
+              ) : (
+                'Join Session'
+              )}
             </button>
           </div>
         </div>

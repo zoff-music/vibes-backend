@@ -691,6 +691,34 @@ export default function RoomView({ initialData }: RoomViewProps) {
                           <span
                             className={`font-bold text-sm ${room?.hasPassword && !isAdmin ? 'text-ink/30 dark:text-dark-text-subtle' : 'text-ink dark:text-dark-text'}`}
                           >
+                            Allow Duplicates
+                          </span>
+                          <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">
+                            Same song multiple times
+                          </span>
+                        </div>
+                        <button
+                          disabled={room?.hasPassword && !isAdmin}
+                          onClick={() =>
+                            room &&
+                            updateRoomSettings({
+                              ...room.settings,
+                              allowDuplicates: !room.settings.allowDuplicates,
+                            })
+                          }
+                          className={`relative h-6 w-12 cursor-pointer rounded-full border-2 border-ink transition-colors dark:border-primary ${room?.settings.allowDuplicates ? 'bg-primary' : 'bg-ink/5 opacity-50 dark:bg-dark-surfaceElevated'} ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                        >
+                          <div
+                            className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.allowDuplicates ? 'right-1.5' : 'left-1.5'}`}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="group flex items-center justify-between">
+                        <div className="flex flex-col">
+                          <span
+                            className={`font-bold text-sm ${room?.hasPassword && !isAdmin ? 'text-ink/30 dark:text-dark-text-subtle' : 'text-ink dark:text-dark-text'}`}
+                          >
                             Remove Played
                           </span>
                           <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">
@@ -846,7 +874,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
               {users && users.length > 0 && (
                 <div>
                   <p className="mb-2 font-bold text-ink/60 text-xs uppercase tracking-widest">
-                    Listeners ({users.length})
+                    <span className="hidden sm:inline">Listeners </span>({users.length})
                   </p>
                   <div className="flex flex-wrap gap-2">
                     {users.slice(0, 8).map((user: any) => (
@@ -983,74 +1011,113 @@ export default function RoomView({ initialData }: RoomViewProps) {
                   </div>
                 ) : (
                   // State 1: No queue - show dancing 8-bit guy
-                  <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
                     <div className="text-center">
                       {/* Dancing 8-bit character */}
                       <div className="mb-6">
                         <svg
-                          width="120"
-                          height="120"
-                          viewBox="0 0 120 120"
+                          width="160"
+                          height="140"
+                          viewBox="0 0 160 140"
                           className="mx-auto"
                         >
-                          {/* 8-bit dancing character with CSS animation */}
-                          <g className="animate-bounce">
+                          <style>
+                            {`
+                              @keyframes dance-left-leg {
+                                0%, 24% { transform: translateX(0px); }
+                                25%, 49% { transform: translateX(-3px); }
+                                50%, 74% { transform: translateX(0px); }
+                                75%, 100% { transform: translateX(0px); }
+                              }
+                              @keyframes dance-right-leg {
+                                0%, 24% { transform: translateX(0px); }
+                                25%, 49% { transform: translateX(0px); }
+                                50%, 74% { transform: translateX(0px); }
+                                75%, 100% { transform: translateX(3px); }
+                              }
+                              @keyframes dance-arms {
+                                0%, 49% { transform: rotate(0deg); }
+                                50%, 99% { transform: rotate(8deg); }
+                                100% { transform: rotate(0deg); }
+                              }
+                              @keyframes dance-body {
+                                0%, 49% { transform: translateY(0px); }
+                                50%, 99% { transform: translateY(-2px); }
+                                100% { transform: translateY(0px); }
+                              }
+                              @keyframes blink {
+                                0%, 90% { height: 8px; }
+                                95%, 100% { height: 2px; }
+                              }
+                              .dance-left-leg { animation: dance-left-leg 1.2s steps(4, end) infinite; }
+                              .dance-right-leg { animation: dance-right-leg 1.2s steps(4, end) infinite; }
+                              .dance-arms { animation: dance-arms 1s steps(2, end) infinite; }
+                              .dance-body { animation: dance-body 1.4s steps(2, end) infinite; }
+                              .blink { animation: blink 3s steps(2, end) infinite; }
+                            `}
+                          </style>
+                          
+                          {/* 8-bit dancing character with leg movement animation */}
+                          <g className="dance-body">
                             {/* Head */}
                             <rect
-                              x="40"
+                              x="60"
                               y="20"
                               width="40"
                               height="40"
                               fill="#FFB366"
                             />
                             <rect
-                              x="35"
+                              x="55"
                               y="25"
                               width="10"
                               height="10"
                               fill="#FFB366"
                             />
                             <rect
-                              x="75"
+                              x="95"
                               y="25"
                               width="10"
                               height="10"
                               fill="#FFB366"
                             />
 
-                            {/* Eyes */}
+                            {/* Eyes - with blinking animation */}
                             <rect
-                              x="45"
+                              x="65"
                               y="30"
                               width="8"
                               height="8"
                               fill="#000"
+                              className="blink"
                             />
                             <rect
-                              x="67"
+                              x="87"
                               y="30"
                               width="8"
                               height="8"
                               fill="#000"
+                              className="blink"
+                              style={{ animationDelay: '0.1s' }}
                             />
 
                             {/* Smile */}
                             <rect
-                              x="50"
+                              x="70"
                               y="45"
                               width="8"
                               height="4"
                               fill="#000"
                             />
                             <rect
-                              x="58"
+                              x="78"
                               y="45"
                               width="4"
                               height="4"
                               fill="#000"
                             />
                             <rect
-                              x="62"
+                              x="82"
                               y="45"
                               width="8"
                               height="4"
@@ -1059,7 +1126,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
                             {/* Body */}
                             <rect
-                              x="35"
+                              x="55"
                               y="60"
                               width="50"
                               height="35"
@@ -1067,67 +1134,75 @@ export default function RoomView({ initialData }: RoomViewProps) {
                             />
 
                             {/* Arms - animated */}
-                            <g className="animate-pulse">
+                            <g className="dance-arms" style={{ transformOrigin: '45px 69px' }}>
                               <rect
-                                x="20"
+                                x="35"
                                 y="65"
-                                width="15"
+                                width="20"
                                 height="8"
                                 fill="#FFB366"
                               />
+                            </g>
+                            <g className="dance-arms" style={{ transformOrigin: '115px 69px', animationDelay: '0.4s' }}>
                               <rect
-                                x="85"
+                                x="105"
                                 y="65"
-                                width="15"
+                                width="20"
                                 height="8"
                                 fill="#FFB366"
                               />
                             </g>
 
-                            {/* Legs */}
-                            <rect
-                              x="45"
-                              y="95"
-                              width="12"
-                              height="20"
-                              fill="#2C3E50"
-                            />
-                            <rect
-                              x="63"
-                              y="95"
-                              width="12"
-                              height="20"
-                              fill="#2C3E50"
-                            />
+                            {/* Left Leg - animated independently */}
+                            <g className="dance-left-leg">
+                              <rect
+                                x="65"
+                                y="95"
+                                width="12"
+                                height="20"
+                                fill="#2C3E50"
+                              />
+                              {/* Left Foot */}
+                              <rect
+                                x="60"
+                                y="115"
+                                width="20"
+                                height="5"
+                                fill="#000"
+                              />
+                            </g>
 
-                            {/* Feet */}
-                            <rect
-                              x="40"
-                              y="115"
-                              width="20"
-                              height="5"
-                              fill="#000"
-                            />
-                            <rect
-                              x="65"
-                              y="115"
-                              width="20"
-                              height="5"
-                              fill="#000"
-                            />
+                            {/* Right Leg - animated independently */}
+                            <g className="dance-right-leg">
+                              <rect
+                                x="83"
+                                y="95"
+                                width="12"
+                                height="20"
+                                fill="#2C3E50"
+                              />
+                              {/* Right Foot */}
+                              <rect
+                                x="85"
+                                y="115"
+                                width="20"
+                                height="5"
+                                fill="#000"
+                              />
+                            </g>
                           </g>
 
-                          {/* Musical notes floating around */}
+                          {/* Musical notes floating around - repositioned to stay within bounds */}
                           <g className="animate-ping">
                             <circle
-                              cx="25"
+                              cx="35"
                               cy="40"
                               r="3"
                               fill="#FF6B6B"
                               opacity="0.7"
                             />
                             <rect
-                              x="23"
+                              x="33"
                               y="35"
                               width="2"
                               height="8"
@@ -1140,14 +1215,14 @@ export default function RoomView({ initialData }: RoomViewProps) {
                             style={{ animationDelay: '0.5s' }}
                           >
                             <circle
-                              cx="95"
+                              cx="125"
                               cy="50"
                               r="3"
                               fill="#4ECDC4"
                               opacity="0.7"
                             />
                             <rect
-                              x="93"
+                              x="123"
                               y="45"
                               width="2"
                               height="8"
@@ -1160,14 +1235,14 @@ export default function RoomView({ initialData }: RoomViewProps) {
                             style={{ animationDelay: '1s' }}
                           >
                             <circle
-                              cx="15"
+                              cx="25"
                               cy="70"
                               r="3"
                               fill="#FFE66D"
                               opacity="0.7"
                             />
                             <rect
-                              x="13"
+                              x="23"
                               y="65"
                               width="2"
                               height="8"

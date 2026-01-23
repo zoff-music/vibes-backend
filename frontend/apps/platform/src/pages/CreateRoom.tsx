@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
   democraticSkip: true,
   loopQueue: false,
   removeOnPlay: true,
+  allowDuplicates: false,
 };
 
 interface CreateRoomProps {
@@ -313,6 +314,28 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   checked={settings.removeOnPlay}
                   onChange={(e) =>
                     updateSetting('removeOnPlay', e.target.checked)
+                  }
+                  className="peer sr-only"
+                />
+                <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-retro after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-muted after:transition-all after:content-[''] peer-checked:bg-primary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-primary/30"></div>
+              </label>
+            </div>
+
+            <div className="glass group flex items-center justify-between rounded-2xl border-2 border-theme p-5 transition-all hover:shadow-retro">
+              <div className="mr-4 flex-1">
+                <div className="font-bold text-base text-theme">
+                  Allow Duplicates
+                </div>
+                <div className="mt-0.5 font-medium text-sm text-theme-muted">
+                  Same song multiple times
+                </div>
+              </div>
+              <label className="relative inline-flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={settings.allowDuplicates}
+                  onChange={(e) =>
+                    updateSetting('allowDuplicates', e.target.checked)
                   }
                   className="peer sr-only"
                 />
