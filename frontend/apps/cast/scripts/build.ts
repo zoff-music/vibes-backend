@@ -49,7 +49,7 @@ async function generateStaticHTML(jsFilename: string, cssFilename: string) {
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vibez Cast Receiver</title>
+    <title>ノリ nori Cast Receiver</title>
     <link rel="stylesheet" href="./${cssFilename}" />
     <!-- Google Cast Receiver SDK -->
     <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
@@ -57,9 +57,23 @@ async function generateStaticHTML(jsFilename: string, cssFilename: string) {
     <script src="https://www.youtube.com/iframe_api"></script>
   </head>
   <body>
-    <div id="static-loading" style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 0; background-color: #0d0d0f; color: white;">
-      <div style="animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; font-weight: bold; font-size: 2rem; background: linear-gradient(to right, #ec4899, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">Vibez Cast</div>
-      <p style="margin-top: 1rem; opacity: 0.7;">Initializing...</p>
+    <div id="static-loading" class="relative flex min-h-screen w-screen animate-fade-in items-center justify-center overflow-hidden bg-theme text-theme">
+      <div class="absolute inset-0 synth-sky"></div>
+      <div class="absolute inset-0 vhs-scanlines pointer-events-none"></div>
+      <div class="sun-hero opacity-80"></div>
+      <div class="retro-grid opacity-70"></div>
+      <div class="relative z-10 flex h-full w-full items-center justify-center">
+        <div class="relative z-10 flex max-w-3xl flex-col items-center gap-8 px-6 text-center">
+          <div class="panel-frame panel-surface w-full px-10 py-12">
+            <div class="mb-6 flex flex-col items-center gap-3">
+              <span class="vhs-tear-strong font-display text-6xl uppercase tracking-[0.22em] text-theme glow-text text-readable md:text-7xl" data-text="ノリ">ノリ</span>
+              <p class="font-mono text-xs uppercase tracking-[0.4em] text-theme-subtle">ノリ nori cast</p>
+            </div>
+            <p class="text-readable font-display text-2xl text-theme">Ready for Casting</p>
+            <p class="mt-3 text-base text-theme-muted">Waiting for music to play...</p>
+          </div>
+        </div>
+      </div>
     </div>
     <div id="root"></div>
     <script type="module" src="./${jsFilename}"></script>
