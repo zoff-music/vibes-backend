@@ -109,13 +109,13 @@ local-dev: setup-caddy
 	@echo "Starting local development services..."
 	@echo ""
 	@echo "🌐 Access URLs:"
-	@echo "  📍 Platform (BEST HMR): http://localhost:3001"
-	@echo "  📍 Platform (via HTTPS): https://localhost"
+	@echo "  📍 Platform (HTTPS with Live Reload): https://localhost"
+	@echo "  📍 Platform (Direct): http://localhost:3001"
 	@echo "  📍 Cast App: http://localhost:3000"
 	@echo "  📍 Backend API: http://localhost:8080"
 	@echo ""
-	@echo "💡 For best HMR experience, use http://localhost:3001 directly"
-	@echo "🔄 Hot Module Replacement enabled - changes update automatically!"
+	@echo "🔄 Live Reload enabled on https://localhost!"
+	@echo "💡 Changes will automatically refresh the page"
 	@echo ""
 	@sh -c 'trap "kill 0" INT TERM EXIT; \
 	PORT=8080 sh -c "cd migrator && go run main.go -db ../data/db/vibes.db && cd ../backend && DATABASE_PATH=../data/db/vibes.db exec go run cmd/server/main.go" & \
