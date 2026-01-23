@@ -3,6 +3,7 @@ package e2e
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -52,6 +54,9 @@ func (e *TestEnv) Teardown() {
 func setupEnv(t *testing.T) *TestEnv {
 	port, err := getFreePort()
 	if err != nil {
+		if isBindNotPermitted(err) {
+			t.Skipf("skipping e2e tests: cannot bind local port: %v", err)
+		}
 		t.Fatalf("failed to get free port: %v", err)
 	}
 
@@ -117,6 +122,25 @@ func setupEnv(t *testing.T) *TestEnv {
 		DBPath:    dbPath,
 		Cancel:    cancel,
 	}
+}
+
+func isBindNotPermitted(err error) bool {
+	if err == nil {
+		return false
+	}
+	if errors.Is(err, syscall.EPERM) {
+		return true
+	}
+	if errors.Is(err, syscall.EACCES) {
+		return true
+	}
+	if strings.Contains(err.Error(), "operation not permitted") {
+		return true
+	}
+	if strings.Contains(err.Error(), "permission denied") {
+		return true
+	}
+	return false
 }
 
 func applyMigrations(dbPath string) error {
