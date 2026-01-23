@@ -51,32 +51,24 @@ const CURRENT_VERSION = 1;
 
 const setCookie = (name: string, value: string, days: number = 365) => {
   if (typeof document === 'undefined') return;
+
   const expires = new Date();
   expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
-  document.cookie = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
-};
 
-const getCookie = (name: string): string | null => {
-  if (typeof document === 'undefined') return null;
-  const nameEQ = name + '=';
-  const ca = document.cookie.split(';');
-  for (let i = 0; i < ca.length; i++) {
-    let c = ca[i];
-    while (c.charAt(0) === ' ') c = c.substring(1, c.length);
-    if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
-  }
-  return null;
+  const cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+
+  // Use a function to set the cookie to avoid direct assignment warning
+  const setCookieValue = (value: string) => {
+    // biome-ignore lint/suspicious/noDocumentCookie: Cookie setting is necessary for theme persistence
+    document.cookie = value;
+  };
+
+  setCookieValue(cookieString);
 };
 
 const savePreferences = (preferences: Preferences) => {
   const encoded = btoa(JSON.stringify(preferences));
   setCookie(COOKIE_NAME, encoded);
-};
-
-// Detect system preference - but only use as fallback for client-only rendering
-const getSystemTheme = (): ThemeId => {
-  if (typeof window === 'undefined') return 'light';
-  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 };
 
 // Apply theme class to document
@@ -103,11 +95,11 @@ const getInitialThemeSync = (): ThemeId => {
   if (typeof document === 'undefined') {
     return 'light'; // Server-side fallback
   }
-  
+
   // Check if the HTML element has the 'dark' class (what SSR actually rendered)
   const hasDarkClass = document.documentElement.classList.contains('dark');
   console.log('[Theme] DOM has dark class:', hasDarkClass);
-  
+
   return hasDarkClass ? 'dark' : 'light';
 };
 
@@ -129,10 +121,10 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       console.log('[Theme] Setting theme to:', themeId);
       applyTheme(themeId);
       savePreferences({ theme: themeId, version: CURRENT_VERSION });
-      set({ 
-        themeId, 
+      set({
+        themeId,
         isDarkMode: themeId === 'dark',
-        currentTheme: themes[themeId]
+        currentTheme: themes[themeId],
       });
     },
 
@@ -142,10 +134,10 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       console.log('[Theme] Toggling from', current, 'to', newTheme);
       applyTheme(newTheme);
       savePreferences({ theme: newTheme, version: CURRENT_VERSION });
-      set({ 
-        themeId: newTheme, 
+      set({
+        themeId: newTheme,
         isDarkMode: newTheme === 'dark',
-        currentTheme: themes[newTheme]
+        currentTheme: themes[newTheme],
       });
     },
   };

@@ -6,7 +6,9 @@ import { useRoomStore } from '../stores/roomStore';
 export const usePlayback = (roomId: string) => {
   const playback = usePlaybackStore();
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
-  const setLocalPlayingState = usePlaybackStore((state) => state.setLocalPlayingState);
+  const setLocalPlayingState = usePlaybackStore(
+    (state) => state.setLocalPlayingState,
+  );
   const room = useRoomStore((state) => state.room);
 
   // Update actual position every 100ms for smooth UI progress bars
@@ -34,9 +36,13 @@ export const usePlayback = (roomId: string) => {
         );
         data = result;
         error = err;
-        
+
         // In Server mode, handle local playing state
-        if (data && room?.mode === 'server' && (action === 'play' || action === 'pause')) {
+        if (
+          data &&
+          room?.mode === 'server' &&
+          (action === 'play' || action === 'pause')
+        ) {
           setLocalPlayingState(data.isPlaying, room.mode);
         }
       } else if (action === 'skip' || action === 'vote') {
@@ -52,26 +58,32 @@ export const usePlayback = (roomId: string) => {
       // Handle host mode skip error
       if (error && action === 'skip') {
         // Check if it's a 403 Forbidden error (host mode restriction or skip disabled)
-        if (error.message?.includes('only hosts can skip in host mode') || 
-            (error as any)?.status === 403) {
+        if (
+          error.message?.includes('only hosts can skip in host mode') ||
+          (error as any)?.status === 403
+        ) {
           // Dispatch custom event for toast notification
-          window.dispatchEvent(new CustomEvent('show-toast', {
-            detail: {
-              message: 'Only hosts can skip in host mode',
-              type: 'error'
-            }
-          }));
+          window.dispatchEvent(
+            new CustomEvent('show-toast', {
+              detail: {
+                message: 'Only hosts can skip in host mode',
+                type: 'error',
+              },
+            }),
+          );
           return;
         }
-        
+
         if (error.message?.includes('skipping is disabled in this room')) {
           // Dispatch custom event for toast notification
-          window.dispatchEvent(new CustomEvent('show-toast', {
-            detail: {
-              message: 'Skipping is disabled in this room',
-              type: 'error'
-            }
-          }));
+          window.dispatchEvent(
+            new CustomEvent('show-toast', {
+              detail: {
+                message: 'Skipping is disabled in this room',
+                type: 'error',
+              },
+            }),
+          );
           return;
         }
       }

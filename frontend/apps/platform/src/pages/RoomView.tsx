@@ -30,27 +30,35 @@ interface RoomViewProps {
 export default function RoomView({ initialData }: RoomViewProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
+
   const { currentSong, skip, isPlaying } = usePlayback(id || '');
   const { songs, fetchQueue, voteSong } = useQueue(id || '');
-  
+
   // Use songs from store, fallback to initial data for SSR
-  const displaySongs = songs.length > 0 ? songs : (initialData?.songs || []);
-  
+  const displaySongs = songs.length > 0 ? songs : initialData?.songs || [];
+
   // Use playing state from store, fallback to initial data for SSR
-  const displayIsPlaying = isPlaying !== undefined ? isPlaying : (initialData?.playback?.isPlaying || false);
-  
+  const displayIsPlaying =
+    isPlaying !== undefined
+      ? isPlaying
+      : initialData?.playback?.isPlaying || false;
+
   // Use current song from store, fallback to initial data for SSR
   const displayCurrentSong = useMemo(() => {
     if (currentSong) return currentSong;
-    if (initialData?.playback?.currentSong) return initialData.playback.currentSong;
+    if (initialData?.playback?.currentSong)
+      return initialData.playback.currentSong;
     // Fallback to finding position 0 song if no playback data
     if (initialData?.songs && !initialData?.playback?.currentSong) {
-      return initialData.songs.find(s => s.position === 0) || null;
+      return initialData.songs.find((s) => s.position === 0) || null;
     }
     return null;
-  }, [currentSong, initialData?.playback?.currentSong, initialData?.songs?.length]);
-  
+  }, [
+    currentSong,
+    initialData?.playback?.currentSong,
+    initialData?.songs?.length,
+  ]);
+
   const {
     room,
     fetchRoom,
@@ -63,10 +71,10 @@ export default function RoomView({ initialData }: RoomViewProps) {
     updateRoom,
   } = useRoom(id || '');
   const { toggleDarkMode } = useThemeStore();
-  
+
   // Use theme from server-side initialData to avoid hydration mismatch
   const [isDarkMode, setIsDarkMode] = useState(initialData?.theme === 'dark');
-  
+
   // Track if we're in SSR mode to disable animations
   const [isSSR, setIsSSR] = useState(true);
 
@@ -179,7 +187,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
     window.addEventListener('song-added', handleSongAdded);
     window.addEventListener('show-toast', handleShowToast);
-    
+
     return () => {
       window.removeEventListener('song-added', handleSongAdded);
       window.removeEventListener('show-toast', handleShowToast);
@@ -358,7 +366,9 @@ export default function RoomView({ initialData }: RoomViewProps) {
   }, [fetchSpotifyToken]);
 
   return (
-    <div className={`flex min-h-screen flex-col ${!isSSR ? 'animate-fade-in' : ''}`}>
+    <div
+      className={`flex min-h-screen flex-col ${!isSSR ? 'animate-fade-in' : ''}`}
+    >
       {/* Header */}
       <div className="sticky top-0 z-20 border-ink/10 border-b-4 bg-white/95 px-4 py-5 shadow-retro backdrop-blur-lg transition-colors duration-300 dark:border-primary/20 dark:bg-dark-paper/95">
         <div className="relative mx-auto flex max-w-7xl items-center justify-between">
@@ -383,13 +393,13 @@ export default function RoomView({ initialData }: RoomViewProps) {
           </button>
 
           {/* Room name - absolutely positioned to stay centered */}
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
             <button
               onClick={() => setShowRoomInfo(!showRoomInfo)}
               className="flex cursor-pointer items-center justify-center gap-2 transition-opacity hover:opacity-70"
             >
               <h1
-                className="truncate font-black text-ink text-lg dark:text-dark-text whitespace-nowrap"
+                className="truncate whitespace-nowrap font-black text-ink text-lg dark:text-dark-text"
                 style={{ fontFamily: 'Poppins' }}
               >
                 {displayRoom?.name || 'Loading...'}
@@ -571,7 +581,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
                       {/* Host Mode Disclaimer */}
                       {room?.mode === 'host' && (
-                        <div className="rounded-lg bg-secondary/10 border border-secondary/20 p-3 dark:bg-secondary/20 dark:border-secondary/30">
+                        <div className="rounded-lg border border-secondary/20 bg-secondary/10 p-3 dark:border-secondary/30 dark:bg-secondary/20">
                           <div className="flex items-center gap-2">
                             <div className="h-2 w-2 rounded-full bg-secondary"></div>
                             <span className="font-bold text-secondary text-sm dark:text-secondary">
@@ -579,7 +589,8 @@ export default function RoomView({ initialData }: RoomViewProps) {
                             </span>
                           </div>
                           <p className="mt-1 text-ink/70 text-xs dark:text-dark-text-muted">
-                            In host mode, only the host can skip songs. Skip settings are disabled.
+                            In host mode, only the host can skip songs. Skip
+                            settings are disabled.
                           </p>
                         </div>
                       )}
@@ -592,11 +603,16 @@ export default function RoomView({ initialData }: RoomViewProps) {
                             Allow Skip
                           </span>
                           <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">
-                            {room?.mode === 'host' ? 'Host controls skipping' : 'Anyone can skip'}
+                            {room?.mode === 'host'
+                              ? 'Host controls skipping'
+                              : 'Anyone can skip'}
                           </span>
                         </div>
                         <button
-                          disabled={(room?.hasPassword && !isAdmin) || room?.mode === 'host'}
+                          disabled={
+                            (room?.hasPassword && !isAdmin) ||
+                            room?.mode === 'host'
+                          }
                           onClick={() =>
                             room &&
                             updateRoomSettings({
@@ -620,11 +636,16 @@ export default function RoomView({ initialData }: RoomViewProps) {
                             Democratic Skip
                           </span>
                           <span className="text-[10px] text-ink/40 dark:text-dark-text-subtle">
-                            {room?.mode === 'host' ? 'Host decides skipping' : 'Require votes'}
+                            {room?.mode === 'host'
+                              ? 'Host decides skipping'
+                              : 'Require votes'}
                           </span>
                         </div>
                         <button
-                          disabled={(room?.hasPassword && !isAdmin) || room?.mode === 'host'}
+                          disabled={
+                            (room?.hasPassword && !isAdmin) ||
+                            room?.mode === 'host'
+                          }
                           onClick={() =>
                             room &&
                             updateRoomSettings({
@@ -700,7 +721,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                         <h5 className="mb-3 font-black text-ink text-xs uppercase tracking-wider dark:text-dark-text">
                           Room Mode
                         </h5>
-                        
+
                         <div className="space-y-2">
                           <button
                             disabled={room?.hasPassword && !isAdmin}
@@ -713,24 +734,26 @@ export default function RoomView({ initialData }: RoomViewProps) {
                                 : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20 dark:border-primary/20 dark:bg-dark-surfaceElevated dark:text-dark-text-muted dark:hover:border-primary/30'
                             } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                           >
-                            <div className="mb-1 font-bold text-sm">Server Mode</div>
+                            <div className="mb-1 font-bold text-sm">
+                              Server Mode
+                            </div>
                             <div className="text-[10px] opacity-70">
                               Auto-play music 24/7. Perfect for radio stations.
                             </div>
                           </button>
-                          
+
                           <button
                             disabled={room?.hasPassword && !isAdmin}
-                            onClick={() =>
-                              room && updateRoom({ mode: 'host' })
-                            }
+                            onClick={() => room && updateRoom({ mode: 'host' })}
                             className={`w-full cursor-pointer rounded-xl border-2 p-3 text-left transition-all ${
                               room?.mode === 'host'
                                 ? 'border-secondary bg-secondary/10 text-ink dark:border-secondary dark:bg-secondary/20 dark:text-dark-text'
                                 : 'border-ink/10 bg-surface text-ink/60 hover:border-ink/20 dark:border-primary/20 dark:bg-dark-surfaceElevated dark:text-dark-text-muted dark:hover:border-primary/30'
                             } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                           >
-                            <div className="mb-1 font-bold text-sm">Host Mode</div>
+                            <div className="mb-1 font-bold text-sm">
+                              Host Mode
+                            </div>
                             <div className="text-[10px] opacity-70">
                               Host controls playback. Great for parties.
                             </div>
@@ -790,7 +813,9 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
         {/* Room info dropdown */}
         {showRoomInfo && (
-          <div className={`glass-elevated mt-4 rounded-2xl border-2 border-ink/10 p-5 dark:border-primary/20 ${!isSSR ? 'animate-slide-down' : ''}`}>
+          <div
+            className={`glass-elevated mt-4 rounded-2xl border-2 border-ink/10 p-5 dark:border-primary/20 ${!isSSR ? 'animate-slide-down' : ''}`}
+          >
             <div className="space-y-4">
               <div>
                 <p className="mb-2 font-bold text-ink/60 text-xs uppercase tracking-widest dark:text-dark-text-muted">
@@ -925,7 +950,10 @@ export default function RoomView({ initialData }: RoomViewProps) {
             {/* Player Section */}
             <div className="space-y-6">
               {/* Player - Reserve height to prevent CLS */}
-              <div className="relative w-full bg-gray-100 dark:bg-gray-800 rounded-xl overflow-hidden" style={{ aspectRatio: '16/9', minHeight: '200px' }}>
+              <div
+                className="relative w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-gray-800"
+                style={{ aspectRatio: '16/9', minHeight: '200px' }}
+              >
                 {displayCurrentSong ? (
                   // Show actual player when there's a current song
                   displayCurrentSong.sourceType === 'spotify' ? (
@@ -951,7 +979,9 @@ export default function RoomView({ initialData }: RoomViewProps) {
                       <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 dark:bg-primary/20">
                         <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary/30 border-t-primary" />
                       </div>
-                      <p className="font-medium text-ink/70 dark:text-dark-text-muted">Loading song...</p>
+                      <p className="font-medium text-ink/70 dark:text-dark-text-muted">
+                        Loading song...
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -969,53 +999,188 @@ export default function RoomView({ initialData }: RoomViewProps) {
                           {/* 8-bit dancing character with CSS animation */}
                           <g className="animate-bounce">
                             {/* Head */}
-                            <rect x="40" y="20" width="40" height="40" fill="#FFB366" />
-                            <rect x="35" y="25" width="10" height="10" fill="#FFB366" />
-                            <rect x="75" y="25" width="10" height="10" fill="#FFB366" />
-                            
+                            <rect
+                              x="40"
+                              y="20"
+                              width="40"
+                              height="40"
+                              fill="#FFB366"
+                            />
+                            <rect
+                              x="35"
+                              y="25"
+                              width="10"
+                              height="10"
+                              fill="#FFB366"
+                            />
+                            <rect
+                              x="75"
+                              y="25"
+                              width="10"
+                              height="10"
+                              fill="#FFB366"
+                            />
+
                             {/* Eyes */}
-                            <rect x="45" y="30" width="8" height="8" fill="#000" />
-                            <rect x="67" y="30" width="8" height="8" fill="#000" />
-                            
+                            <rect
+                              x="45"
+                              y="30"
+                              width="8"
+                              height="8"
+                              fill="#000"
+                            />
+                            <rect
+                              x="67"
+                              y="30"
+                              width="8"
+                              height="8"
+                              fill="#000"
+                            />
+
                             {/* Smile */}
-                            <rect x="50" y="45" width="8" height="4" fill="#000" />
-                            <rect x="58" y="45" width="4" height="4" fill="#000" />
-                            <rect x="62" y="45" width="8" height="4" fill="#000" />
-                            
+                            <rect
+                              x="50"
+                              y="45"
+                              width="8"
+                              height="4"
+                              fill="#000"
+                            />
+                            <rect
+                              x="58"
+                              y="45"
+                              width="4"
+                              height="4"
+                              fill="#000"
+                            />
+                            <rect
+                              x="62"
+                              y="45"
+                              width="8"
+                              height="4"
+                              fill="#000"
+                            />
+
                             {/* Body */}
-                            <rect x="35" y="60" width="50" height="35" fill="#4ECDC4" />
-                            
+                            <rect
+                              x="35"
+                              y="60"
+                              width="50"
+                              height="35"
+                              fill="#4ECDC4"
+                            />
+
                             {/* Arms - animated */}
                             <g className="animate-pulse">
-                              <rect x="20" y="65" width="15" height="8" fill="#FFB366" />
-                              <rect x="85" y="65" width="15" height="8" fill="#FFB366" />
+                              <rect
+                                x="20"
+                                y="65"
+                                width="15"
+                                height="8"
+                                fill="#FFB366"
+                              />
+                              <rect
+                                x="85"
+                                y="65"
+                                width="15"
+                                height="8"
+                                fill="#FFB366"
+                              />
                             </g>
-                            
+
                             {/* Legs */}
-                            <rect x="45" y="95" width="12" height="20" fill="#2C3E50" />
-                            <rect x="63" y="95" width="12" height="20" fill="#2C3E50" />
-                            
+                            <rect
+                              x="45"
+                              y="95"
+                              width="12"
+                              height="20"
+                              fill="#2C3E50"
+                            />
+                            <rect
+                              x="63"
+                              y="95"
+                              width="12"
+                              height="20"
+                              fill="#2C3E50"
+                            />
+
                             {/* Feet */}
-                            <rect x="40" y="115" width="20" height="5" fill="#000" />
-                            <rect x="65" y="115" width="20" height="5" fill="#000" />
+                            <rect
+                              x="40"
+                              y="115"
+                              width="20"
+                              height="5"
+                              fill="#000"
+                            />
+                            <rect
+                              x="65"
+                              y="115"
+                              width="20"
+                              height="5"
+                              fill="#000"
+                            />
                           </g>
-                          
+
                           {/* Musical notes floating around */}
                           <g className="animate-ping">
-                            <circle cx="25" cy="40" r="3" fill="#FF6B6B" opacity="0.7" />
-                            <rect x="23" y="35" width="2" height="8" fill="#FF6B6B" opacity="0.7" />
+                            <circle
+                              cx="25"
+                              cy="40"
+                              r="3"
+                              fill="#FF6B6B"
+                              opacity="0.7"
+                            />
+                            <rect
+                              x="23"
+                              y="35"
+                              width="2"
+                              height="8"
+                              fill="#FF6B6B"
+                              opacity="0.7"
+                            />
                           </g>
-                          <g className="animate-ping" style={{ animationDelay: '0.5s' }}>
-                            <circle cx="95" cy="50" r="3" fill="#4ECDC4" opacity="0.7" />
-                            <rect x="93" y="45" width="2" height="8" fill="#4ECDC4" opacity="0.7" />
+                          <g
+                            className="animate-ping"
+                            style={{ animationDelay: '0.5s' }}
+                          >
+                            <circle
+                              cx="95"
+                              cy="50"
+                              r="3"
+                              fill="#4ECDC4"
+                              opacity="0.7"
+                            />
+                            <rect
+                              x="93"
+                              y="45"
+                              width="2"
+                              height="8"
+                              fill="#4ECDC4"
+                              opacity="0.7"
+                            />
                           </g>
-                          <g className="animate-ping" style={{ animationDelay: '1s' }}>
-                            <circle cx="15" cy="70" r="3" fill="#FFE66D" opacity="0.7" />
-                            <rect x="13" y="65" width="2" height="8" fill="#FFE66D" opacity="0.7" />
+                          <g
+                            className="animate-ping"
+                            style={{ animationDelay: '1s' }}
+                          >
+                            <circle
+                              cx="15"
+                              cy="70"
+                              r="3"
+                              fill="#FFE66D"
+                              opacity="0.7"
+                            />
+                            <rect
+                              x="13"
+                              y="65"
+                              width="2"
+                              height="8"
+                              fill="#FFE66D"
+                              opacity="0.7"
+                            />
                           </g>
                         </svg>
                       </div>
-                      
+
                       <h3 className="mb-2 font-bold text-ink text-xl dark:text-dark-text">
                         Add a song to get the party started!
                       </h3>
@@ -1089,13 +1254,16 @@ export default function RoomView({ initialData }: RoomViewProps) {
                     Up Next (
                     {
                       displaySongs.filter(
-                        (s) => s.position > 0 && s.id !== displayCurrentSong?.id,
+                        (s) =>
+                          s.position > 0 && s.id !== displayCurrentSong?.id,
                       ).length
                     }
                     )
                   </h3>
                   <QueueList
-                    songs={displaySongs.filter((s) => s.id !== displayCurrentSong?.id)}
+                    songs={displaySongs.filter(
+                      (s) => s.id !== displayCurrentSong?.id,
+                    )}
                     roomId={id || ''}
                     onVote={handleVote}
                   />
@@ -1111,7 +1279,13 @@ export default function RoomView({ initialData }: RoomViewProps) {
         <Toast
           key={toast.id}
           message={toast.message}
-          type={toast.type === 'success' ? 'success' : toast.type === 'error' ? 'error' : 'info'}
+          type={
+            toast.type === 'success'
+              ? 'success'
+              : toast.type === 'error'
+                ? 'error'
+                : 'info'
+          }
           onClose={() =>
             setToasts((prev) => prev.filter((t) => t.id !== toast.id))
           }

@@ -25,8 +25,8 @@ const QueueListComponent: React.FC<Props> = ({
 
   if (songs.length === 0) {
     return (
-      <div className="glass animate-fade-in rounded-3xl border-2 border-ink/10 dark:border-primary/20 bg-white/50 dark:bg-dark-surface/60 p-12 text-center">
-        <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-ink/20 dark:border-primary/20 bg-white dark:bg-dark-surfaceElevated shadow-retro">
+      <div className="glass animate-fade-in rounded-3xl border-2 border-ink/10 bg-white/50 p-12 text-center dark:border-primary/20 dark:bg-dark-surface/60">
+        <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border-4 border-ink/20 bg-white shadow-retro dark:border-primary/20 dark:bg-dark-surfaceElevated">
           <svg
             className="h-10 w-10 text-ink/40 dark:text-dark-text-muted"
             fill="none"
@@ -42,7 +42,7 @@ const QueueListComponent: React.FC<Props> = ({
           </svg>
         </div>
         <h3
-          className="mb-2 font-black text-ink dark:text-dark-text text-xl"
+          className="mb-2 font-black text-ink text-xl dark:text-dark-text"
           style={{ fontFamily: 'Poppins' }}
         >
           Queue is Empty
@@ -50,7 +50,9 @@ const QueueListComponent: React.FC<Props> = ({
         <p className="mb-2 font-medium text-ink/60 dark:text-dark-text-muted">
           Add some songs to get the party started
         </p>
-        <p className="jp-art text-ink/40 dark:text-dark-text-subtle text-sm">曲を追加</p>
+        <p className="jp-art text-ink/40 text-sm dark:text-dark-text-subtle">
+          曲を追加
+        </p>
       </div>
     );
   }

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/zoff-music/vibes/internalerror"
@@ -260,10 +261,25 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 		currentSongID = state.CurrentSong.ID
 	}
 
-	if room.Settings.RemoveOnPlay && currentSongID != "" {
-		err = c.RemoveSong(ctx, roomID, currentSongID)
+	// Clear votes for the current song when it ends/is skipped
+	if currentSongID != "" {
+		log.Printf("[DEBUG-VOTES] Clearing votes for current song %s in room %s during skip", currentSongID, roomID)
+		
+		err = c.clearSkipVotes(ctx, roomID, currentSongID)
 		if err != nil {
-			return nil, fmt.Errorf("skip track: remove song: %w", err)
+			return nil, fmt.Errorf("skip track: clear skip votes: %w", err)
+		}
+
+		err = c.clearVotesSong(ctx, roomID, currentSongID)
+		if err != nil {
+			return nil, fmt.Errorf("skip track: clear song votes: %w", err)
+		}
+
+		if room.Settings.RemoveOnPlay {
+			err = c.RemoveSong(ctx, roomID, currentSongID)
+			if err != nil {
+				return nil, fmt.Errorf("skip track: remove song: %w", err)
+			}
 		}
 	}
 

@@ -5,7 +5,7 @@ interface PlaybackStoreState extends PlaybackState {
   // Client-side computed fields
   actualPositionMs: number;
   clientReferenceTime: number;
-  
+
   // Server mode local state
   localIsPlaying: boolean | null; // null means use server state, boolean means local override
   roomMode: string | null;
@@ -29,13 +29,14 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
 
   setPlaybackState: (state, roomMode) => {
     const currentState = get();
-    
+
     // In Server mode, preserve local playing state unless it's a new song
     if (roomMode === 'server' && currentState.localIsPlaying !== null) {
-      const isNewSong = !currentState.currentSong || 
-        !state.currentSong || 
+      const isNewSong =
+        !currentState.currentSong ||
+        !state.currentSong ||
         currentState.currentSong.id !== state.currentSong.id;
-      
+
       if (!isNewSong) {
         // Keep local playing state, but update position and other fields
         set({
@@ -58,7 +59,7 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
         return;
       }
     }
-    
+
     // Host mode or no local override - use server state
     set({
       ...state,
@@ -73,27 +74,23 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
 
   setLocalPlayingState: (isPlaying, roomMode) => {
     if (roomMode === 'server') {
-      set({ 
+      set({
         isPlaying,
         localIsPlaying: isPlaying,
-        roomMode 
+        roomMode,
       });
     } else {
       // Host mode - just set normally
-      set({ 
+      set({
         isPlaying,
         localIsPlaying: null,
-        roomMode 
+        roomMode,
       });
     }
   },
 
   updateActualPosition: () => {
-    const {
-      positionMs,
-      isPlaying,
-      clientReferenceTime,
-    } = get();
+    const { positionMs, isPlaying, clientReferenceTime } = get();
 
     if (!isPlaying) {
       set({ actualPositionMs: positionMs });

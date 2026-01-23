@@ -185,34 +185,42 @@ function getThemeFromCookies(cookieHeader: string | null): string {
   if (!cookieHeader) {
     return ''; // Default to light mode (no class)
   }
-  
+
   try {
     // Parse cookies
-    const cookies = cookieHeader.split(';').reduce((acc, cookie) => {
-      const [name, value] = cookie.trim().split('=');
-      if (name && value) {
-        acc[name] = decodeURIComponent(value);
-      }
-      return acc;
-    }, {} as Record<string, string>);
-    
-    const preferencesEncoded = cookies['preferences'];
+    const cookies = cookieHeader.split(';').reduce(
+      (acc, cookie) => {
+        const [name, value] = cookie.trim().split('=');
+        if (name && value) {
+          acc[name] = decodeURIComponent(value);
+        }
+        return acc;
+      },
+      {} as Record<string, string>,
+    );
+
+    const preferencesEncoded = cookies.preferences;
     if (!preferencesEncoded) {
       return ''; // Default to light mode (no class)
     }
-    
+
     // Decode base64 JSON - use Buffer for Node.js compatibility
-    const preferencesJson = Buffer.from(preferencesEncoded, 'base64').toString('utf-8');
+    const preferencesJson = Buffer.from(preferencesEncoded, 'base64').toString(
+      'utf-8',
+    );
     const preferences = JSON.parse(preferencesJson);
-    
+
     // Only return 'dark' if explicitly set to dark, otherwise default to light
     if (preferences.theme === 'dark') {
       return 'dark';
     }
-    
+
     return ''; // Default to light mode (no class)
   } catch (error) {
-    console.log('[SSR] Error parsing theme preferences, defaulting to light:', error);
+    console.log(
+      '[SSR] Error parsing theme preferences, defaulting to light:',
+      error,
+    );
     return ''; // Default to light mode (no class)
   }
 }
@@ -247,7 +255,7 @@ Bun.serve({
     // Get theme from cookies for SSR
     const cookieHeader = req.headers.get('Cookie');
     const themeClass = getThemeFromCookies(cookieHeader);
-    
+
     // Add theme to initialData for all routes
     initialData.theme = themeClass === 'dark' ? 'dark' : 'light';
 
@@ -272,7 +280,13 @@ Bun.serve({
       return new Response('Internal Server Error', { status: 500 });
     }
 
-    const fullHTML = createHTMLShell(appHTML, initialData, mainJS, mainCSS, themeClass);
+    const fullHTML = createHTMLShell(
+      appHTML,
+      initialData,
+      mainJS,
+      mainCSS,
+      themeClass,
+    );
     return new Response(fullHTML, {
       headers: { 'Content-Type': 'text/html' },
     });
