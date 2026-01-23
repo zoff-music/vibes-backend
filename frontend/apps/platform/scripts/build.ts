@@ -94,11 +94,18 @@ async function runBuild() {
     );
     console.log(`[Build] Found CSS files in ${distAssetsDir}:`, cssFiles);
 
-    const cssFilename =
-      cssFiles.find((f) => f === 'tailwind.css') || cssFiles[0];
+    // Explicitly prioritize index.css (our main Tailwind output)
+    let cssFilename: string | undefined;
+    if (cssFiles.includes('index.css')) {
+      cssFilename = 'index.css';
+    } else if (cssFiles.includes('tailwind.css')) {
+      cssFilename = 'tailwind.css';
+    } else {
+      cssFilename = cssFiles[0];
+    }
 
     if (cssFilename) {
-      if (isProd && cssFilename === 'tailwind.css') {
+      if (isProd && (cssFilename === 'tailwind.css' || cssFilename === 'index.css')) {
         const cssContent = await Bun.file(
           join(distAssetsDir, cssFilename),
         ).arrayBuffer();
@@ -123,8 +130,9 @@ async function runBuild() {
           );
         }
       } else {
-        manifest['index.css'] = cssFilename;
-        console.log(`[Build] Using CSS file: ${cssFilename}`);
+        // In development, add timestamp for cache busting
+        manifest['index.css'] = cssFilename + (isProd ? '' : `?v=${Date.now()}`);
+        console.log(`[Build] Using CSS file: ${cssFilename}${isProd ? '' : ` with cache buster`}`);
       }
     } else {
       console.warn(`[Build] No CSS files found in ${distAssetsDir}`);

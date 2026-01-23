@@ -85,7 +85,8 @@ async function handleStaticFiles(path: string) {
 
   // Handle platform assets from /assets/platform/
   if (path.startsWith('/assets/platform/')) {
-    const assetPath = path.replace('/assets/platform/', '');
+    // Strip query parameters for file lookup
+    const assetPath = path.replace('/assets/platform/', '').split('?')[0];
 
     // Confirmed paths in container
     const paths = [
