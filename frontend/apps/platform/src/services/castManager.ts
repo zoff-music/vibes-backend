@@ -480,7 +480,7 @@ class GoogleCastManager implements CastManager {
 
       // Set up metadata that will be passed to the receiver
       const metadata = new window.chrome.cast.media.GenericMediaMetadata();
-      metadata.title = 'Vibez Cast Receiver';
+      metadata.title = 'ノリ nori Cast Receiver';
       metadata.subtitle = 'Loading...';
 
       receiverMediaInfo.metadata = metadata;

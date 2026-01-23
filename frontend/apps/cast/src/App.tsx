@@ -128,16 +128,13 @@ const App = () => {
   };
 
   return (
-    <div className="relative flex h-screen w-screen animate-fade-in flex-col items-center justify-center overflow-hidden bg-theme text-theme">
-      {/* Dynamic Background Elements */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] h-[40%] w-[40%] animate-float rounded-full bg-primary/10 blur-[120px]" />
-        <div className="absolute right-[-5%] bottom-[-5%] h-[50%] w-[50%] animate-float-delayed rounded-full bg-primary/5 blur-[100px]" />
-      </div>
+    <div className="relative flex min-h-screen w-screen animate-fade-in items-center justify-center overflow-hidden bg-theme text-theme">
+      <div className="synth-sky absolute inset-0" />
+      <div className="vhs-scanlines pointer-events-none absolute inset-0" />
+      <div className="sun-hero opacity-80" />
+      <div className="retro-grid opacity-70" />
 
-      {/* Main Content Area */}
       <div className="relative z-10 flex h-full w-full items-center justify-center">
-        {/* Render Players based on currentSong type */}
         <div className="absolute inset-0 h-full w-full">
           <VideoPlayer isVisible={currentSong?.sourceType === 'youtube'} />
           <SpotifyPlayer isVisible={currentSong?.sourceType === 'spotify'} />
@@ -146,34 +143,38 @@ const App = () => {
           />
         </div>
 
-        {/* Fallback / Idle Screen */}
         {!currentSong && (
-          <div className="animate-scale-in text-center">
-            <h1
-              className="mb-6 font-black text-8xl text-primary tracking-tight drop-shadow-neon-pink"
-              style={{ fontFamily: 'Poppins, sans-serif' }}
-            >
-              Vibez
-            </h1>
-            <div className="glass mx-auto max-w-sm rounded-3xl px-8 py-4">
-              <p className="font-bold text-2xl tracking-wide opacity-90">
+          <div className="relative z-10 flex max-w-3xl flex-col items-center gap-8 px-6 text-center">
+            <div className="panel-frame panel-surface w-full px-10 py-12">
+              <div className="mb-6 flex flex-col items-center gap-3">
+                <span
+                  className="vhs-tear-strong glow-text font-display text-6xl text-readable text-theme uppercase tracking-[0.22em] md:text-7xl"
+                  data-text="ノリ"
+                >
+                  ノリ
+                </span>
+                <p className="font-mono text-theme-subtle text-xs lowercase tracking-[0.4em]">
+                  nori
+                </p>
+              </div>
+              <p className="font-display text-2xl text-readable text-theme">
                 {statusText}
               </p>
-              <p className="mt-2 font-medium opacity-50">
+              <p className="mt-3 text-base text-theme-muted">
                 Waiting for music to play...
               </p>
             </div>
 
             {roomInfo && (
-              <div className="glass-elevated mt-10 animate-slide-up rounded-3xl p-8">
-                <p className="font-black text-3xl tracking-tight">
+              <div className="panel-frame panel-surface w-full px-8 py-6">
+                <p className="font-display text-3xl text-theme">
                   {roomInfo.name}
                 </p>
-                <div className="mt-3 flex items-center justify-center gap-2">
-                  <div className="h-2 w-2 animate-pulse rounded-full bg-matcha" />
-                  <p className="font-bold text-lg text-matcha">
+                <div className="mt-3 flex items-center justify-center gap-2 text-theme-muted">
+                  <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-secondary)]" />
+                  <span className="text-sm uppercase tracking-[0.25em]">
                     {roomInfo.participantCount} active
-                  </p>
+                  </span>
                 </div>
               </div>
             )}
