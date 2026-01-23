@@ -218,7 +218,7 @@ func (c *Client) prepareAddSongStmt() error {
 			room_id, source_type, source_id, title, artist, thumbnail_url,
 			duration, added_by, added_by_nickname, added_at
 		)
-		VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, CURRENT_TIMESTAMP)
+		VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))
 		RETURNING id
 	`)
 	if err != nil {
@@ -427,7 +427,9 @@ func (c *Client) prepareClearVotesSongStmt() error {
 
 func (c *Client) prepareUpdateSongAddedAtStmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE songs SET added_at = CURRENT_TIMESTAMP WHERE room_id = ?1 AND id = ?2
+		UPDATE songs
+		SET added_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
+		WHERE room_id = ?1 AND id = ?2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateSongAddedAtStatement: %w", err)
