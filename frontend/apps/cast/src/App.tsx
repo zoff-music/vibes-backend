@@ -12,12 +12,23 @@ interface RoomInfo {
   participantCount: number;
 }
 
+interface QueueItem {
+  id: string;
+  title: string;
+  artist: string;
+  sourceType: string;
+  sourceId: string;
+  thumbnailUrl?: string;
+  duration?: number;
+}
+
 // Global flag to prevent multiple Cast receiver initializations
 let isCastReceiverInitialized = false;
 
 const App = () => {
-  const [roomInfo] = useState<RoomInfo | null>(null);
-  const [statusText] = useState('Ready for Casting');
+  const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
+  const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [statusText, setStatusText] = useState('Ready for Casting');
 
   // Use global store for playback state to share with components
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
@@ -51,11 +62,8 @@ const App = () => {
 
           const media = loadRequestData.media;
           if (media?.customData) {
-            // Assuming our sender sends song info in customData
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
-            const data = media.customData as any;
-
             // Handle tokens if present
+            const data = media.customData as any;
             if (data.tokens) {
               for (const [provider, tokenData] of Object.entries(
                 data.tokens as Record<string, any>,
@@ -70,28 +78,70 @@ const App = () => {
                 }
               }
             }
-
-            const song = data.song || data; // handle if song is nested or root
-
-            setPlaybackState({
-              currentSong: song,
-              isPlaying: true,
-              positionMs: 0,
-              updatedAt: new Date().toISOString(),
-              serverTimeMs: Date.now(),
-            });
-            setIsPlaying(true);
           }
 
-          // Attempt to extract YouTube ID if present in contentId
-          const videoId = extractYouTubeVideoId(media.contentId);
-          if (videoId) {
-            console.log('Detected YouTube detected:', videoId);
-          }
-
+          setStatusText('Waiting for content...');
           return loadRequestData;
         },
       );
+
+      // --- Custom Message Handler for Vibez messages ---
+      context.addCustomMessageListener('urn:x-cast:com.vibez.cast', (customEvent) => {
+        console.log('Received custom message:', customEvent);
+        
+        const message = customEvent.data;
+        
+        switch (message.action) {
+          case 'updatePlayback':
+            console.log('Updating playback state:', message);
+            if (message.currentSong) {
+              setPlaybackState({
+                currentSong: message.currentSong,
+                isPlaying: message.isPlaying || false,
+                positionMs: message.positionMs || 0,
+                updatedAt: new Date().toISOString(),
+                serverTimeMs: Date.now(),
+              });
+              setIsPlaying(message.isPlaying || false);
+              setStatusText(`Now Playing: ${message.currentSong.title}`);
+            }
+            if (message.roomInfo) {
+              setRoomInfo(message.roomInfo);
+            }
+            break;
+
+          case 'syncPlayback':
+            console.log('Syncing playback:', message);
+            if (message.currentSong) {
+              setPlaybackState({
+                currentSong: message.currentSong,
+                isPlaying: message.isPlaying || false,
+                positionMs: message.positionMs || 0,
+                updatedAt: new Date().toISOString(),
+                serverTimeMs: Date.now(),
+              });
+              setIsPlaying(message.isPlaying || false);
+            }
+            break;
+
+          case 'updateQueue':
+            console.log('Updating queue:', message);
+            if (message.queue) {
+              setQueue(message.queue);
+            }
+            break;
+
+          case 'updateRoomInfo':
+            console.log('Updating room info:', message);
+            if (message.roomInfo) {
+              setRoomInfo(message.roomInfo);
+            }
+            break;
+
+          default:
+            console.log('Unknown message action:', message.action);
+        }
+      });
 
       const options = new cast.framework.CastReceiverOptions();
       options.maxInactivity = 3600;
@@ -117,15 +167,6 @@ const App = () => {
     // 1. It's a singleton that should persist for the entire app lifecycle
     // 2. Stopping and restarting it can cause issues with active cast sessions
   }, [setIsPlaying, setPlaybackState]);
-
-  // Helper from original code
-  const extractYouTubeVideoId = (url?: string) => {
-    if (!url) return null;
-    const regex =
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
-  };
 
   return (
     <div className="relative flex min-h-screen w-screen animate-fade-in items-center justify-center overflow-hidden bg-theme text-theme">
@@ -175,6 +216,47 @@ const App = () => {
                   <span className="text-sm uppercase tracking-[0.25em]">
                     {roomInfo.participantCount} active
                   </span>
+                </div>
+              </div>
+            )}
+
+            {queue.length > 0 && (
+              <div className="panel-frame panel-surface w-full px-8 py-6">
+                <h3 className="mb-4 font-display text-xl text-theme uppercase tracking-[0.15em]">
+                  Up Next
+                </h3>
+                <div className="space-y-3">
+                  {queue.slice(0, 3).map((song, index) => (
+                    <div
+                      key={song.id}
+                      className="flex items-center gap-4 rounded-lg bg-black bg-opacity-20 p-3 backdrop-blur-sm
+                                 dark:bg-white dark:bg-opacity-10"
+                    >
+                      {song.thumbnailUrl && (
+                        <img
+                          src={song.thumbnailUrl}
+                          alt={song.title}
+                          className="h-12 w-12 rounded-md object-cover"
+                        />
+                      )}
+                      <div className="flex-1 text-left">
+                        <p className="font-medium text-theme text-sm truncate">
+                          {song.title}
+                        </p>
+                        <p className="text-theme-muted text-xs truncate">
+                          {song.artist}
+                        </p>
+                      </div>
+                      <div className="text-theme-subtle text-xs">
+                        #{index + 1}
+                      </div>
+                    </div>
+                  ))}
+                  {queue.length > 3 && (
+                    <div className="text-center text-theme-muted text-sm">
+                      +{queue.length - 3} more songs
+                    </div>
+                  )}
                 </div>
               </div>
             )}

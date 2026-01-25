@@ -12,9 +12,18 @@ The Vibez casting system consists of two main parts:
 graph TD
     Sender[Platform App] -->|Connects| CastSDK[Google Cast SDK]
     CastSDK -->|Loads| Receiver[Cast Receiver App]
-    Receiver -->|Fetches| Backend[Vibez Backend]
+    Receiver -->|Displays| Queue[Queue & Room Info]
     Receiver -->|Streams| YouTube[YouTube IFrame API]
+    Receiver -->|Streams| Spotify[Spotify Web Playback]
+    Receiver -->|Streams| SoundCloud[SoundCloud Widget]
+    Sender -->|Custom Messages| Receiver
 ```
+
+### Queue-Based Casting Architecture
+- **No Direct YouTube Casting**: Removed direct YouTube URL casting
+- **Custom Message Protocol**: Uses `urn:x-cast:com.vibez.cast` namespace for all communication
+- **Playback State Sync**: Real-time synchronization of current song, queue, and room info
+- **Multi-Provider Support**: Handles YouTube, Spotify, and SoundCloud through unified interface
 
 ### Standalone Receiver App (`apps/cast`)
 - Built with **Vite 6** + **React 19** + **Tailwind 4**.
@@ -22,6 +31,29 @@ graph TD
 - Served at `/casting/receiver/`.
 - **Entrypoint**: `apps/cast/src/App.tsx`.
 - **Assets**: Bundled into `dist` and served statically.
+
+## Custom Message Protocol
+
+### Message Types
+All messages use the `urn:x-cast:com.vibez.cast` namespace:
+
+1. **updatePlayback**: Initial song and room state
+2. **syncPlayback**: Real-time playback synchronization
+3. **updateQueue**: Queue updates with upcoming songs
+4. **updateRoomInfo**: Room name and participant count
+
+### Message Format
+```typescript
+{
+  action: 'updatePlayback' | 'syncPlayback' | 'updateQueue' | 'updateRoomInfo',
+  currentSong?: Song,
+  isPlaying?: boolean,
+  positionMs?: number,
+  queue?: Song[],
+  roomInfo?: { name: string, participantCount: number },
+  timestamp: number
+}
+```
 
 ## Development
 
@@ -67,8 +99,23 @@ The Cast Receiver is deployed as part of the frontend Docker image with SSR supp
     - `https://vibez.io/casting/receiver/*` -> Cast Receiver App (SSR)
 
 ## Key Features
-- **YouTube Support**: Embeddings via `react-player` / custom iframe
-- **Real-time Sync**: Connects to backend SSE for room state
-- **Queue Display**: Shows upcoming songs with real-time updates
+- **Multi-Provider Support**: YouTube, Spotify, and SoundCloud via unified interface
+- **Queue-Based Casting**: Shows current song and upcoming queue items
+- **Real-time Sync**: Connects to platform via custom messages for room state
+- **Room Display**: Shows room name and participant count
 - **SSR Performance**: Fast initial loading with server-side rendering
 - **Branding**: Full custom UI matching Vibez design system with dark mode support
+
+## Troubleshooting
+
+### Black Screen Issues
+- **Check Message Namespace**: Ensure sender uses `urn:x-cast:com.vibez.cast`
+- **Verify Custom Data**: Check that song data is properly formatted in messages
+- **Console Logs**: Use Chrome Remote Debugger to check receiver console
+- **Token Passing**: Verify Spotify/SoundCloud tokens are included in customData
+
+### Common Fixes
+1. **No Content**: Ensure `updatePlayback` message is sent after receiver loads
+2. **Wrong Namespace**: All custom messages must use `urn:x-cast:com.vibez.cast`
+3. **Missing Song Data**: Check that currentSong object has required fields (title, artist, sourceType, sourceId)
+4. **Player Not Showing**: Verify sourceType matches player component conditions

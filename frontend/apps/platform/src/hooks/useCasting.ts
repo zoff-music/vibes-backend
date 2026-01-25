@@ -13,7 +13,7 @@ export const useCasting = (_roomId: string) => {
     availableDevices,
     lastError,
     initialize,
-    // castCurrentSong, -- unused
+    castCurrentSong,
     syncPlaybackState,
     clearError,
   } = useCastStore();
@@ -22,10 +22,8 @@ export const useCasting = (_roomId: string) => {
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
 
   // Create stable callback references
-  // const stableCastCurrentSong = useCallback(castCurrentSong, [castCurrentSong]);
-  const stableSyncPlaybackState = useCallback(syncPlaybackState, [
-    syncPlaybackState,
-  ]);
+  const stableCastCurrentSong = useCallback(castCurrentSong, []);
+  const stableSyncPlaybackState = useCallback(syncPlaybackState, []);
 
   // Initialize casting when hook is first used
   useEffect(() => {
@@ -35,19 +33,16 @@ export const useCasting = (_roomId: string) => {
   }, [isInitialized, initialize]);
 
   // Cast current song when casting becomes available or song changes
-  // Remove auto-casting - only cast when user explicitly connects
-  // This effect is commented out to prevent automatic casting
-  /*
+  // Only cast when user explicitly connects and there's a current song
   useEffect(() => {
     // Only auto-cast if we're already connected and have a session
-    if (isConnected && currentSong && currentSong.sourceType === 'youtube' && currentSession) {
+    if (isConnected && currentSong && currentSession) {
       console.log('🎵 Auto-casting current song:', currentSong.title);
       stableCastCurrentSong(currentSong).catch(error => {
         console.error('Failed to cast current song:', error);
       });
     }
   }, [isConnected, currentSong, currentSession, stableCastCurrentSong]);
-  */
 
   // Sync playback state with cast device
   useEffect(() => {

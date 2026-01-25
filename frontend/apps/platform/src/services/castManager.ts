@@ -557,48 +557,40 @@ class GoogleCastManager implements CastManager {
   }
 
   private sendMediaToReceiver(mediaInfo: MediaInfo, session: any): void {
+    // Instead of sending individual media, send the current playback state
+    // This includes the current song and queue information
     const [err] = safeWrap(() => {
-      if (this.isYouTubeUrl(mediaInfo.contentId)) {
-        const videoId = this.extractYouTubeVideoId(mediaInfo.contentId);
+      const message = {
+        action: 'updatePlayback',
+        currentSong: {
+          id: mediaInfo.metadata.title || 'unknown',
+          title: mediaInfo.metadata.title || 'Unknown Title',
+          artist: mediaInfo.metadata.artist || 'Unknown Artist',
+          sourceType: this.isYouTubeUrl(mediaInfo.contentId) ? 'youtube' : 'other',
+          sourceId: this.isYouTubeUrl(mediaInfo.contentId) 
+            ? this.extractYouTubeVideoId(mediaInfo.contentId)
+            : mediaInfo.contentId,
+          duration: mediaInfo.duration || 0,
+          thumbnailUrl: mediaInfo.metadata.images?.[0]?.url || '',
+        },
+        isPlaying: true,
+        positionMs: 0,
+        queue: [], // Will be updated separately via updateQueue
+        roomInfo: {
+          name: 'Cast Session',
+          participantCount: 1,
+        },
+      };
 
-        const message = {
-          action: 'loadYouTube',
-          videoId: videoId,
-          metadata: {
-            title: mediaInfo.metadata.title || 'Unknown Title',
-            artist: mediaInfo.metadata.artist || 'Unknown Artist',
-            images: mediaInfo.metadata.images || [],
-          },
-        };
+      console.log('🎵 Sending playback state to receiver:', message);
 
-        console.log('🎵 Sending YouTube content to receiver:', message);
-
-        session.sendMessage(
-          'urn:x-cast:vibez.media',
-          message,
-          () => console.log('✅ YouTube content sent to receiver'),
-          (error: any) =>
-            console.error('❌ Failed to send YouTube content:', error),
-        );
-      } else {
-        // For non-YouTube content, send standard media info
-        const message = {
-          action: 'loadMedia',
-          contentId: mediaInfo.contentId,
-          contentType: mediaInfo.contentType,
-          metadata: mediaInfo.metadata,
-        };
-
-        console.log('🎬 Sending standard media to receiver:', message);
-
-        session.sendMessage(
-          'urn:x-cast:vibez.media',
-          message,
-          () => console.log('✅ Media content sent to receiver'),
-          (error: any) =>
-            console.error('❌ Failed to send media content:', error),
-        );
-      }
+      session.sendMessage(
+        'urn:x-cast:com.vibez.cast',
+        message,
+        () => console.log('✅ Playback state sent to receiver'),
+        (error: any) =>
+          console.error('❌ Failed to send playback state:', error),
+      );
     });
 
     if (err) console.error('Error sending media to receiver:', err);
@@ -694,30 +686,38 @@ class GoogleCastManager implements CastManager {
   }
 
   async updateQueue(queue: any[]): Promise<void> {
-    const [_, err] = safeWrap(() => {
-      if (!this.isConnected() || !this.actualCastSession) return;
+    if (!this.currentSession || this.currentSession.state !== 'connected') {
+      return;
+    }
 
-      const queueMessage = {
-        songs: queue.map((song) => ({
-          id: song.id,
-          title: song.title,
-          artist: song.artist,
-          thumbnailUrl: song.thumbnailUrl,
-          duration: song.duration,
-        })),
-      };
+    const session = this.actualCastSession;
+    if (!session) return;
 
-      console.log('Sending queue update to receiver:', queueMessage);
-      this.actualCastSession.sendMessage(
-        'urn:x-cast:vibez.queue',
-        queueMessage,
-        () => console.log('Queue updated on receiver'),
-        (error: any) => console.error('Failed to update queue:', error),
+    const message = {
+      action: 'updateQueue',
+      queue: queue.map((song) => ({
+        id: song.id,
+        title: song.title,
+        artist: song.artist,
+        sourceType: song.sourceType,
+        sourceId: song.sourceId,
+        thumbnailUrl: song.thumbnailUrl,
+        duration: song.duration,
+      })),
+      timestamp: Date.now(),
+    };
+
+    const [err] = safeWrap(() => {
+      session.sendMessage(
+        'urn:x-cast:com.vibez.cast',
+        message,
+        () => console.log('✅ Queue update sent to receiver'),
+        (error: any) => console.error('❌ Failed to update queue:', error),
       );
     });
 
     if (err) {
-      console.error('Failed to update queue:', err);
+      console.error('Error updating queue:', err);
       this.notifyError({
         code: 'QUEUE_UPDATE_FAILED',
         description: 'Failed to update queue on cast device',
@@ -730,20 +730,30 @@ class GoogleCastManager implements CastManager {
     name: string;
     participantCount: number;
   }): Promise<void> {
-    const [_, err] = safeWrap(() => {
-      if (!this.isConnected() || !this.actualCastSession) return;
+    if (!this.currentSession || this.currentSession.state !== 'connected') {
+      return;
+    }
 
-      console.log('Sending room info to receiver:', roomInfo);
-      this.actualCastSession.sendMessage(
-        'urn:x-cast:vibez.room',
-        roomInfo,
-        () => console.log('Room info updated on receiver'),
-        (error: any) => console.error('Failed to update room info:', error),
+    const session = this.actualCastSession;
+    if (!session) return;
+
+    const message = {
+      action: 'updateRoomInfo',
+      roomInfo: roomInfo,
+      timestamp: Date.now(),
+    };
+
+    const [err] = safeWrap(() => {
+      session.sendMessage(
+        'urn:x-cast:com.vibez.cast',
+        message,
+        () => console.log('✅ Room info sent to receiver'),
+        (error: any) => console.error('❌ Failed to update room info:', error),
       );
     });
 
     if (err) {
-      console.error('Failed to update room info:', err);
+      console.error('Error updating room info:', err);
       this.notifyError({
         code: 'ROOM_UPDATE_FAILED',
         description: 'Failed to update room info on cast device',
@@ -753,48 +763,32 @@ class GoogleCastManager implements CastManager {
   }
 
   async syncPlaybackState(state: any): Promise<void> {
-    const [_, err] = await safeWrapAsync(
-      (async () => {
-        if (!this.isConnected() || !this.actualCastSession) return;
-        const session = this.actualCastSession;
-        if (!session.media?.[0]) return;
+    if (!this.currentSession || this.currentSession.state !== 'connected') {
+      return;
+    }
 
-        const media = session.media[0];
+    const session = this.actualCastSession;
+    if (!session) return;
 
-        // Sync play/pause
-        if (
-          state.isPlaying &&
-          media.playerState === window.chrome.cast.media.PlayerState.PAUSED
-        ) {
-          await new Promise<void>((res, rej) => media.play(null, res, rej));
-        } else if (
-          !state.isPlaying &&
-          media.playerState === window.chrome.cast.media.PlayerState.PLAYING
-        ) {
-          await new Promise<void>((res, rej) => media.pause(null, res, rej));
-        }
+    const message = {
+      action: 'syncPlayback',
+      isPlaying: state.isPlaying,
+      positionMs: state.positionMs,
+      currentSong: state.currentSong,
+      timestamp: Date.now(),
+    };
 
-        // Sync position
-        if (state.positionMs && typeof state.positionMs === 'number') {
-          const currentTimeMs = (media.currentTime || 0) * 1000;
-          if (Math.abs(currentTimeMs - state.positionMs) > 2000) {
-            const seekRequest = new window.chrome.cast.media.SeekRequest();
-            seekRequest.currentTime = state.positionMs / 1000;
-            await new Promise<void>((res, rej) =>
-              media.seek(seekRequest, res, rej),
-            );
-          }
-        }
-
-        if (this.currentSession) {
-          this.currentSession.lastSyncAt = new Date();
-          this.notifySessionStateChange(this.currentSession);
-        }
-      })(),
-    );
+    const [err] = safeWrap(() => {
+      session.sendMessage(
+        'urn:x-cast:com.vibez.cast',
+        message,
+        () => console.log('✅ Playback sync sent to receiver'),
+        (error: any) => console.error('❌ Failed to sync playback:', error),
+      );
+    });
 
     if (err) {
-      console.error('Failed to sync playback state:', err);
+      console.error('Error syncing playback state:', err);
       this.notifyError({
         code: 'SYNC_FAILED',
         description: 'Failed to synchronize playback state with cast device',
