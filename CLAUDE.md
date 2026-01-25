@@ -126,7 +126,7 @@ OTEL_EXPORTER_TIMEOUT=1s
 
 # Cast Configuration
 CAST_APP_ID=1FAF5D9F
-CAST_RECEIVER_URL=https://vibes.zoff.me/casting/receiver
+CAST_RECEIVER_URL=https://zoff.me/casting/receiver
 
 # Frontend URLs
 FRONTEND_URL=https://localhost
