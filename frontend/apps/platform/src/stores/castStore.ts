@@ -39,10 +39,12 @@ export const useCastStore = create<CastState>((set, get) => ({
 
   // Actions
   initialize: async () => {
+    console.log('[Cast] store initialize:start');
     set({ lastError: null });
 
     // Set up event listeners
     castManager.onDeviceAvailable((device) => {
+      console.log('[Cast] store device available', device);
       set((state) => {
         // Remove existing device with same ID and add updated one
         const filteredDevices = state.availableDevices.filter(
@@ -55,6 +57,7 @@ export const useCastStore = create<CastState>((set, get) => ({
     });
 
     castManager.onSessionStateChange((session) => {
+      console.log('[Cast] store session state change', session);
       set({
         currentSession: session,
         isConnected: session.state === 'connected',
@@ -62,6 +65,7 @@ export const useCastStore = create<CastState>((set, get) => ({
     });
 
     castManager.onCastError((error) => {
+      console.error('[Cast] store received error', error);
       set({ lastError: error });
     });
 
@@ -80,6 +84,7 @@ export const useCastStore = create<CastState>((set, get) => ({
       return;
     }
 
+    console.log('[Cast] store initialize:devices', devices);
     set({
       isInitialized: true,
       availableDevices: devices || [],
@@ -87,6 +92,7 @@ export const useCastStore = create<CastState>((set, get) => ({
   },
 
   discoverDevices: async () => {
+    console.log('[Cast] store discoverDevices:start');
     set({ isDiscovering: true, lastError: null });
     const [error, devices] = await safeWrapAsync(castManager.discoverDevices());
 
@@ -103,6 +109,7 @@ export const useCastStore = create<CastState>((set, get) => ({
       return;
     }
 
+    console.log('[Cast] store discoverDevices:done', devices);
     set({
       availableDevices: devices || [],
       isDiscovering: false,
@@ -110,6 +117,7 @@ export const useCastStore = create<CastState>((set, get) => ({
   },
 
   connectToDevice: async (deviceId: string) => {
+    console.log('[Cast] store connectToDevice:start', { deviceId });
     set({ lastError: null });
     const [error, session] = await safeWrapAsync(
       castManager.connectToDevice(deviceId),
@@ -127,6 +135,7 @@ export const useCastStore = create<CastState>((set, get) => ({
       return;
     }
 
+    console.log('[Cast] store connectToDevice:done', session);
     set({
       currentSession: session,
       isConnected: session.state === 'connected',
@@ -134,6 +143,7 @@ export const useCastStore = create<CastState>((set, get) => ({
   },
 
   disconnectFromDevice: async (deviceId: string) => {
+    console.log('[Cast] store disconnectFromDevice:start', { deviceId });
     set({ lastError: null });
     const [error, _] = await safeWrapAsync(
       castManager.disconnectFromDevice(deviceId),
@@ -151,6 +161,7 @@ export const useCastStore = create<CastState>((set, get) => ({
       return;
     }
 
+    console.log('[Cast] store disconnectFromDevice:done', { deviceId });
     set({
       currentSession: null,
       isConnected: false,
@@ -162,6 +173,11 @@ export const useCastStore = create<CastState>((set, get) => ({
       throw new Error('No active casting session');
     }
 
+    console.log('[Cast] store castCurrentSong:start', {
+      sourceType: song?.sourceType,
+      title: song?.title,
+      sourceId: song?.sourceId,
+    });
     set({ lastError: null });
 
     // Build content URL based on source type
@@ -213,11 +229,17 @@ export const useCastStore = create<CastState>((set, get) => ({
       });
       throw error;
     }
+    console.log('[Cast] store castCurrentSong:done');
   },
 
   syncPlaybackState: async (state: any) => {
     if (!get().isConnected) return;
 
+    console.log('[Cast] store syncPlaybackState:start', {
+      isPlaying: state?.isPlaying,
+      positionMs: state?.positionMs,
+      title: state?.currentSong?.title,
+    });
     set({ lastError: null });
     const [error, _] = await safeWrapAsync(
       castManager.syncPlaybackState(state),
@@ -238,6 +260,7 @@ export const useCastStore = create<CastState>((set, get) => ({
   updateQueue: async (queue: any[]) => {
     if (!get().isConnected) return;
 
+    console.log('[Cast] store updateQueue:start', { count: queue.length });
     set({ lastError: null });
     const [error, _] = await safeWrapAsync(castManager.updateQueue(queue));
 
@@ -259,6 +282,7 @@ export const useCastStore = create<CastState>((set, get) => ({
   }) => {
     if (!get().isConnected) return;
 
+    console.log('[Cast] store updateRoomInfo:start', roomInfo);
     set({ lastError: null });
     const [error, _] = await safeWrapAsync(
       castManager.updateRoomInfo(roomInfo),
@@ -281,6 +305,7 @@ export const useCastStore = create<CastState>((set, get) => ({
   },
 
   cleanup: () => {
+    console.log('[Cast] store cleanup:start');
     const [error, _] = safeWrap(() => castManager.destroy());
 
     if (error) {

@@ -41,6 +41,10 @@ class GoogleCastManager implements CastManager {
 
   private async initializeCastSDK(): Promise<void> {
     if (typeof window === 'undefined') return;
+    console.log('[Cast] initializeCastSDK:start', {
+      sdkAvailable: !!window.chrome?.cast?.isAvailable,
+      sdkLoaded: !!window.chrome?.cast,
+    });
     if (this.initializationPromise) return this.initializationPromise;
 
     this.initializationPromise = (async () => {
@@ -58,10 +62,12 @@ class GoogleCastManager implements CastManager {
             script.src =
               'https://www.gstatic.com/cv/js/sender/v1/cast_sender.js?loadCastFramework=1';
             script.onload = () => {
+              console.log('[Cast] sender SDK script loaded');
               this.waitForCastAPI().then(resolve).catch(reject);
             };
             script.onerror = () => {
               const error = new Error('Failed to load Google Cast SDK');
+              console.error('[Cast] sender SDK script failed to load');
               this.notifyError({
                 code: 'SDK_LOAD_FAILED',
                 description: 'Failed to load Google Cast SDK',
@@ -90,7 +96,7 @@ class GoogleCastManager implements CastManager {
       this.isInitialized = true;
       this.reconnectAttempts = 0;
       console.log('✅ Google Cast initialized successfully');
-      console.log('Cast API version:', window.chrome.cast.VERSION);
+      console.log('[Cast] Cast API version:', window.chrome.cast.VERSION);
     })();
 
     return this.initializationPromise;
@@ -101,11 +107,13 @@ class GoogleCastManager implements CastManager {
       let attempts = 0;
       const maxAttempts = 100; // 10 seconds with 100ms intervals
 
+      console.log('[Cast] waiting for Cast API availability...');
       const checkInterval = setInterval(() => {
         attempts++;
 
         if (window.chrome?.cast?.isAvailable) {
           clearInterval(checkInterval);
+          console.log('[Cast] Cast API available', { attempts });
           resolve();
         } else if (attempts >= maxAttempts) {
           clearInterval(checkInterval);
@@ -127,6 +135,11 @@ class GoogleCastManager implements CastManager {
   private setupCastAPI(): void {
     const [_, err] = safeWrap(() => {
       console.log('Setting up Google Cast API...');
+      console.log('[Cast] setup config', {
+        appId: CAST_APPLICATION_ID,
+        receiverUrl: CUSTOM_RECEIVER_URL,
+        developmentMode: DEVELOPMENT_MODE,
+      });
 
       const sessionRequest = new window.chrome.cast.SessionRequest(
         CAST_APPLICATION_ID,
@@ -197,6 +210,11 @@ class GoogleCastManager implements CastManager {
 
   private onSessionListener(session: any): void {
     console.log('🎯 Cast session established:', session);
+    console.log('[Cast] session details', {
+      sessionId: session?.sessionId || session?.getSessionId?.(),
+      receiverName: session?.receiver?.friendlyName,
+      mediaCount: session?.media?.length || 0,
+    });
 
     const [_, err] = safeWrap(() => {
       const castSession: CastSession = {
@@ -245,6 +263,10 @@ class GoogleCastManager implements CastManager {
 
   private handleExistingMediaSession(media: any): void {
     const [_, err] = safeWrap(() => {
+      console.log('[Cast] existing media session detected', {
+        sessionId: media?.sessionId,
+        mediaStatus: media?.playerState,
+      });
       if (this.currentSession) {
         this.currentSession.mediaSessionId = media.sessionId;
         this.currentSession.lastSyncAt = new Date();
@@ -257,6 +279,7 @@ class GoogleCastManager implements CastManager {
   }
 
   private onMediaUpdateListener(isAlive: boolean): void {
+    console.log('[Cast] media update listener', { isAlive });
     if (!isAlive && this.currentSession) {
       console.log('Media session ended');
       this.currentSession.mediaSessionId = undefined;
@@ -266,6 +289,7 @@ class GoogleCastManager implements CastManager {
   }
 
   private onSessionUpdateListener(isAlive: boolean): void {
+    console.log('[Cast] session update listener', { isAlive });
     if (!isAlive && this.currentSession) {
       console.log('Cast session ended');
       this.currentSession.state = 'disconnected';
@@ -287,6 +311,7 @@ class GoogleCastManager implements CastManager {
       if (!isAvailable) {
         console.log('No Chromecast devices available');
         this.devices = [];
+        console.log('[Cast] cleared device list');
         return;
       }
 
@@ -301,6 +326,7 @@ class GoogleCastManager implements CastManager {
       };
 
       this.devices = [device];
+      console.log('[Cast] device available', device);
       this.notifyDeviceAvailable(device);
     });
 
@@ -342,6 +368,7 @@ class GoogleCastManager implements CastManager {
     if (!device) throw new Error(`Device ${deviceId} not found`);
 
     if (this.currentSession && this.currentSession.deviceId === deviceId) {
+      console.log('[Cast] already connected to device', deviceId);
       return this.currentSession;
     }
 
@@ -365,6 +392,10 @@ class GoogleCastManager implements CastManager {
             this.currentSession = castSession;
             this.actualCastSession = session;
             this.reconnectAttempts = 0;
+            console.log('[Cast] stored session', {
+              sessionId: castSession.id,
+              deviceName: castSession.deviceName,
+            });
 
             if (session.addUpdateListener) {
               session.addUpdateListener(
@@ -453,6 +484,12 @@ class GoogleCastManager implements CastManager {
     }
 
     console.log('🎬 Using stored cast session for media loading:', session);
+    console.log('[Cast] castMedia payload', {
+      contentId: mediaInfo.contentId,
+      contentType: mediaInfo.contentType,
+      title: mediaInfo.metadata.title,
+      sourceType: mediaInfo.metadata.artist ? 'audio' : 'unknown',
+    });
 
     return new Promise((resolve, reject) => {
       if (DEVELOPMENT_MODE || this.isYouTubeUrl(mediaInfo.contentId)) {
@@ -472,6 +509,10 @@ class GoogleCastManager implements CastManager {
     reject: (error: Error) => void,
   ): void {
     const [err] = safeWrap(() => {
+      console.log('[Cast] loadCustomReceiver:start', {
+        receiverUrl: CUSTOM_RECEIVER_URL,
+        sessionId: session?.sessionId || session?.getSessionId?.(),
+      });
       // Create media info for our custom receiver HTML page
       const receiverMediaInfo = new window.chrome.cast.media.MediaInfo(
         CUSTOM_RECEIVER_URL,
@@ -520,6 +561,9 @@ class GoogleCastManager implements CastManager {
         request,
         (media: any) => {
           console.log('✅ Custom receiver loaded successfully:', media);
+          console.log('[Cast] custom receiver media session', {
+            mediaSessionId: media?.sessionId,
+          });
 
           // Wait a moment for receiver to initialize, then send the actual content
           setTimeout(() => {
@@ -584,7 +628,12 @@ class GoogleCastManager implements CastManager {
         },
       };
 
-      console.log('🎵 Sending playback state to receiver:', message);
+      console.log('🎵 Sending playback state to receiver:', {
+        action: message.action,
+        title: message.currentSong.title,
+        sourceType: message.currentSong.sourceType,
+        sourceId: message.currentSong.sourceId,
+      });
 
       session.sendMessage(
         'urn:x-cast:com.vibez.cast',
@@ -605,6 +654,10 @@ class GoogleCastManager implements CastManager {
     reject: (error: Error) => void,
   ): void {
     const [err] = safeWrap(() => {
+      console.log('[Cast] loadStandardMedia:start', {
+        contentId: mediaInfo.contentId,
+        contentType: mediaInfo.contentType,
+      });
       // For non-YouTube content, proceed with normal casting
       const castMediaInfo = new window.chrome.cast.media.MediaInfo(
         mediaInfo.contentId,
@@ -710,6 +763,10 @@ class GoogleCastManager implements CastManager {
     };
 
     const [err] = safeWrap(() => {
+      console.log('[Cast] updateQueue send', {
+        count: message.queue.length,
+        timestamp: message.timestamp,
+      });
       session.sendMessage(
         'urn:x-cast:com.vibez.cast',
         message,
@@ -746,6 +803,7 @@ class GoogleCastManager implements CastManager {
     };
 
     const [err] = safeWrap(() => {
+      console.log('[Cast] updateRoomInfo send', message);
       session.sendMessage(
         'urn:x-cast:com.vibez.cast',
         message,
@@ -781,6 +839,12 @@ class GoogleCastManager implements CastManager {
     };
 
     const [err] = safeWrap(() => {
+      console.log('[Cast] syncPlayback send', {
+        isPlaying: message.isPlaying,
+        positionMs: message.positionMs,
+        title: message.currentSong?.title,
+        timestamp: message.timestamp,
+      });
       session.sendMessage(
         'urn:x-cast:com.vibez.cast',
         message,

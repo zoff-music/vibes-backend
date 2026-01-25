@@ -28,6 +28,7 @@ export const useCasting = (_roomId: string) => {
   // Initialize casting when hook is first used
   useEffect(() => {
     if (!isInitialized) {
+      console.log('[Cast] useCasting initializing');
       initialize();
     }
   }, [isInitialized, initialize]);
@@ -49,6 +50,12 @@ export const useCasting = (_roomId: string) => {
     // Only sync if we have an active session with media
     if (isConnected && currentSong && currentSession?.mediaSessionId) {
       const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
+      console.log('[Cast] syncing playback state', {
+        title: currentSong.title,
+        isPlaying,
+        positionMs: actualPositionMs,
+        mediaSessionId: currentSession.mediaSessionId,
+      });
       stableSyncPlaybackState({
         isPlaying,
         positionMs: actualPositionMs,
