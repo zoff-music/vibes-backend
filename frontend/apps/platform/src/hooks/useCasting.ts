@@ -38,7 +38,7 @@ export const useCasting = (_roomId: string) => {
     // Only auto-cast if we're already connected and have a session
     if (isConnected && currentSong && currentSession) {
       console.log('🎵 Auto-casting current song:', currentSong.title);
-      stableCastCurrentSong(currentSong).catch(error => {
+      stableCastCurrentSong(currentSong).catch((error) => {
         console.error('Failed to cast current song:', error);
       });
     }
