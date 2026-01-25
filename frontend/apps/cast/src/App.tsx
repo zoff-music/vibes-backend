@@ -47,12 +47,47 @@ const App = () => {
         return;
       }
 
-      console.log('Initializing Cast Receiver...');
+      console.log('[Cast Receiver] Initializing Cast Receiver...', {
+        userAgent: navigator.userAgent,
+        location: window.location.href,
+      });
       const context = cast.framework.CastReceiverContext.getInstance();
       const playerManager = context.getPlayerManager();
 
       contextRef.current = context;
       playerManagerRef.current = playerManager;
+
+      playerManager.addEventListener(
+        cast.framework.events.EventType.MEDIA_STATUS,
+        (event: framework.events.MediaStatusEvent) => {
+          console.log('[Cast Receiver] MEDIA_STATUS', {
+            playerState: event.mediaStatus?.playerState,
+            idleReason: event.mediaStatus?.idleReason,
+            currentTime: playerManager.getCurrentTimeSec(),
+            duration: playerManager.getDurationSec(),
+          });
+        },
+      );
+      playerManager.addEventListener(
+        cast.framework.events.EventType.TIME_UPDATE,
+        (event: framework.events.MediaElementEvent) => {
+          console.log('[Cast Receiver] TIME_UPDATE', {
+            currentTime: event.currentMediaTime,
+            duration: playerManager.getDurationSec(),
+          });
+        },
+      );
+      playerManager.addEventListener(
+        cast.framework.events.EventType.ERROR,
+        (event: framework.events.ErrorEvent) => {
+          console.error('[Cast Receiver] PLAYER_ERROR', {
+            detailedErrorCode: event.detailedErrorCode,
+            error: event.error,
+            reason: event.reason,
+            severity: event.severity,
+          });
+        },
+      );
 
       // --- Message Interceptor for LOAD requests ---
       playerManager.setMessageInterceptor(
@@ -69,6 +104,9 @@ const App = () => {
                 data.tokens as Record<string, any>,
               )) {
                 if (tokenData?.token) {
+                  console.log('[Cast Receiver] caching token for provider', {
+                    provider,
+                  });
                   setCachedToken(
                     provider,
                     tokenData.token,
@@ -92,6 +130,12 @@ const App = () => {
           console.log('Received custom message:', customEvent);
 
           const message = customEvent.data;
+          console.log('[Cast Receiver] custom message payload', {
+            action: message?.action,
+            hasCurrentSong: !!message?.currentSong,
+            hasQueue: Array.isArray(message?.queue),
+            hasRoomInfo: !!message?.roomInfo,
+          });
 
           switch (message.action) {
             case 'updatePlayback':
@@ -163,7 +207,11 @@ const App = () => {
 
     // Check availability (CAF is loaded via script tag in index.html)
     if (window.cast?.framework) {
+      console.log('[Cast Receiver] CAF framework detected');
       initCast();
+    } else {
+      console.error('[Cast Receiver] CAF framework not available on window');
+      setStatusText('Cast framework not available');
     }
 
     // Note: We don't cleanup the Cast receiver on unmount because:
