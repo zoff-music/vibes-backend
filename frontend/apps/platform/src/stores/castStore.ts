@@ -164,9 +164,25 @@ export const useCastStore = create<CastState>((set, get) => ({
 
     set({ lastError: null });
 
+    // Build content URL based on source type
+    let contentId = '';
+    switch (song.sourceType) {
+      case 'youtube':
+        contentId = `https://www.youtube.com/watch?v=${song.sourceId}`;
+        break;
+      case 'spotify':
+        contentId = `spotify:track:${song.sourceId}`;
+        break;
+      case 'soundcloud':
+        contentId = `https://soundcloud.com/${song.sourceId}`;
+        break;
+      default:
+        contentId = song.sourceId || song.url || '';
+    }
+
     const mediaInfo = {
-      contentId: `https://www.youtube.com/watch?v=${song.sourceId}`,
-      contentType: 'video/mp4',
+      contentId,
+      contentType: song.sourceType === 'youtube' ? 'video/mp4' : 'audio/mp3',
       streamType: 'BUFFERED' as const,
       metadata: {
         title: song.title || 'Unknown Title',
