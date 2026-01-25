@@ -566,8 +566,10 @@ class GoogleCastManager implements CastManager {
           id: mediaInfo.metadata.title || 'unknown',
           title: mediaInfo.metadata.title || 'Unknown Title',
           artist: mediaInfo.metadata.artist || 'Unknown Artist',
-          sourceType: this.isYouTubeUrl(mediaInfo.contentId) ? 'youtube' : 'other',
-          sourceId: this.isYouTubeUrl(mediaInfo.contentId) 
+          sourceType: this.isYouTubeUrl(mediaInfo.contentId)
+            ? 'youtube'
+            : 'other',
+          sourceId: this.isYouTubeUrl(mediaInfo.contentId)
             ? this.extractYouTubeVideoId(mediaInfo.contentId)
             : mediaInfo.contentId,
           duration: mediaInfo.duration || 0,

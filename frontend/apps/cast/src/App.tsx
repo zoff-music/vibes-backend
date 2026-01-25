@@ -86,62 +86,65 @@ const App = () => {
       );
 
       // --- Custom Message Handler for Vibez messages ---
-      context.addCustomMessageListener('urn:x-cast:com.vibez.cast', (customEvent) => {
-        console.log('Received custom message:', customEvent);
-        
-        const message = customEvent.data;
-        
-        switch (message.action) {
-          case 'updatePlayback':
-            console.log('Updating playback state:', message);
-            if (message.currentSong) {
-              setPlaybackState({
-                currentSong: message.currentSong,
-                isPlaying: message.isPlaying || false,
-                positionMs: message.positionMs || 0,
-                updatedAt: new Date().toISOString(),
-                serverTimeMs: Date.now(),
-              });
-              setIsPlaying(message.isPlaying || false);
-              setStatusText(`Now Playing: ${message.currentSong.title}`);
-            }
-            if (message.roomInfo) {
-              setRoomInfo(message.roomInfo);
-            }
-            break;
+      context.addCustomMessageListener(
+        'urn:x-cast:com.vibez.cast',
+        (customEvent) => {
+          console.log('Received custom message:', customEvent);
 
-          case 'syncPlayback':
-            console.log('Syncing playback:', message);
-            if (message.currentSong) {
-              setPlaybackState({
-                currentSong: message.currentSong,
-                isPlaying: message.isPlaying || false,
-                positionMs: message.positionMs || 0,
-                updatedAt: new Date().toISOString(),
-                serverTimeMs: Date.now(),
-              });
-              setIsPlaying(message.isPlaying || false);
-            }
-            break;
+          const message = customEvent.data;
 
-          case 'updateQueue':
-            console.log('Updating queue:', message);
-            if (message.queue) {
-              setQueue(message.queue);
-            }
-            break;
+          switch (message.action) {
+            case 'updatePlayback':
+              console.log('Updating playback state:', message);
+              if (message.currentSong) {
+                setPlaybackState({
+                  currentSong: message.currentSong,
+                  isPlaying: message.isPlaying || false,
+                  positionMs: message.positionMs || 0,
+                  updatedAt: new Date().toISOString(),
+                  serverTimeMs: Date.now(),
+                });
+                setIsPlaying(message.isPlaying || false);
+                setStatusText(`Now Playing: ${message.currentSong.title}`);
+              }
+              if (message.roomInfo) {
+                setRoomInfo(message.roomInfo);
+              }
+              break;
 
-          case 'updateRoomInfo':
-            console.log('Updating room info:', message);
-            if (message.roomInfo) {
-              setRoomInfo(message.roomInfo);
-            }
-            break;
+            case 'syncPlayback':
+              console.log('Syncing playback:', message);
+              if (message.currentSong) {
+                setPlaybackState({
+                  currentSong: message.currentSong,
+                  isPlaying: message.isPlaying || false,
+                  positionMs: message.positionMs || 0,
+                  updatedAt: new Date().toISOString(),
+                  serverTimeMs: Date.now(),
+                });
+                setIsPlaying(message.isPlaying || false);
+              }
+              break;
 
-          default:
-            console.log('Unknown message action:', message.action);
-        }
-      });
+            case 'updateQueue':
+              console.log('Updating queue:', message);
+              if (message.queue) {
+                setQueue(message.queue);
+              }
+              break;
+
+            case 'updateRoomInfo':
+              console.log('Updating room info:', message);
+              if (message.roomInfo) {
+                setRoomInfo(message.roomInfo);
+              }
+              break;
+
+            default:
+              console.log('Unknown message action:', message.action);
+          }
+        },
+      );
 
       const options = new cast.framework.CastReceiverOptions();
       options.maxInactivity = 3600;
@@ -222,15 +225,14 @@ const App = () => {
 
             {queue.length > 0 && (
               <div className="panel-frame panel-surface w-full px-8 py-6">
-                <h3 className="mb-4 font-display text-xl text-theme uppercase tracking-[0.15em]">
+                <h3 className="mb-4 font-display text-theme text-xl uppercase tracking-[0.15em]">
                   Up Next
                 </h3>
                 <div className="space-y-3">
                   {queue.slice(0, 3).map((song, index) => (
                     <div
                       key={song.id}
-                      className="flex items-center gap-4 rounded-lg bg-black bg-opacity-20 p-3 backdrop-blur-sm
-                                 dark:bg-white dark:bg-opacity-10"
+                      className="flex items-center gap-4 rounded-lg bg-black bg-opacity-20 p-3 backdrop-blur-sm dark:bg-white dark:bg-opacity-10"
                     >
                       {song.thumbnailUrl && (
                         <img
@@ -240,10 +242,10 @@ const App = () => {
                         />
                       )}
                       <div className="flex-1 text-left">
-                        <p className="font-medium text-theme text-sm truncate">
+                        <p className="truncate font-medium text-sm text-theme">
                           {song.title}
                         </p>
-                        <p className="text-theme-muted text-xs truncate">
+                        <p className="truncate text-theme-muted text-xs">
                           {song.artist}
                         </p>
                       </div>
@@ -253,7 +255,7 @@ const App = () => {
                     </div>
                   ))}
                   {queue.length > 3 && (
-                    <div className="text-center text-theme-muted text-sm">
+                    <div className="text-center text-sm text-theme-muted">
                       +{queue.length - 3} more songs
                     </div>
                   )}
