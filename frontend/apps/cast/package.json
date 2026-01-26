@@ -4,9 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"bun run tailwindcss -i src/index.css -o dist/tailwind.css --config tailwind.config.js --watch\" \"bun scripts/build.ts --watch\" \"bun scripts/dev-server.ts\"",
+    "dev": "concurrently \"bun run tailwindcss -i src/styles/index.css -o dist/tailwind.css --config tailwind.config.js --watch\" \"bun scripts/build.ts --watch\" \"bun scripts/dev-server.ts\"",
     "build": "bun run build:css && bun run build:static",
-    "build:css": "bun run tailwindcss -i src/index.css -o dist/tailwind.css --minify",
+    "build:css": "bun run tailwindcss -i src/styles/index.css -o dist/tailwind.css --minify",
     "build:static": "NODE_ENV=production bun scripts/build.ts",
     "start": "echo 'Cast app is now static - serve via Caddy'",
     "lint": "bunx biome check .",

@@ -1,0 +1,81 @@
+import { Song } from '@vibez/shared';
+import { QueueEmptyIcon } from '../../icons';
+import { AnimatePresence } from 'framer-motion';
+import React, { useEffect, useState } from 'react';
+import { QueueItem } from './QueueItem';
+
+interface Props {
+    songs: Song[];
+    roomId?: string; // eslint-disable-line @typescript-eslint/no-unused-vars
+    onRemove?: (id: string) => void;
+    onVote?: (id: string) => void;
+    isAdmin?: boolean;
+}
+
+const QueueListComponent: React.FC<Props> = ({
+    songs,
+    onRemove,
+    onVote,
+    isAdmin,
+}) => {
+    const [isSSR, setIsSSR] = useState(true);
+
+    useEffect(() => {
+        setIsSSR(false);
+    }, []);
+
+    if (songs.length === 0) {
+        return (
+            <div className="panel-surface animate-fade-in rounded-3xl p-12 text-center">
+                <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border border-theme bg-theme-surface">
+                    <QueueEmptyIcon className="h-10 w-10 text-theme-muted" />
+                </div>
+                <h3 className="mb-2 font-display text-base text-theme">
+                    Queue is Empty
+                </h3>
+                <p className="mb-2 text-sm text-theme-muted">
+                    Add some songs to get the party started
+                </p>
+                <p className="jp-art text-theme-subtle text-xs">曲を追加</p>
+            </div>
+        );
+    }
+
+    const queueSongs = songs; // All songs are now in the queue (no position-based filtering)
+
+    return (
+        <div className="space-y-3">
+            {isSSR ? (
+                // SSR: Render without animations
+                queueSongs.map((song, index) => (
+                    <QueueItem
+                        key={song.id}
+                        song={song}
+                        position={index + 1}
+                        onRemove={onRemove}
+                        onVote={onVote}
+                        isAdmin={isAdmin}
+                        isSSR={true}
+                    />
+                ))
+            ) : (
+                // Client: Render with animations
+                <AnimatePresence initial={false} mode="popLayout">
+                    {queueSongs.map((song, index) => (
+                        <QueueItem
+                            key={song.id}
+                            song={song}
+                            position={index + 1}
+                            onRemove={onRemove}
+                            onVote={onVote}
+                            isAdmin={isAdmin}
+                            isSSR={false}
+                        />
+                    ))}
+                </AnimatePresence>
+            )}
+        </div>
+    );
+};
+
+export const QueueList = React.memo(QueueListComponent);
