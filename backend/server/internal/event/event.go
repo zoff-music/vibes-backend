@@ -31,10 +31,8 @@ func GetAppEvents(
 			Name: "ReviewRoomPlayback",
 			Rate: 500 * time.Millisecond,
 			Handler: &handler.ReviewRoomPlayback{
-				DB:            db,
-				IPS:           ips,
-				AdminNotifier: ips,
-				AdminLister:   db,
+				DB:  db,
+				IPS: ips,
 			},
 		},
 		{
@@ -80,6 +78,14 @@ func GetAppEvents(
 			Rate: 10 * time.Second,
 			Handler: &handler.CleanupExpiredPendingOAuthStates{
 				DB: db,
+			},
+		},
+		{
+			Name: "ReviewAdminRooms",
+			Rate: 15 * time.Second,
+			Handler: &handler.ReviewAdminRooms{
+				DB:  db,
+				IPS: ips,
 			},
 		},
 	}
