@@ -7,13 +7,13 @@ import {
   SpotifyPlayer,
   Toast,
   VideoPlayer,
+  QueueList,
 } from '@vibez/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import { getHttpError } from 'wiretyped';
 import { DeviceSelector } from '../components/cast/DeviceSelector';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
-import { QueueList } from '../components/queue/QueueList';
 import { RoomHeader } from '../components/room/RoomHeader';
 import { useCasting } from '../hooks/useCasting';
 import { usePlayback } from '../hooks/usePlayback';
@@ -445,9 +445,8 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
   return (
     <div
-      className={`relative min-h-screen overflow-hidden bg-theme text-theme ${
-        !isSSR ? 'animate-fade-in' : ''
-      }`}
+      className={`relative min-h-screen overflow-hidden bg-theme text-theme ${!isSSR ? 'animate-fade-in' : ''
+        }`}
     >
       <div className="synth-sky pointer-events-none fixed inset-0" />
       <div className="synth-haze pointer-events-none fixed inset-0" />
@@ -654,11 +653,10 @@ export default function RoomView({ initialData }: RoomViewProps) {
                     <div className="mb-8">
                       <div className="mb-3 flex items-center gap-2">
                         <div
-                          className={`h-2 w-2 rounded-full ${
-                            displayIsPlaying
-                              ? 'animate-pulse bg-secondary shadow-[0_0_10px_rgba(0,217,255,0.6)]'
-                              : 'bg-white/30'
-                          }`}
+                          className={`h-2 w-2 rounded-full ${displayIsPlaying
+                            ? 'animate-pulse bg-secondary shadow-[0_0_10px_rgba(0,217,255,0.6)]'
+                            : 'bg-white/30'
+                            }`}
                         />
                         <span className="font-display text-[10px] text-theme-muted tracking-[0.3em]">
                           {displayIsPlaying ? 'Now Playing' : 'Paused'}
