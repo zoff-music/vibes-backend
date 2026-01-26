@@ -4,8 +4,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  // @ts-expect-error - Vite version mismatch in workspace
-  plugins: [react(), tailwindcss()],
+  plugins: [react(), tailwindcss()] as any,
   root: '.',
   publicDir: 'public',
   base: '/casting/receiver/',
