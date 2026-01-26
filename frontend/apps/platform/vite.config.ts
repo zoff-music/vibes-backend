@@ -5,7 +5,6 @@ import { defineConfig } from 'vite';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  // @ts-expect-error - Vite version mismatch in workspace
   plugins: [react(), tailwindcss()],
   root: '.',
   publicDir: 'public',
@@ -42,9 +41,6 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
-  },
-  css: {
-    postcss: './postcss.config.js',
   },
   define: {
     'process.env.NODE_ENV': JSON.stringify(
