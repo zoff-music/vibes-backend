@@ -17,6 +17,7 @@
     "test:coverage": "vitest run --coverage"
   },
   "dependencies": {
+    "@vibez/api": "workspace:*",
     "@vibez/models": "workspace:*",
     "@vibez/shared": "workspace:*",
     "@vibez/ui": "workspace:*",
