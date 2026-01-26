@@ -46,7 +46,7 @@ const getApiUrl = () => {
   }
 
   // If set via build-time env var, use it
-  if (import.meta.env?.VITE_API_URL) {
+  if (import.meta?.env?.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
 

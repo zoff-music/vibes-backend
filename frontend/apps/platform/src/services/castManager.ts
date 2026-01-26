@@ -12,13 +12,14 @@ import { useRoomStore } from '../stores/roomStore';
 // Google Cast Application ID - Custom Vibez Receiver
 // For development, we use the Styled Media Receiver which allows custom content
 // In production, this should be replaced with a registered custom receiver app ID
-const CAST_APPLICATION_ID = import.meta.env.VITE_CAST_APP_ID || '1FAF5D9F'; // Custom Vibez Receiver
+const CAST_APPLICATION_ID =
+  import.meta?.env?.VITE_CAST_APP_ID || '1FAF5D9F'; // Custom Vibez Receiver
 
 // Development: Use local custom receiver
 // Production: Use registered custom receiver
 const DEVELOPMENT_MODE = true;
 const CUSTOM_RECEIVER_URL =
-  import.meta.env.VITE_CAST_RECEIVER_URL || '/casting/receiver/';
+  import.meta?.env?.VITE_CAST_RECEIVER_URL || '/casting/receiver/';
 const LOCAL_EMULATOR_ENABLED =
   import.meta?.env?.VITE_CAST_LOCAL_EMULATOR === 'true' ||
   import.meta?.env?.VITE_CAST_LOCAL_EMULATOR === '1';
