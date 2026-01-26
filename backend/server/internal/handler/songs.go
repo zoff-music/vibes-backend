@@ -55,10 +55,8 @@ func GetSongs(
 
 // AddSong handles the addition of a new song to the room
 func AddSong(
-	db vibe.SongManager,
-	ips vibe.RoomEventNotifier,
-	adminNotifier vibe.AdminEventNotifier,
-	adminLister vibe.AdminRoomLister,
+	db vibe.SongAdderPlaybackControllerSongsFetcherAdminRoomLister,
+	ips vibe.RoomEventAdminNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -146,11 +144,11 @@ func AddSong(
 			log.Printf("failed to notify room: %v", err)
 		}
 
-		rooms, err := adminLister.ListAdminRooms(ctx)
+		rooms, err := db.ListAdminRooms(ctx)
 		if err == nil {
 			payload, marshalErr := json.Marshal(rooms)
 			if marshalErr == nil {
-				notifyErr := adminNotifier.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
+				notifyErr := ips.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
 					Type:    vibe.AdminRoomsUpdate,
 					Payload: payload,
 				})
@@ -224,10 +222,8 @@ func AddSong(
 
 // RemoveSong handles the removal of a song from the room
 func RemoveSong(
-	db vibe.SongQueueManager,
-	ips vibe.RoomEventNotifier,
-	adminNotifier vibe.AdminEventNotifier,
-	adminLister vibe.AdminRoomLister,
+	db vibe.SongQueueManagerAdminRoomLister,
+	ips vibe.RoomEventAdminNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -277,11 +273,11 @@ func RemoveSong(
 			log.Printf("failed to notify room in remove song: %v", err)
 		}
 
-		rooms, err := adminLister.ListAdminRooms(ctx)
+		rooms, err := db.ListAdminRooms(ctx)
 		if err == nil {
 			payload, marshalErr := json.Marshal(rooms)
 			if marshalErr == nil {
-				notifyErr := adminNotifier.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
+				notifyErr := ips.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
 					Type:    vibe.AdminRoomsUpdate,
 					Payload: payload,
 				})

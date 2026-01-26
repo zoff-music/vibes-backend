@@ -1,9 +1,17 @@
 /// <reference types="chromecast-caf-receiver" />
 
-import { safeWrap, setCachedToken, usePlaybackStore } from '@vibez/shared';
+import { api } from '@vibez/api';
+import {
+  type PlaybackState,
+  type Room,
+  type Song,
+  safeWrap,
+  setCachedToken,
+  usePlaybackStore,
+} from '@vibez/shared';
 import { SoundCloudPlayer, SpotifyPlayer, VideoPlayer } from '@vibez/ui';
 import type { framework } from 'chromecast-caf-receiver';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 // Types are available globally via @types/chromecast-caf-receiver
 
@@ -12,15 +20,31 @@ interface RoomInfo {
   participantCount: number;
 }
 
-interface QueueItem {
-  id: string;
-  title: string;
-  artist: string;
-  sourceType: string;
-  sourceId: string;
-  thumbnailUrl?: string;
-  duration?: number;
-}
+type QueueItem = Song;
+
+type LocalCastMessage =
+  | {
+      action: 'updatePlayback';
+      currentSong?: QueueItem;
+      isPlaying?: boolean;
+      positionMs?: number;
+      queue?: QueueItem[];
+      roomInfo?: RoomInfo;
+    }
+  | {
+      action: 'syncPlayback';
+      currentSong?: QueueItem;
+      isPlaying?: boolean;
+      positionMs?: number;
+    }
+  | {
+      action: 'updateQueue';
+      queue?: QueueItem[];
+    }
+  | {
+      action: 'updateRoomInfo';
+      roomInfo?: RoomInfo;
+    };
 
 // Global flag to prevent multiple Cast receiver initializations
 let isCastReceiverInitialized = false;
@@ -29,15 +53,107 @@ const App = () => {
   const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [statusText, setStatusText] = useState('Ready for Casting');
+  const [roomMode, setRoomMode] = useState<string | null>(null);
 
   // Use global store for playback state to share with components
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
   const setIsPlaying = usePlaybackStore((state) => state.setIsPlaying);
+  const updateActualPosition = usePlaybackStore(
+    (state) => state.updateActualPosition,
+  );
   const currentSong = usePlaybackStore((state) => state.currentSong);
 
   // Cast Context Ref
   const contextRef = useRef<framework.CastReceiverContext | null>(null);
   const playerManagerRef = useRef<framework.PlayerManager | null>(null);
+
+  const normalizeSong = useCallback((song: Song): Song => {
+    return {
+      id: song.id,
+      sourceType: song.sourceType,
+      sourceId: song.sourceId,
+      title: song.title,
+      artist: song.artist,
+      thumbnailUrl: song.thumbnailUrl || '',
+      duration: song.duration || 0,
+      position: song.position ?? 0,
+      addedBy: song.addedBy || 'cast-receiver',
+      addedAt: song.addedAt || new Date().toISOString(),
+      addedByNickname: song.addedByNickname,
+      voteCount: song.voteCount,
+    };
+  }, []);
+
+  const handleCastMessage = useCallback(
+    (message: LocalCastMessage) => {
+      console.log('[Cast Receiver] custom message payload', {
+        action: message?.action,
+        hasCurrentSong:
+          'currentSong' in message ? !!message.currentSong : false,
+        hasQueue: 'queue' in message ? Array.isArray(message.queue) : false,
+        hasRoomInfo: 'roomInfo' in message ? !!message.roomInfo : false,
+      });
+
+      const action = message.action;
+      switch (action) {
+        case 'updatePlayback':
+          console.log('Updating playback state:', message);
+          if (message.currentSong) {
+            setPlaybackState(
+              {
+                currentSong: normalizeSong(message.currentSong),
+                isPlaying: message.isPlaying || false,
+                positionMs: message.positionMs || 0,
+                updatedAt: new Date().toISOString(),
+                serverTimeMs: Date.now(),
+              },
+              roomMode || undefined,
+            );
+            setIsPlaying(message.isPlaying || false);
+            setStatusText(`Now Playing: ${message.currentSong.title}`);
+          }
+          if (message.roomInfo) {
+            setRoomInfo(message.roomInfo);
+          }
+          break;
+
+        case 'syncPlayback':
+          console.log('Syncing playback:', message);
+          if (message.currentSong) {
+            setPlaybackState(
+              {
+                currentSong: normalizeSong(message.currentSong),
+                isPlaying: message.isPlaying || false,
+                positionMs: message.positionMs || 0,
+                updatedAt: new Date().toISOString(),
+                serverTimeMs: Date.now(),
+              },
+              roomMode || undefined,
+            );
+            setIsPlaying(message.isPlaying || false);
+          }
+          break;
+
+        case 'updateQueue':
+          console.log('Updating queue:', message);
+          if (message.queue) {
+            setQueue(message.queue);
+          }
+          break;
+
+        case 'updateRoomInfo':
+          console.log('Updating room info:', message);
+          if (message.roomInfo) {
+            setRoomInfo(message.roomInfo);
+          }
+          break;
+
+        default:
+          console.log('Unknown message action:', action);
+      }
+    },
+    [normalizeSong, roomMode, setIsPlaying, setPlaybackState],
+  );
 
   useEffect(() => {
     const initCast = () => {
@@ -129,64 +245,8 @@ const App = () => {
         (customEvent) => {
           console.log('Received custom message:', customEvent);
 
-          const message = customEvent.data;
-          console.log('[Cast Receiver] custom message payload', {
-            action: message?.action,
-            hasCurrentSong: !!message?.currentSong,
-            hasQueue: Array.isArray(message?.queue),
-            hasRoomInfo: !!message?.roomInfo,
-          });
-
-          switch (message.action) {
-            case 'updatePlayback':
-              console.log('Updating playback state:', message);
-              if (message.currentSong) {
-                setPlaybackState({
-                  currentSong: message.currentSong,
-                  isPlaying: message.isPlaying || false,
-                  positionMs: message.positionMs || 0,
-                  updatedAt: new Date().toISOString(),
-                  serverTimeMs: Date.now(),
-                });
-                setIsPlaying(message.isPlaying || false);
-                setStatusText(`Now Playing: ${message.currentSong.title}`);
-              }
-              if (message.roomInfo) {
-                setRoomInfo(message.roomInfo);
-              }
-              break;
-
-            case 'syncPlayback':
-              console.log('Syncing playback:', message);
-              if (message.currentSong) {
-                setPlaybackState({
-                  currentSong: message.currentSong,
-                  isPlaying: message.isPlaying || false,
-                  positionMs: message.positionMs || 0,
-                  updatedAt: new Date().toISOString(),
-                  serverTimeMs: Date.now(),
-                });
-                setIsPlaying(message.isPlaying || false);
-              }
-              break;
-
-            case 'updateQueue':
-              console.log('Updating queue:', message);
-              if (message.queue) {
-                setQueue(message.queue);
-              }
-              break;
-
-            case 'updateRoomInfo':
-              console.log('Updating room info:', message);
-              if (message.roomInfo) {
-                setRoomInfo(message.roomInfo);
-              }
-              break;
-
-            default:
-              console.log('Unknown message action:', message.action);
-          }
+          const message = customEvent.data as LocalCastMessage;
+          handleCastMessage(message);
         },
       );
 
@@ -219,8 +279,131 @@ const App = () => {
     // 2. Stopping and restarting it can cause issues with active cast sessions
   }, [setIsPlaying, setPlaybackState]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const roomId = params.get('roomId');
+    if (!roomId) return;
+
+    const casterId = params.get('casterId') || params.get('casterUserId') || '';
+
+    let isMounted = true;
+    let unsubscribe: (() => void) | null = null;
+
+    const connect = async () => {
+      const [err, stop] = await api.sse(
+        '/rooms/{id}/events',
+        {
+          id: roomId,
+        },
+        (result: [Error | null, any]) => {
+          const [eventError, message] = result;
+          if (eventError || !message || !isMounted) {
+            return;
+          }
+
+          const typedMessage = message as
+            | { type: 'connected'; data: unknown }
+            | { type: 'playback_update'; data: PlaybackState }
+            | { type: 'songs_update'; data: Song[] }
+            | { type: 'settings_update'; data: Room }
+            | { type: 'users_update'; data: number };
+
+          switch (typedMessage.type) {
+            case 'connected':
+              setStatusText(`Connected to ${roomId}`);
+              break;
+            case 'playback_update': {
+              const data = typedMessage.data;
+              setPlaybackState(
+                {
+                  ...data,
+                  currentSong: data.currentSong
+                    ? normalizeSong(data.currentSong)
+                    : null,
+                },
+                roomMode || undefined,
+              );
+              setIsPlaying(data.isPlaying);
+              break;
+            }
+            case 'songs_update': {
+              const data = typedMessage.data;
+              setQueue(data);
+              break;
+            }
+            case 'settings_update': {
+              const data = typedMessage.data;
+              setRoomMode(data.mode);
+              setRoomInfo((current) => ({
+                name: data.name,
+                participantCount: current?.participantCount ?? 0,
+              }));
+              break;
+            }
+            case 'users_update': {
+              const data = typedMessage.data;
+              setRoomInfo((current) => ({
+                name: current?.name || roomId,
+                participantCount: data,
+              }));
+              break;
+            }
+          }
+        },
+        {
+          headers: {
+            'X-Cast-Receiver': '1',
+            ...(casterId ? { 'X-Cast-Caster-Id': casterId } : {}),
+          },
+        },
+      );
+
+      if (!err && stop) {
+        unsubscribe = stop;
+      } else if (err) {
+        console.error('[Cast Receiver] SSE error', err);
+      }
+    };
+
+    connect();
+
+    return () => {
+      isMounted = false;
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [normalizeSong, roomMode, setIsPlaying, setPlaybackState]);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      updateActualPosition();
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [updateActualPosition]);
+
+  useEffect(() => {
+    const onMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as LocalCastMessage | null;
+      if (!data || typeof data !== 'object') return;
+      if (!('action' in data)) return;
+
+      console.log('[Local Cast] received message', {
+        action: data.action,
+      });
+      handleCastMessage(data);
+    };
+
+    window.addEventListener('message', onMessage);
+    return () => {
+      window.removeEventListener('message', onMessage);
+    };
+  }, [handleCastMessage]);
+
   return (
-    <div className="relative flex min-h-screen w-screen animate-fade-in items-center justify-center overflow-hidden bg-theme text-theme">
+    <div className="relative flex h-screen w-screen animate-fade-in items-center justify-center overflow-hidden bg-theme text-theme">
       <div className="synth-sky absolute inset-0" />
       <div className="vhs-scanlines pointer-events-none absolute inset-0" />
       <div className="sun-hero opacity-80" />
@@ -228,10 +411,14 @@ const App = () => {
 
       <div className="relative z-10 flex h-full w-full items-center justify-center">
         <div className="absolute inset-0 h-full w-full">
-          <VideoPlayer isVisible={currentSong?.sourceType === 'youtube'} />
-          <SpotifyPlayer isVisible={currentSong?.sourceType === 'spotify'} />
+          <VideoPlayer isVisible={currentSong?.sourceType === 'youtube'} fill />
+          <SpotifyPlayer
+            isVisible={currentSong?.sourceType === 'spotify'}
+            fill
+          />
           <SoundCloudPlayer
             isVisible={currentSong?.sourceType === 'soundcloud'}
+            fill
           />
         </div>
 

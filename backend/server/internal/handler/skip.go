@@ -15,10 +15,8 @@ import (
 
 // SkipSong handles POST /rooms/{id}/skips
 func SkipSong(
-	db vibe.RoomSkipper,
-	ips vibe.RoomBatchEventNotifier,
-	adminNotifier vibe.AdminEventNotifier,
-	adminLister vibe.AdminRoomLister,
+	db vibe.RoomSkipperAdminRoomLister,
+	ips vibe.RoomBatchEventAdminNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -110,11 +108,11 @@ func SkipSong(
 			log.Printf("failed to notify room updates: %v", err)
 		}
 
-		rooms, err := adminLister.ListAdminRooms(ctx)
+		rooms, err := db.ListAdminRooms(ctx)
 		if err == nil {
 			payload, marshalErr := json.Marshal(rooms)
 			if marshalErr == nil {
-				notifyErr := adminNotifier.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
+				notifyErr := ips.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
 					Type:    vibe.AdminRoomsUpdate,
 					Payload: payload,
 				})

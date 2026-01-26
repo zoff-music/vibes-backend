@@ -6,6 +6,7 @@ import { AuthOverlay } from './AuthOverlay';
 interface Props {
   isVisible?: boolean;
   onEnded?: () => void;
+  fill?: boolean;
 }
 
 interface YouTubePlayerRef {
@@ -16,7 +17,11 @@ interface YouTubePlayerRef {
   getPlayerState: () => number;
 }
 
-const VideoPlayerComponent = ({ isVisible = true, onEnded }: Props) => {
+const VideoPlayerComponent = ({
+  isVisible = true,
+  onEnded,
+  fill = false,
+}: Props) => {
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
 
@@ -193,12 +198,17 @@ const VideoPlayerComponent = ({ isVisible = true, onEnded }: Props) => {
 
   const showOverlay = !!error;
 
+  const containerClass = fill
+    ? 'relative h-full w-full overflow-hidden bg-black'
+    : 'relative w-full overflow-hidden rounded-xl bg-black';
+
+  const containerStyle = fill
+    ? { height: '100%', width: '100%' }
+    : { aspectRatio: '16/9', minHeight: '200px' };
+
   if (showOverlay) {
     return (
-      <div
-        className="relative w-full overflow-hidden rounded-xl bg-black"
-        style={{ aspectRatio: '16/9' }}
-      >
+      <div className={containerClass} style={containerStyle}>
         <AuthOverlay
           provider="youtube"
           errorMessage={error}
@@ -210,7 +220,10 @@ const VideoPlayerComponent = ({ isVisible = true, onEnded }: Props) => {
 
   if (!token && error) {
     return (
-      <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-black">
+      <div
+        className={`${containerClass} flex items-center justify-center`}
+        style={containerStyle}
+      >
         <AuthOverlay
           provider="youtube"
           errorMessage={error}
@@ -222,7 +235,10 @@ const VideoPlayerComponent = ({ isVisible = true, onEnded }: Props) => {
 
   if (isVerifying) {
     return (
-      <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-black">
+      <div
+        className={`${containerClass} flex items-center justify-center`}
+        style={containerStyle}
+      >
         <div className="text-center">
           <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-red-500/30 border-t-red-500" />
           <p className="text-sm text-white/70">Verifying authorization...</p>
@@ -233,11 +249,8 @@ const VideoPlayerComponent = ({ isVisible = true, onEnded }: Props) => {
 
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-xl bg-black ${!isVisible ? 'hidden' : ''}`}
-      style={{
-        aspectRatio: '16/9',
-        minHeight: '200px',
-      }}
+      className={`${containerClass} ${!isVisible ? 'hidden' : ''}`}
+      style={containerStyle}
     >
       <YouTube
         videoId={videoId}

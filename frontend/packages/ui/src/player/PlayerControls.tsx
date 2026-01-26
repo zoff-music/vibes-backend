@@ -103,13 +103,6 @@ const PlayerControlsComponent: React.FC<Props> = ({
           </span>
         </button>
       </div>
-
-      {isCasting && castDeviceName && (
-        <div className="mt-3 flex items-center justify-center gap-2 text-primary text-xs dark:text-primary-light">
-          <div className="h-2 w-2 animate-pulse rounded-full bg-primary dark:bg-primary-light" />
-          <span className="font-medium">Casting to {castDeviceName}</span>
-        </div>
-      )}
     </div>
   );
 };

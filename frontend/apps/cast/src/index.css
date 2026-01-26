@@ -289,8 +289,23 @@
       linear-gradient(rgba(255, 105, 180, 0.25) 1px, transparent 1px),
       linear-gradient(90deg, rgba(53, 211, 255, 0.25) 1px, transparent 1px);
     background-size: 36px 36px;
+    animation: retro-grid-scroll 16s linear infinite;
+    will-change: background-position;
     transform: perspective(800px) rotateX(55deg);
     filter: drop-shadow(0 0 30px rgba(255, 92, 152, 0.4));
+  }
+
+  @keyframes retro-grid-scroll {
+    from {
+      background-position:
+        0 0,
+        0 0;
+    }
+    to {
+      background-position:
+        0 36px,
+        0 36px;
+    }
   }
 
   .panel-surface {

@@ -12,9 +12,20 @@ import (
 
 func (c *Client) prepareUpdateParticipantStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO room_users (room_id, id, last_seen_at, is_active_listener)
-		VALUES (?1, ?2, ?3, ?4)
-		ON CONFLICT(id, room_id) DO UPDATE SET last_seen_at = ?3, is_active_listener = ?4
+		INSERT INTO room_users (
+			room_id,
+			id,
+			last_seen_at,
+			is_active_listener,
+			is_cast_receiver,
+			cast_owner_id
+		)
+		VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+		ON CONFLICT(id, room_id) DO UPDATE SET
+			last_seen_at = ?3,
+			is_active_listener = ?4,
+			is_cast_receiver = ?5,
+			cast_owner_id = ?6
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateParticipantStatement: %w", err)
@@ -24,14 +35,29 @@ func (c *Client) prepareUpdateParticipantStmt() error {
 }
 
 // UpdateParticipant updates the last seen time for a participant
-func (c *Client) UpdateParticipant(ctx context.Context, roomID, userID string, isActiveListener bool) error {
+func (c *Client) UpdateParticipant(
+	ctx context.Context,
+	roomID string,
+	userID string,
+	isActiveListener bool,
+	isCastReceiver bool,
+	castOwnerID string,
+) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "UpdateParticipant")
 	defer span.Finish()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.UpdateParticipantStatement.ExecContext(cctx, roomID, userID, time.Now(), isActiveListener)
+	_, err := c.UpdateParticipantStatement.ExecContext(
+		cctx,
+		roomID,
+		userID,
+		time.Now(),
+		isActiveListener,
+		isCastReceiver,
+		castOwnerID,
+	)
 	if err != nil {
 		return fmt.Errorf("error updating participant: %w", err)
 	}
@@ -41,7 +67,7 @@ func (c *Client) UpdateParticipant(ctx context.Context, roomID, userID string, i
 
 func (c *Client) prepareGetActiveParticipantsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT room_id, id, last_seen_at
+		SELECT room_id, id, last_seen_at, is_active_listener, is_cast_receiver, cast_owner_id
 		FROM room_users
 		WHERE room_id = ?1 AND last_seen_at > ?2
 		ORDER BY last_seen_at DESC
@@ -50,6 +76,21 @@ func (c *Client) prepareGetActiveParticipantsStmt() error {
 		return fmt.Errorf("error preparing GetActiveParticipantsStatement: %w", err)
 	}
 	c.GetActiveParticipantsStatement = stmt
+	return nil
+}
+
+func (c *Client) prepareGetActiveListenerCountsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT
+			COALESCE(SUM(CASE WHEN is_active_listener = 1 AND is_cast_receiver = 0 THEN 1 ELSE 0 END), 0) as active_listeners,
+			COALESCE(SUM(CASE WHEN is_cast_receiver = 1 THEN 1 ELSE 0 END), 0) as active_cast
+		FROM room_users
+		WHERE room_id = ?1 AND last_seen_at > ?2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetActiveListenerCountsStatement: %w", err)
+	}
+	c.GetActiveListenerCountsStatement = stmt
 	return nil
 }
 
@@ -82,10 +123,38 @@ func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activ
 	return participants, nil
 }
 
+// GetActiveListenerCounts returns listener counts within the duration.
+func (c *Client) GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (vibe.ListenerCounts, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "GetActiveListenerCounts")
+	defer span.Finish()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	cutoff := time.Now().Add(-activeWithin)
+
+	row := c.GetActiveListenerCountsStatement.QueryRowContext(cctx, roomID, cutoff)
+
+	var listeners int
+	var castReceivers int
+	err := row.Scan(&listeners, &castReceivers)
+	if err != nil {
+		return vibe.ListenerCounts{}, fmt.Errorf("error scanning listener counts: %w", err)
+	}
+
+	return vibe.ListenerCounts{
+		ActiveListeners:     listeners,
+		ActiveCastReceivers: castReceivers,
+	}, nil
+}
+
 type participantRow struct {
 	RoomID     string
 	UserID     string
 	LastSeenAt time.Time
+	IsActive   sql.NullInt64
+	IsCast     sql.NullInt64
+	CastOwner  sql.NullString
 }
 
 func (p *participantRow) scan(rows *sql.Rows) error {
@@ -93,6 +162,9 @@ func (p *participantRow) scan(rows *sql.Rows) error {
 		&p.RoomID,
 		&p.UserID,
 		&p.LastSeenAt,
+		&p.IsActive,
+		&p.IsCast,
+		&p.CastOwner,
 	)
 }
 
@@ -101,6 +173,9 @@ func (p *participantRow) toParticipant() vibe.Participant {
 		RoomID:     p.RoomID,
 		UserID:     p.UserID,
 		LastSeenAt: p.LastSeenAt,
+		IsActiveListener: p.IsActive.Int64 == 1,
+		IsCastReceiver:   p.IsCast.Int64 == 1,
+		CastOwnerID:      p.CastOwner.String,
 	}
 }
 

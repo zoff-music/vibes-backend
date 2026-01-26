@@ -17,13 +17,14 @@ import (
 func RoomEvents(
 	ips vibe.SubscriberPublisher,
 	db vibe.ParticipantGetterUpdaterPlaybackGetter,
-	adminNotifier vibe.AdminEventNotifier,
-	adminLister vibe.AdminRoomLister,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		vars := mux.Vars(r)
 		roomID := vars["id"]
+		casterID := r.URL.Query().Get("casterId")
+		isCastReceiver := r.URL.Query().Get("castReceiver") == "1" ||
+			r.Header.Get("X-Cast-Receiver") == "1"
 
 		// Get UserID from session/context. SSE usually auth via cookie or query param?
 		// Vibes uses cookie session middleware?
@@ -34,14 +35,29 @@ func RoomEvents(
 			userID = session.UserID
 		}
 
+		if isCastReceiver {
+			if casterID == "" {
+				casterID = r.Header.Get("X-Cast-Caster-Id")
+			}
+			if casterID == "" && userID != "" {
+				casterID = userID
+			}
+			if casterID != "" {
+				userID = fmt.Sprintf("cast:%s:%s", roomID, casterID)
+			}
+		}
+
 		notifyUsers := func(ctx context.Context) {
-			active, err := db.GetActiveParticipants(ctx, roomID, 15*time.Second)
+			counts, err := db.GetActiveListenerCounts(ctx, roomID, 15*time.Second)
 			if err != nil {
 				log.Printf("failed to fetch active participants: %v", err)
 				return
 			}
 
-			count := len(active)
+			count := counts.ActiveListeners
+			if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
+				count = 1
+			}
 			payload, err := json.Marshal(count)
 			if err != nil {
 				log.Printf("failed to marshal active participants count: %v", err)
@@ -56,25 +72,8 @@ func RoomEvents(
 				log.Printf("failed to notify room update: %v", err)
 			}
 
-			rooms, err := adminLister.ListAdminRooms(ctx)
-			if err != nil {
-				log.Printf("failed to fetch admin rooms: %v", err)
-				return
-			}
-
-			adminPayload, err := json.Marshal(rooms)
-			if err != nil {
-				log.Printf("failed to marshal admin rooms: %v", err)
-				return
-			}
-
-			err = adminNotifier.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
-				Type:    vibe.AdminRoomsUpdate,
-				Payload: adminPayload,
-			})
-			if err != nil {
-				log.Printf("failed to notify admin update: %v", err)
-			}
+			// Admin room updates are handled by the app event job to avoid
+			// amplifying updates on every listener heartbeat/connect.
 		}
 
 		// Set SSE headers
@@ -112,7 +111,7 @@ func RoomEvents(
 
 		// Update presence on connect and cleanup on disconnect
 		if userID != "" {
-			_ = db.UpdateParticipant(ctx, roomID, userID, true)
+			_ = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, casterID)
 			notifyUsers(ctx)
 			defer notifyUsers(context.Background())
 		}
@@ -158,7 +157,7 @@ func RoomEvents(
 			case <-ticker.C:
 				// Keep-alive heartbeat AND update participant status
 				if userID != "" {
-					_ = db.UpdateParticipant(ctx, roomID, userID, true)
+					_ = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, casterID)
 				}
 
 				fmt.Fprintf(w, ": heartbeat\n\n")

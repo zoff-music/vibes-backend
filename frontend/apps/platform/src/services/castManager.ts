@@ -7,6 +7,7 @@ import type {
   MediaInfo,
 } from '@vibez/models';
 import { getToken, safeWrap, safeWrapAsync } from '@vibez/shared';
+import { useRoomStore } from '../stores/roomStore';
 
 // Google Cast Application ID - Custom Vibez Receiver
 // For development, we use the Styled Media Receiver which allows custom content
@@ -18,11 +19,86 @@ const CAST_APPLICATION_ID = import.meta.env.VITE_CAST_APP_ID || '1FAF5D9F'; // C
 const DEVELOPMENT_MODE = true;
 const CUSTOM_RECEIVER_URL =
   import.meta.env.VITE_CAST_RECEIVER_URL || '/casting/receiver/';
+const LOCAL_EMULATOR_ENABLED =
+  import.meta.env.VITE_CAST_LOCAL_EMULATOR === 'true' ||
+  import.meta.env.VITE_CAST_LOCAL_EMULATOR === '1';
+const LOCAL_EMULATOR_DEVICE_ID = 'local-cast-emulator';
+
+type LocalCastMessage =
+  | {
+      action: 'updatePlayback';
+      currentSong: {
+        id: string;
+        title: string;
+        artist: string;
+        sourceType: string;
+        sourceId: string;
+        thumbnailUrl?: string;
+        duration?: number;
+      };
+      isPlaying: boolean;
+      positionMs: number;
+      queue: Array<{
+        id: string;
+        title: string;
+        artist: string;
+        sourceType: string;
+        sourceId: string;
+        thumbnailUrl?: string;
+        duration?: number;
+      }>;
+      roomInfo: {
+        name: string;
+        participantCount: number;
+      };
+      timestamp: number;
+    }
+  | {
+      action: 'updateQueue';
+      queue: Array<{
+        id: string;
+        title: string;
+        artist: string;
+        sourceType: string;
+        sourceId: string;
+        thumbnailUrl?: string;
+        duration?: number;
+      }>;
+      timestamp: number;
+    }
+  | {
+      action: 'updateRoomInfo';
+      roomInfo: {
+        name: string;
+        participantCount: number;
+      };
+      timestamp: number;
+    }
+  | {
+      action: 'syncPlayback';
+      isPlaying: boolean;
+      positionMs: number;
+      currentSong?: {
+        id: string;
+        title: string;
+        artist: string;
+        sourceType: string;
+        sourceId: string;
+        thumbnailUrl?: string;
+        duration?: number;
+      };
+      timestamp: number;
+    };
 
 class GoogleCastManager implements CastManager {
   private devices: CastDevice[] = [];
   private currentSession: CastSession | null = null;
   private actualCastSession: any = null; // Store the actual Cast SDK session object
+  private localReceiverWindow: Window | null = null;
+  private localReceiverOrigin: string | null = null;
+  private localReceiverFrame: HTMLIFrameElement | null = null;
+  private localMessageQueue: LocalCastMessage[] = [];
+  private localReceiverReady = false;
   private isInitialized = false;
   private initializationPromise: Promise<void> | null = null;
   private reconnectAttempts = 0;
@@ -311,7 +387,11 @@ class GoogleCastManager implements CastManager {
       if (!isAvailable) {
         console.log('No Chromecast devices available');
         this.devices = [];
-        console.log('[Cast] cleared device list');
+        if (LOCAL_EMULATOR_ENABLED) {
+          this.ensureLocalEmulatorDevice();
+        } else {
+          console.log('[Cast] cleared device list');
+        }
         return;
       }
 
@@ -326,6 +406,9 @@ class GoogleCastManager implements CastManager {
       };
 
       this.devices = [device];
+      if (LOCAL_EMULATOR_ENABLED) {
+        this.ensureLocalEmulatorDevice();
+      }
       console.log('[Cast] device available', device);
       this.notifyDeviceAvailable(device);
     });
@@ -342,6 +425,9 @@ class GoogleCastManager implements CastManager {
 
   // Public API methods
   async discoverDevices(): Promise<CastDevice[]> {
+    if (LOCAL_EMULATOR_ENABLED) {
+      this.ensureLocalEmulatorDevice();
+    }
     if (!this.isInitialized) {
       const [initErr] = await safeWrapAsync(this.initializeCastSDK());
       if (initErr) {
@@ -351,17 +437,51 @@ class GoogleCastManager implements CastManager {
           description: 'Failed to discover casting devices',
           details: initErr,
         });
-        return [];
+        return LOCAL_EMULATOR_ENABLED ? [...this.devices] : [];
       }
     }
     return [...this.devices];
   }
 
   getAvailableDevices(): CastDevice[] {
+    if (LOCAL_EMULATOR_ENABLED) {
+      this.ensureLocalEmulatorDevice();
+    }
     return [...this.devices]; // Return a copy to prevent external modification
   }
 
   async connectToDevice(deviceId: string): Promise<CastSession> {
+    if (LOCAL_EMULATOR_ENABLED && deviceId === LOCAL_EMULATOR_DEVICE_ID) {
+      const receiverWindow = this.openLocalReceiver();
+      if (!receiverWindow) {
+        const error = new Error(
+          'Local cast receiver window could not be opened',
+        );
+        this.notifyError({
+          code: 'LOCAL_RECEIVER_BLOCKED',
+          description: 'Failed to open local cast receiver window',
+          details: error,
+        });
+        throw error;
+      }
+
+      const castSession: CastSession = {
+        id: `local-${Date.now()}`,
+        deviceId: LOCAL_EMULATOR_DEVICE_ID,
+        deviceName: 'Local Cast (Emulator)',
+        deviceType: 'chromecast',
+        state: 'connected',
+        startedAt: new Date(),
+        lastSyncAt: new Date(),
+        mediaSessionId: 'local-session',
+      };
+
+      this.currentSession = castSession;
+      this.actualCastSession = null;
+      this.notifySessionStateChange(castSession);
+      return castSession;
+    }
+
     if (!this.isInitialized) throw new Error('Cast SDK not initialized');
 
     const device = this.devices.find((d) => d.id === deviceId);
@@ -430,6 +550,26 @@ class GoogleCastManager implements CastManager {
       return;
     }
 
+    if (deviceId === LOCAL_EMULATOR_DEVICE_ID) {
+      if (this.localReceiverWindow && !this.localReceiverWindow.closed) {
+        this.localReceiverWindow.close();
+      }
+      this.localReceiverWindow = null;
+      this.localReceiverOrigin = null;
+      if (this.localReceiverFrame) {
+        this.localReceiverFrame.remove();
+      }
+      this.localReceiverFrame = null;
+      this.localReceiverReady = false;
+      this.localMessageQueue = [];
+      this.currentSession.state = 'disconnected';
+      this.currentSession.lastSyncAt = new Date();
+      this.notifySessionStateChange(this.currentSession);
+      this.currentSession = null;
+      this.actualCastSession = null;
+      return;
+    }
+
     const session = this.actualCastSession;
     if (!session) {
       this.currentSession = null;
@@ -475,6 +615,11 @@ class GoogleCastManager implements CastManager {
     if (!this.currentSession) throw new Error('No active cast session');
     if (this.currentSession.state !== 'connected') {
       throw new Error(`Cast session not ready: ${this.currentSession.state}`);
+    }
+
+    if (this.currentSession.deviceId === LOCAL_EMULATOR_DEVICE_ID) {
+      this.sendLocalPlaybackState(mediaInfo);
+      return;
     }
 
     const session = this.actualCastSession;
@@ -647,6 +792,46 @@ class GoogleCastManager implements CastManager {
     if (err) console.error('Error sending media to receiver:', err);
   }
 
+  private sendLocalPlaybackState(mediaInfo: MediaInfo): void {
+    const [err] = safeWrap(() => {
+      const message: LocalCastMessage = {
+        action: 'updatePlayback',
+        currentSong: {
+          id: mediaInfo.metadata.title || 'unknown',
+          title: mediaInfo.metadata.title || 'Unknown Title',
+          artist: mediaInfo.metadata.artist || 'Unknown Artist',
+          sourceType: this.isYouTubeUrl(mediaInfo.contentId)
+            ? 'youtube'
+            : 'other',
+          sourceId: this.isYouTubeUrl(mediaInfo.contentId)
+            ? this.extractYouTubeVideoId(mediaInfo.contentId) ||
+              mediaInfo.contentId
+            : mediaInfo.contentId,
+          duration: mediaInfo.duration || 0,
+          thumbnailUrl: mediaInfo.metadata.images?.[0]?.url || '',
+        },
+        isPlaying: true,
+        positionMs: 0,
+        queue: [],
+        roomInfo: {
+          name: 'Local Cast',
+          participantCount: 1,
+        },
+        timestamp: Date.now(),
+      };
+
+      console.log('[Local Cast] sending playback state', {
+        title: message.currentSong.title,
+        sourceType: message.currentSong.sourceType,
+      });
+      this.sendLocalMessage(message);
+    });
+
+    if (err) {
+      console.error('Error sending local playback state:', err);
+    }
+  }
+
   private loadStandardMedia(
     mediaInfo: MediaInfo,
     session: any,
@@ -745,6 +930,24 @@ class GoogleCastManager implements CastManager {
       return;
     }
 
+    if (this.currentSession.deviceId === LOCAL_EMULATOR_DEVICE_ID) {
+      const message: LocalCastMessage = {
+        action: 'updateQueue',
+        queue: queue.map((song) => ({
+          id: song.id,
+          title: song.title,
+          artist: song.artist,
+          sourceType: song.sourceType,
+          sourceId: song.sourceId,
+          thumbnailUrl: song.thumbnailUrl,
+          duration: song.duration,
+        })),
+        timestamp: Date.now(),
+      };
+      this.sendLocalMessage(message);
+      return;
+    }
+
     const session = this.actualCastSession;
     if (!session) return;
 
@@ -793,6 +996,16 @@ class GoogleCastManager implements CastManager {
       return;
     }
 
+    if (this.currentSession.deviceId === LOCAL_EMULATOR_DEVICE_ID) {
+      const message: LocalCastMessage = {
+        action: 'updateRoomInfo',
+        roomInfo: roomInfo,
+        timestamp: Date.now(),
+      };
+      this.sendLocalMessage(message);
+      return;
+    }
+
     const session = this.actualCastSession;
     if (!session) return;
 
@@ -824,6 +1037,18 @@ class GoogleCastManager implements CastManager {
 
   async syncPlaybackState(state: any): Promise<void> {
     if (!this.currentSession || this.currentSession.state !== 'connected') {
+      return;
+    }
+
+    if (this.currentSession.deviceId === LOCAL_EMULATOR_DEVICE_ID) {
+      const message: LocalCastMessage = {
+        action: 'syncPlayback',
+        isPlaying: state.isPlaying,
+        positionMs: state.positionMs,
+        currentSong: state.currentSong,
+        timestamp: Date.now(),
+      };
+      this.sendLocalMessage(message);
       return;
     }
 
@@ -922,6 +1147,17 @@ class GoogleCastManager implements CastManager {
       this.devices = [];
       this.currentSession = null;
       this.actualCastSession = null;
+      if (this.localReceiverWindow && !this.localReceiverWindow.closed) {
+        this.localReceiverWindow.close();
+      }
+      this.localReceiverWindow = null;
+      this.localReceiverOrigin = null;
+      if (this.localReceiverFrame) {
+        this.localReceiverFrame.remove();
+      }
+      this.localReceiverFrame = null;
+      this.localReceiverReady = false;
+      this.localMessageQueue = [];
       this.isInitialized = false;
       this.initializationPromise = null;
       this.reconnectAttempts = 0;
@@ -968,6 +1204,136 @@ class GoogleCastManager implements CastManager {
     };
   }
 
+  private ensureLocalEmulatorDevice(): void {
+    const exists = this.devices.some(
+      (device) => device.id === LOCAL_EMULATOR_DEVICE_ID,
+    );
+    if (exists) return;
+
+    const device: CastDevice = {
+      id: LOCAL_EMULATOR_DEVICE_ID,
+      name: 'Local Cast (Emulator)',
+      type: 'chromecast',
+      capabilities: ['video_out', 'audio_out'],
+      isAvailable: true,
+      lastSeen: new Date(),
+    };
+
+    this.devices = [device, ...this.devices];
+    this.notifyDeviceAvailable(device);
+  }
+
+  private getLocalReceiverUrl(): string {
+    return this.getReceiverUrlWithParams();
+  }
+
+  private getReceiverUrlWithParams(): string {
+    const baseUrl =
+      CUSTOM_RECEIVER_URL.startsWith('http://') ||
+      CUSTOM_RECEIVER_URL.startsWith('https://')
+        ? CUSTOM_RECEIVER_URL
+        : `${window.location.origin}${
+            CUSTOM_RECEIVER_URL.startsWith('/')
+              ? CUSTOM_RECEIVER_URL
+              : `/${CUSTOM_RECEIVER_URL}`
+          }`;
+
+    const params = new URLSearchParams();
+    params.set('castReceiver', '1');
+
+    const roomState = useRoomStore.getState();
+    if (roomState.userId) {
+      params.set('casterId', roomState.userId);
+    }
+    if (roomState.room?.id) {
+      params.set('roomId', roomState.room.id);
+    }
+
+    const separator = baseUrl.includes('?') ? '&' : '?';
+    return `${baseUrl}${separator}${params.toString()}`;
+  }
+
+  private openLocalReceiver(): Window | null {
+    if (typeof window === 'undefined' || typeof document === 'undefined') {
+      return null;
+    }
+
+    const receiverUrl = this.getLocalReceiverUrl();
+    const [urlErr, parsedUrl] = safeWrap(() => new URL(receiverUrl));
+    if (urlErr || !parsedUrl) {
+      console.error('Invalid local receiver URL:', receiverUrl);
+      return null;
+    }
+
+    this.localReceiverOrigin = parsedUrl.origin;
+
+    const existingFrame = document.querySelector<HTMLIFrameElement>(
+      'iframe[data-vibez-local-cast="true"]',
+    );
+    const frame = existingFrame || document.createElement('iframe');
+    if (!existingFrame) {
+      frame.dataset.vibezLocalCast = 'true';
+      frame.setAttribute('title', 'Vibez Cast Receiver');
+      frame.style.position = 'fixed';
+      frame.style.right = '16px';
+      frame.style.bottom = '16px';
+      frame.style.width = '360px';
+      frame.style.height = '202px';
+      frame.style.border = '1px solid rgba(255, 255, 255, 0.2)';
+      frame.style.borderRadius = '12px';
+      frame.style.zIndex = '9999';
+      frame.style.background = 'black';
+      frame.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.35)';
+      frame.setAttribute('allow', 'autoplay; fullscreen');
+      frame.addEventListener('load', () => {
+        this.localReceiverReady = true;
+        this.flushLocalMessageQueue();
+      });
+      document.body.appendChild(frame);
+    }
+    if (frame.src !== receiverUrl) {
+      frame.src = receiverUrl;
+    }
+
+    this.localReceiverFrame = frame;
+    this.localReceiverWindow = frame.contentWindow;
+    const [readyErr, readyState] = safeWrap(
+      () => frame.contentDocument?.readyState,
+    );
+    if (!readyErr && readyState === 'complete') {
+      this.localReceiverReady = true;
+      this.flushLocalMessageQueue();
+    }
+    return frame.contentWindow;
+  }
+
+  private sendLocalMessage(message: LocalCastMessage): void {
+    if (!this.localReceiverWindow) {
+      const receiverWindow = this.openLocalReceiver();
+      if (!receiverWindow) return;
+    }
+
+    this.localMessageQueue.push(message);
+    this.flushLocalMessageQueue();
+  }
+
+  private flushLocalMessageQueue(): void {
+    if (!this.localReceiverWindow || !this.localReceiverReady) return;
+
+    const origin = this.localReceiverOrigin || window.location.origin;
+    while (this.localMessageQueue.length > 0) {
+      const nextMessage = this.localMessageQueue.shift();
+      if (!nextMessage) break;
+      const [err] = safeWrap(() => {
+        this.localReceiverWindow?.postMessage(nextMessage, origin);
+      });
+      if (err) {
+        console.error('Failed to post local cast message:', err);
+        break;
+      }
+    }
+  }
+
   // Force refresh device discovery
   async forceDiscovery(): Promise<void> {
     console.log('🔍 Forcing device discovery...');
@@ -975,6 +1341,10 @@ class GoogleCastManager implements CastManager {
     if (err) {
       console.error('Failed to initialize SDK during force discovery:', err);
       return;
+    }
+
+    if (LOCAL_EMULATOR_ENABLED) {
+      this.ensureLocalEmulatorDevice();
     }
 
     // The Cast SDK doesn't provide a direct way to force discovery

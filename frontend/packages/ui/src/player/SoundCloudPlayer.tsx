@@ -5,11 +5,13 @@ import ReactPlayer from 'react-player';
 interface Props {
   isVisible?: boolean;
   onEnded?: () => void;
+  fill?: boolean;
 }
 
 const SoundCloudPlayerComponent: React.FC<Props> = ({
   isVisible = true,
   onEnded,
+  fill = false,
 }) => {
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
@@ -76,13 +78,18 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
 
   const soundcloudUrl = `https://api.soundcloud.com/tracks/${currentSong.sourceId}`;
 
+  const containerClass = fill
+    ? 'relative h-full w-full overflow-hidden bg-gradient-to-br from-orange-900 to-black'
+    : 'relative w-full overflow-hidden rounded-xl bg-gradient-to-br from-orange-900 to-black';
+
+  const containerStyle = fill
+    ? { height: '100%', width: '100%' }
+    : { aspectRatio: '16/9', minHeight: '200px' };
+
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-xl bg-gradient-to-br from-orange-900 to-black ${!isVisible ? 'hidden' : ''}`}
-      style={{
-        aspectRatio: '16/9',
-        minHeight: '200px',
-      }}
+      className={`${containerClass} ${!isVisible ? 'hidden' : ''}`}
+      style={containerStyle}
     >
       {error && (
         <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/90">
