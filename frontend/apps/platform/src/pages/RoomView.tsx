@@ -44,7 +44,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
   const { currentSong, skip, isPlaying, play, pause } = usePlayback(id || '');
   const { songs, fetchQueue, voteSong } = useQueue(id || '');
-  const { isConnected, castDeviceName } = useCasting(id || '');
+  const { isConnected, castDeviceName, currentSession } = useCasting(id || '');
 
   const headerRef = useRef<HTMLDivElement | null>(null);
 
@@ -551,27 +551,52 @@ export default function RoomView({ initialData }: RoomViewProps) {
                 {/* Player - Reserve height to prevent CLS */}
                 <div className="crt-frame relative flex aspect-video min-h-[280px] w-full overflow-hidden rounded-[28px] bg-black sm:min-h-[340px] lg:aspect-auto lg:min-h-0 lg:flex-1">
                   <div className="vhs-scanlines pointer-events-none absolute inset-0" />
+                  {isConnected && castDeviceName && (
+                    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
+                      <div className="panel-surface flex items-center gap-3 rounded-full px-5 py-2 text-sm text-theme shadow-[0_0_22px_rgba(0,0,0,0.28)]">
+                        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-primary" />
+                        <span className="font-medium">
+                          Casting to {castDeviceName}
+                        </span>
+                      </div>
+                    </div>
+                  )}
                   {displayCurrentSong ? (
                     displayCurrentSong.sourceType === 'spotify' ? (
                       <SpotifyPlayer
                         onEnded={
                           displayRoom?.mode === 'host' ? skip : undefined
                         }
-                        isVisible={true}
+                        isVisible={
+                          !(
+                            isConnected &&
+                            currentSession?.deviceId === 'local-cast-emulator'
+                          )
+                        }
                       />
                     ) : displayCurrentSong.sourceType === 'soundcloud' ? (
                       <SoundCloudPlayer
                         onEnded={
                           displayRoom?.mode === 'host' ? skip : undefined
                         }
-                        isVisible={true}
+                        isVisible={
+                          !(
+                            isConnected &&
+                            currentSession?.deviceId === 'local-cast-emulator'
+                          )
+                        }
                       />
                     ) : (
                       <VideoPlayer
                         onEnded={
                           displayRoom?.mode === 'host' ? skip : undefined
                         }
-                        isVisible={true}
+                        isVisible={
+                          !(
+                            isConnected &&
+                            currentSession?.deviceId === 'local-cast-emulator'
+                          )
+                        }
                       />
                     )
                   ) : displaySongs.length > 0 ? (

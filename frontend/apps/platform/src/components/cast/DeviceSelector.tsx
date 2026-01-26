@@ -93,8 +93,14 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-colors duration-200 dark:bg-black/70">
-      <div className="mx-4 w-80 max-w-sm rounded-lg border-2 border-gray-200 bg-white p-6 shadow-xl transition-colors duration-200 dark:border-gray-700 dark:bg-gray-800">
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <button
+        type="button"
+        aria-label="Close cast device selector"
+        className="absolute inset-0 bg-black/50 backdrop-blur-sm transition-colors duration-200 dark:bg-black/70"
+        onClick={onClose}
+      />
+      <div className="relative mx-4 w-80 max-w-sm rounded-lg border-2 border-gray-200 bg-white p-6 shadow-xl transition-colors duration-200 dark:border-gray-700 dark:bg-gray-800">
         <div className="mb-4 flex items-center justify-between">
           <h3 className="font-semibold text-gray-900 text-lg dark:text-white">
             Cast to Device
@@ -181,22 +187,21 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                 <button
                   onClick={() => {
                     const testMedia = {
-                      contentId:
-                        'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
+                      contentId: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
                       contentType: 'video/mp4',
                       streamType: 'BUFFERED' as const,
                       metadata: {
-                        title: 'Test Video - Big Buck Bunny',
-                        artist: 'Blender Foundation',
+                        title: 'Test Video - YouTube',
+                        artist: 'YouTube',
                         images: [
                           {
-                            url: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/BigBuckBunny.jpg',
+                            url: 'https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
                             height: 480,
                             width: 640,
                           },
                         ],
                       },
-                      duration: 596,
+                      duration: 213,
                     };
                     handleCastCurrentSong(testMedia);
                   }}

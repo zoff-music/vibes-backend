@@ -69,6 +69,19 @@ This starts:
 - **Platform**: `localhost:3000` (SSR-enabled)
 - **Cast Receiver**: `localhost:3001` (SSR-enabled)
 - **Caddy Proxy**: `https://localhost` (Routes `/casting/receiver/*` to `localhost:3001`)
+- **Local Cast Device**: appears in the cast picker (no hardware required)
+- **Cast Emulator (optional)**: runs via `npx` with a scenario file (see `docs/CAST_EMULATOR.md`)
+
+### Running via Docker Compose (with Emulator)
+To run the full stack plus a Chromecast emulator via Docker Compose:
+
+```bash
+make cast-dev
+```
+
+This exposes:
+- **Platform**: `https://localhost`
+- **Cast Receiver**: `https://localhost/casting/receiver/`
 
 ### Testing the Receiver
 You can test the receiver UI in your browser without a Chromecast device:
@@ -81,6 +94,10 @@ Both applications now support server-side rendering:
 - **Hot Module Replacement**: Works with SSR during development
 - **Fast Refresh**: React components update without losing state
 - **Error Handling**: SSR errors are handled gracefully with fallbacks
+
+### Emulating a Chromecast Device
+To test sender-side flows (device discovery, session creation) without hardware,
+run a local emulator. See `docs/CAST_EMULATOR.md` for setup instructions.
 
 ### Debugging on Chromecast
 1. Register your **Custom Receiver** in the Google Cast SDK Console.

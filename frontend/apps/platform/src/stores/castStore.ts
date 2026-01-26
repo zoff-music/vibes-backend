@@ -180,6 +180,35 @@ export const useCastStore = create<CastState>((set, get) => ({
     });
     set({ lastError: null });
 
+    if (song?.contentId && song?.contentType) {
+      const mediaInfo = {
+        contentId: song.contentId,
+        contentType: song.contentType,
+        streamType: song.streamType || ('BUFFERED' as const),
+        metadata: song.metadata || {
+          title: 'Unknown Title',
+          artist: 'Unknown Artist',
+          images: [],
+        },
+        duration: song.duration,
+      };
+
+      const [error, _] = await safeWrapAsync(castManager.castMedia(mediaInfo));
+      if (error) {
+        console.error('Failed to cast media info:', error);
+        set({
+          lastError: {
+            code: 'CAST_MEDIA_FAILED',
+            description: 'Failed to cast media to device',
+            details: error,
+          },
+        });
+        throw error;
+      }
+      console.log('[Cast] store castCurrentSong:done');
+      return;
+    }
+
     // Build content URL based on source type
     let contentId = '';
     switch (song.sourceType) {

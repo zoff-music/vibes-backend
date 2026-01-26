@@ -83,6 +83,8 @@ func (c *Client) prepareElectNewHostStmt() error {
 		SELECT id FROM room_users 
 		WHERE room_id = ?1 
 		AND last_seen_at >= DATETIME('now', '-15 seconds')
+		AND is_active_listener = 1
+		AND is_cast_receiver = 0
 		ORDER BY joined_at ASC
 		LIMIT 1
 	`)
@@ -195,9 +197,13 @@ func (c *Client) GetRoomByName(ctx context.Context, name string, userID string) 
 
 	room.UserID = userID
 
-	active, err := c.GetActiveParticipants(ctx, room.ID, 15*time.Second)
+	counts, err := c.GetActiveListenerCounts(ctx, room.ID, 15*time.Second)
 	if err == nil {
-		room.UserCount = len(active)
+		if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
+			room.UserCount = 1
+		} else {
+			room.UserCount = counts.ActiveListeners
+		}
 	}
 
 	return room, nil
@@ -355,9 +361,13 @@ func (c *Client) GetRoom(ctx context.Context, id string, userID string) (*vibe.R
 
 	room.UserID = userID
 
-	active, err := c.GetActiveParticipants(ctx, room.ID, 15*time.Second)
+	counts, err := c.GetActiveListenerCounts(ctx, room.ID, 15*time.Second)
 	if err == nil {
-		room.UserCount = len(active)
+		if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
+			room.UserCount = 1
+		} else {
+			room.UserCount = counts.ActiveListeners
+		}
 	}
 
 	return room, nil

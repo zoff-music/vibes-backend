@@ -257,13 +257,16 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 		return nil, fmt.Errorf("error fetching skip votes count: %w", err)
 	}
 
-	// Count active participants for threshold (anyone connected to SSE)
-	activeParticipants, err := c.GetActiveParticipants(ctx, roomID, 5*time.Second)
+	// Count active participants for threshold (non-cast listeners)
+	counts, err := c.GetActiveListenerCounts(ctx, roomID, 5*time.Second)
 	if err != nil {
 		return nil, fmt.Errorf("error counting active participants: %w", err)
 	}
 
-	participantCount := len(activeParticipants)
+	participantCount := counts.ActiveListeners
+	if participantCount == 0 && counts.ActiveCastReceivers > 0 {
+		participantCount = 1
+	}
 	voteCount := len(votes)
 	requiredVotes := int(float64(participantCount) * room.Settings.SkipVoteThreshold)
 

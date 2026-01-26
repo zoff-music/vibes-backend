@@ -64,10 +64,26 @@ type SongManager interface {
 	RoomFetcher
 }
 
+type SongAdderPlaybackControllerSongsFetcher interface {
+	SongAdder
+	PlaybackController
+	SongsFetcher
+}
+
+type SongAdderPlaybackControllerSongsFetcherAdminRoomLister interface {
+	SongAdderPlaybackControllerSongsFetcher
+	AdminRoomLister
+}
+
 // SongQueueManager combines interfaces needed for removing songs
 type SongQueueManager interface {
 	SongRemover
 	SongsFetcher
+}
+
+type SongQueueManagerAdminRoomLister interface {
+	SongQueueManager
+	AdminRoomLister
 }
 
 // SongVoteManager combines interfaces needed for voting on songs

@@ -93,6 +93,11 @@ type RoomCreator interface {
 	GetRoomByName(ctx context.Context, name string, userID string) (*Room, error)
 }
 
+type RoomCreatorAdminRoomLister interface {
+	RoomCreator
+	AdminRoomLister
+}
+
 // RoomUpdater updates room data
 type RoomUpdater interface {
 	UpdateRoom(ctx context.Context, room *Room) (*Room, error)

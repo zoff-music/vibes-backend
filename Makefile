@@ -59,7 +59,15 @@ dev:
 dev-down:
 	docker compose down
 
-## frontend: Runs frontend dev server locally with HMR
+## cast-dev: Runs backend + platform + cast receiver + emulator via docker compose
+cast-dev:
+	docker compose -f docker-compose.yml -f emulation/docker-compose.cast.yml up --build
+
+## cast-dev-down: Stops casting docker compose services
+cast-dev-down:
+	docker compose -f docker-compose.yml -f emulation/docker-compose.cast.yml down
+
+## frontend: Runs frontend dev server locally
 frontend:
 	cd frontend/apps/platform && bun run dev
 
@@ -119,8 +127,9 @@ local-dev: setup-caddy
 	@echo ""
 	@sh -c 'trap "kill 0" INT TERM EXIT; \
 	PORT=8080 sh -c "cd migrator && go run main.go -db ../data/db/vibes.db && cd ../backend && DATABASE_PATH=../data/db/vibes.db exec go run cmd/server/main.go" & \
-	sh -c "cd frontend/apps/platform && FORCE_COLOR=1 exec bun run dev" & \
+	sh -c "cd frontend/apps/platform && VITE_CAST_LOCAL_EMULATOR=true FORCE_COLOR=1 exec bun run dev" & \
 	sh -c "cd frontend/apps/cast && FORCE_COLOR=1 exec bun run dev" & \
+	sh emulation/run-cast-emulator.sh & \
 	CAST_DEV_MODE=true exec caddy run --config Caddyfile & \
 	wait'
 

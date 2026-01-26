@@ -24,3 +24,8 @@ type RoomSkipper interface {
 	GetSongs(ctx context.Context, roomID string) ([]Song, error)
 	SkipSong(ctx context.Context, roomID string, userID string, isAdmin bool) (*PlaybackState, error)
 }
+
+type RoomSkipperAdminRoomLister interface {
+	RoomSkipper
+	AdminRoomLister
+}

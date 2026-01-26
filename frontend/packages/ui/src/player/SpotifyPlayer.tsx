@@ -13,11 +13,13 @@ import { AuthOverlay } from './AuthOverlay';
 interface Props {
   isVisible?: boolean;
   onEnded?: () => void;
+  fill?: boolean;
 }
 
 const SpotifyPlayerComponent: React.FC<Props> = ({
   isVisible = true,
   onEnded,
+  fill = false,
 }) => {
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
@@ -200,9 +202,20 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
     (error?.includes('premium') ? error : null) ||
     (error?.includes('auth') ? error : null);
 
+  const containerClass = fill
+    ? 'relative h-full w-full overflow-hidden bg-gradient-to-br from-green-900 to-black'
+    : 'relative w-full overflow-hidden rounded-xl bg-gradient-to-br from-green-900 to-black';
+
+  const containerStyle = fill
+    ? { height: '100%', width: '100%' }
+    : { aspectRatio: '16/9', minHeight: '200px' };
+
   if (!accessToken && isFetchingToken) {
     return (
-      <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-green-900 to-black">
+      <div
+        className={`${containerClass} flex items-center justify-center`}
+        style={containerStyle}
+      >
         <div className="text-center">
           <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-green-500/30 border-t-green-500" />
           <p className="text-sm text-white/70">Connecting to Spotify...</p>
@@ -213,11 +226,8 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
 
   return (
     <div
-      className={`relative w-full overflow-hidden rounded-xl bg-gradient-to-br from-green-900 to-black ${!isVisible ? 'hidden' : ''}`}
-      style={{
-        aspectRatio: '16/9',
-        minHeight: '200px',
-      }}
+      className={`${containerClass} ${!isVisible ? 'hidden' : ''}`}
+      style={containerStyle}
     >
       {showOverlay && (
         <AuthOverlay

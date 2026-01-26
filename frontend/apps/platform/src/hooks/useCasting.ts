@@ -1,6 +1,8 @@
 import { usePlaybackStore } from '@vibez/shared';
 import { useCallback, useEffect } from 'react';
 import { useCastStore } from '../stores/castStore';
+import { useQueueStore } from '../stores/queueStore';
+import { useRoomStore } from '../stores/roomStore';
 
 /**
  * Hook to integrate casting functionality with the existing playback system
@@ -15,15 +17,26 @@ export const useCasting = (_roomId: string) => {
     initialize,
     castCurrentSong,
     syncPlaybackState,
+    updateQueue,
+    updateRoomInfo,
     clearError,
   } = useCastStore();
 
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
+  const queueSongs = useQueueStore((state) => state.songs);
+  const room = useRoomStore((state) => state.room);
+  const usersCount = useRoomStore((state) => state.usersCount);
+
+  const isLocalEmulatorEnabled =
+    import.meta.env.VITE_CAST_LOCAL_EMULATOR === 'true' ||
+    import.meta.env.VITE_CAST_LOCAL_EMULATOR === '1';
 
   // Create stable callback references
   const stableCastCurrentSong = useCallback(castCurrentSong, []);
   const stableSyncPlaybackState = useCallback(syncPlaybackState, []);
+  const stableUpdateQueue = useCallback(updateQueue, []);
+  const stableUpdateRoomInfo = useCallback(updateRoomInfo, []);
 
   // Initialize casting when hook is first used
   useEffect(() => {
@@ -32,6 +45,13 @@ export const useCasting = (_roomId: string) => {
       initialize();
     }
   }, [isInitialized, initialize]);
+
+  useEffect(() => {
+    if (!isLocalEmulatorEnabled) return;
+    if (isConnected) return;
+    if (availableDevices.length === 0) return;
+    console.log('[Cast] local emulator available; waiting for user connect');
+  }, [isConnected, isLocalEmulatorEnabled, availableDevices.length]);
 
   // Cast current song when casting becomes available or song changes
   // Only cast when user explicitly connects and there's a current song
@@ -48,7 +68,12 @@ export const useCasting = (_roomId: string) => {
   // Sync playback state with cast device
   useEffect(() => {
     // Only sync if we have an active session with media
-    if (isConnected && currentSong && currentSession?.mediaSessionId) {
+    const isLocalSession = currentSession?.deviceId === 'local-cast-emulator';
+    if (
+      isConnected &&
+      currentSong &&
+      (isLocalSession || currentSession?.mediaSessionId)
+    ) {
       const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
       console.log('[Cast] syncing playback state', {
         title: currentSong.title,
@@ -68,9 +93,30 @@ export const useCasting = (_roomId: string) => {
     isConnected,
     isPlaying,
     currentSong,
+    currentSession?.deviceId,
     currentSession?.mediaSessionId,
     stableSyncPlaybackState,
   ]);
+
+  useEffect(() => {
+    if (currentSession?.deviceId !== 'local-cast-emulator') return;
+    if (!room) return;
+
+    stableUpdateRoomInfo({
+      name: room.name,
+      participantCount: usersCount,
+    }).catch((error) => {
+      console.error('Failed to update local room info:', error);
+    });
+  }, [currentSession?.deviceId, room, usersCount, stableUpdateRoomInfo]);
+
+  useEffect(() => {
+    if (currentSession?.deviceId !== 'local-cast-emulator') return;
+
+    stableUpdateQueue(queueSongs).catch((error) => {
+      console.error('Failed to update local queue:', error);
+    });
+  }, [currentSession?.deviceId, queueSongs, stableUpdateQueue]);
 
   return {
     // State
