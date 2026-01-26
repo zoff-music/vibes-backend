@@ -17,7 +17,7 @@ localhost, 127.0.0.1 {
 
 	# Handle Cast app HMR WebSocket (when accessed via /casting/receiver/)
 	handle /casting/receiver/__hmr {
-		reverse_proxy localhost:3000
+		reverse_proxy 127.0.0.1:3003
 	}
 
 	# Handle platform assets - proxy to Vite dev server
@@ -52,22 +52,11 @@ localhost, 127.0.0.1 {
 		}
 	}
 
-	# Cast receiver endpoint - proxy to dev server in development, static files in production
+	# Cast receiver endpoint - proxy to dev server
 	redir /casting/receiver /casting/receiver/
 	handle /casting/receiver/* {
-		# In development, proxy to the cast dev server
-		@dev `{$CAST_DEV_MODE:false}` == `true`
-		reverse_proxy @dev {$CAST_UPSTREAM:localhost:3000} {
+		reverse_proxy 127.0.0.1:3003 {
 			header_up Host {host}
-		}
-
-		# In production, serve static files
-		@prod `{$CAST_DEV_MODE:false}` != `true`
-		handle @prod {
-			root * frontend/apps/cast/dist
-			uri strip_prefix /casting/receiver
-			try_files {path} /index.html
-			file_server
 		}
 	}
 

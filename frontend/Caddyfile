@@ -11,10 +11,15 @@
 	# Cast Receiver App
 	# Serves /casting/receiver/* from /srv/cast-app
 	# Uses handle_path to strip the prefix
-	handle_path /casting/receiver/* {
-		root * /srv/cast-app
-		try_files {path} {path}/ /index.html
-		file_server
+	# Cast Receiver App
+	# Serves /casting/receiver/* via proxy to dev server (for HMR)
+	handle /casting/receiver/* {
+		reverse_proxy 127.0.0.1:3003 {
+			header_up Host {host}
+			header_up X-Real-IP {remote}
+			header_up X-Forwarded-For {remote}
+			header_up X-Forwarded-Proto {scheme}
+		}
 	}
 
 	# Main Platform App

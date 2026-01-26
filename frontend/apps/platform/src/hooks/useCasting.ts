@@ -28,9 +28,15 @@ export const useCasting = (_roomId: string) => {
   const room = useRoomStore((state) => state.room);
   const usersCount = useRoomStore((state) => state.usersCount);
 
-  const isLocalEmulatorEnabled =
-    import.meta?.env?.VITE_CAST_LOCAL_EMULATOR === 'true' ||
-    import.meta?.env?.VITE_CAST_LOCAL_EMULATOR === '1';
+  const isLocalEmulatorEnabled = (() => {
+    const envValue = import.meta?.env?.VITE_CAST_LOCAL_EMULATOR;
+    if (envValue === 'true' || envValue === '1') return true;
+    return (
+      typeof window !== 'undefined' &&
+      (window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1')
+    );
+  })();
 
   // Create stable callback references
   const stableCastCurrentSong = useCallback(castCurrentSong, []);
