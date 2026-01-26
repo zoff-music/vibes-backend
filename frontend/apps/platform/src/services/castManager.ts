@@ -20,8 +20,8 @@ const DEVELOPMENT_MODE = true;
 const CUSTOM_RECEIVER_URL =
   import.meta.env.VITE_CAST_RECEIVER_URL || '/casting/receiver/';
 const LOCAL_EMULATOR_ENABLED =
-  import.meta.env.VITE_CAST_LOCAL_EMULATOR === 'true' ||
-  import.meta.env.VITE_CAST_LOCAL_EMULATOR === '1';
+  import.meta?.env?.VITE_CAST_LOCAL_EMULATOR === 'true' ||
+  import.meta?.env?.VITE_CAST_LOCAL_EMULATOR === '1';
 const LOCAL_EMULATOR_DEVICE_ID = 'local-cast-emulator';
 
 type LocalCastMessage =
