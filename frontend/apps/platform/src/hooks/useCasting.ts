@@ -29,8 +29,8 @@ export const useCasting = (_roomId: string) => {
   const usersCount = useRoomStore((state) => state.usersCount);
 
   const isLocalEmulatorEnabled =
-    import.meta.env.VITE_CAST_LOCAL_EMULATOR === 'true' ||
-    import.meta.env.VITE_CAST_LOCAL_EMULATOR === '1';
+    import.meta?.env?.VITE_CAST_LOCAL_EMULATOR === 'true' ||
+    import.meta?.env?.VITE_CAST_LOCAL_EMULATOR === '1';
 
   // Create stable callback references
   const stableCastCurrentSong = useCallback(castCurrentSong, []);
