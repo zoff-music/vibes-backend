@@ -1,6 +1,7 @@
 import type { CastDevice } from '@vibez/models';
 import { safeWrapAsync, usePlaybackStore } from '@vibez/shared';
 import React, { useState } from 'react';
+import { castManager } from '../../services/castManager';
 import { useCastStore } from '../../stores/castStore';
 import { CastDeviceIcon } from '../icons/CastDeviceIcon';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
@@ -36,6 +37,14 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
 
   const handleDeviceSelect = async (device: CastDevice) => {
     setIsConnecting(device.id);
+
+    if (device.id === 'local-cast-emulator') {
+      const opened = castManager.prepareLocalReceiverWindow();
+      if (!opened) {
+        setIsConnecting(null);
+        return;
+      }
+    }
 
     if (isConnected && currentSession) {
       await safeWrapAsync(disconnectFromDevice(currentSession.deviceId));

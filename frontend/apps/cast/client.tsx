@@ -1,8 +1,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
+import './src/styles/index.css';
 import App from './src/App';
-
-// import './src/index.css'; // Removed to avoid hydration styling conflicts as it's already in the HTML shell
 
 const rootElement = document.getElementById('root');
 if (rootElement) {
@@ -16,6 +15,7 @@ if (rootElement) {
   const root = createRoot(rootElement);
   root.render(
     <StrictMode>
+      <div className="hidden p-4">Debug</div>
       <App />
     </StrictMode>,
   );

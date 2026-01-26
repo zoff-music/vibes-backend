@@ -54,6 +54,17 @@ type ExpiredPlaybackProcessor interface {
 	ProcessNextExpiredPlayback(ctx context.Context) (*PlaybackState, error)
 }
 
+type ExpiredPlaybackSongFetcher interface {
+	ExpiredPlaybackProcessor
+	SongsFetcher
+}
+
+type ExpiredPlaybackSongFetcherAdminRoomLister interface {
+	ExpiredPlaybackProcessor
+	SongsFetcher
+	AdminRoomLister
+}
+
 // AbandonnedHostProcessor defines interfaces needed for background host management
 type AbandonnedHostProcessor interface {
 	ProcessNextAbandonedHost(ctx context.Context) (*RoomHostInfo, error)

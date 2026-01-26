@@ -30,7 +30,7 @@ Bun.serve({
   // Simple HMR client that works through proxy
   const isProxied = window.location.protocol === 'https:' && window.location.hostname === 'localhost';
   const wsUrl = isProxied 
-    ? 'wss://localhost/casting/receiver/__hmr'
+    ? 'wss://localhost/__hmr'
     : 'ws://localhost:${port}/__hmr';
   
   const ws = new WebSocket(wsUrl);
