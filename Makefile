@@ -108,10 +108,11 @@ setup-caddy:
 local-dev: setup-caddy
 	@echo "🚀 Starting Vibez Development Environment with HMR"
 	@echo "Stopping any existing dev processes..."
-	@-lsof -ti :3000,3001,3002,8080 | xargs kill -9 2>/dev/null || true
+	@-lsof -ti :3000,3001,3002,3003,8080 | xargs kill -9 2>/dev/null || true
 	@echo "Ensuring dependencies are up to date..."
 	@cd frontend && bun install
 	@cd frontend/apps/platform && bun install
+	@cd frontend/apps/cast && bun install
 	@echo "Ensuring database directory exists..."
 	@mkdir -p data/db
 	@echo "Starting local development services..."
@@ -119,7 +120,8 @@ local-dev: setup-caddy
 	@echo "🌐 Access URLs:"
 	@echo "  📍 Platform (HTTPS with HMR): https://localhost"
 	@echo "  📍 Platform (Direct): http://localhost:3001"
-	@echo "  📍 Cast App: http://localhost:3000"
+	@echo "  📍 Cast App (Dev): http://localhost:3003"
+	@echo "  📍 Cast Receiver (HTTPS): https://localhost/casting/receiver/"
 	@echo "  📍 Backend API: http://localhost:8080"
 	@echo ""
 	@echo "🔥 Hot Module Replacement enabled on https://localhost!"

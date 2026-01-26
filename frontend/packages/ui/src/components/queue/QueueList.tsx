@@ -1,7 +1,7 @@
 import { Song } from '@vibez/shared';
-import { QueueEmptyIcon } from '@vibez/ui';
 import { AnimatePresence } from 'framer-motion';
 import React, { useEffect, useState } from 'react';
+import { QueueEmptyIcon } from '../../icons';
 import { QueueItem } from './QueueItem';
 
 interface Props {

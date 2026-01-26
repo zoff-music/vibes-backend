@@ -3,6 +3,7 @@ import { type Song, usePlaybackStore } from '@vibez/shared';
 import {
   AlertCircleIcon,
   PlayerControls,
+  QueueList,
   SoundCloudPlayer,
   SpotifyPlayer,
   Toast,
@@ -13,7 +14,6 @@ import { useNavigate, useParams } from 'react-router';
 import { getHttpError } from 'wiretyped';
 import { DeviceSelector } from '../components/cast/DeviceSelector';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
-import { QueueList } from '../components/queue/QueueList';
 import { RoomHeader } from '../components/room/RoomHeader';
 import { useCasting } from '../hooks/useCasting';
 import { usePlayback } from '../hooks/usePlayback';

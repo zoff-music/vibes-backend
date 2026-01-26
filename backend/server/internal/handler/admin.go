@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -274,4 +275,33 @@ func AdminEvents(
 			}
 		}
 	}
+}
+
+// ReviewAdminRooms handles scheduled admin room updates
+type ReviewAdminRooms struct {
+	DB  vibe.AdminRoomLister
+	IPS vibe.AdminEventNotifier
+}
+
+// Handle fetches admin rooms and broadcasts the update
+func (h *ReviewAdminRooms) Handle(ctx context.Context, data []byte) error {
+	rooms, err := h.DB.ListAdminRooms(ctx)
+	if err != nil {
+		return fmt.Errorf("error listing admin rooms: %w", err)
+	}
+
+	payload, err := json.Marshal(rooms)
+	if err != nil {
+		return fmt.Errorf("error marshaling admin rooms: %w", err)
+	}
+
+	err = h.IPS.NotifyAdminUpdate(ctx, vibe.AdminEvent{
+		Type:    vibe.AdminRoomsUpdate,
+		Payload: payload,
+	})
+	if err != nil {
+		return fmt.Errorf("error notifying admin rooms update: %w", err)
+	}
+
+	return nil
 }

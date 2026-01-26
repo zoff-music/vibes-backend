@@ -19,9 +19,15 @@ const CAST_APPLICATION_ID = import.meta?.env?.VITE_CAST_APP_ID || '1FAF5D9F'; //
 const DEVELOPMENT_MODE = true;
 const CUSTOM_RECEIVER_URL =
   import.meta?.env?.VITE_CAST_RECEIVER_URL || '/casting/receiver/';
-const LOCAL_EMULATOR_ENABLED =
-  import.meta?.env?.VITE_CAST_LOCAL_EMULATOR === 'true' ||
-  import.meta?.env?.VITE_CAST_LOCAL_EMULATOR === '1';
+const LOCAL_EMULATOR_ENABLED = (() => {
+  const envValue = import.meta?.env?.VITE_CAST_LOCAL_EMULATOR;
+  if (envValue === 'true' || envValue === '1') return true;
+  if (typeof window === 'undefined') return false;
+  return (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  );
+})();
 const LOCAL_EMULATOR_DEVICE_ID = 'local-cast-emulator';
 
 type LocalCastMessage =
@@ -450,9 +456,31 @@ class GoogleCastManager implements CastManager {
     return [...this.devices]; // Return a copy to prevent external modification
   }
 
+  prepareLocalReceiverWindow(): boolean {
+    if (!LOCAL_EMULATOR_ENABLED) {
+      return false;
+    }
+
+    const receiverWindow = this.openLocalReceiver();
+    if (!receiverWindow) {
+      const error = new Error('Local cast receiver window could not be opened');
+      this.notifyError({
+        code: 'LOCAL_RECEIVER_BLOCKED',
+        description: 'Failed to open local cast receiver window',
+        details: error,
+      });
+      return false;
+    }
+
+    return true;
+  }
+
   async connectToDevice(deviceId: string): Promise<CastSession> {
     if (LOCAL_EMULATOR_ENABLED && deviceId === LOCAL_EMULATOR_DEVICE_ID) {
-      const receiverWindow = this.openLocalReceiver();
+      const receiverWindow =
+        this.localReceiverWindow && !this.localReceiverWindow.closed
+          ? this.localReceiverWindow
+          : null;
       if (!receiverWindow) {
         const error = new Error(
           'Local cast receiver window could not be opened',
@@ -1267,50 +1295,41 @@ class GoogleCastManager implements CastManager {
 
     this.localReceiverOrigin = parsedUrl.origin;
 
-    const existingFrame = document.querySelector<HTMLIFrameElement>(
-      'iframe[data-vibez-local-cast="true"]',
-    );
-    const frame = existingFrame || document.createElement('iframe');
-    if (!existingFrame) {
-      frame.dataset.vibezLocalCast = 'true';
-      frame.setAttribute('title', 'Vibez Cast Receiver');
-      frame.style.position = 'fixed';
-      frame.style.right = '16px';
-      frame.style.bottom = '16px';
-      frame.style.width = '360px';
-      frame.style.height = '202px';
-      frame.style.border = '1px solid rgba(255, 255, 255, 0.2)';
-      frame.style.borderRadius = '12px';
-      frame.style.zIndex = '9999';
-      frame.style.background = 'black';
-      frame.style.boxShadow = '0 12px 30px rgba(0, 0, 0, 0.35)';
-      frame.setAttribute('allow', 'autoplay; fullscreen');
-      frame.addEventListener('load', () => {
-        this.localReceiverReady = true;
-        this.flushLocalMessageQueue();
-      });
-      document.body.appendChild(frame);
-    }
-    if (frame.src !== receiverUrl) {
-      frame.src = receiverUrl;
+    const popup =
+      this.localReceiverWindow && !this.localReceiverWindow.closed
+        ? this.localReceiverWindow
+        : (() => {
+            const width = 480;
+            const height = 270;
+            const left = Math.max(0, window.screen.width / 2 - width / 2);
+            const top = Math.max(0, window.screen.height / 2 - height / 2);
+            const features = [
+              `width=${width}`,
+              `height=${height}`,
+              `left=${left}`,
+              `top=${top}`,
+              'resizable=yes',
+              'scrollbars=no',
+            ].join(',');
+            return window.open(receiverUrl, 'vibez-cast-receiver', features);
+          })();
+
+    if (!popup) {
+      console.error('Local cast receiver window was blocked or failed to open');
+      return null;
     }
 
-    this.localReceiverFrame = frame;
-    this.localReceiverWindow = frame.contentWindow;
-    const [readyErr, readyState] = safeWrap(
-      () => frame.contentDocument?.readyState,
-    );
-    if (!readyErr && readyState === 'complete') {
-      this.localReceiverReady = true;
-      this.flushLocalMessageQueue();
-    }
-    return frame.contentWindow;
+    this.localReceiverFrame = null;
+    this.localReceiverWindow = popup;
+    this.localReceiverReady = true;
+    this.flushLocalMessageQueue();
+    return popup;
   }
 
   private sendLocalMessage(message: LocalCastMessage): void {
-    if (!this.localReceiverWindow) {
-      const receiverWindow = this.openLocalReceiver();
-      if (!receiverWindow) return;
+    if (!this.localReceiverWindow || this.localReceiverWindow.closed) {
+      console.warn('[Local Cast] receiver window not available');
+      return;
     }
 
     this.localMessageQueue.push(message);

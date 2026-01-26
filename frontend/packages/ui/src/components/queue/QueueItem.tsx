@@ -1,7 +1,7 @@
 import { Song } from '@vibez/shared';
-import { TrashIcon, VoteIcon } from '@vibez/ui';
 import { motion } from 'framer-motion';
 import React from 'react';
+import { TrashIcon, VoteIcon } from '../../icons';
 
 interface Props {
   song: Song;
