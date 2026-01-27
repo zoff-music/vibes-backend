@@ -32,6 +32,8 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
 
   const currentSong = usePlaybackStore((state) => state.currentSong);
 
+  const isDev = import.meta.env.VITE_DEVELOPMENT_MODE === 'true';
+
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
   const [isCasting, setIsCasting] = useState(false);
 
@@ -143,7 +145,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
             </div>
 
             {/* Cast Current Song Button */}
-            {currentSong && (
+            {isDev && currentSong && (
               <div className="border-primary/20 border-t pt-3 dark:border-primary/30">
                 <button
                   onClick={handleCastCurrentSong}
@@ -224,85 +226,88 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
           </div>
         )}
 
-        {/* Available devices */}
-        <div className="space-y-2">
-          <div className="flex items-center justify-between">
-            <h4 className="font-medium text-gray-900 dark:text-white">
-              Available Devices
-            </h4>
-            <button
-              onClick={handleRefresh}
-              className="cursor-pointer text-primary text-sm transition-colors duration-200 hover:text-primary/80 dark:text-primary-light dark:hover:text-primary"
-            >
-              Refresh
-            </button>
-          </div>
+        {/* Available devices - Only show when NOT connected */}
+        {!isConnected && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium text-gray-900 dark:text-white">
+                Available Devices
+              </h4>
+              <button
+                onClick={handleRefresh}
+                className="cursor-pointer text-primary text-sm transition-colors duration-200 hover:text-primary/80 dark:text-primary-light dark:hover:text-primary"
+              >
+                Refresh
+              </button>
+            </div>
 
-          {availableDevices.length === 0 ? (
-            <div className="py-8 text-center text-gray-500 dark:text-gray-400">
-              <CastDeviceIcon className="mx-auto mb-2 h-12 w-12 text-gray-300 dark:text-gray-600" />
-              <div className="font-medium text-gray-500 dark:text-gray-400">
-                No Chromecast devices found
+            {availableDevices.length === 0 ? (
+              <div className="py-8 text-center text-gray-500 dark:text-gray-400">
+                <CastDeviceIcon className="mx-auto mb-2 h-12 w-12 text-gray-300 dark:text-gray-600" />
+                <div className="font-medium text-gray-500 dark:text-gray-400">
+                  No Chromecast devices found
+                </div>
+                <div className="mt-2 space-y-1 text-gray-400 text-xs dark:text-gray-500">
+                  <div>Make sure your Chromecast is:</div>
+                  <div>• On the same Wi-Fi network</div>
+                  <div>• Powered on and ready</div>
+                  <div>• Not being used by another app</div>
+                </div>
+                <div className="mt-3 text-gray-400 text-xs dark:text-gray-500">
+                  Check browser console for debug info
+                </div>
               </div>
-              <div className="mt-2 space-y-1 text-gray-400 text-xs dark:text-gray-500">
-                <div>Make sure your Chromecast is:</div>
-                <div>• On the same Wi-Fi network</div>
-                <div>• Powered on and ready</div>
-                <div>• Not being used by another app</div>
-              </div>
-              <div className="mt-3 text-gray-400 text-xs dark:text-gray-500">
-                Check browser console for debug info
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {availableDevices.map((device) => (
-                <button
-                  key={device.id}
-                  onClick={() => handleDeviceSelect(device)}
-                  disabled={
-                    isConnecting === device.id ||
-                    (isConnected && currentSession?.deviceId === device.id)
-                  }
-                  className={`w-full rounded-lg border p-3 text-left transition-colors duration-200 ${
-                    isConnected && currentSession?.deviceId === device.id
-                      ? 'cursor-default border-primary/20 bg-primary/10 dark:border-primary/30 dark:bg-primary/20'
-                      : 'cursor-pointer border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600'
-                  }
-                    ${isConnecting === device.id ? 'opacity-50' : ''}focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-800`}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="shrink-0">
-                      {device.type === 'chromecast' ? (
-                        <CastDeviceIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
-                      ) : (
-                        <CheckCircleIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+            ) : (
+              <div className="space-y-2">
+                {availableDevices.map((device) => (
+                  <button
+                    key={device.id}
+                    onClick={() => handleDeviceSelect(device)}
+                    disabled={
+                      isConnecting === device.id ||
+                      (isConnected && currentSession?.deviceId === device.id)
+                    }
+                    className={`w-full rounded-lg border p-3 text-left transition-colors duration-200 ${
+                      isConnected && currentSession?.deviceId === device.id
+                        ? 'cursor-default border-primary/20 bg-primary/10 dark:border-primary/30 dark:bg-primary/20'
+                        : 'cursor-pointer border-gray-200 bg-white hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-700 dark:hover:bg-gray-600'
+                    }
+                      ${isConnecting === device.id ? 'opacity-50' : ''}focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 dark:focus:ring-offset-gray-800`}
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="shrink-0">
+                        {device.type === 'chromecast' ? (
+                          <CastDeviceIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+                        ) : (
+                          <CheckCircleIcon className="h-6 w-6 text-gray-600 dark:text-gray-300" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900 dark:text-white">
+                          {device.name}
+                        </div>
+                        <div className="text-gray-500 text-sm capitalize dark:text-gray-400">
+                          {device.type}
+                        </div>
+                      </div>
+                      {isConnecting === device.id && (
+                        <div className="shrink-0">
+                          <SpinnerIcon className="h-4 w-4 animate-spin text-primary dark:text-primary-light" />
+                        </div>
                       )}
+                      {isConnected &&
+                        currentSession?.deviceId === device.id && (
+                          <div className="shrink-0">
+                            <CheckIcon className="h-4 w-4 text-primary dark:text-primary-light" />
+                          </div>
+                        )}
                     </div>
-                    <div className="flex-1">
-                      <div className="font-medium text-gray-900 dark:text-white">
-                        {device.name}
-                      </div>
-                      <div className="text-gray-500 text-sm capitalize dark:text-gray-400">
-                        {device.type}
-                      </div>
-                    </div>
-                    {isConnecting === device.id && (
-                      <div className="shrink-0">
-                        <SpinnerIcon className="h-4 w-4 animate-spin text-primary dark:text-primary-light" />
-                      </div>
-                    )}
-                    {isConnected && currentSession?.deviceId === device.id && (
-                      <div className="shrink-0">
-                        <CheckIcon className="h-4 w-4 text-primary dark:text-primary-light" />
-                      </div>
-                    )}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mt-6 text-center text-gray-500 text-xs transition-colors duration-200 dark:text-gray-400">
           Make sure your device supports Google Cast and is connected to the
