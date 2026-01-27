@@ -55,5 +55,9 @@ export default defineConfig({
     'import.meta.env.VITE_FRONTEND_URL': JSON.stringify(
       process.env.FRONTEND_URL || 'http://localhost:3001',
     ),
+    'import.meta.env.VITE_DEVELOPMENT_MODE': JSON.stringify(
+      process.env.DEVELOPMENT_MODE ||
+        (process.env.NODE_ENV !== 'production' ? 'true' : 'false'),
+    ),
   },
 });

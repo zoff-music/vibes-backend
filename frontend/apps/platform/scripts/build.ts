@@ -23,7 +23,12 @@ for (const [key, value] of Object.entries(envVars)) {
     if (key === 'VITE_API_URL') continue;
     defines[`import.meta.env.${key}`] = JSON.stringify(value);
   } else if (
-    ['CAST_APP_ID', 'CAST_RECEIVER_URL', 'FRONTEND_URL'].includes(key)
+    [
+      'CAST_APP_ID',
+      'CAST_RECEIVER_URL',
+      'FRONTEND_URL',
+      'DEVELOPMENT_MODE',
+    ].includes(key)
   ) {
     defines[`import.meta.env.VITE_${key}`] = JSON.stringify(value);
   }
@@ -36,6 +41,11 @@ if (!defines['import.meta.env.VITE_CAST_APP_ID']) {
 if (!defines['import.meta.env.VITE_CAST_RECEIVER_URL']) {
   defines['import.meta.env.VITE_CAST_RECEIVER_URL'] =
     JSON.stringify('/casting/receiver/');
+}
+if (!defines['import.meta.env.VITE_DEVELOPMENT_MODE']) {
+  defines['import.meta.env.VITE_DEVELOPMENT_MODE'] = JSON.stringify(
+    !isProd ? 'true' : 'false',
+  );
 }
 
 console.log(
