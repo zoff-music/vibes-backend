@@ -1,5 +1,5 @@
+import { DebugConsole } from '@vibez/ui';
 import { Route, Routes } from 'react-router';
-import DebugConsole from './components/DebugConsole';
 import Admin from './pages/Admin';
 import Callback from './pages/Callback';
 import CreateRoom from './pages/CreateRoom';

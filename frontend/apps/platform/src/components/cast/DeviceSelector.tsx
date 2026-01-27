@@ -181,7 +181,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                         </div>
                         <div className="mt-2">
                           <a
-                            href="/casting/receiver/"
+                            href={`/casting/receiver/${isDev ? '?debug=true' : ''}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             className="text-blue-600 underline hover:no-underline dark:text-blue-400"

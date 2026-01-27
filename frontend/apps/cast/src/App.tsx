@@ -1,9 +1,10 @@
+import { DebugConsole } from '@vibez/ui';
 import { ActiveView } from './components/ActiveView';
 import { CastProvider, useCast } from './components/CastProvider';
 import { IdleView } from './components/IdleView';
 
 const CastAppContent = () => {
-  const { currentSong } = useCast();
+  const { currentSong, debugMode } = useCast();
 
   return (
     <div className="relative flex h-screen w-screen animate-fade-in items-center justify-center overflow-hidden bg-theme text-theme">
@@ -15,6 +16,7 @@ const CastAppContent = () => {
       <div className="relative z-10 flex h-full w-full items-center justify-center">
         {currentSong ? <ActiveView /> : <IdleView />}
       </div>
+      <DebugConsole enabled={debugMode} />
     </div>
   );
 };

@@ -326,7 +326,6 @@
       rgba(255, 120, 160, 0.75) 12px
     );
     border-radius: 999px;
-    filter: blur(0.2px);
   }
 
   .retro-grid {
@@ -339,7 +338,6 @@
     animation: retro-grid-scroll 16s linear infinite;
     will-change: background-position;
     transform: perspective(800px) rotateX(55deg);
-    filter: drop-shadow(0 0 30px rgba(255, 92, 152, 0.4));
   }
 
   @keyframes retro-grid-scroll {
@@ -366,7 +364,7 @@
       0 0 0 1px rgba(53, 211, 255, 0.25) inset,
       var(--shadow-soft);
     border-radius: var(--radius-xl);
-    backdrop-filter: blur(10px);
+    /* backdrop-filter: blur(10px); - Removed for Chromecast performance */
   }
 
   .cast-queue button {
