@@ -229,13 +229,41 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
       className={`${containerClass} ${!isVisible ? 'hidden' : ''}`}
       style={containerStyle}
     >
-      {showOverlay && (
-        <AuthOverlay
-          provider="spotify"
-          errorMessage={overlayErrorMessage}
-          onAuthorize={handleAuthorize}
-        />
-      )}
+      {showOverlay &&
+        (fill ? (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 p-8 text-center backdrop-blur-sm">
+            <div>
+              <div className="mx-auto mb-4 h-16 w-16 text-green-500 opacity-50">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+                  />
+                </svg>
+              </div>
+              <h3 className="mb-2 font-display text-2xl text-white">
+                Playback Issue
+              </h3>
+              <p className="mx-auto max-w-lg text-white/70 text-xl">
+                {overlayErrorMessage ||
+                  'Authentication required. Please open the Vibes app on your device to reconnect Spotify.'}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <AuthOverlay
+            provider="spotify"
+            errorMessage={overlayErrorMessage}
+            onAuthorize={handleAuthorize}
+          />
+        ))}
 
       <div className="absolute inset-0 flex items-center justify-center p-8">
         <div className="flex max-w-full items-center gap-6">
