@@ -16,16 +16,21 @@ interface LogEntry {
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 
-const DebugConsole: React.FC = () => {
+interface Props {
+  enabled?: boolean;
+}
+
+export const DebugConsole: React.FC<Props> = ({ enabled = false }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    // Check for debug flag in URL
+    // Check for debug flag in URL OR if enabled prop is true
     const searchParams = new URLSearchParams(window.location.search);
-    const debug = searchParams.get('debug');
-    if (debug !== 'true') return;
+    const debug = searchParams.get('debug') === 'true';
+
+    if (!debug && !enabled) return;
 
     setIsVisible(true);
 
@@ -84,13 +89,13 @@ const DebugConsole: React.FC = () => {
       console.info = originalConsole.info;
       console.debug = originalConsole.debug;
     };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [logs]);
+  }, [logs, isVisible]); // Add isVisible dependency to ensure scroll on show
 
   if (!isVisible) return null;
 
@@ -194,5 +199,3 @@ const DebugConsole: React.FC = () => {
     </div>
   );
 };
-
-export default DebugConsole;

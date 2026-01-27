@@ -63,6 +63,7 @@ interface CastContextType {
   currentSong: Song | null;
   actualPositionMs: number;
   updateActualPosition: () => void;
+  debugMode: boolean;
 }
 
 const CastContext = createContext<CastContextType | undefined>(undefined);
@@ -74,6 +75,10 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [statusText, setStatusText] = useState('Ready for Casting');
   const [roomMode, setRoomMode] = useState<string | null>(null);
+  const [debugMode, setDebugMode] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('debug') === 'true';
+  });
 
   // Use global store for playback state to share with components
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
@@ -301,6 +306,10 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
                 }
               }
             }
+            if (data.debug) {
+              console.log('[Cast Receiver] Enabling debug mode from sender');
+              setDebugMode(true);
+            }
           }
 
           setStatusText('Waiting for content...');
@@ -495,6 +504,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
           : null,
         actualPositionMs,
         updateActualPosition,
+        debugMode,
       }}
     >
       {children}

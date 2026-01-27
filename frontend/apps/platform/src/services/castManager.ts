@@ -723,6 +723,8 @@ class GoogleCastManager implements CastManager {
           spotify: { token: getToken('spotify') },
           soundcloud: { token: getToken('soundcloud') },
         },
+        debug:
+          new URLSearchParams(window.location.search).get('debug') === 'true',
       };
 
       const request = new window.chrome.cast.media.LoadRequest(
@@ -1281,6 +1283,12 @@ class GoogleCastManager implements CastManager {
     }
     if (roomState.room?.id) {
       params.set('roomId', roomState.room.id);
+    }
+
+    // Check for debug flag in current window URL and pass it to receiver
+    const currentParams = new URLSearchParams(window.location.search);
+    if (currentParams.get('debug') === 'true') {
+      params.set('debug', 'true');
     }
 
     const separator = baseUrl.includes('?') ? '&' : '?';
