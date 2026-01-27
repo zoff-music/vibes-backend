@@ -2,6 +2,7 @@
   layer(base);
 
 @import "tailwindcss";
+@source "../../../../packages";
 
 @custom-variant dark (&:is(.dark *));
 
