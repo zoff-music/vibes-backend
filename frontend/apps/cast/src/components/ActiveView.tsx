@@ -14,34 +14,35 @@ export const ActiveView: React.FC = () => {
   const upNext = queue.filter((song) => song.id !== currentSong.id);
 
   return (
-    <div className="flex h-full w-full flex-col lg:flex-row">
-      {/* Left Column: Player & Current Song Info */}
-      <div className="relative h-[55%] w-full overflow-hidden border-theme-subtle border-b bg-black/40 shadow-2xl lg:h-full lg:w-[65%] lg:border-r lg:border-b-0">
+    <div className="flex h-screen w-screen flex-row overflow-hidden bg-black">
+      {/* Left Column: Player & Current Song Info - FIXED WIDTH */}
+      <div className="relative h-full w-[65%] shrink-0 overflow-hidden border-white/10 border-r bg-black shadow-2xl">
         {/* Player Container */}
         <PlayerLayer />
 
-        {/* Info Overlay */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/60 to-transparent px-6 pt-20 pb-8 lg:px-12 lg:pt-32 lg:pb-12">
-          <div className="flex items-end gap-4 lg:gap-8">
+        {/* Info Overlay - TV Optimized */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent px-12 pt-40 pb-12">
+          <div className="flex items-end gap-8">
             <div className="relative shrink-0">
-              <div className="absolute -inset-1 animate-pulse rounded-2xl bg-gradient-to-tr from-primary to-secondary opacity-50 blur-lg" />
+              <div className="absolute -inset-1 animate-pulse rounded-2xl bg-gradient-to-tr from-primary to-secondary opacity-30 blur-xl" />
               <img
                 src={currentSong.thumbnailUrl}
                 alt={currentSong.title}
-                className="relative h-16 w-16 rounded-xl border border-white/20 object-cover shadow-2xl lg:h-40 lg:w-40 lg:rounded-2xl"
+                className="relative h-48 w-48 rounded-2xl border border-white/20 object-cover shadow-2xl"
               />
             </div>
-            <div className="mb-2 min-w-0 flex-1">
-              <h1 className="mb-2 truncate font-display text-white text-xl drop-shadow-lg lg:text-3xl">
+            <div className="mb-3 min-w-0 flex-1">
+              <h1 className="mb-3 truncate font-display text-5xl text-white leading-tight drop-shadow-lg">
                 {currentSong.title}
               </h1>
-              <p className="truncate font-sans text-sm text-white/80 lg:text-2xl">
+              <p className="truncate font-light font-sans text-3xl text-white/80">
                 {currentSong.artist || 'Unknown Artist'}
               </p>
               {(currentSong.voteCount || 0) > 0 && (
-                <div className="mt-3 flex items-center gap-2">
-                  <span className="flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 font-medium text-secondary text-sm backdrop-blur-md">
-                    Contains {currentSong.voteCount} votes
+                <div className="mt-4 flex items-center gap-2">
+                  <span className="flex items-center gap-2 rounded-full border border-white/5 bg-white/10 px-4 py-2 font-medium text-lg text-secondary backdrop-blur-md">
+                    <span className="text-xl">🔥</span> {currentSong.voteCount}{' '}
+                    votes
                   </span>
                 </div>
               )}
@@ -49,8 +50,8 @@ export const ActiveView: React.FC = () => {
           </div>
 
           {/* Progress Bar */}
-          <div className="mt-6 lg:mt-8">
-            <div className="mb-2 flex justify-between font-mono text-white/60 text-xs">
+          <div className="mt-10">
+            <div className="mb-3 flex justify-between font-mono text-lg text-white/60">
               <span>
                 {Math.floor(actualPositionMs / 60000)}:
                 {String(Math.floor((actualPositionMs / 1000) % 60)).padStart(
@@ -66,7 +67,7 @@ export const ActiveView: React.FC = () => {
                 )}
               </span>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-white/20">
               <div
                 className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-1000 ease-linear"
                 style={{
@@ -83,41 +84,50 @@ export const ActiveView: React.FC = () => {
       </div>
 
       {/* Right Column: Up Next Queue */}
-      <div className="cast-queue flex h-[45%] w-full flex-col bg-theme-surface/95 p-6 backdrop-blur-xl lg:h-full lg:w-[35%] lg:p-10">
-        <div className="mb-6 flex items-center justify-between">
+      <div className="flex h-full flex-1 flex-col bg-[#111111] p-10">
+        <div className="mb-8 flex items-center justify-between border-white/10 border-b pb-6">
           <div>
-            <h2 className="font-display text-[10px] text-theme-muted tracking-[0.3em]">
-              Up Next ({upNext.length})
+            <h2 className="font-display text-sm text-text-muted uppercase tracking-[0.4em]">
+              Up Next
             </h2>
           </div>
           {roomInfo && (
             <div className="text-right">
-              <h3 className="font-medium text-theme">{roomInfo.name}</h3>
-              <p className="text-theme-muted text-xs">
+              <h3 className="font-medium text-theme text-xl">
+                {roomInfo.name}
+              </h3>
+              <div className="mt-1 flex items-center justify-end gap-2 text-sm text-theme-muted">
+                <span className="h-2 w-2 rounded-full bg-green-500"></span>
                 {roomInfo.participantCount} listening
-              </p>
+              </div>
             </div>
           )}
         </div>
 
-        <div className="mask-linear -mr-2 flex-1 overflow-y-auto pr-2">
+        <div className="custom-scrollbar flex-1 overflow-y-auto pr-2">
           <QueueList songs={upNext} roomId={roomId} />
         </div>
 
-        <div className="mt-6 rounded-2xl border border-theme bg-theme-surface p-5 text-center">
-          <div className="mx-auto mb-4 inline-flex items-center justify-center rounded-2xl border border-theme bg-white p-3">
-            <QRCodeSVG
-              value={joinUrl}
-              size={120}
-              bgColor="#ffffff"
-              fgColor="#2a1840"
-              level="H"
-            />
+        <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
+          <div className="flex items-center justify-center gap-8">
+            <div className="inline-flex items-center justify-center rounded-2xl bg-white p-3 shadow-lg">
+              <QRCodeSVG
+                value={joinUrl}
+                size={140}
+                bgColor="#ffffff"
+                fgColor="#000000"
+                level="M"
+              />
+            </div>
+            <div className="text-left">
+              <p className="mb-2 font-display text-2xl text-theme">
+                Join the Party
+              </p>
+              <p className="max-w-[200px] text-lg text-theme-muted leading-snug">
+                Scan to add songs & vote from your phone
+              </p>
+            </div>
           </div>
-          <p className="mb-1 font-display text-base text-theme">
-            Join the Party
-          </p>
-          <p className="text-theme-muted text-xs">Scan to add songs & vote</p>
         </div>
       </div>
     </div>

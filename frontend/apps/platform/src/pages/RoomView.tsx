@@ -44,7 +44,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
 
   const { currentSong, skip, isPlaying, play, pause } = usePlayback(id || '');
   const { songs, fetchQueue, voteSong } = useQueue(id || '');
-  const { isConnected, castDeviceName, currentSession } = useCasting(id || '');
+  const { isConnected, castDeviceName } = useCasting(id || '');
 
   const headerRef = useRef<HTMLDivElement | null>(null);
 
@@ -567,36 +567,21 @@ export default function RoomView({ initialData }: RoomViewProps) {
                         onEnded={
                           displayRoom?.mode === 'host' ? skip : undefined
                         }
-                        isVisible={
-                          !(
-                            isConnected &&
-                            currentSession?.deviceId === 'local-cast-emulator'
-                          )
-                        }
+                        isVisible={!isConnected}
                       />
                     ) : displayCurrentSong.sourceType === 'soundcloud' ? (
                       <SoundCloudPlayer
                         onEnded={
                           displayRoom?.mode === 'host' ? skip : undefined
                         }
-                        isVisible={
-                          !(
-                            isConnected &&
-                            currentSession?.deviceId === 'local-cast-emulator'
-                          )
-                        }
+                        isVisible={!isConnected}
                       />
                     ) : (
                       <VideoPlayer
                         onEnded={
                           displayRoom?.mode === 'host' ? skip : undefined
                         }
-                        isVisible={
-                          !(
-                            isConnected &&
-                            currentSession?.deviceId === 'local-cast-emulator'
-                          )
-                        }
+                        isVisible={!isConnected}
                       />
                     )
                   ) : displaySongs.length > 0 ? (

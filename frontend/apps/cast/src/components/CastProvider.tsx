@@ -105,6 +105,44 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
     };
   }, []);
 
+  // Helper to update CAF metadata for external controls
+  const updateMediaMetadata = useCallback((song: Song) => {
+    const playerManager = playerManagerRef.current;
+    if (!playerManager) return;
+
+    const [err] = safeWrap(() => {
+      const mediaInfo =
+        playerManager.getMediaInformation() ||
+        new cast.framework.messages.MediaInformation();
+
+      const metadata = new cast.framework.messages.MusicTrackMediaMetadata();
+      metadata.title = song.title;
+      metadata.artist = song.artist || 'Unknown Artist';
+      metadata.images = song.thumbnailUrl
+        ? [new cast.framework.messages.Image(song.thumbnailUrl)]
+        : [];
+
+      mediaInfo.metadata = metadata;
+      mediaInfo.contentId = song.id; // Or sourceId
+      mediaInfo.contentType = 'audio/mpeg'; // Generic content type
+      mediaInfo.streamType = cast.framework.messages.StreamType.BUFFERED;
+      mediaInfo.duration = song.duration || 0;
+
+      playerManager.setMediaInformation(mediaInfo);
+
+      // Force a status broadcast
+      // Extending the type locally to avoid 'any' casting for missing method definition
+      interface ExtendedPlayerManager extends framework.PlayerManager {
+        broadcastStatus(includeMediaStatus: boolean): void;
+      }
+      (playerManager as ExtendedPlayerManager).broadcastStatus?.(true);
+    });
+
+    if (err) {
+      console.error('[Cast Receiver] Failed to update metadata', err);
+    }
+  }, []);
+
   const handleCastMessage = useCallback(
     (message: LocalCastMessage) => {
       console.log('[Cast Receiver] custom message payload', {
@@ -120,9 +158,10 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         case 'updatePlayback':
           console.log('Updating playback state:', message);
           if (message.currentSong) {
+            const normalizedSong = normalizeSong(message.currentSong);
             setPlaybackState(
               {
-                currentSong: normalizeSong(message.currentSong),
+                currentSong: normalizedSong,
                 isPlaying: message.isPlaying || false,
                 positionMs: message.positionMs || 0,
                 updatedAt: new Date().toISOString(),
@@ -132,6 +171,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
             );
             setIsPlaying(message.isPlaying || false);
             setStatusText(`Now Playing: ${message.currentSong.title}`);
+            updateMediaMetadata(normalizedSong);
           }
           if (message.roomInfo) {
             setRoomInfo(message.roomInfo);
@@ -141,9 +181,10 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         case 'syncPlayback':
           console.log('Syncing playback:', message);
           if (message.currentSong) {
+            const normalizedSong = normalizeSong(message.currentSong);
             setPlaybackState(
               {
-                currentSong: normalizeSong(message.currentSong),
+                currentSong: normalizedSong,
                 isPlaying: message.isPlaying || false,
                 positionMs: message.positionMs || 0,
                 updatedAt: new Date().toISOString(),
@@ -152,6 +193,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
               roomMode || undefined,
             );
             setIsPlaying(message.isPlaying || false);
+            updateMediaMetadata(normalizedSong);
           }
           break;
 
@@ -173,7 +215,13 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
           console.log('Unknown message action:', action);
       }
     },
-    [normalizeSong, roomMode, setIsPlaying, setPlaybackState],
+    [
+      normalizeSong,
+      roomMode,
+      setIsPlaying,
+      setPlaybackState,
+      updateMediaMetadata,
+    ],
   );
 
   useEffect(() => {
@@ -274,6 +322,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       const options = new cast.framework.CastReceiverOptions();
       options.maxInactivity = 3600;
       options.statusText = 'Vibez Session';
+      options.disableIdleTimeout = true; // IMPORTANT for keeping session alive during custom playback
 
       const [err] = safeWrap(() => {
         context.start(options);
