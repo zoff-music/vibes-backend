@@ -199,9 +199,10 @@ class GoogleCastManager implements CastManager {
           resolve();
         } else if (attempts >= maxAttempts) {
           clearInterval(checkInterval);
-          const error = new Error(
+          const error: any = new Error(
             'Google Cast API not available after timeout',
           );
+          error.code = 'API_TIMEOUT_INTERNAL';
           // Don't notify error for timeout, just log warning
           console.warn(
             '[Cast] API timeout - Cast likely not supported or extension missing',
@@ -435,6 +436,13 @@ class GoogleCastManager implements CastManager {
     if (!this.isInitialized) {
       const [initErr] = await safeWrapAsync(this.initializeCastSDK());
       if (initErr) {
+        if ((initErr as any).code === 'API_TIMEOUT_INTERNAL') {
+          console.warn(
+            'Cast initialization timed out - likely unsupported browser. Skipping discovery error.',
+          );
+          return LOCAL_EMULATOR_ENABLED ? [...this.devices] : [];
+        }
+
         console.error('Failed to discover devices:', initErr);
         this.notifyError({
           code: 'DISCOVERY_FAILED',
