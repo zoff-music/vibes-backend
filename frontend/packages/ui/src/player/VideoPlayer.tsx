@@ -199,7 +199,7 @@ const VideoPlayerComponent = ({
   const showOverlay = !!error;
 
   const containerClass = fill
-    ? 'relative h-full w-full overflow-hidden bg-black'
+    ? 'relative h-full w-full overflow-hidden bg-black [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:scale-[1.65] [&_iframe]:origin-center'
     : 'relative w-full overflow-hidden rounded-xl bg-black';
 
   const containerStyle = fill
