@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host 0.0.0.0 --port 3003",
     "build": "bun run build:css && bun run build:client",
-    "build:css": "bun run tailwindcss -i src/styles/index.css -o dist/tailwind.css --minify",
+    "build:css": "bun run tailwindcss -i src/styles/index.css -o dist/index.css --minify",
     "build:client": "NODE_ENV=production bun scripts/build.ts",
     "preview": "echo 'Use Caddy to preview the static build'",
     "lint": "bunx biome check .",
