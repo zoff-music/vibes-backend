@@ -202,12 +202,10 @@ class GoogleCastManager implements CastManager {
           const error = new Error(
             'Google Cast API not available after timeout',
           );
-          this.notifyError({
-            code: 'API_TIMEOUT',
-            description:
-              'Google Cast API failed to initialize within timeout period',
-            details: error,
-          });
+          // Don't notify error for timeout, just log warning
+          console.warn(
+            '[Cast] API timeout - Cast likely not supported or extension missing',
+          );
           reject(error);
         }
       }, 100);

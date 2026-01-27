@@ -1,4 +1,5 @@
 import { Route, Routes } from 'react-router';
+import DebugConsole from './components/DebugConsole';
 import Admin from './pages/Admin';
 import Callback from './pages/Callback';
 import CreateRoom from './pages/CreateRoom';
@@ -18,18 +19,21 @@ export default function App({ initialData }: AppProps) {
   );
 
   return (
-    <Routes>
-      <Route path="/" element={<Home />} />
-      <Route
-        path="/rooms/create"
-        element={<CreateRoom initialData={initialData} />}
-      />
-      <Route
-        path="/rooms/:id"
-        element={<RoomView initialData={initialData} />}
-      />
-      <Route path="/callback" element={<Callback />} />
-      <Route path="/admin" element={<Admin initialData={initialData} />} />
-    </Routes>
+    <>
+      <DebugConsole />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route
+          path="/rooms/create"
+          element={<CreateRoom initialData={initialData} />}
+        />
+        <Route
+          path="/rooms/:id"
+          element={<RoomView initialData={initialData} />}
+        />
+        <Route path="/callback" element={<Callback />} />
+        <Route path="/admin" element={<Admin initialData={initialData} />} />
+      </Routes>
+    </>
   );
 }
