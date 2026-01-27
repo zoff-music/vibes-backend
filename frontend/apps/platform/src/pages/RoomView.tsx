@@ -551,6 +551,9 @@ export default function RoomView({ initialData }: RoomViewProps) {
                 {/* Player - Reserve height to prevent CLS */}
                 <div className="crt-frame relative flex aspect-video min-h-[280px] w-full overflow-hidden rounded-[28px] bg-black sm:min-h-[340px] lg:aspect-auto lg:min-h-0 lg:flex-1">
                   <div className="vhs-scanlines pointer-events-none absolute inset-0" />
+                  {isConnected && (
+                    <div className="crt-overlay pointer-events-none absolute inset-0 z-10" />
+                  )}
                   {isConnected && castDeviceName && (
                     <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
                       <div className="panel-surface flex items-center gap-3 rounded-full px-5 py-2 text-sm text-theme shadow-[0_0_22px_rgba(0,0,0,0.28)]">

@@ -14,7 +14,7 @@ export const ActiveView: React.FC = () => {
   const upNext = queue.filter((song) => song.id !== currentSong.id);
 
   return (
-    <div className="flex h-screen w-screen flex-row overflow-hidden bg-black">
+    <div className="vhs-scanlines flex h-screen w-screen flex-row overflow-hidden bg-black font-body">
       {/* Left Column: Player & Current Song Info - FIXED WIDTH */}
       <div className="relative h-full w-[65%] shrink-0 overflow-hidden border-white/10 border-r bg-black shadow-2xl">
         {/* Player Container */}
