@@ -87,6 +87,10 @@ export const CastButton: React.FC<CastButtonProps> = ({
   const isDisabled =
     !isInitialized || (availableDevices.length === 0 && !isConnected);
 
+  if (!isConnected && availableDevices.length === 0) {
+    return null;
+  }
+
   return (
     <div className="flex flex-col items-center">
       <button
