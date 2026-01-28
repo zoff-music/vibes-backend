@@ -361,134 +361,17 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       options.statusText = 'Vibez Session';
       options.disableIdleTimeout = true; // IMPORTANT for keeping session alive during custom playback
 
-      // --- Debug Logger Initialization ---
-      const [debugInitErr] = safeWrap(() => {
-        const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
-        const LOG_TAG = 'VibezApp';
-
-        // Enable debug logger and show the overlay
-        // This is "forcing" dev mode as requested
-        castDebugLogger.setEnabled(true);
-        castDebugLogger.showDebugLogs(true);
-
-        // Set verbosity level
-        castDebugLogger.loggerLevelByEvents = {
-          'cast.framework.events.category.CORE':
-            cast.framework.LoggerLevel.INFO,
-          'cast.framework.events.EventType.MEDIA_STATUS':
-            cast.framework.LoggerLevel.DEBUG,
-        };
-
-        // Set custom tags logging
-        castDebugLogger.loggerLevelByTags = {
-          [LOG_TAG]: cast.framework.LoggerLevel.DEBUG,
-        };
-      });
-
-      if (debugInitErr) {
-        console.warn(
-          '[Cast Receiver] Failed to initialize Debug Logger (likely running in browser/emulator)',
-          debugInitErr,
-        );
-      }
-
-      const castDebugLogger = cast.debug?.CastDebugLogger?.getInstance();
-      const LOG_TAG = 'VibezApp';
-
-      // Helper to safely serialize args
-      const serializeArgs = (args: any[]) => {
-        return args.map((arg) => {
-          if (typeof arg === 'object' && arg !== null) {
-            try {
-              return JSON.stringify(arg, (key, value) => {
-                if (key === 'source' && value?.tagName) return '[DOM Element]'; // Circular DOM refs
-                return value;
-              });
-            } catch (_e) {
-              return String(arg);
-            }
-          }
-          return String(arg);
-        });
-      };
-
-      const originalConsole = {
-        log: console.log,
-        info: console.info,
-        warn: console.warn,
-        error: console.error,
-        debug: console.debug,
-      };
-
-      const sendLogToSender = (level: string, args: any[]) => {
-        // Use Ref.current to avoid closure staleness issues
-        // if (!debugModeRef.current) return; // Forced on for now
-
-        // Use checks to ensure we can actually send
-        const ctx = cast.framework.CastReceiverContext.getInstance();
-        const senders = ctx.getSenders();
-
-        // Debug: Log sender count locally (might be visible if using remote debugger)
-        // AND try to send even if senders list seems empty (sometimes it's laggy?)
-        // if (senders.length === 0) return;
-
-        const [err] = safeWrap(() => {
-          ctx.sendCustomMessage('urn:x-cast:com.vibez.cast', undefined, {
-            action: 'LOG',
-            level,
-            args: serializeArgs(args),
-            timestamp: Date.now(),
-            _meta: { sendersCount: senders.length },
-          });
-        });
-
-        if (err) {
-          // Fallback to original console if sending fails (recursion prevention)
-          // originalConsole.error('Failed to forward log to sender', err);
-        }
-      };
-
-      console.log = (...args) => {
-        castDebugLogger?.info(LOG_TAG, ...args);
-        originalConsole.log(...args);
-        sendLogToSender('info', args);
-      };
-
-      console.info = (...args) => {
-        castDebugLogger?.info(LOG_TAG, ...args);
-        originalConsole.info(...args);
-        sendLogToSender('info', args);
-      };
-
-      console.warn = (...args) => {
-        castDebugLogger?.warn(LOG_TAG, ...args);
-        originalConsole.warn(...args);
-        sendLogToSender('warn', args);
-      };
-
-      console.error = (...args) => {
-        castDebugLogger?.error(LOG_TAG, ...args);
-        originalConsole.error(...args);
-        sendLogToSender('error', args);
-      };
-
-      console.debug = (...args) => {
-        castDebugLogger?.debug(LOG_TAG, ...args);
-        originalConsole.debug(...args);
-        sendLogToSender('debug', args);
-      };
-
-      const [err] = safeWrap(() => {
+      const [startErr] = safeWrap(() => {
         context.start(options);
         isCastReceiverInitialized = true;
-        castDebugLogger?.info(
-          LOG_TAG,
-          'Cast Receiver started with Debug Logger enabled',
-        );
+        console.log('[Cast Receiver] Cast Receiver started successfully');
       });
-      if (err) {
-        castDebugLogger?.error(LOG_TAG, 'Failed to start Cast Receiver', err);
-        // Don't reset the global flag on error to prevent retry loops
+
+      if (startErr) {
+        console.error(
+          '[Cast Receiver] Failed to start Cast Receiver',
+          startErr,
+        );
       }
     };
 
