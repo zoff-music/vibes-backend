@@ -75,10 +75,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [statusText, setStatusText] = useState('Ready for Casting');
   const [roomMode, setRoomMode] = useState<string | null>(null);
-  const [debugMode, setDebugModeState] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('debug') === 'true';
-  });
+  const [debugMode, setDebugModeState] = useState(true); // Forced true for debugging
   const debugModeRef = useRef(debugMode);
 
   const setDebugMode = useCallback((value: boolean) => {
@@ -425,12 +422,15 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const sendLogToSender = (level: string, args: any[]) => {
         // Use Ref.current to avoid closure staleness issues
-        if (!debugModeRef.current) return;
+        // if (!debugModeRef.current) return; // Forced on for now
 
         // Use checks to ensure we can actually send
         const ctx = cast.framework.CastReceiverContext.getInstance();
-        // Check if there are connected senders to avoid useless work
-        if (ctx.getSenders().length === 0) return;
+        const senders = ctx.getSenders();
+
+        // Debug: Log sender count locally (might be visible if using remote debugger)
+        // AND try to send even if senders list seems empty (sometimes it's laggy?)
+        // if (senders.length === 0) return;
 
         const [err] = safeWrap(() => {
           ctx.sendCustomMessage('urn:x-cast:com.vibez.cast', undefined, {
@@ -438,6 +438,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
             level,
             args: serializeArgs(args),
             timestamp: Date.now(),
+            _meta: { sendersCount: senders.length },
           });
         });
 
