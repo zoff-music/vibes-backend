@@ -21,42 +21,15 @@ export function ScreenLayout({
   children,
   safeArea = true,
   className = '',
-}: ScreenLayoutProps) {
+}: ScreenLayoutProps): React.ReactElement {
+  const Wrapper = safeArea ? SafeAreaView : View;
+
   return (
     <View style={styles.container} className={className}>
       <StatusBar barStyle="light-content" />
 
-      {/* 1. Synth Sky Gradient */}
-      <LinearGradient
-        colors={['#140b2b', '#2a0f4e', '#6b1f62']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 0.6 }}
-        style={styles.sky}
-      />
-
-      {/* 2. Sun Hero (Sunset Orb) */}
-      <View style={styles.sunHero} />
-
-      {/* 3. Grid Floor (Simulated with Gradient) */}
-      <LinearGradient
-        colors={['transparent', 'rgba(255, 46, 151, 0.15)']}
-        style={styles.gridFloor}
-      />
-
       {/* Content */}
-      {safeArea ? (
-        <SafeAreaView style={styles.content}>{children}</SafeAreaView>
-      ) : (
-        <View style={styles.content}>{children}</View>
-      )}
-
-      {/* 4. Scanline Overlay */}
-      <View style={styles.scanlines} pointerEvents="none">
-        <LinearGradient
-          colors={['rgba(0,0,0,0)', 'rgba(0,0,0,0.3)']}
-          style={{ width: '100%', height: 4 }}
-        />
-      </View>
+      <Wrapper style={styles.content}>{children}</Wrapper>
     </View>
   );
 }

@@ -26,16 +26,31 @@ export default function RoomSettings() {
     fetchRoom();
   };
 
+  const headerTitle = room?.name || 'BACK';
+  const skipAllowedValue = room?.settings.skipAllowed ?? true;
+  const democraticSkipValue = room?.settings.democraticSkip ?? false;
+  const loopQueueValue = room?.settings.loopQueue ?? false;
+  const removeOnPlayValue = room?.settings.removeOnPlay ?? true;
+  const allowDuplicatesValue = room?.settings.allowDuplicates ?? false;
+  const roomModeText = room?.mode;
+
   return (
     <ScreenLayout>
       <View className="flex-1">
         <View className="z-10 flex-row items-center justify-between px-6 py-4">
-          <Text className="font-heading text-theme-muted text-xs uppercase tracking-[3px]">
+          <TouchableOpacity
+            onPress={() => router.back()}
+            className="flex-row items-center p-2"
+          >
+            <FontAwesome name="chevron-left" size={16} color="#bfaed8" />
+            <Text className="ml-3 font-heading text-theme-muted text-xs uppercase tracking-[2px]">
+              {headerTitle}
+            </Text>
+          </TouchableOpacity>
+
+          <Text className="font-heading text-theme-muted text-[10px] uppercase tracking-[3px] opacity-50">
             SETTINGS
           </Text>
-          <TouchableOpacity onPress={() => router.back()} className="p-2">
-            <FontAwesome name="close" size={20} color="#bfaed8" />
-          </TouchableOpacity>
         </View>
 
         <ScrollView className="flex-1 px-6 pt-4">
@@ -48,31 +63,31 @@ export default function RoomSettings() {
             <GlassSwitch
               label="ALLOW SKIP"
               description="Anyone can skip songs"
-              value={room?.settings.skipAllowed ?? true}
+              value={skipAllowedValue}
               onValueChange={(v) => handleUpdateSetting('skipAllowed', v)}
             />
             <GlassSwitch
               label="DEMOCRATIC SKIP"
               description="Require votes to skip"
-              value={room?.settings.democraticSkip ?? false}
+              value={democraticSkipValue}
               onValueChange={(v) => handleUpdateSetting('democraticSkip', v)}
             />
             <GlassSwitch
               label="LOOP QUEUE"
               description="Restart when queue ends"
-              value={room?.settings.loopQueue ?? false}
+              value={loopQueueValue}
               onValueChange={(v) => handleUpdateSetting('loopQueue', v)}
             />
             <GlassSwitch
               label="REMOVE PLAYED"
               description="Removed after play"
-              value={room?.settings.removeOnPlay ?? true}
+              value={removeOnPlayValue}
               onValueChange={(v) => handleUpdateSetting('removeOnPlay', v)}
             />
             <GlassSwitch
               label="ALLOW DUPLICATES"
               description="Same song multiple times"
-              value={room?.settings.allowDuplicates ?? false}
+              value={allowDuplicatesValue}
               onValueChange={(v) => handleUpdateSetting('allowDuplicates', v)}
             />
           </View>
@@ -91,7 +106,7 @@ export default function RoomSettings() {
             <View className="flex-row justify-between">
               <Text className="font-body text-sm text-theme-text">Mode</Text>
               <Text className="font-heading text-sm text-theme-muted uppercase tracking-widest">
-                {room?.mode}
+                {roomModeText}
               </Text>
             </View>
           </View>

@@ -30,6 +30,11 @@ export const usePlayback = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
       let error;
 
       if (action === 'play' || action === 'pause' || action === 'seek') {
+        // Optimistic update for play/pause in server/host mode
+        if (room?.mode && (action === 'play' || action === 'pause')) {
+          setLocalPlayingState(action === 'play', room.mode);
+        }
+
         const [err, result] = await api.put(
           '/rooms/{id}/states',
           { id: roomId },
@@ -101,6 +106,16 @@ export const usePlayback = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
   const skip = useCallback(() => performAction('skip'), [performAction]);
   const vote = useCallback(() => performAction('vote'), [performAction]);
 
+  const fetchPlayback = useCallback(async () => {
+    if (!roomId) return;
+
+    const [err, data] = await api.get('/rooms/{id}/states', { id: roomId });
+    if (data) {
+      setPlaybackState(data, room?.mode);
+    }
+    return [err, data];
+  }, [roomId, setPlaybackState, room?.mode]);
+
   return {
     ...playback,
     play,
@@ -108,5 +123,6 @@ export const usePlayback = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
     seek,
     skip,
     vote,
+    fetchPlayback,
   };
 };
