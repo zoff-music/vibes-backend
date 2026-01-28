@@ -40,7 +40,8 @@
       },
       "suspicious": {
         "noImplicitAnyLet": "off",
-        "noExplicitAny": "off"
+        "noExplicitAny": "off",
+        "noUnknownAtRules": "off"
       },
       "style": {
         "noNonNullAssertion": "off",

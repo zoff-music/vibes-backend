@@ -77,9 +77,10 @@ The receiver communicates with sender applications (web/mobile) using standard G
 ## 🏗 Architecture
 
 ### Build Pipeline
-1. **CSS Processing**: Tailwind CSS v4 compilation with dark mode support
-2. **Client Bundle**: Bun builds React app with environment variable injection
-3. **Server Bundle**: Separate SSR server build for production deployment
+### Build Pipeline
+1. **CSS Processing**: Tailwind CSS v3 compilation (downgraded from v4 for better legacy browser support)
+2. **Legacy Transpilation**: Uses `@vitejs/plugin-legacy` to generate `nomodule` scripts for older Chromecast devices
+3. **Client Bundle**: Vite builds React app with environment variable injection
 4. **Asset Copying**: Public files copied to distribution directory
 
 ### Environment Configuration
@@ -108,8 +109,8 @@ The build script includes intelligent file watching:
 This app is built with:
 - **React 19**: Modern component architecture with SSR streaming
 - **Bun**: Ultra-fast runtime and package manager
-- **Tailwind CSS v4**: Theme-driven styling with enhanced dark mode
-- **@vibez/ui**: Shared UI + playback engine across platform and cast apps
+- **Tailwind CSS v3**: Theme-driven styling with legacy browser support
+- **Legacy Transpilers**: Ensures compatibility with all Chromecast generations
 - **@vibez/shared**: Shared hooks, stores, and utilities
 - **@vibez/models**: Type-safe API schemas and validation
 

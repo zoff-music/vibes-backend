@@ -9,11 +9,33 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ノリ nori Cast Receiver</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Google Cast Receiver SDK -->
     <script src="//www.gstatic.com/cast/sdk/libs/caf_receiver/v3/cast_receiver_framework.js"></script>
+    <!-- YouTube IFrame API -->
     <script src="https://www.youtube.com/iframe_api"></script>
   </head>
   <body>
+    <div id="static-loading" class="relative flex min-h-screen w-screen animate-fade-in items-center justify-center overflow-hidden bg-theme text-theme">
+      <div class="absolute inset-0 synth-sky"></div>
+      <div class="absolute inset-0 vhs-scanlines pointer-events-none"></div>
+      <div class="sun-hero opacity-80"></div>
+      <div class="retro-grid opacity-70"></div>
+      <div class="relative z-10 flex h-full w-full items-center justify-center">
+        <div class="relative z-10 flex max-w-3xl flex-col items-center gap-8 px-6 text-center">
+          <div class="panel-frame panel-surface w-full px-10 py-12">
+            <div class="mb-6 flex flex-col items-center gap-3">
+              <span class="vhs-tear-strong font-display text-6xl uppercase tracking-[0.22em] text-theme glow-text text-readable md:text-7xl" data-text="ノリ">ノリ</span>
+              <p class="font-mono text-xs uppercase tracking-[0.4em] text-theme-subtle">ノリ nori cast</p>
+            </div>
+            <p class="text-readable font-display text-2xl text-theme">Ready for Casting</p>
+            <p class="mt-3 text-base text-theme-muted">Waiting for music to play...</p>
+          </div>
+        </div>
+      </div>
+    </div>
     <div id="root"></div>
-    <script type="module" src="client.tsx"></script>
+    <script type="module" src="./client.tsx"></script>
   </body>
 </html>
