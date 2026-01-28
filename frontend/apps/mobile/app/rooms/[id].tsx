@@ -56,7 +56,7 @@ export default function RoomView() {
             <SafeCastButton
               style={{ width: 24, height: 24, tintColor: '#bfaed8' }}
             />
-            <TouchableOpacity 
+            <TouchableOpacity
               className="p-1"
               onPress={() => router.push(`/rooms/${roomId}/settings`)}
             >
