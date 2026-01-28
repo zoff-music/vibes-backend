@@ -10,7 +10,7 @@ function TabBarIcon(props: {
   return <FontAwesome size={28} style={{ marginBottom: -3 }} {...props} />;
 }
 
-export default function TabLayout() {
+export default function HomeLayout() {
   const colorScheme = useColorScheme();
 
   // Simple check for dark mode or use a constant for now if theme context isn't fully set up

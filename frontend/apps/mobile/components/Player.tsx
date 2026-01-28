@@ -36,7 +36,8 @@ export function Player({
   return (
     <View className="aspect-video w-full overflow-hidden rounded-lg bg-black">
       <YoutubePlayer
-        height={220} // This might need to be dynamic or use aspect ratio
+        key={videoId}
+        height={220}
         play={playing}
         videoId={videoId}
         onChangeState={onStateChange}

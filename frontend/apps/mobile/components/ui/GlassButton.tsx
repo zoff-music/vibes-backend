@@ -1,8 +1,10 @@
+import { GlassView } from 'expo-glass-effect';
 import {
   ActivityIndicator,
   Text,
   TouchableOpacity,
   TouchableOpacityProps,
+  View,
 } from 'react-native';
 
 interface GlassButtonProps extends TouchableOpacityProps {
@@ -16,15 +18,16 @@ export function GlassButton({
   loading,
   variant = 'primary',
   className,
+  style,
   ...props
 }: GlassButtonProps) {
   const baseStyles =
-    'flex-row items-center justify-center rounded-2xl px-6 py-4 shadow-lg';
+    'flex-row items-center justify-center rounded-2xl overflow-hidden';
 
   const variants = {
-    primary: 'bg-theme-primary shadow-theme-shadow-accent',
-    secondary: 'bg-theme-panel border border-theme-border',
-    ghost: 'bg-transparent',
+    primary: 'border-white/20',
+    secondary: 'border-theme-border/30',
+    ghost: '',
   };
 
   const textVariants = {
@@ -33,19 +36,53 @@ export function GlassButton({
     ghost: 'text-theme-text-muted text-sm',
   };
 
+  const isDisabled = props.disabled;
+  const opacityClass = isDisabled ? 'opacity-50' : '';
+  const buttonClass = `${baseStyles} ${variants[variant]} ${className} ${opacityClass}`;
+  const ghostButtonClass = `${baseStyles} ${className} ${opacityClass}`;
+
+  const activityIndicatorColor = variant === 'primary' ? 'white' : '#ff2e97';
+  const textClass = textVariants[variant];
+  const glassEffectStyle = 'regular';
+  const glassTintColor = variant === 'primary' ? 'rgba(255, 46, 151, 0.4)' : 'rgba(255, 255, 255, 0.1)';
+  const intensity = variant === 'primary' ? 60 : 30; // Just in case, though we used expo-glass-effect
+
+  const content = (
+    <>
+      {loading && (
+        <ActivityIndicator color={activityIndicatorColor} />
+      )}
+      {!loading && (
+        <Text className={textClass}>{title}</Text>
+      )}
+    </>
+  );
+
+  if (variant === 'ghost') {
+    return (
+      <TouchableOpacity
+        className={ghostButtonClass}
+        activeOpacity={0.8}
+        {...props}
+      >
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
   return (
     <TouchableOpacity
-      className={`${baseStyles} ${variants[variant]} ${className} ${props.disabled ? 'opacity-50' : ''}`}
+      className={buttonClass}
       activeOpacity={0.8}
       {...props}
     >
-      {loading ? (
-        <ActivityIndicator
-          color={variant === 'primary' ? 'white' : '#ff2e97'}
-        />
-      ) : (
-        <Text className={textVariants[variant]}>{title}</Text>
-      )}
+      <GlassView
+        glassEffectStyle={glassEffectStyle}
+        tintColor={glassTintColor}
+        style={[{ width: '100%', paddingVertical: 16, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' }, style]}
+      >
+        {content}
+      </GlassView>
     </TouchableOpacity>
   );
 }

@@ -8,6 +8,14 @@ export default function RoomsLayout() {
         name="[id]"
         options={{ title: 'Room', headerShown: false }}
       />
+      <Stack.Screen
+        name="[id]/settings"
+        options={{
+          presentation: 'modal',
+          headerShown: false,
+          title: 'Settings',
+        }}
+      />
     </Stack>
   );
 }

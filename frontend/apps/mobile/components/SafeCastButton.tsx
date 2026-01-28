@@ -1,7 +1,6 @@
-import FontAwesome from '@expo/vector-icons/FontAwesome';
+import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import React from 'react';
-import { TouchableOpacity } from 'react-native';
 import { CastButton } from 'react-native-google-cast';
 
 export function SafeCastButton(props: React.ComponentProps<typeof CastButton>) {
@@ -10,21 +9,13 @@ export function SafeCastButton(props: React.ComponentProps<typeof CastButton>) {
     Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
 
   if (isExpoGo) {
-    return (
-      <TouchableOpacity
-        style={props.style}
-        onPress={() =>
-          alert(
-            'Chromecast is only available in development builds, not Expo Go.',
-          )
-        }
-        className="items-center justify-center opacity-50"
-      >
-        <FontAwesome name="rss" size={20} color="white" />
-      </TouchableOpacity>
-    );
+    // Cast icon shouldn't be visible if cast isn't available
+    return null;
   }
 
   // In development builds or standalone apps, render the real CastButton
+  // If we wanted to show a custom icon when not connected, we could do it here
+  // but CastButton usually handles its own state.
+  // For the "RSS" issue, if they are using FontAwesome elsewhere, they should use MaterialCommunityIcons 'cast'
   return <CastButton {...props} />;
 }
