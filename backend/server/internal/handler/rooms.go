@@ -115,6 +115,7 @@ func CreateRoom(
 			ID:                slug,
 			Name:              req.Name,
 			Mode:              mode,
+			HostID:            session.UserID,
 			AdminPasswordHash: passwordHash,
 			HasPassword:       passwordHash != "",
 			Settings:          settings,
@@ -142,20 +143,6 @@ func CreateRoom(
 				true,
 			)
 			return
-		}
-
-		rooms, err := db.ListAdminRooms(ctx)
-		if err == nil {
-			payload, marshalErr := json.Marshal(rooms)
-			if marshalErr == nil {
-				notifyErr := ips.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
-					Type:    vibe.AdminRoomsUpdate,
-					Payload: payload,
-				})
-				if notifyErr != nil {
-					log.Printf("failed to notify admin rooms update: %v", notifyErr)
-				}
-			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -354,7 +341,7 @@ func CreateSession(
 		}
 
 		// Authenticate and elevate in the DB
-		isAdmin, isFirstTimeSetup, err := db.AuthenticateAdmin(ctx, roomID, session.UserID, req.Password)
+		authResult, err := db.AuthenticateAdmin(ctx, roomID, session.UserID, req.Password)
 		if err != nil {
 			handleError(
 				w,
@@ -365,7 +352,7 @@ func CreateSession(
 			return
 		}
 
-		if !isAdmin {
+		if !authResult.IsAdmin {
 			handleError(
 				w,
 				fmt.Errorf("incorrect password"),
@@ -374,6 +361,8 @@ func CreateSession(
 			)
 			return
 		}
+
+		isFirstTimeSetup := authResult.IsFirstTimeSetup
 
 		// Fetch updated room to return
 		room, err := db.GetRoom(ctx, roomID, session.UserID)

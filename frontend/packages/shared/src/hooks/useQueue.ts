@@ -1,7 +1,8 @@
 import { api } from '@vibez/api';
-import { SourceType, usePlaybackStore } from '@vibez/shared';
 import { useCallback, useRef } from 'react';
+import { usePlaybackStore } from '../stores/playbackStore';
 import { useQueueStore } from '../stores/queueStore';
+import { SourceType } from '../types';
 
 export const useQueue = (roomId: string) => {
   const { songs, setSongs, addSong, removeSong } = useQueueStore();
@@ -12,9 +13,6 @@ export const useQueue = (roomId: string) => {
     const fetchStartTime = Date.now();
     const [_err, data] = await api.get('/rooms/{id}/songs', { id: roomId });
 
-    // If an add operation happened after we started fetching,
-    // this fetch result is stale and should be ignored to prevent
-    // overwriting the optimistic update.
     if (lastAddTimestamp.current > fetchStartTime) {
       console.log('[Queue] Ignoring stale fetch queue result');
       return;
@@ -76,12 +74,11 @@ export const useQueue = (roomId: string) => {
 
       return null;
     },
-    [roomId, addSong],
+    [roomId, addSong, songs.length, setPlaybackState],
   );
 
   const removeFromQueue = useCallback(
     async (songId: string) => {
-      // Optimistic update
       removeSong(songId);
 
       const [err, _] = await api.delete('/rooms/{id}/songs/{songId}', {
@@ -90,7 +87,6 @@ export const useQueue = (roomId: string) => {
       });
 
       if (err) {
-        // Rollback or re-fetch on error
         fetchQueue();
       }
     },
@@ -99,9 +95,6 @@ export const useQueue = (roomId: string) => {
 
   const voteSong = useCallback(
     async (songId: string) => {
-      // Optimistic update could happen here if store supports it
-      // For now we rely on the server event to update the order
-
       const [err, _] = await api.post(
         '/rooms/{id}/songs/{songId}',
         { id: roomId, songId },
@@ -109,7 +102,6 @@ export const useQueue = (roomId: string) => {
       );
 
       if (err) {
-        // Check for 409 Conflict or "already voted" message
         if (
           err.message.includes('409') ||
           err.message.includes('already voted')

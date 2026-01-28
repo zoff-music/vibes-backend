@@ -134,18 +134,17 @@ func (c *Client) CreateUser(ctx context.Context, user *vibe.User) (*vibe.User, e
 }
 
 // AuthenticateAdmin handles password verification and admin elevation.
-// Returns (isAdmin, isFirstTimeSetup, error)
-func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (bool, bool, error) {
+func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (*vibe.AdminAuthResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "AuthenticateAdmin")
 	defer span.Finish()
 
 	room, err := c.GetRoom(ctx, roomID, userID)
 	if err != nil {
-		return false, false, fmt.Errorf("error getting room in authenticate admin: %w", err)
+		return nil, fmt.Errorf("error getting room in authenticate admin: %w", err)
 	}
 
 	if room.IsEmpty() {
-		return false, false, fmt.Errorf("room not found in authenticate admin")
+		return nil, fmt.Errorf("room not found in authenticate admin")
 	}
 
 	isFirstTimeSetup := false
@@ -155,26 +154,29 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 		isFirstTimeSetup = true
 		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
-			return false, false, fmt.Errorf("failed to hash password: %w", err)
+			return nil, fmt.Errorf("failed to hash password: %w", err)
 		}
 		room.AdminPasswordHash = string(hash)
 		_, err = c.UpdateRoom(ctx, room)
 		if err != nil {
-			return false, false, fmt.Errorf("failed to update room password: %w", err)
+			return nil, fmt.Errorf("failed to update room password: %w", err)
 		}
 	}
 
 	// Verify existing or newly set password
 	err = bcrypt.CompareHashAndPassword([]byte(room.AdminPasswordHash), []byte(password))
 	if err != nil {
-		return false, false, nil // Incorrect password
+		return &vibe.AdminAuthResult{
+			IsAdmin:          false,
+			IsFirstTimeSetup: isFirstTimeSetup,
+		}, nil
 	}
 
 	// Elevate user to admin
 	log.Printf("AuthenticateAdmin: successfully verified password for userID=%s", userID)
 	user, err := c.GetUser(ctx, roomID, userID)
 	if err != nil {
-		return false, false, err
+		return nil, fmt.Errorf("error getting user in authenticate admin: %w", err)
 	}
 
 	if user.IsEmpty() {
@@ -191,8 +193,11 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 	log.Printf("AuthenticateAdmin: elevating userID=%s in roomID=%s", userID, roomID)
 	_, err = c.CreateUser(ctx, user)
 	if err != nil {
-		return false, false, err
+		return nil, fmt.Errorf("error creating user in authenticate admin: %w", err)
 	}
 
-	return true, isFirstTimeSetup, nil
+	return &vibe.AdminAuthResult{
+		IsAdmin:          true,
+		IsFirstTimeSetup: isFirstTimeSetup,
+	}, nil
 }

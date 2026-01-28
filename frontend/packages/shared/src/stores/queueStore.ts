@@ -1,5 +1,5 @@
-import { Song } from '@vibez/shared';
 import { create } from 'zustand';
+import { Song } from '../types';
 
 interface QueueState {
   songs: Song[];

@@ -1,3 +1,147 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+@theme {
+  --color-background: #fefefe;
+  --color-paper: #ffffff;
+  --color-surface: #f8f8fb;
+  --color-surfaceElevated: #ffffff;
+  --color-surfaceHover: #f0f0f8;
+  --color-border: #e5e5f0;
+
+  --color-dark-background: #0d0d0f;
+  --color-dark-paper: #141416;
+  --color-dark-surface: #1a1a1e;
+  --color-dark-surfaceElevated: #222226;
+  --color-dark-surfaceHover: #2a2a30;
+  --color-dark-border: #2a2a30;
+
+  --color-dark-text: #f5f5f7;
+  --color-dark-text-muted: #a1a1a8;
+  --color-dark-text-subtle: #6b6b73;
+  --color-dark-text-inverse: #0d0d0f;
+
+  --color-primary: #ff2e97;
+  --color-primary-muted: #ff1493;
+  --color-primary-light: #ffb3e6;
+
+  --color-secondary: #00d9ff;
+  --color-accent: #ffd700;
+  --color-purple: #b24bf3;
+  --color-sakura: #ffb7c5;
+  --color-matcha: #a8d8b9;
+  --color-ink: #2d3142;
+
+  --color-text: #2d3142;
+  --color-text-muted: #6b7280;
+  --color-text-subtle: #9ca3af;
+  --color-text-inverse: #ffffff;
+
+  --color-success: #00d9a3;
+  --color-warning: #ffd93d;
+  --color-error: #ff2e63;
+
+  --font-body: "SpaceGrotesk_400Regular";
+  --font-heading: "Orbitron_700Bold";
+  --font-mono: "SpaceMono_400Regular";
+
+  --text-xs: 12px;
+  --text-sm: 14px;
+  --text-base: 16px;
+  --text-lg: 18px;
+  --text-xl: 22px;
+  --text-2xl: 28px;
+  --text-3xl: 36px;
+  --text-4xl: 48px;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-full: 9999px;
+}
+
+/* 
+   NativeWind v4 / Tailwind v4 Theme Variables 
+   We map the CSS variables to the theme values defined above or custom ones.
+*/
+:root {
+  /* Default Theme (Light) */
+  --theme-bg: #f6ebff;
+  --theme-bg-paper: #fdf7ff;
+  --theme-bg-surface: #f2ddff;
+  --theme-bg-elevated: #fff4ff;
+  --theme-bg-hover: #ead0ff;
+
+  --theme-text: #2a1840;
+  --theme-text-muted: #5b4276;
+  --theme-text-subtle: #8c74a8;
+
+  --theme-primary: #ff3fa4;
+  --theme-primary-muted: #ff2d96;
+  --theme-primary-light: #ff86cf;
+
+  --theme-border: rgba(112, 72, 140, 0.2);
+  --theme-border-strong: rgba(112, 72, 140, 0.35);
+
+  --theme-shadow: rgba(42, 18, 70, 0.18);
+  --theme-shadow-accent: rgba(255, 63, 164, 0.2);
+
+  --theme-glass-bg: rgba(255, 255, 255, 0.7);
+  --theme-glass-border: rgba(112, 72, 140, 0.2);
+
+  --theme-panel-bg: rgba(255, 255, 255, 0.78);
+  --theme-panel-strong-bg: rgba(255, 255, 255, 0.92);
+  --theme-panel-border: rgba(112, 72, 140, 0.22);
+  --theme-panel-border-strong: rgba(112, 72, 140, 0.35);
+
+  --theme-crt-bg: rgba(255, 255, 255, 0.85);
+  --theme-crt-shadow: rgba(76, 32, 120, 0.25);
+
+  /* Synth Colors */
+  --synth-sky-1: #ffc7e8;
+  --synth-sky-2: #e1d5ff;
+  --synth-sky-3: #bfe8ff;
+  --synth-sky-4: #ffd2a9;
+}
+
+.dark {
+  /* Dark Theme */
+  --theme-bg: #07020f;
+  --theme-bg-paper: #0d041a;
+  --theme-bg-surface: #140a26;
+  --theme-bg-elevated: #1c1034;
+  --theme-bg-hover: #24143f;
+
+  --theme-text: #f7efff;
+  --theme-text-muted: #bfaed8;
+  --theme-text-subtle: #7d6a9d;
+
+  --theme-primary: #ff46b8;
+  --theme-primary-muted: #ff2fa9;
+  --theme-primary-light: #ff8dd9;
+
+  --theme-border: rgba(0, 217, 255, 0.18);
+  --theme-border-strong: rgba(255, 120, 200, 0.3);
+
+  --theme-shadow: rgba(2, 1, 6, 0.8);
+  --theme-shadow-accent: rgba(0, 217, 255, 0.2);
+
+  --theme-glass-bg: rgba(12, 6, 28, 0.8);
+  --theme-glass-border: rgba(0, 217, 255, 0.2);
+
+  --theme-panel-bg: rgba(10, 5, 22, 0.72);
+  --theme-panel-strong-bg: rgba(12, 6, 28, 0.9);
+  --theme-panel-border: rgba(0, 217, 255, 0.18);
+  --theme-panel-border-strong: rgba(255, 120, 200, 0.3);
+
+  --theme-crt-bg: rgba(6, 3, 15, 0.65);
+  --theme-crt-shadow: rgba(0, 0, 0, 0.6);
+
+  --synth-sky-1: #140b2b;
+  --synth-sky-2: #2a0f4e;
+  --synth-sky-3: #6b1f62;
+  --synth-sky-4: #ff6a87;
+}

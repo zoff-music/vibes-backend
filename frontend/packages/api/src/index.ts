@@ -50,6 +50,14 @@ const getApiUrl = () => {
     return import.meta.env.VITE_API_URL;
   }
 
+  // React Native detection
+  if (typeof navigator !== 'undefined' && navigator.product === 'ReactNative') {
+    if (process?.env?.EXPO_PUBLIC_API_URL) {
+      return process.env.EXPO_PUBLIC_API_URL;
+    }
+    return 'https://zoff.me';
+  }
+
   // If in a browser environment
   if (typeof window !== 'undefined') {
     const { protocol, hostname, origin } = window.location;

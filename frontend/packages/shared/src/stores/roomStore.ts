@@ -1,6 +1,6 @@
 import { Room } from '@vibez/models';
-import { RoomUser } from '@vibez/shared';
 import { create } from 'zustand';
+import { RoomUser } from '../types';
 
 interface RoomState {
   room: Room | null;

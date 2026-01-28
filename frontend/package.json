@@ -7,6 +7,10 @@
   ],
   "scripts": {
     "dev": "bun --filter @vibez/platform dev",
+    "mobile": "bun --filter @vibez/mobile start",
+    "mobile:ios": "bun --filter @vibez/mobile ios",
+    "mobile:android": "bun --filter @vibez/mobile android",
+    "mobile:tunnel": "bun --filter @vibez/mobile start --tunnel",
     "build": "bun --filter @vibez/platform build && bun --filter @vibez/cast build",
     "typecheck": "bun run --filter '*' typecheck",
     "lint": "bun run --filter '*' lint",

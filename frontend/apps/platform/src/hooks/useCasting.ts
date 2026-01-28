@@ -1,8 +1,6 @@
-import { usePlaybackStore } from '@vibez/shared';
+import { usePlaybackStore, useQueueStore, useRoomStore } from '@vibez/shared';
 import { useCallback, useEffect } from 'react';
 import { useCastStore } from '../stores/castStore';
-import { useQueueStore } from '../stores/queueStore';
-import { useRoomStore } from '../stores/roomStore';
 
 /**
  * Hook to integrate casting functionality with the existing playback system

@@ -1,74 +1,137 @@
-import { Link, useRouter } from 'expo-router';
+import { api } from '@vibez/api';
+import { useRouter } from 'expo-router';
 import { useState } from 'react';
-import { Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Text, TouchableOpacity, View } from 'react-native';
+import { SafeCastButton } from '../../components/SafeCastButton';
+import { ScreenLayout } from '../../components/ScreenLayout';
+import { GlassInput } from '../../components/ui/GlassInput';
+
+// ...
 
 export default function HomeScreen() {
   const router = useRouter();
-  const [joinId, setJoinId] = useState('');
+  const [roomCode, setRoomCode] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleJoin = () => {
-    if (joinId) {
-      router.push(`/rooms/${joinId}`);
+  // Checks if room exists before joining
+  const handleJoin = async () => {
+    if (!roomCode.trim() || isLoading) return;
+
+    setIsLoading(true);
+    const slug = roomCode.trim().toLowerCase();
+
+    // Use safeWrapAsync as requested, though api.get already returns [err, data]
+    // properly wrapped. However, since the goal is to avoid try/catch blocks completely:
+    // The previous code had a manual try/catch.
+    // api.get is already "safe" (returns tuple).
+
+    const [err] = await api.get('/rooms/{id}', { id: slug });
+
+    setIsLoading(false);
+
+    if (err) {
+      // Room not found or error -> go to create (prefilled)
+      router.push(`/rooms/create?name=${encodeURIComponent(slug)}`);
+      return;
     }
+
+    // Room exists -> join
+    router.push(`/rooms/${slug}`);
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-background p-4">
-      <View className="flex-1 items-center justify-center space-y-8">
-        <View className="mb-8 items-center">
-          <Text className="mb-2 font-bold text-4xl text-foreground">VibeZ</Text>
-          <Text className="text-lg text-muted-foreground">
-            Listen together.
-          </Text>
-        </View>
+    <ScreenLayout>
+      {/* Header Elements */}
+      <View className="absolute top-14 right-6 z-20">
+        <SafeCastButton
+          style={{ width: 32, height: 32, tintColor: '#bfaed8' }}
+        />
+      </View>
 
-        <View className="w-full max-w-sm space-y-4">
-          <View>
-            <Text className="mb-2 font-medium text-foreground">
-              Join a Room
+      <View className="flex-1 items-center justify-center px-6">
+        {/* CRT Frame Container */}
+        <View
+          style={{
+            width: '100%',
+            maxWidth: 400,
+            backgroundColor: 'rgba(6, 3, 15, 0.65)', // crt-bg
+            borderColor: 'rgba(0, 217, 255, 0.2)', // theme-border
+            borderWidth: 1,
+            borderRadius: 36,
+            padding: 24,
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 10 },
+            shadowOpacity: 0.5,
+            shadowRadius: 20,
+          }}
+        >
+          <View className="mb-10 items-center">
+            <Text className="mb-4 font-heading text-[#a1a1a8] text-[10px] tracking-[4px]">
+              ENTER THE VIBE
             </Text>
-            <View className="flex-row space-x-2">
-              <TextInput
-                className="flex-1 rounded-lg border border-border bg-secondary p-3 text-foreground"
-                placeholder="Room ID"
-                placeholderTextColor="#666"
-                value={joinId}
-                onChangeText={setJoinId}
+
+            {/* The Japanese Logo "Nori" from Platform */}
+            <Text
+              className="font-heading text-6xl text-[#f7efff]"
+              style={{
+                textShadowColor: 'rgba(255, 46, 151, 0.8)',
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 20,
+              }}
+            >
+              ノリ
+            </Text>
+
+            <Text className="mt-4 text-center font-body text-[#a1a1a8] text-sm">
+              Shared music rooms for neon nights.
+            </Text>
+            <Text className="mt-2 text-[#6b6b73] text-xs tracking-widest">
+              音楽を共有
+            </Text>
+          </View>
+
+          {/* Form Section */}
+          <View className="space-y-6">
+            <View className="rounded-[24px] bg-[#1a1a1e] p-6">
+              <Text className="mb-3 font-heading text-[#a1a1a8] text-[10px] tracking-[3px]">
+                ROOM NAME
+              </Text>
+              <GlassInput
+                placeholder="Enter Room Name..."
+                value={roomCode}
+                onChangeText={setRoomCode}
                 autoCapitalize="none"
+                className="border-[#2a2a30] bg-[#140b2b] text-center text-[#f7efff]"
               />
-              <TouchableOpacity
-                className="items-center justify-center rounded-lg bg-primary p-3 px-6"
-                onPress={handleJoin}
-              >
-                <Text className="font-bold text-primary-foreground">Join</Text>
-              </TouchableOpacity>
             </View>
-          </View>
 
-          <View className="items-center py-4">
-            <Text className="text-muted-foreground">or</Text>
-          </View>
+            <View className="flex-row gap-4">
+              <View className="flex-1">
+                <TouchableOpacity
+                  onPress={() => router.push('/rooms/create')}
+                  className="items-center justify-center rounded-2xl border border-[#ff2e97]/50 bg-[#ff2e97]/90 py-4 shadow-[#ff2e97]/40 shadow-lg"
+                >
+                  <Text className="font-heading text-white text-xs uppercase">
+                    Start Session
+                  </Text>
+                </TouchableOpacity>
+              </View>
 
-          <Link href="/rooms/create" asChild>
-            <TouchableOpacity className="w-full items-center rounded-lg border border-border bg-secondary p-4">
-              <Text className="font-bold text-foreground">Create a Room</Text>
-            </TouchableOpacity>
-          </Link>
-        </View>
-
-        <View className="mt-8 w-full max-w-sm">
-          <Text className="mb-4 font-bold text-foreground text-lg">
-            Recent Vibes
-          </Text>
-          {/* Placeholder for recent rooms - could be fetched from local storage or API */}
-          <View className="rounded-lg border border-border bg-card p-4">
-            <Text className="text-center text-muted-foreground">
-              No recent rooms
-            </Text>
+              <View className="flex-1">
+                <TouchableOpacity
+                  onPress={handleJoin}
+                  disabled={!roomCode.trim() || isLoading}
+                  className={`items-center justify-center rounded-2xl border border-[#00d9ff]/50 bg-[#00d9ff]/85 py-4 shadow-[#00d9ff]/40 shadow-lg ${!roomCode.trim() || isLoading ? 'opacity-50' : ''}`}
+                >
+                  <Text className="font-heading text-white text-xs uppercase">
+                    {isLoading ? '...' : 'Join Room'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           </View>
         </View>
       </View>
-    </SafeAreaView>
+    </ScreenLayout>
   );
 }
