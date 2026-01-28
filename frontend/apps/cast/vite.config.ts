@@ -1,10 +1,16 @@
 import path from 'node:path';
-import tailwindcss from '@tailwindcss/vite';
+import legacy from '@vitejs/plugin-legacy';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [react(), tailwindcss()] as any,
+  plugins: [
+    react(),
+    legacy({
+      targets: ['chrome >= 80'],
+      additionalLegacyPolyfills: ['regenerator-runtime/runtime'],
+    }),
+  ] as any,
   root: '.',
   publicDir: 'public',
   base: '/casting/receiver/',
@@ -18,6 +24,22 @@ export default defineConfig({
       clientPort: 443,
       path: '/casting/receiver/__hmr',
     },
+  },
+  build: {
+    cssTarget: 'chrome80',
+    outDir: 'dist',
+    emptyOutDir: true,
+  },
+  define: {
+    'import.meta.env.VITE_CAST_APP_ID': JSON.stringify(
+      process.env.CAST_APP_ID || '1FAF5D9F',
+    ),
+    'import.meta.env.VITE_CAST_RECEIVER_URL': JSON.stringify(
+      process.env.CAST_RECEIVER_URL || '/casting/receiver/',
+    ),
+    'import.meta.env.VITE_FRONTEND_URL': JSON.stringify(
+      process.env.FRONTEND_URL || '',
+    ),
   },
   resolve: {
     alias: {

@@ -1,144 +1,17 @@
-@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap")
-  layer(base);
-
-@import "tailwindcss";
-@source "../../../../packages";
-
-@custom-variant dark (&:is(.dark *));
-
-@theme {
-  --color-background: #f7f4ff;
-  --color-paper: #ffffff;
-  --color-surface: #f2effa;
-  --color-surfaceElevated: #ffffff;
-  --color-border: #e2d8f6;
-
-  --color-dark-background: #0b0718;
-  --color-dark-paper: #130b26;
-  --color-dark-surface: #1b0f34;
-  --color-dark-surfaceElevated: #251248;
-  --color-dark-border: #3c1f62;
-
-  --color-dark-text: #f9f3ff;
-  --color-dark-text-muted: #c2b7e8;
-  --color-dark-text-subtle: #8e82b8;
-
-  --color-primary: #ff3ea6;
-  --color-secondary: #35d3ff;
-  --color-accent: #ffd06a;
-  --color-purple: #b26bff;
-
-  --color-text: #281c4b;
-  --color-text-muted: #6e5f97;
-  --color-text-subtle: #9a8bc8;
-  --color-text-inverse: #ffffff;
-
-  --font-body: "Space Grotesk", "Noto Sans JP", system-ui, sans-serif;
-  --font-heading: "Orbitron", "Noto Sans JP", system-ui, sans-serif;
-  --font-mono: "Space Mono", monospace;
-
-  --radius-sm: 6px;
-  --radius-md: 10px;
-  --radius-lg: 14px;
-  --radius-xl: 18px;
-  --radius-2xl: 22px;
-  --radius-full: 9999px;
-
-  --shadow-neon-pink: 0 0 22px rgba(255, 62, 166, 0.6);
-  --shadow-neon-cyan: 0 0 24px rgba(53, 211, 255, 0.55);
-  --shadow-soft: 0 10px 30px rgba(7, 3, 15, 0.45);
-
-  --animate-fade-in: fadeIn 0.6s ease-out;
-  --animate-float: float 6s ease-in-out infinite;
-  --animate-float-delayed: float 7s ease-in-out 1s infinite;
-  --animate-tear: tear 2.4s steps(1, end) infinite;
-  --animate-tear-shift: tearShift 3.6s steps(1, end) infinite;
-
-  @keyframes fadeIn {
-    0% {
-      opacity: 0;
-      transform: translateY(10px);
-    }
-
-    100% {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes float {
-    0%,
-    100% {
-      transform: translateY(0);
-    }
-
-    50% {
-      transform: translateY(-12px);
-    }
-  }
-
-  @keyframes tear {
-    0%,
-    100% {
-      clip-path: inset(0 0 0 0);
-    }
-
-    12% {
-      clip-path: inset(12% 0 55% 0);
-    }
-
-    25% {
-      clip-path: inset(0 0 72% 0);
-    }
-
-    42% {
-      clip-path: inset(40% 0 28% 0);
-    }
-
-    60% {
-      clip-path: inset(18% 0 60% 0);
-    }
-
-    78% {
-      clip-path: inset(0 0 45% 0);
-    }
-  }
-
-  @keyframes tearShift {
-    0%,
-    100% {
-      transform: translateX(0);
-    }
-
-    20% {
-      transform: translateX(-6px);
-    }
-
-    40% {
-      transform: translateX(4px);
-    }
-
-    60% {
-      transform: translateX(-3px);
-    }
-
-    80% {
-      transform: translateX(5px);
-    }
-  }
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
   :root {
-    font-family: var(--font-body);
+    @apply font-body;
     color-scheme: dark;
   }
 
   body {
     margin: 0;
     min-height: 100vh;
-    background-color: var(--color-dark-background);
-    color: var(--color-dark-text);
+    @apply bg-dark-background text-dark-text;
   }
 
   *,
@@ -146,121 +19,15 @@
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
+    @apply border-border;
   }
-}
-
-@utility font-display {
-  font-family: var(--font-heading);
-}
-
-@utility font-body {
-  font-family: var(--font-body);
-}
-
-@utility font-mono {
-  font-family: var(--font-mono);
-}
-
-@utility text-theme {
-  color: var(--color-dark-text);
-}
-
-@utility text-theme-muted {
-  color: var(--color-dark-text-muted);
-}
-
-@utility text-theme-subtle {
-  color: var(--color-dark-text-subtle);
-}
-
-@utility bg-theme {
-  background-color: var(--color-dark-background);
-}
-
-@utility bg-theme-surface {
-  background-color: var(--color-dark-surface);
-}
-
-@utility bg-theme-elevated {
-  background-color: var(--color-dark-surfaceElevated);
-}
-
-@utility border-theme {
-  border-color: var(--color-dark-border);
-}
-
-@utility border-theme-strong {
-  border-color: var(--color-dark-border-strong, var(--color-dark-border));
 }
 
 @layer utilities {
-  .synth-sky {
-    background:
-      radial-gradient(
-        circle at 20% 20%,
-        rgba(255, 106, 177, 0.28),
-        transparent 45%
-      ),
-      radial-gradient(
-        circle at 80% 10%,
-        rgba(53, 211, 255, 0.24),
-        transparent 40%
-      ),
-      linear-gradient(180deg, #120725 0%, #2a0f4e 45%, #ff5d86 100%);
-  }
-
-  .vhs-scanlines::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: repeating-linear-gradient(
-      180deg,
-      rgba(255, 255, 255, 0.02),
-      rgba(255, 255, 255, 0.02) 1px,
-      transparent 1px,
-      transparent 3px
-    );
-    mix-blend-mode: screen;
-    pointer-events: none;
-    opacity: 0.8;
-  }
-
-  .crt-overlay {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 50;
-    background: radial-gradient(
-      circle,
-      rgba(18, 16, 16, 0) 50%,
-      rgba(0, 0, 0, 0.4) 90%,
-      rgba(0, 0, 0, 0.8) 100%
-    );
-    box-shadow: inset 0 0 10rem rgba(0, 0, 0, 0.7);
-  }
-
-  .crt-overlay::before {
-    content: " ";
-    display: block;
-    position: absolute;
-    top: 0;
-    left: 0;
-    bottom: 0;
-    right: 0;
-    background:
-      linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
-      linear-gradient(
-        90deg,
-        rgba(255, 0, 0, 0.06),
-        rgba(0, 255, 0, 0.02),
-        rgba(0, 0, 255, 0.06)
-      );
-    z-index: 2;
-    background-size:
-      100% 2px,
-      4px 100%;
-    pointer-events: none;
+  .text-readable {
+    text-shadow:
+      0 2px 8px rgba(8, 2, 20, 0.9),
+      0 0 14px rgba(0, 0, 0, 0.5);
   }
 
   .glow-text {
@@ -268,6 +35,93 @@
       0 0 14px rgba(255, 62, 166, 0.7),
       0 0 26px rgba(53, 211, 255, 0.45);
   }
+
+  .bg-theme {
+    @apply bg-dark-background;
+  }
+
+  .text-theme {
+    @apply text-dark-text;
+  }
+
+  .text-theme-muted {
+    @apply text-dark-text-muted;
+  }
+
+  .text-theme-subtle {
+    @apply text-dark-text-subtle;
+  }
+
+  .synth-sky {
+    @apply bg-synth-sky;
+  }
+
+  .vhs-scanlines::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    @apply bg-vhs-lines;
+    mix-blend-mode: screen;
+    pointer-events: none;
+    opacity: 0.8;
+  }
+
+  .sun-hero {
+    position: absolute;
+    left: 50%;
+    top: 22%;
+    transform: translateX(-50%);
+    width: clamp(240px, 40vw, 420px);
+    aspect-ratio: 1 / 1;
+    border-radius: 9999px;
+    @apply bg-sun-hero-gradient shadow-neon-pink;
+    box-shadow: 0 0 80px rgba(255, 102, 153, 0.55);
+  }
+
+  .sun-hero::after {
+    content: "";
+    position: absolute;
+    left: 8%;
+    right: 8%;
+    bottom: 18%;
+    height: 28%;
+    @apply bg-sun-hero-stripes;
+    border-radius: 999px;
+  }
+
+  .retro-grid {
+    position: absolute;
+    inset: 55% -10% -40%;
+    @apply bg-retro-grid-gradient;
+    background-size: 36px 36px;
+    animation: retro-grid-scroll 16s linear infinite;
+    will-change: background-position;
+    transform: perspective(800px) rotateX(55deg);
+  }
+
+  .panel-surface {
+    @apply bg-panel-surface-gradient shadow-soft rounded-xl border border-[rgba(255,120,195,0.35)];
+    box-shadow:
+      0 0 0 1px rgba(53, 211, 255, 0.25) inset,
+      0 10px 30px rgba(7, 3, 15, 0.45);
+  }
+
+  .panel-frame {
+    @apply rounded-2xl border border-[rgba(255,120,195,0.4)];
+    box-shadow:
+      0 0 0 1px rgba(53, 211, 255, 0.3) inset,
+      0 20px 40px rgba(4, 2, 12, 0.65);
+  }
+
+  .cast-queue button {
+    background-color: rgba(40, 18, 70, 0.85);
+    border: 1px solid rgba(112, 72, 140, 0.3);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    text-align: left;
+  }
+
+  /* Animation Keyframes defined in config, just class usage here if needed, 
+     but standard utility classes like animate-fade-in work automatically */
 
   .vhs-tear-strong {
     position: relative;
@@ -287,110 +141,41 @@
 
   .vhs-tear-strong::before {
     color: rgba(53, 211, 255, 0.7);
-    animation: var(--animate-tear), var(--animate-tear-shift);
+    @apply animate-tear;
+    animation-name: tear, tearShift; /* Composition manual handling */
+    animation-duration: 2.4s, 3.6s;
+    animation-timing-function: steps(1, end), steps(1, end);
+    animation-iteration-count: infinite, infinite;
     transform: translateX(-2px);
     opacity: 0.8;
   }
 
   .vhs-tear-strong::after {
     color: rgba(255, 62, 166, 0.8);
-    animation: var(--animate-tear), var(--animate-tear-shift);
+    @apply animate-tear;
+    animation-name: tear, tearShift;
+    animation-duration: 2.4s, 3.6s;
+    animation-timing-function: steps(1, end), steps(1, end);
+    animation-iteration-count: infinite, infinite;
     transform: translateX(2px);
     opacity: 0.8;
-  }
-
-  .sun-hero {
-    position: absolute;
-    left: 50%;
-    top: 22%;
-    transform: translateX(-50%);
-    width: clamp(240px, 40vw, 420px);
-    aspect-ratio: 1 / 1;
-    border-radius: 9999px;
-    background: radial-gradient(circle at 50% 40%, #ffd76a, #ff4d86 58%);
-    box-shadow: 0 0 80px rgba(255, 102, 153, 0.55);
-  }
-
-  .sun-hero::after {
-    content: "";
-    position: absolute;
-    left: 8%;
-    right: 8%;
-    bottom: 18%;
-    height: 28%;
-    background: repeating-linear-gradient(
-      180deg,
-      rgba(255, 206, 111, 0.9),
-      rgba(255, 206, 111, 0.9) 6px,
-      rgba(255, 120, 160, 0.75) 6px,
-      rgba(255, 120, 160, 0.75) 12px
-    );
-    border-radius: 999px;
-  }
-
-  .retro-grid {
-    position: absolute;
-    inset: 55% -10% -40%;
-    background-image:
-      linear-gradient(rgba(255, 105, 180, 0.25) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(53, 211, 255, 0.25) 1px, transparent 1px);
-    background-size: 36px 36px;
-    animation: retro-grid-scroll 16s linear infinite;
-    will-change: background-position;
-    transform: perspective(800px) rotateX(55deg);
-  }
-
-  @keyframes retro-grid-scroll {
-    from {
-      background-position:
-        0 0,
-        0 0;
-    }
-    to {
-      background-position:
-        0 36px,
-        0 36px;
-    }
-  }
-
-  .panel-surface {
-    background: linear-gradient(
-      145deg,
-      rgba(26, 12, 50, 0.92),
-      rgba(40, 18, 70, 0.98)
-    );
-    border: 1px solid rgba(255, 120, 195, 0.35);
-    box-shadow:
-      0 0 0 1px rgba(53, 211, 255, 0.25) inset,
-      var(--shadow-soft);
-    border-radius: var(--radius-xl);
-    /* backdrop-filter: blur(10px); - Removed for Chromecast performance */
-  }
-
-  .cast-queue button {
-    /* Explicitly set background to a dark, slightly transparent purple to stand out against the container */
-    background-color: rgba(40, 18, 70, 0.85);
-    border: 1px solid rgba(112, 72, 140, 0.3);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    text-align: left;
-  }
-
-  .panel-frame {
-    border: 1px solid rgba(255, 120, 195, 0.4);
-    box-shadow:
-      0 0 0 1px rgba(53, 211, 255, 0.3) inset,
-      0 20px 40px rgba(4, 2, 12, 0.65);
-    border-radius: var(--radius-2xl);
-  }
-
-  .text-readable {
-    text-shadow:
-      0 2px 8px rgba(8, 2, 20, 0.9),
-      0 0 14px rgba(0, 0, 0, 0.5);
   }
 
   /* Hide default CAH media player as we use custom UI */
   cast-media-player {
     display: none;
+  }
+}
+
+@keyframes retro-grid-scroll {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      0 36px,
+      0 36px;
   }
 }
