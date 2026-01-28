@@ -28,7 +28,7 @@ export function GlassInput({
       )}
       <TextInput
         className={`w-full rounded-2xl border border-theme-border bg-theme-panel p-4 text-base text-theme-text placeholder:text-theme-subtle ${className}`}
-        placeholderTextColor="#8c74a8"
+        placeholderTextColor="#737373"
         {...props}
       />
       {error && (

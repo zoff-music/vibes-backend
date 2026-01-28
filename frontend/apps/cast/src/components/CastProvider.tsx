@@ -333,13 +333,45 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       options.statusText = 'Vibez Session';
       options.disableIdleTimeout = true; // IMPORTANT for keeping session alive during custom playback
 
+      // --- Debug Logger Initialization ---
+      const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
+      const LOG_TAG = 'VibezApp';
+
+      // Enable debug logger and show the overlay
+      // This is "forcing" dev mode as requested
+      castDebugLogger.setEnabled(true);
+      castDebugLogger.showDebugLogs(true);
+
+      // Set verbosity level
+      castDebugLogger.loggerLevelByEvents = {
+        'cast.framework.events.category.CORE': cast.framework.LoggerLevel.INFO,
+        'cast.framework.events.EventType.MEDIA_STATUS':
+          cast.framework.LoggerLevel.DEBUG,
+      };
+
+      // Set custom tags logging
+      castDebugLogger.loggerLevelByTags = {
+        [LOG_TAG]: cast.framework.LoggerLevel.DEBUG,
+      };
+
+      console.log = (...args) => {
+        castDebugLogger.info(LOG_TAG, ...args);
+        // maintain original console behavior if needed, though CastDebugLogger usually captures it
+      };
+      console.error = (...args) => {
+        castDebugLogger.error(LOG_TAG, ...args);
+      };
+
       const [err] = safeWrap(() => {
         context.start(options);
         isCastReceiverInitialized = true;
-        console.log('Cast Receiver started');
+        castDebugLogger.info(
+          LOG_TAG,
+          'Cast Receiver started with Debug Logger enabled',
+        );
       });
       if (err) {
-        console.error('Failed to start Cast Receiver', err);
+        castDebugLogger.error(LOG_TAG, 'Failed to start Cast Receiver', err);
         // Don't reset the global flag on error to prevent retry loops
       }
     };

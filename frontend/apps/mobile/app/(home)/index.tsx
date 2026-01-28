@@ -55,9 +55,9 @@ export default function HomeScreen() {
             <Text
               className="font-heading text-8xl text-theme-text"
               style={{
-                textShadowColor: 'rgba(255, 46, 151, 0.6)',
+                textShadowColor: 'rgba(255, 46, 151, 0.4)',
                 textShadowOffset: { width: 0, height: 0 },
-                textShadowRadius: 30,
+                textShadowRadius: 20,
               }}
             >
               ノリ
@@ -89,7 +89,7 @@ export default function HomeScreen() {
               onSubmitEditing={handleJoin}
               returnKeyType="join"
               autoCorrect={false}
-              className="border-theme-border bg-theme-bg/50 text-center font-heading text-lg"
+              className="border-theme-border bg-theme-bg/50 text-center font-heading text-lg text-theme-text"
             />
           </View>
 
@@ -116,7 +116,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <Text className="mt-8 text-center font-japanese text-theme-subtle text-xs tracking-widest opacity-40">
+        <Text className="mt-8 text-center font-japanese text-theme-text-subtle text-xs tracking-widest opacity-60">
           音楽の共有 🌌 ネオンの夜
         </Text>
       </View>
