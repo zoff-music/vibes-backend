@@ -30,27 +30,27 @@ export type QueueItem = Song;
 
 type LocalCastMessage =
   | {
-      action: 'updatePlayback';
-      currentSong?: QueueItem;
-      isPlaying?: boolean;
-      positionMs?: number;
-      queue?: QueueItem[];
-      roomInfo?: RoomInfo;
-    }
+    action: 'updatePlayback';
+    currentSong?: QueueItem;
+    isPlaying?: boolean;
+    positionMs?: number;
+    queue?: QueueItem[];
+    roomInfo?: RoomInfo;
+  }
   | {
-      action: 'syncPlayback';
-      currentSong?: QueueItem;
-      isPlaying?: boolean;
-      positionMs?: number;
-    }
+    action: 'syncPlayback';
+    currentSong?: QueueItem;
+    isPlaying?: boolean;
+    positionMs?: number;
+  }
   | {
-      action: 'updateQueue';
-      queue?: QueueItem[];
-    }
+    action: 'updateQueue';
+    queue?: QueueItem[];
+  }
   | {
-      action: 'updateRoomInfo';
-      roomInfo?: RoomInfo;
-    };
+    action: 'updateRoomInfo';
+    roomInfo?: RoomInfo;
+  };
 
 // Global flag to prevent multiple Cast receiver initializations
 let isCastReceiverInitialized = false;
@@ -302,7 +302,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
                     provider,
                     tokenData.token,
                     tokenData.expiresAt ||
-                      new Date(Date.now() + 3600000).toISOString(),
+                    new Date(Date.now() + 3600000).toISOString(),
                   );
                 }
               }
@@ -379,12 +379,82 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         [LOG_TAG]: cast.framework.LoggerLevel.DEBUG,
       };
 
+      // Helper to safely serialize args
+      const serializeArgs = (args: any[]) => {
+        return args.map((arg) => {
+          if (typeof arg === 'object' && arg !== null) {
+            try {
+              return JSON.stringify(arg, (key, value) => {
+                if (key === 'source' && value?.tagName) return '[DOM Element]'; // Circular DOM refs
+                return value;
+              });
+            } catch (e) {
+              return String(arg);
+            }
+          }
+          return String(arg);
+        });
+      };
+
+      const originalConsole = {
+        log: console.log,
+        info: console.info,
+        warn: console.warn,
+        error: console.error,
+        debug: console.debug,
+      };
+
+      const sendLogToSender = (level: string, args: any[]) => {
+        if (!debugMode) return;
+
+        // Use checks to ensure we can actually send
+        const ctx = cast.framework.CastReceiverContext.getInstance();
+        // Check if there are connected senders to avoid useless work
+        if (ctx.getSenders().length === 0) return;
+
+        const [err] = safeWrap(() => {
+          ctx.sendCustomMessage('urn:x-cast:com.vibez.cast', undefined, {
+            action: 'LOG',
+            level,
+            args: serializeArgs(args),
+            timestamp: Date.now()
+          });
+        });
+
+        if (err) {
+          // Fallback to original console if sending fails (recursion prevention)
+          // originalConsole.error('Failed to forward log to sender', err); 
+        }
+      };
+
       console.log = (...args) => {
         castDebugLogger.info(LOG_TAG, ...args);
-        // maintain original console behavior if needed, though CastDebugLogger usually captures it
+        originalConsole.log(...args);
+        sendLogToSender('info', args);
       };
+
+      console.info = (...args) => {
+        castDebugLogger.info(LOG_TAG, ...args);
+        originalConsole.info(...args);
+        sendLogToSender('info', args);
+      };
+
+      console.warn = (...args) => {
+        castDebugLogger.warn(LOG_TAG, ...args);
+        originalConsole.warn(...args);
+        sendLogToSender('warn', args);
+      };
+
       console.error = (...args) => {
         castDebugLogger.error(LOG_TAG, ...args);
+        originalConsole.error(...args);
+        sendLogToSender('error', args);
+      };
+
+      console.debug = (...args) => {
+        castDebugLogger.debug(LOG_TAG, ...args);
+        originalConsole.debug(...args);
+        sendLogToSender('debug', args);
       };
 
       const [err] = safeWrap(() => {
