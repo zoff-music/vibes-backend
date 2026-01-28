@@ -429,7 +429,6 @@ func (r *roomRow) toRoom() (*vibe.Room, error) {
 }
 
 func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
-
 	return &vibe.RoomSettings{
 		SkipAllowed:       int(r.SkipAllowed.Int64) == 1,
 		DemocraticSkip:    int(r.DemocraticSkip.Int64) == 1,
@@ -448,6 +447,7 @@ func (c *Client) prepareCreateRoomStmt() error {
 			id,
 			name,
 			mode,
+			host_id,
 			admin_password_hash,
 			created_at,
 			skip_allowed,
@@ -457,7 +457,7 @@ func (c *Client) prepareCreateRoomStmt() error {
 			remove_on_play,
 			loop_queue,
 			allow_duplicates
-		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)
+		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
 		RETURNING id
 	`)
 	if err != nil {
@@ -482,6 +482,7 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		room.ID,
 		room.Name,
 		room.Mode,
+		room.HostID,
 		room.AdminPasswordHash,
 		room.CreatedAt,
 		boolToInt(room.Settings.SkipAllowed),

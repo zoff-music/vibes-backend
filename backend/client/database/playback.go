@@ -132,6 +132,23 @@ func (c *Client) getPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 
 	if !song.IsEmpty() {
 		state.CurrentSong = song
+
+		if state.IsPlaying {
+			elapsed := time.Since(state.UpdatedAt).Milliseconds()
+
+			currentPosition := state.PositionMs + int(elapsed)
+
+			if state.CurrentSong.Duration > 0 {
+				max := state.CurrentSong.Duration * 1000
+				if currentPosition > max {
+					currentPosition = max
+				}
+			}
+			if currentPosition < 0 {
+				currentPosition = 0
+			}
+			state.PositionMs = currentPosition
+		}
 	}
 
 	return state, nil

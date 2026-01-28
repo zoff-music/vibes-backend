@@ -159,27 +159,6 @@ func UpdatePlaybackState(
 				// fallthrough to response writing
 			}
 
-			// For pause/play when there's already a current song:
-			// compute current position (only if server thinks it's playing),
-			// then only modify the *response* IsPlaying flag for this user.
-
-			if state.CurrentSong != nil && state.IsPlaying {
-				elapsed := time.Since(state.UpdatedAt).Milliseconds()
-
-				currentPosition := state.PositionMs + int(elapsed)
-
-				if state.CurrentSong.Duration > 0 {
-					max := state.CurrentSong.Duration * 1000
-					if currentPosition > max {
-						currentPosition = max
-					}
-				}
-				if currentPosition < 0 {
-					currentPosition = 0
-				}
-				state.PositionMs = currentPosition
-			}
-
 			switch req.Action {
 			case vibe.RoomActionPause:
 				state.IsPlaying = false

@@ -1,3 +1,6 @@
+import { Orbitron_700Bold } from '@expo-google-fonts/orbitron';
+import { SpaceGrotesk_400Regular } from '@expo-google-fonts/space-grotesk';
+import { SpaceMono_400Regular } from '@expo-google-fonts/space-mono';
 import {
   DarkTheme,
   DefaultTheme,
@@ -19,7 +22,9 @@ SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   const [loaded] = useFonts({
-    SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
+    Orbitron_700Bold,
+    SpaceGrotesk_400Regular,
+    SpaceMono_400Regular,
   });
 
   useEffect(() => {
@@ -36,6 +41,11 @@ export default function RootLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="rooms/[id]" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="rooms/[id]/settings"
+          options={{ presentation: 'modal', headerShown: false }}
+        />
         <Stack.Screen
           name="callback"
           options={{ presentation: 'modal', headerShown: false }}

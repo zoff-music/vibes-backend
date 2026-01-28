@@ -4,6 +4,9 @@ import {
   parseISODuration,
   type SourceType,
   usePlaybackStore,
+  useQueue,
+  useQueueStore,
+  useRoom,
 } from '@vibez/shared';
 import {
   AlertCircleIcon,
@@ -15,9 +18,6 @@ import {
 } from '@vibez/ui';
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuthCache } from '../../hooks/useAuthCache';
-import { useQueue } from '../../hooks/useQueue';
-import { useRoom } from '../../hooks/useRoom';
-import { useQueueStore } from '../../stores/queueStore';
 
 interface Props {
   roomId: string;

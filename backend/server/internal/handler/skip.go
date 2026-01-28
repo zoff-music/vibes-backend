@@ -3,19 +3,21 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes/internalerror"
 	"github.com/zoff-music/vibes/server/internal/helper"
 	"github.com/zoff-music/vibes/vibe"
 )
 
 // SkipSong handles POST /rooms/{id}/skips
 func SkipSong(
-	db vibe.RoomSkipperAdminRoomLister,
+	db vibe.RoomSkipper,
 	ips vibe.RoomBatchEventAdminNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -37,7 +39,8 @@ func SkipSong(
 		state, err := db.SkipSong(ctx, roomID, userID, isAdmin)
 		if err != nil {
 			// Check if it's a host mode restriction error
-			if err.Error() == "only hosts can skip in host mode" {
+			var errHostMode internalerror.ErrHostModeSkipOnly
+			if errors.As(err, &errHostMode) {
 				handleError(
 					w,
 					fmt.Errorf("only hosts can skip in host mode"),
@@ -46,9 +49,10 @@ func SkipSong(
 				)
 				return
 			}
-			
+
 			// Check if skipping is disabled
-			if err.Error() == "skipping is disabled in this room" {
+			var errDisabled internalerror.ErrSkipDisabled
+			if errors.As(err, &errDisabled) {
 				handleError(
 					w,
 					fmt.Errorf("skipping is disabled in this room"),
@@ -57,7 +61,7 @@ func SkipSong(
 				)
 				return
 			}
-			
+
 			handleError(
 				w,
 				fmt.Errorf("skip failed: %w", err),
@@ -84,14 +88,24 @@ func SkipSong(
 		// We have to marshal payloads manually now
 		songsPayload, err := json.Marshal(songs)
 		if err != nil {
-			log.Printf("failed to marshal songs payload: %v", err)
-			songsPayload = []byte("{}")
+			handleError(
+				w,
+				fmt.Errorf("failed to marshal songs payload: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
 		}
 
 		statePayload, err := json.Marshal(state)
 		if err != nil {
-			log.Printf("failed to marshal playback state payload: %v", err)
-			statePayload = []byte("{}")
+			handleError(
+				w,
+				fmt.Errorf("failed to marshal playback state payload: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
 		}
 
 		err = ips.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
@@ -106,20 +120,6 @@ func SkipSong(
 		})
 		if err != nil {
 			log.Printf("failed to notify room updates: %v", err)
-		}
-
-		rooms, err := db.ListAdminRooms(ctx)
-		if err == nil {
-			payload, marshalErr := json.Marshal(rooms)
-			if marshalErr == nil {
-				notifyErr := ips.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
-					Type:    vibe.AdminRoomsUpdate,
-					Payload: payload,
-				})
-				if notifyErr != nil {
-					log.Printf("failed to notify admin rooms update: %v", notifyErr)
-				}
-			}
 		}
 
 		body, err := json.Marshal(state)

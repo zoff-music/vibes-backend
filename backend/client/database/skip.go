@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/zoff-music/vibes/internalerror"
 	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"github.com/zoff-music/vibes/vibe"
 )
@@ -193,15 +194,20 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 
 	// Determine if user is host
 	isHost := room.HostID == userID
+	log.Printf("room.HostID: %s, userID: %s, isHost: %v", room.HostID, userID, isHost)
 
 	// 1. Check if skipping is allowed at all
 	if !room.Settings.SkipAllowed && !isHost && !isAdmin {
-		return nil, fmt.Errorf("skipping is disabled in this room")
+		return nil, internalerror.ErrSkipDisabled{
+			Err: fmt.Errorf("skipping is disabled in this room"),
+		}
 	}
 
 	// 2. Check host mode restrictions
 	if room.Mode == vibe.RoomModeHost && !isHost && !isAdmin {
-		return nil, fmt.Errorf("only hosts can skip in host mode")
+		return nil, internalerror.ErrHostModeSkipOnly{
+			Err: fmt.Errorf("only hosts can skip in host mode"),
+		}
 	}
 
 	// 3. Determine if this should be a forced skip

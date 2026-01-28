@@ -28,3 +28,4 @@ export const Input: React.FC<Props> = ({
     </div>
   );
 };
+export const GlassInput = Input;

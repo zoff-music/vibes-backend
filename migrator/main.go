@@ -128,7 +128,7 @@ func getMigrationFiles() ([]string, error) {
 	log.Printf("Using migrations directory: %s", dir)
 	files, err := os.ReadDir(dir)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error reading migrations directory: %w", err)
 	}
 
 	var migrationFiles []string

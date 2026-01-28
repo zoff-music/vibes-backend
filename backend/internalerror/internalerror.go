@@ -57,3 +57,29 @@ func (e ErrDuplicateSong) Error() string {
 func (e ErrDuplicateSong) Unwrap() error {
 	return e.Err
 }
+
+// ErrHostModeSkipOnly is an error type for errors where a user tries to skip in host mode.
+type ErrHostModeSkipOnly struct {
+	Err error
+}
+
+func (e ErrHostModeSkipOnly) Error() string {
+	return fmt.Sprintf("Host mode skip only error: %v", e.Err)
+}
+
+func (e ErrHostModeSkipOnly) Unwrap() error {
+	return e.Err
+}
+
+// ErrSkipDisabled is an error type for errors where skipping is disabled.
+type ErrSkipDisabled struct {
+	Err error
+}
+
+func (e ErrSkipDisabled) Error() string {
+	return fmt.Sprintf("Skip disabled error: %v", e.Err)
+}
+
+func (e ErrSkipDisabled) Unwrap() error {
+	return e.Err
+}

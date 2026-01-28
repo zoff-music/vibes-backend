@@ -76,7 +76,7 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 
 	r, err := client.request(ctx, reqData)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error making request: %w", err)
 	}
 
 	defer func() {
@@ -119,7 +119,7 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) (*http.Response, error) {
 	req, err := http.NewRequest(reqData.Method, reqData.URL, bytes.NewBuffer(reqData.Body))
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
 	if reqData.Payload != nil {

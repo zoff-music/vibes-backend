@@ -223,15 +223,18 @@ make govulncheck                  # Vulnerability checking
 ## Critical Coding Rules (Summary)
 
 ### General
-- **No `any` types** - Use explicit TypeScript types
+- **Limit Return Values** - NEVER return more than 2 values
+- **No `any` or `interface{}` types** - Use explicit types
 - **No `try/catch`** - Use `safeWrap`/`safeWrapAsync` from `@vibez/shared`
 - **SSR Support** - Both apps support server-side rendering
 - **Dark Mode** - All components support light/dark themes
+- **No inlined structs or hacks** - No `struct{}{}` or `[]byte("{}")`
 
 ### Backend (Go)
 - **No Service/Repository layers** - Direct client usage via interfaces
 - **No `New*` constructors** - Use struct literals
 - **No inline error assignment** - Never `if err := ...; err != nil {}`
+- **Limit Return Values** - NEVER return more than 2 values. 3 or more is strictly illegal.
 - **Wrap ALL errors** - `fmt.Errorf("error doing X: %w", err)`
 - **No transactions** - Use atomic queries only
 - **Prepared Statements** - 1:1 naming convention

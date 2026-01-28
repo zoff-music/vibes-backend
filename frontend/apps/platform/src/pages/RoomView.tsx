@@ -1,5 +1,13 @@
 import type { PlaybackState, Room } from '@vibez/models';
-import { type Song, usePlaybackStore } from '@vibez/shared';
+import {
+  type Song,
+  usePlayback,
+  usePlaybackStore,
+  useQueue,
+  useQueueStore,
+  useRoom,
+  useRoomStore,
+} from '@vibez/shared';
 import {
   AlertCircleIcon,
   PlayerControls,
@@ -16,12 +24,7 @@ import { DeviceSelector } from '../components/cast/DeviceSelector';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { RoomHeader } from '../components/room/RoomHeader';
 import { useCasting } from '../hooks/useCasting';
-import { usePlayback } from '../hooks/usePlayback';
 import { useProviderToken } from '../hooks/useProviderToken';
-import { useQueue } from '../hooks/useQueue';
-import { useRoom } from '../hooks/useRoom';
-import { useQueueStore } from '../stores/queueStore';
-import { useRoomStore } from '../stores/roomStore';
 import { useThemeStore } from '../stores/themeStore';
 
 interface RoomViewProps {

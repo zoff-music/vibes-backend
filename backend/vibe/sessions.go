@@ -22,11 +22,17 @@ type SessionCreator interface {
 	CreateUser(ctx context.Context, user *User) (*User, error)
 }
 
+// AdminAuthResult represents the result of an admin authentication attempt
+type AdminAuthResult struct {
+	IsAdmin          bool
+	IsFirstTimeSetup bool
+}
+
 // SessionCreatorGetter creates sessions for rooms and can get rooms and users.
 type SessionCreatorGetter interface {
 	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
 	UpdateRoom(ctx context.Context, room *Room) (*Room, error)
 	CreateUser(ctx context.Context, user *User) (*User, error)
 	GetUser(ctx context.Context, roomID, userID string) (*User, error)
-	AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (bool, bool, error)
+	AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (*AdminAuthResult, error)
 }

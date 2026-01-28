@@ -6,9 +6,9 @@ import type {
   CastSessionState,
   MediaInfo,
 } from '@vibez/models';
-import { getToken, safeWrap, safeWrapAsync } from '@vibez/shared';
-import { useRoomStore } from '../stores/roomStore';
+import { getToken, safeWrap, safeWrapAsync, useRoomStore } from '@vibez/shared';
 
+// const CAST_APP_ID = '333649E5'; // Receiver App ID - Custom Vibez Receiver
 // Google Cast Application ID - Custom Vibez Receiver
 // For development, we use the Styled Media Receiver which allows custom content
 // In production, this should be replaced with a registered custom receiver app ID

@@ -5,6 +5,7 @@ Non-negotiable conventions. Follow strictly.
 ## Critical Rules
 
 - **No `any` type** - use explicit types, compose when needed
+- **Limit Return Values** - NEVER return more than 2 values. 3 or more is strictly illegal.
 - **No `@ts-ignore` or `@ts-nocheck`** - fix the type
 - **No `try/catch`** - use `safeWrap`/`safeWrapAsync` from `@vibez/shared`
 - **Use Biome** for ALL linting and formatting. No ESLint.

@@ -1,9 +1,10 @@
 import { api } from '@vibez/api';
-import { usePlaybackStore } from '@vibez/shared';
 import { useCallback, useEffect } from 'react';
+import { usePlaybackStore } from '../stores/playbackStore';
 import { useRoomStore } from '../stores/roomStore';
+import { USE_SSE_CALLBACKS } from './useSSE';
 
-export const usePlayback = (roomId: string) => {
+export const usePlayback = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
   const playback = usePlaybackStore();
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
   const setLocalPlayingState = usePlaybackStore(
@@ -37,7 +38,6 @@ export const usePlayback = (roomId: string) => {
         data = result;
         error = err;
 
-        // In Server mode, handle local playing state
         if (
           data &&
           room?.mode === 'server' &&
@@ -57,42 +57,39 @@ export const usePlayback = (roomId: string) => {
 
       // Handle host mode skip error
       if (error && action === 'skip') {
-        // Check if it's a 403 Forbidden error (host mode restriction or skip disabled)
+        const msgHost = 'only hosts can skip in host mode';
+        const msgDisabled = 'skipping is disabled in this room';
+
+        let message = '';
         if (
-          error.message?.includes('only hosts can skip in host mode') ||
+          error.message?.includes(msgHost) ||
           (error as any)?.status === 403
         ) {
-          // Dispatch custom event for toast notification
-          window.dispatchEvent(
-            new CustomEvent('show-toast', {
-              detail: {
-                message: 'Only hosts can skip in host mode',
-                type: 'error',
-              },
-            }),
-          );
-          return;
+          message = 'Only hosts can skip in host mode';
+        } else if (error.message?.includes(msgDisabled)) {
+          message = 'Skipping is disabled in this room';
         }
 
-        if (error.message?.includes('skipping is disabled in this room')) {
-          // Dispatch custom event for toast notification
-          window.dispatchEvent(
-            new CustomEvent('show-toast', {
-              detail: {
-                message: 'Skipping is disabled in this room',
-                type: 'error',
-              },
-            }),
-          );
-          return;
+        if (message) {
+          if (callbacks?.onToast) {
+            callbacks.onToast(message, 'error');
+          } else if (typeof window !== 'undefined' && window.dispatchEvent) {
+            window.dispatchEvent(
+              new CustomEvent('show-toast', {
+                detail: { message, type: 'error' },
+              }),
+            );
+          }
         }
       }
 
       if (data) {
-        setPlaybackState(data, room?.mode);
+        // Handle wrapped responses (SkipActionResponse/VoteActionResponse)
+        const state = (data as any).playback || data;
+        setPlaybackState(state, room?.mode);
       }
     },
-    [roomId, setPlaybackState, setLocalPlayingState, room?.mode],
+    [roomId, setPlaybackState, setLocalPlayingState, room?.mode, callbacks],
   );
 
   const play = useCallback(() => performAction('play'), [performAction]);

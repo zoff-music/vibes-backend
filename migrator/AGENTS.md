@@ -7,6 +7,9 @@ Non-negotiable conventions. Follow strictly.
 - **No `New*` constructors** - prefer struct literals.
 - **No inline error assignment** - never `if err := ...; err != nil {}`.
 - **All errors wrapped** with context: `fmt.Errorf("error doing X: %w", err)`.
+- **Limit Return Values** - NEVER return more than 2 values. 3 or more is strictly illegal.
+- **NO `interface{}`** - always use concrete types or specific interfaces.
+- **NO Inlined Structs** - never use `struct{}{}` or anonymous structs.
 - **SQL Files naming**: `NNNN_description.up.sql` / `NNNN_description.down.sql` (e.g. `0001_initial_schema.up.sql`).
 
 ## Command Line Interface

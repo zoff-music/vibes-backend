@@ -1,18 +1,18 @@
 import { api } from '@vibez/api';
-import { safeWrapAsync } from '@vibez/shared';
 import { useCallback, useState } from 'react';
 import { useRoomStore } from '../stores/roomStore';
-import { useSSE } from './useSSE';
+import { safeWrapAsync } from '../utils/wrap';
+import { USE_SSE_CALLBACKS, useSSE } from './useSSE';
 
 // Simple request deduplication map to handle strict mode double-invocations
 const IN_FLIGHT_REQUESTS = new Map<string, Promise<any>>();
 
-export const useRoom = (roomId: string) => {
+export const useRoom = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
   const { room, users, userId, setRoom, setSession, reset } = useRoomStore();
 
-  useSSE(roomId);
+  useSSE(roomId, callbacks);
 
   const fetchRoom = useCallback(async () => {
     if (!roomId) return;
@@ -24,11 +24,11 @@ export const useRoom = (roomId: string) => {
       | Promise<[Error | null, any]>
       | undefined;
     let promise: Promise<[Error | null, any]>;
-    if (!cachedPromise) {
+    if (cachedPromise) {
+      promise = cachedPromise;
+    } else {
       promise = api.get('/rooms/{id}', { id: roomId });
       IN_FLIGHT_REQUESTS.set(key, promise);
-    } else {
-      promise = cachedPromise;
     }
 
     const [wrapErr, result] = await safeWrapAsync(promise);
@@ -89,7 +89,6 @@ export const useRoom = (roomId: string) => {
       }
 
       if (data) {
-        // userId and nickname might be returned, but we mainly care about isAdmin
         setSession(data.userId, data.isAdmin, data.nickname as any);
         setRoom(data.room);
         return data;
@@ -107,7 +106,6 @@ export const useRoom = (roomId: string) => {
   const updateRoom = useCallback(
     async (updates: any) => {
       setIsLoading(true);
-      // updates can contain { settings: {...} } or { mode: '...' } etc.
       const [err, data] = await api.patch(
         '/rooms/{id}/settings',
         { id: roomId },
@@ -129,7 +127,6 @@ export const useRoom = (roomId: string) => {
     [roomId, setRoom],
   );
 
-  // Keep backward compatibility if needed, or just update usages.
   const updateRoomSettings = useCallback(
     (settings: any) => updateRoom({ settings }),
     [updateRoom],

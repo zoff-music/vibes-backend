@@ -55,7 +55,7 @@ func GetSongs(
 
 // AddSong handles the addition of a new song to the room
 func AddSong(
-	db vibe.SongAdderPlaybackControllerSongsFetcherAdminRoomLister,
+	db vibe.SongController,
 	ips vibe.RoomEventAdminNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -139,23 +139,8 @@ func AddSong(
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
 		})
-
 		if err != nil {
 			log.Printf("failed to notify room: %v", err)
-		}
-
-		rooms, err := db.ListAdminRooms(ctx)
-		if err == nil {
-			payload, marshalErr := json.Marshal(rooms)
-			if marshalErr == nil {
-				notifyErr := ips.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
-					Type:    vibe.AdminRoomsUpdate,
-					Payload: payload,
-				})
-				if notifyErr != nil {
-					log.Printf("failed to notify admin rooms update: %v", notifyErr)
-				}
-			}
 		}
 
 		// Auto-play if this is the first song in the queue
@@ -196,7 +181,6 @@ func AddSong(
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
 			})
-
 			if err != nil {
 				log.Printf("failed to notify room: %v", err)
 			}
@@ -222,7 +206,7 @@ func AddSong(
 
 // RemoveSong handles the removal of a song from the room
 func RemoveSong(
-	db vibe.SongQueueManagerAdminRoomLister,
+	db vibe.SongController,
 	ips vibe.RoomEventAdminNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -273,27 +257,13 @@ func RemoveSong(
 			log.Printf("failed to notify room in remove song: %v", err)
 		}
 
-		rooms, err := db.ListAdminRooms(ctx)
-		if err == nil {
-			payload, marshalErr := json.Marshal(rooms)
-			if marshalErr == nil {
-				notifyErr := ips.NotifyAdminUpdate(context.WithoutCancel(ctx), vibe.AdminEvent{
-					Type:    vibe.AdminRoomsUpdate,
-					Payload: payload,
-				})
-				if notifyErr != nil {
-					log.Printf("failed to notify admin rooms update: %v", notifyErr)
-				}
-			}
-		}
-
 		w.WriteHeader(http.StatusNoContent)
 	}
 }
 
 // VoteSong handles voting for a song
 func VoteSong(
-	db vibe.SongVoteManager,
+	db vibe.SongController,
 	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
