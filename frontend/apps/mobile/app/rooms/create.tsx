@@ -3,7 +3,6 @@ import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { ScreenLayout } from '../../components/ScreenLayout';
-import { GlassButton } from '../../components/ui/GlassButton';
 import { GlassInput } from '../../components/ui/GlassInput';
 import { GlassSwitch } from '../../components/ui/GlassSwitch';
 
@@ -19,7 +18,7 @@ export default function CreateRoom() {
   const router = useRouter();
 
   const [name, setName] = useState('');
-  const [password, setPassword] = useState('');
+  const [_password, _setPassword] = useState('');
   const [mode, setMode] = useState<'server' | 'host'>('server');
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [isLoading, setIsLoading] = useState(false);
@@ -74,13 +73,10 @@ export default function CreateRoom() {
         <View className="py-8">
           {/* Header */}
           <View className="mb-12 flex-row items-center justify-between">
-            <TouchableOpacity
-              onPress={() => router.back()}
-              className="p-2"
-            >
+            <TouchableOpacity onPress={() => router.back()} className="p-2">
               <FontAwesome name="chevron-left" size={16} color="#bfaed8" />
             </TouchableOpacity>
-            <Text className="font-heading text-theme-muted text-[10px] tracking-[4px]">
+            <Text className="font-heading text-[10px] text-theme-muted tracking-[4px]">
               CREATE SESSION
             </Text>
           </View>
@@ -88,7 +84,7 @@ export default function CreateRoom() {
           {/* Title Area */}
           <View className="mb-12">
             <Text className="font-heading text-4xl text-theme-text leading-tight">
-              LAUNCH NEW{"\n"}
+              LAUNCH NEW{'\n'}
               <Text className="text-theme-primary">VIBE ROOM</Text>
             </Text>
             <Text className="mt-4 font-body text-sm text-theme-text-muted">
@@ -110,7 +106,7 @@ export default function CreateRoom() {
               />
 
               <View className="mt-6">
-                <Text className="mb-4 font-heading text-theme-muted text-[10px] tracking-[3px]">
+                <Text className="mb-4 font-heading text-[10px] text-theme-muted tracking-[3px]">
                   ROOM MODE
                 </Text>
                 <View className="flex-row gap-4">
@@ -118,9 +114,7 @@ export default function CreateRoom() {
                     onPress={() => setMode('server')}
                     className={serverBtnClass}
                   >
-                    <Text className={serverTextClass}>
-                      SERVER
-                    </Text>
+                    <Text className={serverTextClass}>SERVER</Text>
                     <Text className="mt-2 text-[10px] text-theme-text-muted leading-4">
                       Auto-play music 24/7.
                     </Text>
@@ -130,9 +124,7 @@ export default function CreateRoom() {
                     onPress={() => setMode('host')}
                     className={hostBtnClass}
                   >
-                    <Text className={hostTextClass}>
-                      HOST
-                    </Text>
+                    <Text className={hostTextClass}>HOST</Text>
                     <Text className="mt-2 text-[10px] text-theme-text-muted leading-4">
                       Manual control for parties.
                     </Text>
@@ -181,7 +173,7 @@ export default function CreateRoom() {
               disabled={isInvalid}
               className={launchBtnClass}
             >
-              <Text className="mr-3 font-heading text-white text-sm uppercase tracking-[3px]">
+              <Text className="mr-3 font-heading text-sm text-white uppercase tracking-[3px]">
                 {launchBtnText}
               </Text>
               {rocketIcon}

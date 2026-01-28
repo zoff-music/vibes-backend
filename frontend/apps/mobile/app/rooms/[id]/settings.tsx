@@ -48,7 +48,7 @@ export default function RoomSettings() {
             </Text>
           </TouchableOpacity>
 
-          <Text className="font-heading text-theme-muted text-[10px] uppercase tracking-[3px] opacity-50">
+          <Text className="font-heading text-[10px] text-theme-muted uppercase tracking-[3px] opacity-50">
             SETTINGS
           </Text>
         </View>
