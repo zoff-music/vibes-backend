@@ -30,27 +30,27 @@ export type QueueItem = Song;
 
 type LocalCastMessage =
   | {
-    action: 'updatePlayback';
-    currentSong?: QueueItem;
-    isPlaying?: boolean;
-    positionMs?: number;
-    queue?: QueueItem[];
-    roomInfo?: RoomInfo;
-  }
+      action: 'updatePlayback';
+      currentSong?: QueueItem;
+      isPlaying?: boolean;
+      positionMs?: number;
+      queue?: QueueItem[];
+      roomInfo?: RoomInfo;
+    }
   | {
-    action: 'syncPlayback';
-    currentSong?: QueueItem;
-    isPlaying?: boolean;
-    positionMs?: number;
-  }
+      action: 'syncPlayback';
+      currentSong?: QueueItem;
+      isPlaying?: boolean;
+      positionMs?: number;
+    }
   | {
-    action: 'updateQueue';
-    queue?: QueueItem[];
-  }
+      action: 'updateQueue';
+      queue?: QueueItem[];
+    }
   | {
-    action: 'updateRoomInfo';
-    roomInfo?: RoomInfo;
-  };
+      action: 'updateRoomInfo';
+      roomInfo?: RoomInfo;
+    };
 
 // Global flag to prevent multiple Cast receiver initializations
 let isCastReceiverInitialized = false;
@@ -75,10 +75,16 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [statusText, setStatusText] = useState('Ready for Casting');
   const [roomMode, setRoomMode] = useState<string | null>(null);
-  const [debugMode, setDebugMode] = useState(() => {
+  const [debugMode, setDebugModeState] = useState(() => {
     const params = new URLSearchParams(window.location.search);
     return params.get('debug') === 'true';
   });
+  const debugModeRef = useRef(debugMode);
+
+  const setDebugMode = useCallback((value: boolean) => {
+    setDebugModeState(value);
+    debugModeRef.current = value;
+  }, []);
 
   // Use global store for playback state to share with components
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
@@ -302,7 +308,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
                     provider,
                     tokenData.token,
                     tokenData.expiresAt ||
-                    new Date(Date.now() + 3600000).toISOString(),
+                      new Date(Date.now() + 3600000).toISOString(),
                   );
                 }
               }
@@ -388,7 +394,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
                 if (key === 'source' && value?.tagName) return '[DOM Element]'; // Circular DOM refs
                 return value;
               });
-            } catch (e) {
+            } catch (_e) {
               return String(arg);
             }
           }
@@ -405,7 +411,8 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       };
 
       const sendLogToSender = (level: string, args: any[]) => {
-        if (!debugMode) return;
+        // Use Ref.current to avoid closure staleness issues
+        if (!debugModeRef.current) return;
 
         // Use checks to ensure we can actually send
         const ctx = cast.framework.CastReceiverContext.getInstance();
@@ -417,13 +424,13 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
             action: 'LOG',
             level,
             args: serializeArgs(args),
-            timestamp: Date.now()
+            timestamp: Date.now(),
           });
         });
 
         if (err) {
           // Fallback to original console if sending fails (recursion prevention)
-          // originalConsole.error('Failed to forward log to sender', err); 
+          // originalConsole.error('Failed to forward log to sender', err);
         }
       };
 
