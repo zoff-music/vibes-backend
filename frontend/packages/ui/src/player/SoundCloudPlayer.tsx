@@ -16,7 +16,7 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
 
-  const playerRef = useRef<React.ComponentRef<typeof ReactPlayer> | null>(null);
+  const playerRef = useRef<any>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

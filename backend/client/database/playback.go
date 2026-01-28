@@ -40,7 +40,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 		ON a.room_id = c.id
 		WHERE a.is_playing = 1
 		AND (c.mode = 'server' OR c.mode = 'host')
-		AND ((UNIXEPOCH('now') - UNIXEPOCH(a.updated_at)) * 1000 + a.position_ms) >= (b.duration * 1000 - 2000)
+		AND ((UNIXEPOCH('now') - UNIXEPOCH(a.updated_at)) * 1000 + a.position_ms) >= (b.duration * 1000 - 500)
 		LIMIT 1
 	`)
 	if err != nil {
@@ -130,26 +130,30 @@ func (c *Client) getPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 		return nil, fmt.Errorf("error get current song %s: %w", row.CurrentSongID.String, err)
 	}
 
-	if !song.IsEmpty() {
-		state.CurrentSong = song
+	if song.IsEmpty() {
+		return state, nil
+	}
 
-		if state.IsPlaying {
-			elapsed := time.Since(state.UpdatedAt).Milliseconds()
+	state.CurrentSong = song
+	if !state.IsPlaying {
+		return state, nil
+	}
 
-			currentPosition := state.PositionMs + int(elapsed)
+	elapsed := time.Since(state.UpdatedAt).Milliseconds()
+	currentPosition := state.PositionMs + int(elapsed)
 
-			if state.CurrentSong.Duration > 0 {
-				max := state.CurrentSong.Duration * 1000
-				if currentPosition > max {
-					currentPosition = max
-				}
-			}
-			if currentPosition < 0 {
-				currentPosition = 0
-			}
-			state.PositionMs = currentPosition
+	if state.CurrentSong.Duration > 0 {
+		max := state.CurrentSong.Duration * 1000
+		if currentPosition > max {
+			currentPosition = max
 		}
 	}
+	if currentPosition < 0 {
+		currentPosition = 0
+	}
+	state.PositionMs = currentPosition
+	state.UpdatedAt = time.Now()
+	state.ServerTimeMs = int(state.UpdatedAt.UnixMilli())
 
 	return state, nil
 }
@@ -166,6 +170,20 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 	state, err := c.getPlaybackState(cctx, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("error get playback state: %w", err)
+	}
+
+	// Lazy-skip check on the PUBLIC API only
+	if state.IsPlaying && state.CurrentSong != nil {
+		elapsed := time.Since(state.UpdatedAt).Milliseconds()
+		currentPosition := state.PositionMs + int(elapsed)
+
+		if state.CurrentSong.Duration > 0 && currentPosition >= state.CurrentSong.Duration*1000 {
+			newState, err := c.skipTrack(ctx, roomID)
+			if err != nil {
+				return nil, fmt.Errorf("lazy skip: %w", err)
+			}
+			return newState, nil
+		}
 	}
 
 	if state.CurrentSong != nil {
@@ -260,7 +278,8 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 	span, ctx := opentracing.StartSpanFromContext(ctx, "skipTrack")
 	defer span.Finish()
 
-	state, err := c.GetPlaybackState(ctx, roomID)
+	// Use internal getPlaybackState to avoid recursion / lazy-skip trigger
+	state, err := c.getPlaybackState(ctx, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("skip track: get playback state: %w", err)
 	}

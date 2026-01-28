@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 // Global type declaration for Node.js process in Bun environment
 declare const process:
   | {

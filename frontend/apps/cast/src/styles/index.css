@@ -100,14 +100,16 @@
   }
 
   .panel-surface {
-    @apply bg-panel-surface-gradient shadow-soft rounded-xl border border-[rgba(255,120,195,0.35)];
+    @apply bg-panel-surface-gradient shadow-soft rounded-xl border;
+    border-color: rgba(255, 120, 195, 0.35);
     box-shadow:
       0 0 0 1px rgba(53, 211, 255, 0.25) inset,
       0 10px 30px rgba(7, 3, 15, 0.45);
   }
 
   .panel-frame {
-    @apply rounded-2xl border border-[rgba(255,120,195,0.4)];
+    @apply rounded-2xl border;
+    border-color: rgba(255, 120, 195, 0.4);
     box-shadow:
       0 0 0 1px rgba(53, 211, 255, 0.3) inset,
       0 20px 40px rgba(4, 2, 12, 0.65);
@@ -142,7 +144,8 @@
   .vhs-tear-strong::before {
     color: rgba(53, 211, 255, 0.7);
     @apply animate-tear;
-    animation-name: tear, tearShift; /* Composition manual handling */
+    animation-name: tear, tearShift;
+    /* Composition manual handling */
     animation-duration: 2.4s, 3.6s;
     animation-timing-function: steps(1, end), steps(1, end);
     animation-iteration-count: infinite, infinite;
@@ -173,6 +176,7 @@
       0 0,
       0 0;
   }
+
   to {
     background-position:
       0 36px,
