@@ -287,8 +287,9 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
 
           const media = loadRequestData.media;
           if (media?.customData) {
-            // Handle tokens if present
             const data = media.customData as any;
+
+            // Handle tokens if present
             if (data.tokens) {
               for (const [provider, tokenData] of Object.entries(
                 data.tokens as Record<string, any>,
@@ -306,14 +307,38 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
                 }
               }
             }
+
+            // Handle debug mode
             if (data.debug) {
               console.log('[Cast Receiver] Enabling debug mode from sender');
               setDebugMode(true);
             }
+
+            // Handle initial playback state from LOAD request
+            // This is critical because the default player cannot play our content
+            // so we must ingest the state here and return null to prevent IDLE state
+            if (data.currentSong) {
+              console.log(
+                '[Cast Receiver] Initializing playback from LOAD request',
+              );
+              const normalizedSong = normalizeSong(data.currentSong);
+
+              setPlaybackState({
+                currentSong: normalizedSong,
+                isPlaying: true, // Auto-play on load
+                positionMs: data.positionMs || 0,
+                updatedAt: new Date().toISOString(),
+                serverTimeMs: Date.now(),
+              });
+              setIsPlaying(true);
+              setStatusText(`Now Playing: ${normalizedSong.title}`);
+              updateMediaMetadata(normalizedSong);
+            }
           }
 
-          setStatusText('Waiting for content...');
-          return loadRequestData;
+          // Return null to prevent the default player from trying to load the content
+          // (which would fail for custom metadata and result in IDLE state)
+          return null;
         },
       );
 
