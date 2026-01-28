@@ -289,37 +289,38 @@ class GoogleCastManager implements CastManager {
     console.log('Media message received:', namespace, message);
   }
 
-  private onCustomMessage(namespace: string, message: string): void {
+  private onCustomMessage(_namespace: string, message: string): void {
     const [err] = safeWrap(() => {
-       const data = JSON.parse(message);
-       if (data.action === 'LOG') {
-         const { level, args } = data;
-         const prefix = '%c[RECEIVER]';
-         const style = 'background: #222; color: #bada55; font-weight: bold; padding: 2px 4px; border-radius: 2px;';
-         
-         const logArgs = args.map((arg: string) => {
-            try {
-              // Try to parse back objects if possible, otherwise leave as string
-              return JSON.parse(arg);
-            } catch {
-              return arg;
-            }
-         });
+      const data = JSON.parse(message);
+      if (data.action === 'LOG') {
+        const { level, args } = data;
+        const prefix = '%c[RECEIVER]';
+        const style =
+          'background: #222; color: #bada55; font-weight: bold; padding: 2px 4px; border-radius: 2px;';
 
-         switch (level) {
-           case 'error':
-             console.error(prefix, style, ...logArgs);
-             break;
-           case 'warn':
-             console.warn(prefix, style, ...logArgs);
-             break;
-           case 'debug':
-             console.debug(prefix, style, ...logArgs);
-             break;
-           default:
-             console.log(prefix, style, ...logArgs);
-         }
-       }
+        const logArgs = args.map((arg: string) => {
+          try {
+            // Try to parse back objects if possible, otherwise leave as string
+            return JSON.parse(arg);
+          } catch {
+            return arg;
+          }
+        });
+
+        switch (level) {
+          case 'error':
+            console.error(prefix, style, ...logArgs);
+            break;
+          case 'warn':
+            console.warn(prefix, style, ...logArgs);
+            break;
+          case 'debug':
+            console.debug(prefix, style, ...logArgs);
+            break;
+          default:
+            console.log(prefix, style, ...logArgs);
+        }
+      }
     });
 
     if (err) {
