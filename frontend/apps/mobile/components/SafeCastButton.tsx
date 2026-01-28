@@ -1,4 +1,3 @@
-import MaterialCommunityIcons from '@expo/vector-icons/MaterialCommunityIcons';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import React from 'react';
 import { CastButton } from 'react-native-google-cast';

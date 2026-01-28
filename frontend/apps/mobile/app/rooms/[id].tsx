@@ -36,8 +36,12 @@ export default function RoomView() {
   const playPauseAction = isPlaying ? pause : play;
   const playPauseIcon = isPlaying ? 'pause' : 'play';
   const playPauseColor = isPlaying ? '#ff2e97' : '#00d9ff';
-  const playPauseBg = isPlaying ? 'rgba(255, 46, 151, 0.1)' : 'rgba(0, 217, 255, 0.1)';
-  const playPauseBorder = isPlaying ? 'rgba(255, 46, 151, 0.4)' : 'rgba(0, 217, 255, 0.4)';
+  const playPauseBg = isPlaying
+    ? 'rgba(255, 46, 151, 0.1)'
+    : 'rgba(0, 217, 255, 0.1)';
+  const playPauseBorder = isPlaying
+    ? 'rgba(255, 46, 151, 0.4)'
+    : 'rgba(0, 217, 255, 0.4)';
   const playPauseShadowColor = isPlaying ? '#ff2e97' : '#00d9ff';
   const playPauseMarginLeft = isPlaying ? 0 : 4;
 
@@ -51,7 +55,7 @@ export default function RoomView() {
         <FontAwesome name="music" size={20} color="#6b6b73" />
       </View>
       <Text className="text-center font-body text-theme-subtle text-xs leading-5">
-        The signal is clear.{"\n"}Add some tracks to start the sequence.
+        The signal is clear.{'\n'}Add some tracks to start the sequence.
       </Text>
     </View>
   );
@@ -64,7 +68,7 @@ export default function RoomView() {
 
         return (
           <View key={song.id} className="flex-row items-center">
-            <View className="mr-4 h-10 w-10 items-center justify-center rounded-2xl bg-theme-bg/50 border border-theme-border/50">
+            <View className="mr-4 h-10 w-10 items-center justify-center rounded-2xl border border-theme-border/50 bg-theme-bg/50">
               <Text className="font-heading text-theme-primary text-xs">
                 {songNumber}
               </Text>
@@ -77,7 +81,7 @@ export default function RoomView() {
                 {song.title}
               </Text>
               <Text
-                className="font-body text-theme-text-muted text-[11px]"
+                className="font-body text-[11px] text-theme-text-muted"
                 numberOfLines={1}
               >
                 {songArtist}
@@ -89,7 +93,8 @@ export default function RoomView() {
     </View>
   );
 
-  const queueContent = songs.length === 0 ? emptyQueueElement : queueListElement;
+  const queueContent =
+    songs.length === 0 ? emptyQueueElement : queueListElement;
 
   if (isRoomLoading && !room) {
     return (
@@ -108,10 +113,7 @@ export default function RoomView() {
       <View className="flex-1">
         {/* Header */}
         <View className="z-10 flex-row items-center justify-between px-6 py-4">
-          <TouchableOpacity
-            onPress={handleBack}
-            className="p-2"
-          >
+          <TouchableOpacity onPress={handleBack} className="p-2">
             <FontAwesome name="chevron-left" size={16} color="#bfaed8" />
           </TouchableOpacity>
 
@@ -134,7 +136,7 @@ export default function RoomView() {
           showsVerticalScrollIndicator={false}
         >
           {/* Player Container */}
-          <View className="mb-10 mt-4">
+          <View className="mt-4 mb-10">
             <View
               style={{
                 backgroundColor: '#000',
@@ -169,7 +171,7 @@ export default function RoomView() {
               >
                 {currentSongTitle}
               </Text>
-              <Text className="mt-2 font-body text-theme-text-muted text-sm">
+              <Text className="mt-2 font-body text-sm text-theme-text-muted">
                 {currentSongArtist}
               </Text>
             </View>
@@ -226,7 +228,7 @@ export default function RoomView() {
                 <Text className="font-heading text-[10px] text-theme-muted uppercase tracking-[4px]">
                   UP NEXT
                 </Text>
-                <Text className="mt-1 font-body text-theme-subtle text-[10px]">
+                <Text className="mt-1 font-body text-[10px] text-theme-subtle">
                   {songs.length} TRACKS SYNCED
                 </Text>
               </View>

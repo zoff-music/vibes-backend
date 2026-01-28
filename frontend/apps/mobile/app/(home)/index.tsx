@@ -69,8 +69,8 @@ export default function HomeScreen() {
             </View>
           </View>
 
-          <Text className="mt-8 text-center font-body text-theme-text-muted text-sm leading-6">
-            Connect your world through sound.{"\n"}
+          <Text className="mt-8 text-center font-body text-sm text-theme-text-muted leading-6">
+            Connect your world through sound.{'\n'}
             Join a room or start your own neon session.
           </Text>
         </View>
@@ -89,7 +89,7 @@ export default function HomeScreen() {
               onSubmitEditing={handleJoin}
               returnKeyType="join"
               autoCorrect={false}
-              className="bg-theme-bg/50 border-theme-border text-center font-heading text-lg"
+              className="border-theme-border bg-theme-bg/50 text-center font-heading text-lg"
             />
           </View>
 

@@ -4,7 +4,6 @@ import {
   Text,
   TouchableOpacity,
   TouchableOpacityProps,
-  View,
 } from 'react-native';
 
 interface GlassButtonProps extends TouchableOpacityProps {
@@ -44,17 +43,16 @@ export function GlassButton({
   const activityIndicatorColor = variant === 'primary' ? 'white' : '#ff2e97';
   const textClass = textVariants[variant];
   const glassEffectStyle = 'regular';
-  const glassTintColor = variant === 'primary' ? 'rgba(255, 46, 151, 0.4)' : 'rgba(255, 255, 255, 0.1)';
-  const intensity = variant === 'primary' ? 60 : 30; // Just in case, though we used expo-glass-effect
+  const glassTintColor =
+    variant === 'primary'
+      ? 'rgba(255, 46, 151, 0.4)'
+      : 'rgba(255, 255, 255, 0.1)';
+  const _intensity = variant === 'primary' ? 60 : 30; // Just in case, though we used expo-glass-effect
 
   const content = (
     <>
-      {loading && (
-        <ActivityIndicator color={activityIndicatorColor} />
-      )}
-      {!loading && (
-        <Text className={textClass}>{title}</Text>
-      )}
+      {loading && <ActivityIndicator color={activityIndicatorColor} />}
+      {!loading && <Text className={textClass}>{title}</Text>}
     </>
   );
 
@@ -71,15 +69,20 @@ export function GlassButton({
   }
 
   return (
-    <TouchableOpacity
-      className={buttonClass}
-      activeOpacity={0.8}
-      {...props}
-    >
+    <TouchableOpacity className={buttonClass} activeOpacity={0.8} {...props}>
       <GlassView
         glassEffectStyle={glassEffectStyle}
         tintColor={glassTintColor}
-        style={[{ width: '100%', paddingVertical: 16, paddingHorizontal: 24, alignItems: 'center', justifyContent: 'center' }, style]}
+        style={[
+          {
+            width: '100%',
+            paddingVertical: 16,
+            paddingHorizontal: 24,
+            alignItems: 'center',
+            justifyContent: 'center',
+          },
+          style,
+        ]}
       >
         {content}
       </GlassView>
