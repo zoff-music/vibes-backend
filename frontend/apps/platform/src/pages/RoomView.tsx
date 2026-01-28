@@ -555,7 +555,7 @@ export default function RoomView({ initialData }: RoomViewProps) {
                 <div className="crt-frame relative flex aspect-video min-h-[280px] w-full overflow-hidden rounded-[28px] bg-black sm:min-h-[340px] lg:aspect-auto lg:min-h-0 lg:flex-1">
                   <div className="vhs-scanlines pointer-events-none absolute inset-0" />
                   {isConnected && (
-                    <div className="crt-overlay pointer-events-none absolute inset-0 z-10" />
+                    <div className="crt-overlay !absolute !z-10 pointer-events-none inset-0" />
                   )}
                   {isConnected && castDeviceName && (
                     <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">

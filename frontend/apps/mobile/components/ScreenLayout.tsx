@@ -36,7 +36,7 @@ export function ScreenLayout({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0d0d0f',
+    backgroundColor: '#ffffff',
   },
   sky: {
     position: 'absolute',

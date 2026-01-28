@@ -61,29 +61,43 @@ export const usePlayback = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
       }
 
       // Handle host mode skip error
-      if (error && action === 'skip') {
-        const msgHost = 'only hosts can skip in host mode';
-        const msgDisabled = 'skipping is disabled in this room';
-
+      if (error) {
         let message = '';
-        if (
-          error.message?.includes(msgHost) ||
-          (error as any)?.status === 403
-        ) {
-          message = 'Only hosts can skip in host mode';
-        } else if (error.message?.includes(msgDisabled)) {
-          message = 'Skipping is disabled in this room';
+
+        if (action === 'skip') {
+          const msgHost = 'only hosts can skip in host mode';
+          const msgDisabled = 'skipping is disabled in this room';
+
+          if (
+            error.message?.includes(msgHost) ||
+            (error as any)?.status === 403
+          ) {
+            message = 'Only hosts can skip in host mode';
+          } else if (error.message?.includes(msgDisabled)) {
+            message = 'Skipping is disabled in this room';
+          }
+        } else if (action === 'play' || action === 'pause') {
+          message = `Failed to ${action}: ${error.message || 'Unknown error'}`;
         }
 
         if (message) {
           if (callbacks?.onToast) {
             callbacks.onToast(message, 'error');
-          } else if (typeof window !== 'undefined' && window.dispatchEvent) {
+          } else if (
+            typeof window !== 'undefined' &&
+            window.dispatchEvent &&
+            typeof CustomEvent !== 'undefined'
+          ) {
+            // Web fallback
             window.dispatchEvent(
               new CustomEvent('show-toast', {
                 detail: { message, type: 'error' },
               }),
             );
+          } else {
+            // Mobile/Environment without CustomEvent fallback?
+            // Ideally the callback handles it.
+            console.error('[usePlayback] Error:', message);
           }
         }
       }

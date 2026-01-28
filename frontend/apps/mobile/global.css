@@ -10,8 +10,8 @@
   --color-surfaceHover: #f0f0f8;
   --color-border: #e5e5f0;
 
-  --color-dark-background: #0d0d0f;
-  --color-dark-paper: #141416;
+  --color-dark-background: #1e1e24;
+  --color-dark-paper: #23232a;
   --color-dark-surface: #1a1a1e;
   --color-dark-surfaceElevated: #222226;
   --color-dark-surfaceHover: #2a2a30;
@@ -108,40 +108,40 @@
 }
 
 .dark {
-  /* Dark Theme */
-  --theme-bg: #07020f;
-  --theme-bg-paper: #0d041a;
-  --theme-bg-surface: #140a26;
-  --theme-bg-elevated: #1c1034;
-  --theme-bg-hover: #24143f;
+  /* Dark Theme -> High Contrast Light Theme (User Directive) */
+  --theme-bg: #ffffff;
+  --theme-bg-paper: #f4f4f5;
+  --theme-bg-surface: #ffffff;
+  --theme-bg-elevated: #ffffff;
+  --theme-bg-hover: #f4f4f5;
 
-  --theme-text: #f7efff;
-  --theme-text-muted: #bfaed8;
-  --theme-text-subtle: #7d6a9d;
+  --theme-text: #000000;
+  --theme-text-muted: #404040;
+  --theme-text-subtle: #525252;
 
-  --theme-primary: #ff46b8;
-  --theme-primary-muted: #ff2fa9;
-  --theme-primary-light: #ff8dd9;
+  --theme-primary: #ff2e97;
+  --theme-primary-muted: #ff1493;
+  --theme-primary-light: #ffb3e6;
 
-  --theme-border: rgba(0, 217, 255, 0.18);
-  --theme-border-strong: rgba(255, 120, 200, 0.3);
+  --theme-border: #e5e5e5;
+  --theme-border-strong: #a3a3a3;
 
-  --theme-shadow: rgba(2, 1, 6, 0.8);
-  --theme-shadow-accent: rgba(0, 217, 255, 0.2);
+  --theme-shadow: rgba(0, 0, 0, 0.1);
+  --theme-shadow-accent: rgba(255, 46, 151, 0.2);
 
-  --theme-glass-bg: rgba(12, 6, 28, 0.8);
-  --theme-glass-border: rgba(0, 217, 255, 0.2);
+  --theme-glass-bg: rgba(255, 255, 255, 0.9);
+  --theme-glass-border: #e5e5e5;
 
-  --theme-panel-bg: rgba(10, 5, 22, 0.72);
-  --theme-panel-strong-bg: rgba(12, 6, 28, 0.9);
-  --theme-panel-border: rgba(0, 217, 255, 0.18);
-  --theme-panel-border-strong: rgba(255, 120, 200, 0.3);
+  --theme-panel-bg: #ffffff;
+  --theme-panel-strong-bg: #ffffff;
+  --theme-panel-border: #e5e5e5;
+  --theme-panel-border-strong: #a3a3a3;
 
-  --theme-crt-bg: rgba(6, 3, 15, 0.65);
-  --theme-crt-shadow: rgba(0, 0, 0, 0.6);
+  --theme-crt-bg: rgba(255, 255, 255, 0.95);
+  --theme-crt-shadow: rgba(0, 0, 0, 0.1);
 
-  --synth-sky-1: #140b2b;
-  --synth-sky-2: #2a0f4e;
-  --synth-sky-3: #6b1f62;
-  --synth-sky-4: #ff6a87;
+  --synth-sky-1: #ffffff;
+  --synth-sky-2: #ffffff;
+  --synth-sky-3: #ffffff;
+  --synth-sky-4: #ffffff;
 }

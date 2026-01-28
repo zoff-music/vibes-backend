@@ -2,7 +2,7 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { usePlayback, useQueue, useRoom } from '@vibez/shared';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
-import { ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { Player } from '../../components/Player';
 import { SafeCastButton } from '../../components/SafeCastButton';
 import { ScreenLayout } from '../../components/ScreenLayout';
@@ -14,7 +14,15 @@ export default function RoomView() {
 
   const { room, isLoading: isRoomLoading, fetchRoom } = useRoom(roomId);
   const { currentSong, isPlaying, play, pause, skip, fetchPlayback } =
-    usePlayback(roomId);
+    usePlayback(roomId, {
+      onToast: (message, type) => {
+        if (type === 'error') {
+          Alert.alert('Error', message);
+        } else if (type === 'info') {
+          // Optional: Alert.alert('Info', message);
+        }
+      },
+    });
   const { songs, fetchQueue } = useQueue(roomId);
 
   useEffect(() => {

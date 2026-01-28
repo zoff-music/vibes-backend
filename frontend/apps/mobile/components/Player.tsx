@@ -28,7 +28,7 @@ export function Player({
   if (!videoId) {
     return (
       <View className="h-56 w-full items-center justify-center rounded-lg border border-border bg-black/10">
-        <Text className="text-muted-foreground">No video playing</Text>
+        <Text className="text-theme-text-muted">No video playing</Text>
       </View>
     );
   }
@@ -38,7 +38,7 @@ export function Player({
       <YoutubePlayer
         key={videoId}
         height={220}
-        play={playing}
+        play={playing} // Keep prop as fallback/initial state
         videoId={videoId}
         onChangeState={onStateChange}
         onReady={() => setReady(true)}
