@@ -46,15 +46,15 @@ export const useSSE = (
       if (!connection) {
         let inFlight = IN_FLIGHT_CONNECTIONS.get(roomId);
 
-type SSEMessage =
-  | { type: 'connected'; data: Room } // connectedSchema usually returns Room-like info or just { connected: true }? Check schema.
-  | { type: 'songs_update'; data: Song[] }
-  | { type: 'playback_update'; data: PlaybackState }
-  | { type: 'users_update'; data: number }
-  | { type: 'song_added'; data: Song }
-  | { type: 'settings_update'; data: Room };
+        type SSEMessage =
+          | { type: 'connected'; data: Room } // connectedSchema usually returns Room-like info or just { connected: true }? Check schema.
+          | { type: 'songs_update'; data: Song[] }
+          | { type: 'playback_update'; data: PlaybackState }
+          | { type: 'users_update'; data: number }
+          | { type: 'song_added'; data: Song }
+          | { type: 'settings_update'; data: Room };
 
-// ...
+        // ...
 
         if (!inFlight) {
           inFlight = api.sse(
@@ -110,9 +110,7 @@ type SSEMessage =
                   break;
                 }
                 case 'settings_update': {
-                  const [_, error] = safeWrap(() =>
-                    setRoom(message.data),
-                  );
+                  const [_, error] = safeWrap(() => setRoom(message.data));
                   if (error)
                     console.error('Failed to parse settings_update', error);
                   break;

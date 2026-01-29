@@ -148,6 +148,7 @@
         "@vibez/models": "workspace:*",
         "@vibez/shared": "workspace:*",
         "wiretyped": "^0.3.4",
+        "yup": "^1.7.1",
       },
       "devDependencies": {
         "@types/node": "^25.0.10",

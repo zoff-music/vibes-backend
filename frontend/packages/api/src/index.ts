@@ -34,7 +34,14 @@ import {
   youTubeVideoSchema,
 } from '@vibez/models';
 import { safeWrapAsync } from '@vibez/shared';
-import { RequestClient, type RequestDefinitions, getHttpError } from 'wiretyped';
+
+export * as yup from 'yup';
+
+import {
+  getHttpError,
+  RequestClient,
+  type RequestDefinitions,
+} from 'wiretyped';
 export { getHttpError };
 
 const API_BASE_PATH = '/api/v1';

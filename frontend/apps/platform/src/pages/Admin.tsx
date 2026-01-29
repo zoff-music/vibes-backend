@@ -43,7 +43,7 @@ export default function Admin({ initialData }: AdminProps) {
   );
 
   const fetchRooms = async () => {
-    const [err, data] = await api.get('/admin/rooms', {});
+    const [err, data] = await api.get('/admin/rooms', null);
     if (err || !data) {
       return;
     }
@@ -53,7 +53,7 @@ export default function Admin({ initialData }: AdminProps) {
   const connectSSE = async () => {
     const [err, unsubscribe] = await api.sse(
       '/admin/events',
-      {},
+      null,
       (result: [Error | null, AdminSSEMessage | null]) => {
         const [eventError, message] = result;
         if (eventError || !message) {
@@ -109,7 +109,7 @@ export default function Admin({ initialData }: AdminProps) {
     }
 
     const checkAuth = async () => {
-      const [err, data] = await api.get('/admin/rooms', {});
+      const [err, data] = await api.get('/admin/rooms', null);
       if (!isMounted) {
         return;
       }
@@ -135,13 +135,9 @@ export default function Admin({ initialData }: AdminProps) {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const [loginError, response] = await api.post(
-      '/admin/sessions',
-      {},
-      {
-        password: password.trim(),
-      },
-    );
+    const [loginError, response] = await api.post('/admin/sessions', null, {
+      password: password.trim(),
+    });
 
     setIsLoading(false);
 
@@ -158,7 +154,7 @@ export default function Admin({ initialData }: AdminProps) {
     setIsLoading(true);
     setErrorMessage(null);
 
-    const [logoutError] = await api.delete('/admin/sessions', {});
+    const [logoutError] = await api.delete('/admin/sessions', null);
 
     setIsLoading(false);
 

@@ -13,9 +13,10 @@
     "lint": "bunx biome check src"
   },
   "dependencies": {
-    "wiretyped": "^0.3.4",
     "@vibez/models": "workspace:*",
-    "@vibez/shared": "workspace:*"
+    "@vibez/shared": "workspace:*",
+    "wiretyped": "^0.3.4",
+    "yup": "^1.7.1"
   },
   "devDependencies": {
     "typescript": "^5.9.3",
