@@ -97,7 +97,30 @@ export const API_BASE_URL = `${API_URL}${API_BASE_PATH}`.replace(
   '$1',
 ); // Remove double slashes except after protocol
 
-console.log('[API] Initialized with base URL:', API_BASE_URL);
+const getCastHeaders = () => {
+  if (typeof window === 'undefined') return {};
+  const params = new URLSearchParams(window.location.search);
+  const casterId = params.get('casterId') || params.get('casterUserId');
+  const headers: Record<string, string> = {};
+
+  if (params.has('roomId')) {
+    // roomId is a strong indicator we are in a receiver environment
+    headers['X-Cast-Receiver'] = '1';
+  }
+
+  if (casterId) {
+    headers['X-Cast-Caster-Id'] = casterId;
+  }
+
+  return headers;
+};
+
+console.log(
+  '[API] Initialized with base URL:',
+  API_BASE_URL,
+  'Cast headers:',
+  getCastHeaders(),
+);
 
 const endpoints = {
   '/rooms': {
@@ -335,7 +358,7 @@ export const createWrappedClient = (
     validation: true,
     fetchOpts: {
       credentials: 'include',
-      headers: customHeaders,
+      headers: { ...getCastHeaders(), ...customHeaders },
     },
   });
 
@@ -435,3 +458,10 @@ export const createWrappedClient = (
 };
 
 export const api = createWrappedClient();
+
+// Hooks
+export * from './hooks/usePlayback';
+export * from './hooks/useProviderToken';
+export * from './hooks/useQueue';
+export * from './hooks/useRoom';
+export * from './hooks/useSSE';

@@ -6,7 +6,7 @@ import type {
   CastSessionState,
   MediaInfo,
 } from '@vibez/models';
-import { getToken, safeWrap, safeWrapAsync, useRoomStore } from '@vibez/shared';
+import { safeWrap, safeWrapAsync, useRoomStore } from '@vibez/shared';
 
 // const CAST_APP_ID = '333649E5'; // Receiver App ID - Custom Zoff Receiver
 // Google Cast Application ID - Custom Zoff Receiver
@@ -719,115 +719,44 @@ class GoogleCastManager implements CastManager {
     });
 
     return new Promise((resolve, reject) => {
+      const roomState = useRoomStore.getState();
+      const roomId = roomState.room?.id || '';
+      const userId = roomState.userId || '';
+
       if (DEVELOPMENT_MODE || this.isYouTubeUrl(mediaInfo.contentId)) {
-        console.log('🎵 Loading custom Zoff receiver');
-        this.loadCustomReceiver(mediaInfo, session, resolve, reject);
-        return;
+        console.log('🎵 Preparing custom Zoff receiver session');
+
+        const url = new URL(CUSTOM_RECEIVER_URL, window.location.origin);
+        if (roomId) url.searchParams.set('roomId', roomId);
+        if (userId) url.searchParams.set('casterId', userId);
+        if (
+          new URLSearchParams(window.location.search).get('debug') === 'true'
+        ) {
+          url.searchParams.set('debug', 'true');
+        }
+
+        const receiverUrl = url.toString();
+
+        console.log('[Cast] Custom context ready', { receiverUrl });
+
+        // IMPORTANT: We skip loadMedia for the custom receiver to avoid session_error
+        // and instead rely on the receiver connecting via its own SSE.
+        // We just send a message to kickstart the receiver if it was idle.
+        setTimeout(() => {
+          this.sendMediaToReceiver(mediaInfo, session);
+        }, 1000);
+
+        if (this.currentSession) {
+          this.currentSession.state = 'connected';
+          this.currentSession.lastSyncAt = new Date();
+          this.notifySessionStateChange(this.currentSession);
+        }
+
+        resolve();
+      } else {
+        this.loadStandardMedia(mediaInfo, session, resolve, reject);
       }
-
-      this.loadStandardMedia(mediaInfo, session, resolve, reject);
     });
-  }
-
-  private loadCustomReceiver(
-    mediaInfo: MediaInfo,
-    session: chrome.cast.Session,
-    resolve: () => void,
-    reject: (error: Error) => void,
-  ): void {
-    const [err] = safeWrap(() => {
-      console.log('[Cast] loadCustomReceiver:start', {
-        receiverUrl: CUSTOM_RECEIVER_URL,
-        sessionId: session?.sessionId,
-      });
-      // Create media info for our custom receiver HTML page
-      const receiverMediaInfo = new window.chrome.cast.media.MediaInfo(
-        CUSTOM_RECEIVER_URL,
-        'text/html',
-      );
-
-      // Set up metadata that will be passed to the receiver
-      const metadata = new window.chrome.cast.media.GenericMediaMetadata();
-      metadata.title = 'ノリ nori Cast Receiver';
-      metadata.subtitle = 'Loading...';
-
-      receiverMediaInfo.metadata = metadata;
-      receiverMediaInfo.streamType =
-        window.chrome.cast.media.StreamType.BUFFERED;
-
-      // Store the original media info to send to receiver once loaded
-      receiverMediaInfo.customData = {
-        originalMedia: {
-          contentId: mediaInfo.contentId,
-          contentType: mediaInfo.contentType,
-          metadata: mediaInfo.metadata,
-          duration: mediaInfo.duration,
-          isYouTube: this.isYouTubeUrl(mediaInfo.contentId),
-          videoId: this.isYouTubeUrl(mediaInfo.contentId)
-            ? this.extractYouTubeVideoId(mediaInfo.contentId)
-            : null,
-        },
-        tokens: {
-          spotify: { token: getToken('spotify') },
-          soundcloud: { token: getToken('soundcloud') },
-          youtube: { token: getToken('youtube') },
-        },
-        debug:
-          new URLSearchParams(window.location.search).get('debug') === 'true',
-      };
-
-      const request = new window.chrome.cast.media.LoadRequest(
-        receiverMediaInfo,
-      );
-
-      console.log('🎬 Loading custom receiver with data:', {
-        receiverUrl: CUSTOM_RECEIVER_URL,
-        originalContent: mediaInfo.contentId,
-        isYouTube: this.isYouTubeUrl(mediaInfo.contentId),
-        customData: receiverMediaInfo.customData,
-      });
-
-      session.loadMedia(
-        request,
-        (media: chrome.cast.media.Media) => {
-          console.log('✅ Custom receiver loaded successfully:', media);
-          console.log('[Cast] custom receiver media session', {
-            mediaSessionId: media?.sessionId,
-          });
-
-          // Wait a moment for receiver to initialize, then send the actual content
-          setTimeout(() => {
-            this.sendMediaToReceiver(mediaInfo, session);
-          }, 2000);
-
-          if (this.currentSession) {
-            this.currentSession.mediaSessionId = media.sessionId;
-            this.currentSession.state = 'connected';
-            this.currentSession.lastSyncAt = new Date();
-            this.notifySessionStateChange(this.currentSession);
-          }
-          resolve();
-        },
-        (error: any) => {
-          const errorMessage =
-            error?.description || error?.message || 'Unknown error';
-          console.error('❌ Failed to load custom receiver:', error);
-
-          this.notifyError({
-            code: error?.code || 'RECEIVER_LOAD_FAILED',
-            description: `Failed to load custom receiver: ${errorMessage}`,
-            details: error,
-          });
-
-          reject(new Error(`Failed to load custom receiver: ${errorMessage}`));
-        },
-      );
-    });
-
-    if (err) {
-      console.error('Error loading custom receiver:', err);
-      reject(err);
-    }
   }
 
   private sendMediaToReceiver(mediaInfo: MediaInfo, session: any): void {

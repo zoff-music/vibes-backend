@@ -1,5 +1,5 @@
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { usePlayback, useQueue, useRoom } from '@vibez/shared';
+import { usePlayback, useQueue, useRoom } from '@vibez/api';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect } from 'react';
 import { Alert, ScrollView, Text, TouchableOpacity, View } from 'react-native';

@@ -1,12 +1,5 @@
-import { api } from '@vibez/api';
-import {
-  type PlaybackState,
-  type Room,
-  type Song,
-  safeWrap,
-  setCachedToken,
-  usePlaybackStore,
-} from '@vibez/shared';
+import { api, setCachedToken } from '@vibez/api';
+import { type Song, safeWrap, usePlaybackStore } from '@vibez/shared';
 import type { framework } from 'chromecast-caf-receiver';
 import React, {
   createContext,
@@ -291,34 +284,18 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       contextRef.current = context;
       playerManagerRef.current = playerManager;
 
-      playerManager.addEventListener(
-        cast.framework.events.EventType.MEDIA_STATUS,
-        (event: framework.events.MediaStatusEvent) => {
-          console.log('[Cast Receiver] MEDIA_STATUS', {
-            playerState: event.mediaStatus?.playerState,
-            idleReason: event.mediaStatus?.idleReason,
-            currentTime: playerManager.getCurrentTimeSec(),
-            duration: playerManager.getDurationSec(),
-          });
-        },
-      );
-      playerManager.addEventListener(
-        cast.framework.events.EventType.TIME_UPDATE,
-        (event: framework.events.MediaElementEvent) => {
-          console.log('[Cast Receiver] TIME_UPDATE', {
-            currentTime: event.currentMediaTime,
-            duration: playerManager.getDurationSec(),
-          });
-        },
-      );
+      // REMOVED noisy listeners that crash inspector on low-power devices
+      /* 
+      playerManager.addEventListener(cast.framework.events.EventType.MEDIA_STATUS, ...)
+      playerManager.addEventListener(cast.framework.events.EventType.TIME_UPDATE, ...)
+      */
+
       playerManager.addEventListener(
         cast.framework.events.EventType.ERROR,
         (event: framework.events.ErrorEvent) => {
           console.error('[Cast Receiver] PLAYER_ERROR', {
             detailedErrorCode: event.detailedErrorCode,
             error: event.error,
-            reason: event.reason,
-            severity: event.severity,
           });
         },
       );
@@ -328,71 +305,44 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         cast.framework.messages.MessageType.LOAD,
         (loadRequestData) => {
           console.log('Intercepted LOAD request:', loadRequestData);
+          // Return the request data as-is if it's our technical URL
+          // but if it's a "real" media request from the sender, we handle it
+          // Returning null CAN cause session_error on some senders,
+          // but it's the official way to tell CAF "I got this, don't play anything".
 
           const media = loadRequestData.media;
           if (media?.customData) {
-            interface LoadCustomData {
-              tokens?: Record<string, { token: string; expiresAt?: string }>;
-              debug?: boolean;
-              currentSong?: Song;
-              positionMs?: number;
-            }
-            if (
-              typeof media.customData === 'object' &&
-              media.customData !== null
-            ) {
-              const data = media.customData as Partial<LoadCustomData>;
-
-              // Handle tokens if present
-              if (data.tokens) {
-                for (const [provider, tokenData] of Object.entries(
-                  data.tokens,
-                )) {
-                  if (tokenData?.token) {
-                    console.log('[Cast Receiver] caching token for provider', {
-                      provider,
-                    });
-                    setCachedToken(
-                      provider,
-                      tokenData.token,
-                      tokenData.expiresAt ||
-                        new Date(Date.now() + 3600000).toISOString(),
-                    );
-                  }
+            const data = media.customData as any;
+            if (data.tokens) {
+              for (const [provider, tokenData] of Object.entries(data.tokens)) {
+                if ((tokenData as any)?.token) {
+                  setCachedToken(
+                    provider,
+                    (tokenData as any).token,
+                    (tokenData as any).expiresAt ||
+                      new Date(Date.now() + 3600000).toISOString(),
+                  );
                 }
               }
+            }
 
-              // Handle debug mode
-              if (data.debug) {
-                console.log('[Cast Receiver] Enabling debug mode from sender');
-                setDebugMode(true);
-              }
+            if (data.debug) setDebugMode(true);
 
-              // Handle initial playback state from LOAD request
-              // This is critical because the default player cannot play our content
-              // so we must ingest the state here and return null to prevent IDLE state
-              if (data.currentSong) {
-                console.log(
-                  '[Cast Receiver] Initializing playback from LOAD request',
-                );
-                const normalizedSong = normalizeSong(data.currentSong);
-
-                setPlaybackState({
-                  currentSong: normalizedSong,
-                  isPlaying: true, // Auto-play on load
-                  positionMs: data.positionMs || 0,
-                  updatedAt: new Date().toISOString(),
-                  serverTimeMs: Date.now(),
-                });
-                setIsPlaying(true);
-                setStatusText(`Now Playing: ${normalizedSong.title}`);
-                updateMediaMetadata(normalizedSong);
-              }
+            if (data.currentSong) {
+              const normalizedSong = normalizeSong(data.currentSong);
+              setPlaybackState({
+                currentSong: normalizedSong,
+                isPlaying: true,
+                positionMs: data.positionMs || 0,
+                updatedAt: new Date().toISOString(),
+                serverTimeMs: Date.now(),
+              });
+              setIsPlaying(true);
+              setStatusText(`Now Playing: ${normalizedSong.title}`);
+              updateMediaMetadata(normalizedSong);
             }
           }
 
-          // Return null to prevent the default player from trying to load the content
-          // (which would fail for custom metadata and result in IDLE state)
           return null as any;
         },
       );
@@ -401,8 +351,6 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       context.addCustomMessageListener(
         'urn:x-cast:com.vibez.cast',
         (customEvent) => {
-          console.log('Received custom message:', customEvent);
-
           const message = customEvent.data as LocalCastMessage;
           handleCastMessage(message);
         },
@@ -411,34 +359,21 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       const options = new cast.framework.CastReceiverOptions();
       options.maxInactivity = 3600;
       options.statusText = 'Zoff';
-      options.disableIdleTimeout = true; // IMPORTANT for keeping session alive during custom playback
+      options.disableIdleTimeout = true;
 
       const [startErr] = safeWrap(() => {
         context.start(options);
         isCastReceiverInitialized = true;
-        console.log('[Cast Receiver] Cast Receiver started successfully');
       });
 
       if (startErr) {
-        console.error(
-          '[Cast Receiver] Failed to start Cast Receiver',
-          startErr,
-        );
+        console.error('[Cast Receiver] Start error', startErr);
       }
     };
 
-    // Check availability (CAF is loaded via script tag in index.html)
     if (window.cast?.framework) {
-      console.log('[Cast Receiver] CAF framework detected');
       initCast();
-    } else {
-      console.error('[Cast Receiver] CAF framework not available on window');
-      setStatusText('Cast framework not available');
     }
-
-    // Note: We don't cleanup the Cast receiver on unmount because:
-    // 1. It's a singleton that should persist for the entire app lifecycle
-    // 2. Stopping and restarting it can cause issues with active cast sessions
   }, [setIsPlaying, setPlaybackState]);
 
   const sseStartedRef = useRef(false);
@@ -446,33 +381,24 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const roomId = params.get('roomId');
-    if (!roomId) return;
-    if (sseStartedRef.current) return;
-    sseStartedRef.current = true;
+    if (!roomId || sseStartedRef.current) return;
 
+    sseStartedRef.current = true;
     const casterId = params.get('casterId') || params.get('casterUserId') || '';
 
     let isMounted = true;
     let unsubscribe: (() => void) | null = null;
 
     const connect = async () => {
+      console.log('[Cast Receiver] Connecting to SSE', { roomId, casterId });
       const [err, stop] = await api.sse(
         '/rooms/{id}/events',
-        {
-          id: roomId,
-        },
+        { id: roomId },
         (result: [Error | null, any]) => {
           const [eventError, message] = result;
-          if (eventError || !message || !isMounted) {
-            return;
-          }
+          if (eventError || !message || !isMounted) return;
 
-          const typedMessage = message as
-            | { type: 'connected'; data: unknown }
-            | { type: 'playback_update'; data: PlaybackState }
-            | { type: 'songs_update'; data: Song[] }
-            | { type: 'settings_update'; data: Room }
-            | { type: 'users_update'; data: number };
+          const typedMessage = message as any;
 
           switch (typedMessage.type) {
             case 'connected':
@@ -487,33 +413,28 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
                     ? normalizeSong(data.currentSong)
                     : null,
                 },
-                roomMode || undefined,
+                // Use a ref or get the value directly to avoid effect restart
+                undefined,
               );
               setIsPlaying(data.isPlaying);
               break;
             }
-            case 'songs_update': {
-              const data = typedMessage.data;
-              setQueue(data);
+            case 'songs_update':
+              setQueue(typedMessage.data);
               break;
-            }
-            case 'settings_update': {
-              const data = typedMessage.data;
-              setRoomMode(data.mode);
+            case 'settings_update':
+              setRoomMode(typedMessage.data.mode);
               setRoomInfo((current) => ({
-                name: data.name,
+                name: typedMessage.data.name,
                 participantCount: current?.participantCount ?? 0,
               }));
               break;
-            }
-            case 'users_update': {
-              const data = typedMessage.data;
+            case 'users_update':
               setRoomInfo((current) => ({
                 name: current?.name || roomId,
-                participantCount: data,
+                participantCount: typedMessage.data,
               }));
               break;
-            }
           }
         },
         {
@@ -529,11 +450,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         const [songsErr, songs] = await api.get('/rooms/{id}/songs', {
           id: roomId,
         });
-        if (!songsErr && songs) {
-          setQueue(songs);
-        }
-      } else if (err) {
-        console.error('[Cast Receiver] SSE error', err);
+        if (!songsErr && songs) setQueue(songs);
       }
     };
 
@@ -541,12 +458,10 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
 
     return () => {
       isMounted = false;
-      if (unsubscribe) {
-        unsubscribe();
-      }
-      sseStartedRef.current = false;
+      if (unsubscribe) unsubscribe();
+      // WE DO NOT reset sseStartedRef.current here to avoid infinite loops on re-renders
     };
-  }, [normalizeSong, roomMode, setIsPlaying, setPlaybackState]);
+  }, [normalizeSong, setIsPlaying, setPlaybackState]);
 
   useEffect(() => {
     const interval = setInterval(() => {

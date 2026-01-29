@@ -1,12 +1,10 @@
-import { api } from '@vibez/api';
+import { api, useQueue, useRoom } from '@vibez/api';
 import {
   formatDuration,
   parseISODuration,
   type SourceType,
   usePlaybackStore,
-  useQueue,
   useQueueStore,
-  useRoom,
 } from '@vibez/shared';
 import {
   AlertCircleIcon,
