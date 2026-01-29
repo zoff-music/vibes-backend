@@ -28,6 +28,7 @@ import {
   songSchema,
   songsListSchema,
   spotifyTokenSchema,
+  sseQuerySchema,
   usersUpdateSchema,
   youTubeSearchQuerySchema,
   youTubeSearchResponseSchema,
@@ -196,6 +197,7 @@ const endpoints = {
   },
   '/rooms/{id}/events': {
     sse: {
+      $search: sseQuerySchema,
       events: {
         connected: connectedSchema,
         playback_update: playbackStateSchema,

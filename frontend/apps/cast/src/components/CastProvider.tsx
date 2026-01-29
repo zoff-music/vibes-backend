@@ -493,7 +493,11 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const [err, stop] = await api.sse(
         '/rooms/{id}/events',
-        { id: roomId },
+        { 
+            id: roomId,
+            castReceiver: '1',
+            casterId: casterId || undefined,
+        },
         (result: [Error | null, unknown]) => {
           const [eventError, message] = result;
           if (eventError) {
