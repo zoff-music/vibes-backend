@@ -71,12 +71,12 @@ export const useCasting = (_roomId: string) => {
 
   // Sync playback state with cast device
   useEffect(() => {
-    // Only sync if we have an active session with media
     const isLocalSession = currentSession?.deviceId === 'local-cast-emulator';
     if (
       isConnected &&
+      currentSession &&
       currentSong &&
-      (isLocalSession || currentSession?.mediaSessionId)
+      (isLocalSession || currentSession.mediaSessionId || isConnected) // Sync if connected regardless of media session
     ) {
       const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
       console.log('[Cast] syncing playback state', {
