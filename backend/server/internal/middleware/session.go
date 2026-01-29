@@ -23,7 +23,16 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		payload, ok := m.extractSession(r)
 		if !ok {
-			payload = m.createNewSession(w, r)
+			// Check if this is a Cast Receiver request
+			isCast := r.Header.Get("X-Cast-Receiver") == "1"
+			casterID := r.Header.Get("X-Cast-Caster-Id")
+
+			if isCast && casterID != "" {
+				payload = helper.SessionPayload{UserID: casterID}
+				ok = true
+			} else {
+				payload = m.createNewSession(w, r)
+			}
 		}
 
 		ctx := context.WithValue(r.Context(), helper.SessionKey, payload)

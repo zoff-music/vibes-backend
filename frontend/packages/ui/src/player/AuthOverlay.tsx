@@ -16,13 +16,13 @@ export function AuthOverlay({
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
-      className="absolute inset-0 z-50 flex items-center justify-center rounded-2xl bg-black/60 backdrop-blur-sm"
+      className="absolute inset-0 z-50 flex items-center justify-center rounded-2xl bg-black/80"
     >
-      <div className="mx-4 max-w-sm rounded-2xl border-4 border-ink bg-white p-6 text-center shadow-2xl dark:border-primary dark:bg-dark-surface">
-        <h3 className="mb-2 font-black text-ink text-lg dark:text-dark-text">
+      <div className="mx-4 max-w-sm rounded-2xl border-4 border-primary bg-dark-surface p-6 text-center shadow-2xl">
+        <h3 className="mb-2 font-black text-dark-text text-lg">
           {errorMessage ? 'Access Restricted' : 'Authentication Required'}
         </h3>
-        <p className="mb-6 text-ink/60 text-sm dark:text-dark-text-muted">
+        <p className="mb-6 text-dark-text-muted text-sm">
           {errorMessage ? (
             errorMessage
           ) : (
