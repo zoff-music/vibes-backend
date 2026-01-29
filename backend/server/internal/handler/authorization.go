@@ -54,7 +54,7 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 }
 
 // OAuthCallback handles GET /api/v1/callbacks/{provider}
-func OAuthCallback(db vibe.CodeValidatorUserter, oa vibe.OAuthExchanger, providerName string) http.HandlerFunc {
+func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, providerName string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		query := r.URL.Query()

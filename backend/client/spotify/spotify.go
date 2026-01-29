@@ -25,7 +25,7 @@ type Client struct {
 }
 
 // Init initializes the Spotify API client
-func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
+func (c *Client) Init(_ context.Context, cfg *config.Config) error {
 	if cfg.SpotifyClientID == "" || cfg.SpotifyClientSecret == "" || cfg.SpotifyEndpoint == "" || cfg.SpotifyTokenURL == "" {
 		c.Enabled = false
 		return nil

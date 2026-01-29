@@ -20,7 +20,7 @@ type Client struct {
 }
 
 // Init initializes the SoundCloud API client
-func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
+func (c *Client) Init(_ context.Context, cfg *config.Config) error {
 	if cfg.SoundCloudAPIKey == "" || cfg.SoundCloudEndpoint == "" {
 		c.Enabled = false
 		return nil

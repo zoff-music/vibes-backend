@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"net/http"
 	"net/url"
 
@@ -13,6 +14,9 @@ import (
 
 // Search searches for tracks on SoundCloud
 func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Search")
+	defer span.Finish()
+
 	if !c.Enabled {
 		return nil, fmt.Errorf("SoundCloud client is not enabled")
 	}

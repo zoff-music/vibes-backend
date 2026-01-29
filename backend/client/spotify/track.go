@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"net/http"
 	"strings"
 
@@ -13,8 +14,11 @@ import (
 
 // GetTrack fetches details for a specific track ID
 func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "GetTrack")
+	defer span.Finish()
+
 	if !c.Enabled {
-		return nil, fmt.Errorf("Spotify client is not enabled")
+		return nil, fmt.Errorf("error Spotify client is not enabled")
 	}
 
 	token, err := c.getAccessToken(ctx)

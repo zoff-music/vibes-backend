@@ -47,8 +47,6 @@ func (c *Client) NotifyRoomUpdate(ctx context.Context, roomID string, event vibe
 	return c.NotifyTopic(ctx, topicName, data)
 }
 
-const adminTopicName string = "admin"
-
 func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyAdminUpdate")
 	defer span.Finish()
@@ -212,3 +210,5 @@ func generateSubscriptionID() (string, error) {
 
 	return id.String(), nil
 }
+
+const adminTopicName string = "admin"

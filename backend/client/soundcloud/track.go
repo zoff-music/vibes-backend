@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"net/http"
 	"net/url"
 
@@ -13,6 +14,9 @@ import (
 
 // GetTrack fetches details for a specific track ID
 func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "GetTrack")
+	defer span.Finish()
+
 	if !c.Enabled {
 		return nil, fmt.Errorf("SoundCloud client is not enabled")
 	}

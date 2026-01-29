@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"html"
 	"net/http"
 	"net/url"
@@ -14,6 +15,9 @@ import (
 
 // GetTrack fetches details for a specific video ID
 func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "GetTrack")
+	defer span.Finish()
+
 	if c.apiKey == "" {
 		return nil, fmt.Errorf("YouTube API key not configured")
 	}

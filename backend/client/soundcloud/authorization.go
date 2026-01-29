@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"net/http"
 	"net/url"
 
@@ -26,6 +27,9 @@ func (c *Client) GetOAuthURL(state string) string {
 
 // ExchangeCode exchanges an authorization code for an access token
 func (c *Client) ExchangeCode(ctx context.Context, code string) (*vibe.TokenResponse, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "ExchangeCode")
+	defer span.Finish()
+
 	params := url.Values{}
 	params.Set("grant_type", "authorization_code")
 	params.Set("client_id", c.clientID)
@@ -57,6 +61,9 @@ func (c *Client) ExchangeCode(ctx context.Context, code string) (*vibe.TokenResp
 
 // RefreshToken refreshes the access token
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*vibe.TokenResponse, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "RefreshToken")
+	defer span.Finish()
+
 	params := url.Values{}
 	params.Set("grant_type", "refresh_token")
 	params.Set("client_id", c.clientID)
