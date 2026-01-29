@@ -5,7 +5,8 @@ import { useCast } from './CastProvider';
 import { PlayerLayer } from './PlayerLayer';
 
 export const ActiveView: React.FC = () => {
-  const { currentSong, queue, roomInfo, actualPositionMs, roomId } = useCast();
+  const { currentSong, queue, roomInfo, actualPositionMs, roomId, error } =
+    useCast();
 
   if (!currentSong) return null;
 
@@ -128,6 +129,19 @@ export const ActiveView: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Debug Overlay - Always visible for now until fixed */}
+      <div className="pointer-events-none absolute top-0 right-0 z-50 border-green-900 border-b border-l bg-black/80 p-4 font-mono text-green-400 text-xs">
+        <div>Room: {roomId || 'NULL'}</div>
+        <div>Err: {error || 'None'}</div>
+        <div>
+          Q: {queue.length} | Next: {upNext.length}
+        </div>
+        <div>
+          Song: {currentSong?.id} | {currentSong?.title}
+        </div>
+        <div>Q IDs: {queue.map((s) => s.id).join(', ')}</div>
       </div>
     </div>
   );
