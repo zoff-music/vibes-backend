@@ -277,8 +277,16 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       console.log('[Cast Receiver] Initializing Cast Receiver...', {
         userAgent: navigator.userAgent,
         location: window.location.href,
+        debug: debugMode,
       });
+
       const context = cast.framework.CastReceiverContext.getInstance();
+
+      // ENABLE DEBUG LOGGING
+      if (debugMode) {
+        context.setLoggerLevel(cast.framework.LoggerLevel.DEBUG);
+      }
+
       const playerManager = context.getPlayerManager();
 
       contextRef.current = context;
@@ -420,6 +428,10 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
               break;
             }
             case 'songs_update':
+              console.log(
+                '[Cast Receiver] Received songs update (SSE):',
+                typedMessage.data,
+              );
               setQueue(typedMessage.data);
               break;
             case 'settings_update':

@@ -8,11 +8,8 @@ const CastAppContent = () => {
 
   return (
     <>
-      <div className="relative flex h-screen w-screen animate-fade-in items-center justify-center overflow-hidden bg-theme text-theme">
-        <div className="synth-sky absolute inset-0" />
-        <div className="vhs-scanlines pointer-events-none absolute inset-0" />
-        <div className="sun-hero opacity-80" />
-        <div className="retro-grid opacity-70" />
+      <div className="relative flex h-screen w-screen items-center justify-center overflow-hidden bg-black text-white">
+        {/* Background effects removed for performance */}
 
         <div className="relative z-10 flex h-full w-full items-center justify-center">
           {currentSong ? <ActiveView /> : <IdleView />}
