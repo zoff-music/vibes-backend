@@ -1,6 +1,5 @@
 {
   "lockfileVersion": 1,
-  "configVersion": 1,
   "workspaces": {
     "": {
       "name": "vibez",
@@ -198,7 +197,6 @@
       "name": "@vibez/shared",
       "version": "0.0.1",
       "dependencies": {
-        "@vibez/api": "workspace:*",
         "@vibez/models": "workspace:*",
         "zustand": "^5.0.10",
       },

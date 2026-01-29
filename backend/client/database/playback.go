@@ -313,7 +313,9 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 			if err != nil {
 				return nil, fmt.Errorf("skip track: remove song: %w", err)
 			}
-		} else {
+		}
+
+		if !room.Settings.RemoveOnPlay {
 			// If song stays in queue, update its added_at timestamp to treat it as "new"
 			// This prevents it from being immediately replayed and moves it to the end of the queue.
 			err = c.updateSongAddedAt(ctx, roomID, currentSongID)
@@ -332,21 +334,13 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 
 	// 3. Handle LoopQueue if no next song found
 	if nextSong.IsEmpty() && room.Settings.LoopQueue {
-		// If we're looping and there's no next song, get the first song in the queue
-		// Don't exclude the current song if RemoveOnPlay is false, since it should stay in queue
-		if room.Settings.RemoveOnPlay {
-			// Current song was removed, so get any song from the queue
-			nextSong, err = c.GetNextSong(ctx, roomID, 0)
-			if err != nil {
-				return nil, fmt.Errorf("skip track: get first song for loop after removal: %w", err)
-			}
-		} else {
-			// Current song is still in queue, so we can play it again or get the next one
-			// Since we updated its added_at timestamp, it should be treated as "new"
-			nextSong, err = c.GetNextSong(ctx, roomID, 0)
-			if err != nil {
-				return nil, fmt.Errorf("skip track: get first song for loop: %w", err)
-			}
+		// We can just get the next song directly since logic is same for both branches due to prev updateSongAddedAt
+		// If RemoveOnPlay was true, current was gone, so we get next (first)
+		// If RemoveOnPlay was false, current was moved to end, so we get next (first)
+
+		nextSong, err = c.GetNextSong(ctx, roomID, 0)
+		if err != nil {
+			return nil, fmt.Errorf("skip track: get first song for loop: %w", err)
 		}
 	}
 
