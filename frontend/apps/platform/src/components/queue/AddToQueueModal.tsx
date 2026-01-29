@@ -299,7 +299,7 @@ export const AddToQueueModal: React.FC<Props> = ({
         <div className="mb-6">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <h2 className="font-display text-base text-theme">Add a Song</h2>
+              <h2 className="text-base text-theme">Add a Song</h2>
               <p className="mt-1 text-sm text-theme-muted">
                 Search or paste a link
               </p>
@@ -343,10 +343,8 @@ export const AddToQueueModal: React.FC<Props> = ({
                 <InfoIcon className="h-5 w-5" />
               </div>
               <p className="text-sm text-theme-muted leading-relaxed">
-                <span className="font-display text-[10px] text-secondary">
-                  Note:
-                </span>{' '}
-                By adding Spotify, viewers are required to have{' '}
+                <span className="text-[10px] text-secondary">Note:</span> By
+                adding Spotify, viewers are required to have{' '}
                 <span className="font-semibold text-theme">
                   Spotify Premium
                 </span>{' '}
@@ -480,9 +478,7 @@ export const AddToQueueModal: React.FC<Props> = ({
             <div className="mb-4 inline-flex h-20 w-20 items-center justify-center rounded-2xl border border-secondary/40 bg-secondary/20">
               <CheckIcon className="h-10 w-10 text-secondary" />
             </div>
-            <h3 className="mb-2 font-display text-base text-theme">
-              Added to Queue!
-            </h3>
+            <h3 className="mb-2 text-base text-theme">Added to Queue!</h3>
             <p className="mb-1 text-sm text-theme-muted">
               Everyone will hear it soon
             </p>

@@ -36,9 +36,7 @@ export const QueueItem: React.FC<Props> = ({
     <div className="flex items-center gap-4">
       {/* Position number */}
       <div className="w-8 shrink-0 text-center">
-        <span className="font-display text-theme-subtle text-xs">
-          {position}
-        </span>
+        <span className="text-theme-subtle text-xs">{position}</span>
       </div>
 
       {/* Thumbnail */}
@@ -53,19 +51,19 @@ export const QueueItem: React.FC<Props> = ({
 
       {/* Song info */}
       <div className="min-w-0 flex-1">
-        <h4 className="mb-1 truncate text-left font-display text-theme text-xs">
+        <h4 className="mb-1 truncate text-left text-theme text-xs">
           {song.title}
         </h4>
         <div className="flex items-center gap-2 text-theme-muted text-xs">
           <span className="truncate">{song.artist || 'Unknown Artist'}</span>
           <span className="text-theme-subtle">•</span>
-          <span className="shrink-0 font-mono text-theme-subtle text-xs">
+          <span className="shrink-0 text-theme-subtle text-xs">
             {formatDuration(song.duration)}
           </span>
           {(song.voteCount || 0) > 0 && (
             <>
               <span className="text-theme-subtle">•</span>
-              <span className="flex items-center gap-1 font-display text-[10px] text-secondary">
+              <span className="flex items-center gap-1 text-[10px] text-secondary">
                 <VoteIcon className="h-3 w-3" />
                 {song.voteCount}
               </span>

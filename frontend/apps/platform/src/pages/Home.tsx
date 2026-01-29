@@ -142,12 +142,12 @@ export default function Home() {
           </div>
           <div className="text-center">
             <h1
-              className="vhs-tear vhs-tear-strong glow-text jp-art text-4xl text-theme leading-none sm:text-5xl"
+              className="vhs-tear vhs-tear-strong glow-text font-wide text-4xl text-theme leading-none sm:text-5xl"
               data-text="ゾフ"
             >
               ゾフ
             </h1>
-            <p className="mt-3 text-sm text-theme-muted sm:text-base">
+            <p className="mt-3 font-pixel text-sm text-theme-muted sm:text-base">
               Shared music rooms, made for listening together
             </p>
             <p className="jp-art mt-2 text-theme-subtle text-xs">
@@ -157,7 +157,7 @@ export default function Home() {
 
           <div className="mt-8 space-y-5">
             <div className="panel-surface rounded-[24px] p-6">
-              <label className="mb-3 block font-display text-[10px] text-theme-muted tracking-[0.3em]">
+              <label className="mb-3 block font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
                 ROOM NAME
               </label>
               <input
@@ -181,7 +181,7 @@ export default function Home() {
             <div className="grid gap-4 sm:grid-cols-2">
               <Link
                 to="/rooms/create"
-                className="group flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-primary/50 bg-primary/95 px-6 py-4 font-display text-sm text-white shadow-[0_0_28px_rgba(255,46,151,0.45)] transition-all hover:-translate-y-0.5 hover:bg-primary"
+                className="group flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-primary/50 bg-primary/95 px-6 py-4 font-pixel text-sm text-white shadow-[0_0_28px_rgba(255,46,151,0.45)] transition-all hover:-translate-y-0.5 hover:bg-primary"
               >
                 Start a Session
                 <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-white/25 text-white">
@@ -191,7 +191,7 @@ export default function Home() {
               <button
                 onClick={handleJoinRoom}
                 disabled={!roomCode.trim() || isValidating}
-                className="flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-secondary/50 bg-secondary/85 px-6 py-4 font-display text-sm text-white shadow-[0_0_26px_rgba(0,217,255,0.4)] transition-all hover:-translate-y-0.5 hover:bg-secondary disabled:cursor-not-allowed disabled:bg-theme-surface disabled:text-theme-subtle"
+                className="flex cursor-pointer items-center justify-center gap-3 rounded-2xl border border-secondary/50 bg-secondary/85 px-6 py-4 font-pixel text-sm text-white shadow-[0_0_26px_rgba(0,217,255,0.4)] transition-all hover:-translate-y-0.5 hover:bg-secondary disabled:cursor-not-allowed disabled:bg-theme-surface disabled:text-theme-subtle"
               >
                 {isValidating ? (
                   <span className="flex items-center gap-2">
