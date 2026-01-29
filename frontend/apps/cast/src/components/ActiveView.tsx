@@ -21,27 +21,27 @@ export const ActiveView: React.FC = () => {
         <PlayerLayer />
 
         {/* Info Overlay - TV Optimized */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent px-12 pt-40 pb-12">
-          <div className="flex items-end gap-8">
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/80 to-transparent px-10 pt-32 pb-10">
+          <div className="flex items-end gap-6">
             <div className="relative shrink-0">
-              <div className="absolute -inset-1 animate-pulse rounded-2xl bg-gradient-to-tr from-primary to-secondary opacity-30 blur-xl" />
+              <div className="absolute -inset-1 rounded-2xl bg-gradient-to-tr from-primary to-secondary opacity-30" />
               <img
                 src={currentSong.thumbnailUrl}
                 alt={currentSong.title}
-                className="relative h-48 w-48 rounded-2xl border border-white/20 object-cover shadow-2xl"
+                className="relative h-40 w-40 rounded-xl border border-white/20 object-cover"
               />
             </div>
-            <div className="mb-3 min-w-0 flex-1">
-              <h1 className="mb-3 truncate font-display text-5xl text-white leading-tight drop-shadow-lg">
+            <div className="mb-2 min-w-0 flex-1">
+              <h1 className="mb-2 truncate font-display text-4xl text-white leading-tight">
                 {currentSong.title}
               </h1>
-              <p className="truncate font-light font-sans text-3xl text-white/80">
+              <p className="truncate font-light font-sans text-2xl text-white/80">
                 {currentSong.artist || 'Unknown Artist'}
               </p>
               {(currentSong.voteCount || 0) > 0 && (
-                <div className="mt-4 flex items-center gap-2">
-                  <span className="flex items-center gap-2 rounded-full border border-white/5 bg-white/10 px-4 py-2 font-medium text-lg text-secondary backdrop-blur-md">
-                    <span className="text-xl">🔥</span> {currentSong.voteCount}{' '}
+                <div className="mt-3 flex items-center gap-2">
+                  <span className="flex items-center gap-2 rounded-full border border-white/5 bg-white/10 px-3 py-1.5 font-medium text-base text-secondary">
+                    <span className="text-lg">🔥</span> {currentSong.voteCount}{' '}
                     votes
                   </span>
                 </div>
@@ -50,7 +50,7 @@ export const ActiveView: React.FC = () => {
           </div>
 
           {/* Progress Bar */}
-          <div className="mt-10">
+          <div className="mt-8">
             <div className="mb-3 flex justify-between font-mono text-lg text-white/60">
               <span>
                 {Math.floor(actualPositionMs / 60000)}:
@@ -69,7 +69,7 @@ export const ActiveView: React.FC = () => {
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-white/20">
               <div
-                className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-1000 ease-linear"
+                className="h-full bg-gradient-to-r from-primary to-secondary"
                 style={{
                   width: `${Math.min(
                     (actualPositionMs / ((currentSong.duration || 1) * 1000)) *
@@ -108,7 +108,7 @@ export const ActiveView: React.FC = () => {
           <QueueList songs={upNext} roomId={roomId} />
         </div>
 
-        <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 text-center backdrop-blur-sm">
+        <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 text-center">
           <div className="flex items-center justify-center gap-8">
             <div className="inline-flex items-center justify-center rounded-2xl bg-white p-3 shadow-lg">
               <QRCodeSVG

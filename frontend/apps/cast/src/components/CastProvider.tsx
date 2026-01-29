@@ -399,6 +399,20 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
 
     const connect = async () => {
       console.log('[Cast Receiver] Connecting to SSE', { roomId, casterId });
+
+      // Fetch initial state immediately, don't wait for SSE
+      api
+        .get('/rooms/{id}/songs', {
+          id: roomId,
+        })
+        .then(([songsErr, songs]) => {
+          console.log('[Cast Receiver] Initial songs fetch result:', {
+            err: songsErr,
+            count: songs?.length,
+          });
+          if (!songsErr && songs) setQueue(songs);
+        });
+
       const [err, stop] = await api.sse(
         '/rooms/{id}/events',
         { id: roomId },
@@ -459,10 +473,6 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
 
       if (!err && stop) {
         unsubscribe = stop;
-        const [songsErr, songs] = await api.get('/rooms/{id}/songs', {
-          id: roomId,
-        });
-        if (!songsErr && songs) setQueue(songs);
       }
     };
 
