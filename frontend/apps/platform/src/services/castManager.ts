@@ -8,11 +8,11 @@ import type {
 } from '@vibez/models';
 import { getToken, safeWrap, safeWrapAsync, useRoomStore } from '@vibez/shared';
 
-// const CAST_APP_ID = '333649E5'; // Receiver App ID - Custom Vibez Receiver
-// Google Cast Application ID - Custom Vibez Receiver
+// const CAST_APP_ID = '333649E5'; // Receiver App ID - Custom Zoff Receiver
+// Google Cast Application ID - Custom Zoff Receiver
 // For development, we use the Styled Media Receiver which allows custom content
 // In production, this should be replaced with a registered custom receiver app ID
-const CAST_APPLICATION_ID = import.meta?.env?.VITE_CAST_APP_ID || '1FAF5D9F'; // Custom Vibez Receiver
+const CAST_APPLICATION_ID = import.meta?.env?.VITE_CAST_APP_ID || '1FAF5D9F'; // Custom Zoff Receiver
 
 // Development: Use local custom receiver
 // Production: Use registered custom receiver
@@ -99,7 +99,7 @@ type LocalCastMessage =
 class GoogleCastManager implements CastManager {
   private devices: CastDevice[] = [];
   private currentSession: CastSession | null = null;
-  private actualCastSession: any = null; // Store the actual Cast SDK session object
+  private actualCastSession: chrome.cast.Session | null = null; // Store the actual Cast SDK session object
   private localReceiverWindow: Window | null = null;
   private localReceiverOrigin: string | null = null;
   private localReceiverFrame: HTMLIFrameElement | null = null;
@@ -199,10 +199,10 @@ class GoogleCastManager implements CastManager {
           resolve();
         } else if (attempts >= maxAttempts) {
           clearInterval(checkInterval);
-          const error: any = new Error(
-            'Google Cast API not available after timeout',
-          );
-          error.code = 'API_TIMEOUT_INTERNAL';
+          const error = {
+            message: 'Google Cast API not available after timeout',
+            code: 'API_TIMEOUT_INTERNAL',
+          };
           // Don't notify error for timeout, just log warning
           console.warn(
             '[Cast] API timeout - Cast likely not supported or extension missing',
@@ -243,8 +243,9 @@ class GoogleCastManager implements CastManager {
           // The full SDK init success is handled in initializeCastSDK's promise resolution.
           console.log('Google Cast API `initialize` call successful.');
         },
-        (error: any) => {
+        (error: chrome.cast.Error) => {
           console.error('❌ Google Cast initialization failed:', error);
+
           this.notifyError({
             code: 'INITIALIZATION_FAILED',
             description: 'Failed to initialize Google Cast',
@@ -328,17 +329,17 @@ class GoogleCastManager implements CastManager {
     }
   }
 
-  private onSessionListener(session: any): void {
+  private onSessionListener(session: chrome.cast.Session): void {
     console.log('🎯 Cast session established:', session);
     console.log('[Cast] session details', {
-      sessionId: session?.sessionId || session?.getSessionId?.(),
+      sessionId: session?.sessionId,
       receiverName: session?.receiver?.friendlyName,
       mediaCount: session?.media?.length || 0,
     });
 
     const [_, err] = safeWrap(() => {
       const castSession: CastSession = {
-        id: session.sessionId || session.getSessionId?.(),
+        id: session.sessionId,
         deviceId: session.receiver?.friendlyName || 'unknown-device',
         deviceName: session.receiver?.friendlyName || 'Unknown Device',
         deviceType: 'chromecast',
@@ -385,7 +386,7 @@ class GoogleCastManager implements CastManager {
     }
   }
 
-  private handleExistingMediaSession(media: any): void {
+  private handleExistingMediaSession(media: chrome.cast.media.Media): void {
     const [_, err] = safeWrap(() => {
       console.log('[Cast] existing media session detected', {
         sessionId: media?.sessionId,
@@ -479,7 +480,12 @@ class GoogleCastManager implements CastManager {
     if (!this.isInitialized) {
       const [initErr] = await safeWrapAsync(this.initializeCastSDK());
       if (initErr) {
-        if ((initErr as any).code === 'API_TIMEOUT_INTERNAL') {
+        if (
+          typeof initErr === 'object' &&
+          initErr !== null &&
+          'code' in initErr &&
+          (initErr as { code: string }).code === 'API_TIMEOUT_INTERNAL'
+        ) {
           console.warn(
             'Cast initialization timed out - likely unsupported browser. Skipping discovery error.',
           );
@@ -573,11 +579,11 @@ class GoogleCastManager implements CastManager {
 
     return new Promise((resolve, reject) => {
       window.chrome.cast.requestSession(
-        (session: any) => {
+        (session: chrome.cast.Session) => {
           const [err, res] = safeWrap(() => {
             console.log('✅ Session created successfully:', session);
             const castSession: CastSession = {
-              id: session.sessionId || session.getSessionId?.(),
+              id: session.sessionId,
               deviceId: deviceId,
               deviceName: session.receiver?.friendlyName || 'Unknown Device',
               deviceType: 'chromecast',
@@ -607,9 +613,8 @@ class GoogleCastManager implements CastManager {
           if (err) reject(err);
           else resolve(res!);
         },
-        (error: any) => {
-          const errMsg =
-            error?.description || error?.message || 'Unknown error';
+        (error: chrome.cast.Error) => {
+          const errMsg = error?.description || 'Unknown error';
           console.error('Failed to connect to device:', error);
           this.notifyError({
             code: error?.code || 'CONNECTION_FAILED',
@@ -667,7 +672,7 @@ class GoogleCastManager implements CastManager {
           this.actualCastSession = null;
           resolve();
         },
-        (error: any) => {
+        (error: chrome.cast.Error) => {
           console.error('Failed to stop session:', error);
           if (this.currentSession) {
             this.currentSession.state = 'error';
@@ -715,7 +720,7 @@ class GoogleCastManager implements CastManager {
 
     return new Promise((resolve, reject) => {
       if (DEVELOPMENT_MODE || this.isYouTubeUrl(mediaInfo.contentId)) {
-        console.log('🎵 Loading custom Vibez receiver');
+        console.log('🎵 Loading custom Zoff receiver');
         this.loadCustomReceiver(mediaInfo, session, resolve, reject);
         return;
       }
@@ -726,14 +731,14 @@ class GoogleCastManager implements CastManager {
 
   private loadCustomReceiver(
     mediaInfo: MediaInfo,
-    session: any,
+    session: chrome.cast.Session,
     resolve: () => void,
     reject: (error: Error) => void,
   ): void {
     const [err] = safeWrap(() => {
       console.log('[Cast] loadCustomReceiver:start', {
         receiverUrl: CUSTOM_RECEIVER_URL,
-        sessionId: session?.sessionId || session?.getSessionId?.(),
+        sessionId: session?.sessionId,
       });
       // Create media info for our custom receiver HTML page
       const receiverMediaInfo = new window.chrome.cast.media.MediaInfo(
@@ -783,7 +788,7 @@ class GoogleCastManager implements CastManager {
 
       session.loadMedia(
         request,
-        (media: any) => {
+        (media: chrome.cast.media.Media) => {
           console.log('✅ Custom receiver loaded successfully:', media);
           console.log('[Cast] custom receiver media session', {
             mediaSessionId: media?.sessionId,

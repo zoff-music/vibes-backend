@@ -1,3 +1,9 @@
+import type {
+  AdminRoomSummary,
+  PlaybackState,
+  Room,
+  Song,
+} from '@vibez/models';
 import { DebugConsole } from '@vibez/ui';
 import { Route, Routes } from 'react-router';
 import Admin from './pages/Admin';
@@ -6,8 +12,18 @@ import CreateRoom from './pages/CreateRoom';
 import Home from './pages/Home';
 import RoomView from './pages/RoomView';
 
+export interface SSRInitialData {
+  createRoomName?: string;
+  room?: Room;
+  songs?: Song[];
+  playback?: PlaybackState;
+  theme?: 'dark' | 'light';
+  adminRooms?: AdminRoomSummary[];
+  adminAuthorized?: boolean;
+}
+
 interface AppProps {
-  initialData?: any;
+  initialData?: SSRInitialData;
 }
 
 export default function App({ initialData }: AppProps) {

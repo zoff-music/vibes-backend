@@ -3,11 +3,10 @@ import type { AdminRoomSummary } from '@vibez/models';
 import { SoundCloudIcon, SpotifyIcon, YouTubeIcon } from '@vibez/ui';
 import { JSX, useEffect, useMemo, useRef, useState } from 'react';
 
+import type { SSRInitialData } from '../App';
+
 interface AdminProps {
-  initialData?: {
-    adminRooms?: AdminRoomSummary[];
-    adminAuthorized?: boolean;
-  };
+  initialData?: Pick<SSRInitialData, 'adminRooms' | 'adminAuthorized'>;
 }
 
 const sourceIcons: Record<string, JSX.Element> = {

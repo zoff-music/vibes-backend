@@ -17,7 +17,9 @@ Non-negotiable conventions. Follow strictly.
 - **Domain types in `vibe/`** - ALL business logic types in separate files
 - **Don't touch `monitoring/`**
 - **Limit Return Values** - NEVER return more than 2 values. 3 or more is strictly illegal.
-- **NO `interface{}`** - always use concrete types or specific interfaces.
+- **Strict Typing**: Use strong typing everywhere. Avoid `interface{}`/`any` unless absolutely necessary (e.g. strict reflection).
+- **No `any` type**: Use explicit types, compose when needed.
+- **Error Handling**: Return errors, don't panic. Use custom error types for specific failure modes.
 - **NO Inlined Structs** - never use `struct{}{}` or anonymous structs.
 - **NO Hardcoded JSON Slices** - never use `[]byte("{}")` or similar hacks.
 - **Separate Const Declarations** - Do not group constants in a block (e.g. `const (...)`). Declare each on its own line: `const X = "x"`.

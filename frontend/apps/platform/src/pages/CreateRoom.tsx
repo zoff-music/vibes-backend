@@ -13,10 +13,10 @@ const DEFAULT_SETTINGS = {
   allowDuplicates: false,
 };
 
+import type { SSRInitialData } from '../App';
+
 interface CreateRoomProps {
-  initialData?: {
-    createRoomName?: string;
-  };
+  initialData?: Pick<SSRInitialData, 'createRoomName'>;
 }
 
 const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {

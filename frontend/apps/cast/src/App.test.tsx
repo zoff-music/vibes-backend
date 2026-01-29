@@ -21,6 +21,6 @@ vi.mock('@vibez/shared', () => ({
 describe('App', () => {
   it('renders without crashing', () => {
     render(<App />);
-    expect(screen.getByText('Vibez')).toBeInTheDocument();
+    expect(screen.getByText('Zoff')).toBeInTheDocument();
   });
 });

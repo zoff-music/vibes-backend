@@ -1,25 +1,13 @@
-// Room types
-export interface Room {
-  id: string;
-  name: string;
-  mode: 'server' | 'host';
-  hostId?: string | null;
-  createdAt: string;
-  hasPassword: boolean;
-  settings: RoomSettings;
-  userCount?: number;
-  isAdmin?: boolean;
-}
+import {
+  PlaybackState,
+  Room,
+  RoomSettings,
+  RoomUpdate,
+  Song,
+  SourceType,
+} from '@vibez/models';
 
-export interface RoomSettings {
-  skipAllowed: boolean;
-  democraticSkip: boolean;
-  skipVoteThreshold: number;
-  maxContinuousAdds: number;
-  removeOnPlay: boolean;
-  loopQueue: boolean;
-  allowDuplicates: boolean;
-}
+export type { Room, RoomSettings, Song, SourceType, PlaybackState, RoomUpdate };
 
 export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   skipAllowed: true,
@@ -30,33 +18,6 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   loopQueue: false,
   allowDuplicates: false,
 };
-
-// Song types
-export type SourceType = 'youtube' | 'spotify' | 'soundcloud';
-
-export interface Song {
-  id: string;
-  sourceType: SourceType;
-  sourceId: string;
-  title: string;
-  artist?: string;
-  thumbnailUrl: string;
-  duration: number;
-  addedBy: string;
-  addedByNickname?: string;
-  addedAt: string;
-  position: number;
-  voteCount?: number;
-}
-
-// Playback types
-export interface PlaybackState {
-  currentSong: Song | null;
-  isPlaying: boolean;
-  positionMs: number;
-  updatedAt: string;
-  serverTimeMs: number;
-}
 
 // User types
 export interface RoomUser {

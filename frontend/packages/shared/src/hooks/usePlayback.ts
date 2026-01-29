@@ -1,4 +1,4 @@
-import { api } from '@vibez/api';
+import { api, getHttpError } from '@vibez/api';
 import { useCallback, useEffect } from 'react';
 import { usePlaybackStore } from '../stores/playbackStore';
 import { useRoomStore } from '../stores/roomStore';
@@ -70,7 +70,7 @@ export const usePlayback = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
 
           if (
             error.message?.includes(msgHost) ||
-            (error as any)?.status === 403
+            getHttpError(error)?.response.status === 403
           ) {
             message = 'Only hosts can skip in host mode';
           } else if (error.message?.includes(msgDisabled)) {

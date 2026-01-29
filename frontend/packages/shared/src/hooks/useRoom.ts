@@ -1,6 +1,7 @@
 import { api } from '@vibez/api';
 import { useCallback, useState } from 'react';
 import { useRoomStore } from '../stores/roomStore';
+import { RoomSettings, RoomUpdate } from '../types';
 import { safeWrapAsync } from '../utils/wrap';
 import { USE_SSE_CALLBACKS, useSSE } from './useSSE';
 
@@ -89,7 +90,7 @@ export const useRoom = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
       }
 
       if (data) {
-        setSession(data.userId, data.isAdmin, data.nickname as any);
+        setSession(data.userId, data.isAdmin, data.nickname || undefined);
         setRoom(data.room);
         return data;
       }
@@ -104,7 +105,7 @@ export const useRoom = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
   }, [reset]);
 
   const updateRoom = useCallback(
-    async (updates: any) => {
+    async (updates: RoomUpdate) => {
       setIsLoading(true);
       const [err, data] = await api.patch(
         '/rooms/{id}/settings',
@@ -128,7 +129,7 @@ export const useRoom = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
   );
 
   const updateRoomSettings = useCallback(
-    (settings: any) => updateRoom({ settings }),
+    (settings: RoomSettings) => updateRoom({ settings }),
     [updateRoom],
   );
 

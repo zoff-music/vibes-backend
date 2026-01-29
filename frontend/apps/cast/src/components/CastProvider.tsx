@@ -1,5 +1,3 @@
-/// <reference types="chromecast-caf-receiver" />
-
 import { api } from '@vibez/api';
 import {
   type PlaybackState,
@@ -18,6 +16,7 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { setGlobalDebug } from '../logging';
 
 // Types are available globally via @types/chromecast-caf-receiver
 
@@ -30,27 +29,27 @@ export type QueueItem = Song;
 
 type LocalCastMessage =
   | {
-      action: 'updatePlayback';
-      currentSong?: QueueItem;
-      isPlaying?: boolean;
-      positionMs?: number;
-      queue?: QueueItem[];
-      roomInfo?: RoomInfo;
-    }
+    action: 'updatePlayback';
+    currentSong?: QueueItem;
+    isPlaying?: boolean;
+    positionMs?: number;
+    queue?: QueueItem[];
+    roomInfo?: RoomInfo;
+  }
   | {
-      action: 'syncPlayback';
-      currentSong?: QueueItem;
-      isPlaying?: boolean;
-      positionMs?: number;
-    }
+    action: 'syncPlayback';
+    currentSong?: QueueItem;
+    isPlaying?: boolean;
+    positionMs?: number;
+  }
   | {
-      action: 'updateQueue';
-      queue?: QueueItem[];
-    }
+    action: 'updateQueue';
+    queue?: QueueItem[];
+  }
   | {
-      action: 'updateRoomInfo';
-      roomInfo?: RoomInfo;
-    };
+    action: 'updateRoomInfo';
+    roomInfo?: RoomInfo;
+  };
 
 // Global flag to prevent multiple Cast receiver initializations
 let isCastReceiverInitialized = false;
@@ -75,12 +74,16 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [statusText, setStatusText] = useState('Ready for Casting');
   const [roomMode, setRoomMode] = useState<string | null>(null);
-  const [debugMode, setDebugModeState] = useState(true); // Forced true for debugging
+  const [debugMode, setDebugModeState] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('debug') === 'true';
+  });
   const debugModeRef = useRef(debugMode);
 
   const setDebugMode = useCallback((value: boolean) => {
     setDebugModeState(value);
     debugModeRef.current = value;
+    setGlobalDebug(value);
   }, []);
 
   // Use global store for playback state to share with components
@@ -96,6 +99,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
   const contextRef = useRef<framework.CastReceiverContext | null>(null);
   const playerManagerRef = useRef<framework.PlayerManager | null>(null);
 
+  // Helper to normalize song which might come from untyped sources
   const normalizeSong = useCallback((song: Song): Song => {
     return {
       id: song.id,
@@ -105,7 +109,6 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       artist: song.artist,
       thumbnailUrl: song.thumbnailUrl || '',
       duration: song.duration || 0,
-      position: song.position ?? 0,
       addedBy: song.addedBy || 'cast-receiver',
       addedAt: song.addedAt || new Date().toISOString(),
       addedByNickname: song.addedByNickname,
@@ -162,16 +165,37 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       });
 
       const action = message.action;
+      const currentState = usePlaybackStore.getState();
+      const currentSongId = currentState.currentSong?.id;
+      const currentActualPosition = currentState.actualPositionMs;
+
       switch (action) {
         case 'updatePlayback':
           console.log('Updating playback state:', message);
           if (message.currentSong) {
             const normalizedSong = normalizeSong(message.currentSong);
+            const isSameSong = currentSongId === normalizedSong.id;
+            // Prevent reset to 0 if we are already playing this song and have a position
+            const shouldPreservePosition =
+              isSameSong &&
+              (!message.positionMs || message.positionMs === 0) &&
+              currentActualPosition > 1000;
+            const positionMs = shouldPreservePosition
+              ? currentActualPosition
+              : message.positionMs || 0;
+
+            if (shouldPreservePosition) {
+              console.log('[Cast Receiver] Preserving local position', {
+                local: currentActualPosition,
+                incoming: message.positionMs,
+              });
+            }
+
             setPlaybackState(
               {
                 currentSong: normalizedSong,
                 isPlaying: message.isPlaying || false,
-                positionMs: message.positionMs || 0,
+                positionMs: positionMs,
                 updatedAt: new Date().toISOString(),
                 serverTimeMs: Date.now(),
               },
@@ -190,11 +214,28 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
           console.log('Syncing playback:', message);
           if (message.currentSong) {
             const normalizedSong = normalizeSong(message.currentSong);
+            const isSameSong = currentSongId === normalizedSong.id;
+            // Prevent reset to 0 if we are already playing this song and have a position
+            const shouldPreservePosition =
+              isSameSong &&
+              (!message.positionMs || message.positionMs === 0) &&
+              currentActualPosition > 1000;
+            const positionMs = shouldPreservePosition
+              ? currentActualPosition
+              : message.positionMs || 0;
+
+            if (shouldPreservePosition) {
+              console.log('[Cast Receiver] Preserving local position', {
+                local: currentActualPosition,
+                incoming: message.positionMs,
+              });
+            }
+
             setPlaybackState(
               {
                 currentSong: normalizedSong,
                 isPlaying: message.isPlaying || false,
-                positionMs: message.positionMs || 0,
+                positionMs: positionMs,
                 updatedAt: new Date().toISOString(),
                 serverTimeMs: Date.now(),
               },
@@ -290,58 +331,68 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
 
           const media = loadRequestData.media;
           if (media?.customData) {
-            const data = media.customData as any;
+            interface LoadCustomData {
+              tokens?: Record<string, { token: string; expiresAt?: string }>;
+              debug?: boolean;
+              currentSong?: Song;
+              positionMs?: number;
+            }
+            if (
+              typeof media.customData === 'object' &&
+              media.customData !== null
+            ) {
+              const data = media.customData as Partial<LoadCustomData>;
 
-            // Handle tokens if present
-            if (data.tokens) {
-              for (const [provider, tokenData] of Object.entries(
-                data.tokens as Record<string, any>,
-              )) {
-                if (tokenData?.token) {
-                  console.log('[Cast Receiver] caching token for provider', {
-                    provider,
-                  });
-                  setCachedToken(
-                    provider,
-                    tokenData.token,
-                    tokenData.expiresAt ||
+              // Handle tokens if present
+              if (data.tokens) {
+                for (const [provider, tokenData] of Object.entries(data.tokens)) {
+                  if (tokenData?.token) {
+                    console.log('[Cast Receiver] caching token for provider', {
+                      provider,
+                    });
+                    setCachedToken(
+                      provider,
+                      tokenData.token,
+                      tokenData.expiresAt ||
                       new Date(Date.now() + 3600000).toISOString(),
-                  );
+                    );
+                  }
                 }
+              }
+
+              // Handle debug mode
+              if (data.debug) {
+                console.log('[Cast Receiver] Enabling debug mode from sender');
+                setDebugMode(true);
+              }
+
+              // Handle initial playback state from LOAD request
+              // This is critical because the default player cannot play our content
+              // so we must ingest the state here and return null to prevent IDLE state
+              if (data.currentSong) {
+                console.log(
+                  '[Cast Receiver] Initializing playback from LOAD request',
+                );
+                const normalizedSong = normalizeSong(data.currentSong);
+
+                setPlaybackState({
+                  currentSong: normalizedSong,
+                  isPlaying: true, // Auto-play on load
+                  positionMs: data.positionMs || 0,
+                  updatedAt: new Date().toISOString(),
+                  serverTimeMs: Date.now(),
+                });
+                setIsPlaying(true);
+                setStatusText(`Now Playing: ${normalizedSong.title}`);
+                updateMediaMetadata(normalizedSong);
               }
             }
 
-            // Handle debug mode
-            if (data.debug) {
-              console.log('[Cast Receiver] Enabling debug mode from sender');
-              setDebugMode(true);
-            }
-
-            // Handle initial playback state from LOAD request
-            // This is critical because the default player cannot play our content
-            // so we must ingest the state here and return null to prevent IDLE state
-            if (data.currentSong) {
-              console.log(
-                '[Cast Receiver] Initializing playback from LOAD request',
-              );
-              const normalizedSong = normalizeSong(data.currentSong);
-
-              setPlaybackState({
-                currentSong: normalizedSong,
-                isPlaying: true, // Auto-play on load
-                positionMs: data.positionMs || 0,
-                updatedAt: new Date().toISOString(),
-                serverTimeMs: Date.now(),
-              });
-              setIsPlaying(true);
-              setStatusText(`Now Playing: ${normalizedSong.title}`);
-              updateMediaMetadata(normalizedSong);
-            }
           }
 
           // Return null to prevent the default player from trying to load the content
           // (which would fail for custom metadata and result in IDLE state)
-          return null;
+          return null as any;
         },
       );
 
@@ -358,7 +409,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
 
       const options = new cast.framework.CastReceiverOptions();
       options.maxInactivity = 3600;
-      options.statusText = 'Vibez Session';
+      options.statusText = 'Zoff';
       options.disableIdleTimeout = true; // IMPORTANT for keeping session alive during custom playback
 
       const [startErr] = safeWrap(() => {
@@ -530,9 +581,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         queue,
         statusText,
         roomMode,
-        currentSong: currentSong
-          ? { ...currentSong, position: (currentSong as any).position ?? 0 }
-          : null,
+        currentSong,
         actualPositionMs,
         updateActualPosition,
         debugMode,
