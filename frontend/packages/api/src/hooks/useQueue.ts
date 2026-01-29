@@ -16,7 +16,7 @@ export const useQueue = (roomId: string) => {
     const [_err, data] = await api.get('/rooms/{id}/songs', { id: roomId });
 
     if (lastAddTimestamp.current > fetchStartTime) {
-      console.log('[Queue] Ignoring stale fetch queue result');
+      console.log('[Queue] Igzoffng stale fetch queue result');
       return;
     }
 

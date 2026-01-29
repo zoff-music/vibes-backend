@@ -60,7 +60,7 @@ export default function HomeScreen() {
                 textShadowRadius: 20,
               }}
             >
-              ノリ
+              ゾフ
             </Text>
             <View className="absolute -bottom-2">
               <Text className="font-heading text-[10px] text-theme-primary uppercase tracking-[8px]">

@@ -74,7 +74,7 @@ function createHTMLShell(
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>ノリ - Shared Music Queue</title>
+    <title>ゾフ - Shared Music Queue</title>
     <link rel="stylesheet" href="${mainCSS}" />
     <script id="ssr-data" type="application/json">${dataScriptContent}</script>
   </head>

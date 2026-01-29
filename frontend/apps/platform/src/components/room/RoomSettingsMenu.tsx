@@ -29,6 +29,7 @@ interface RoomSettingsMenuProps {
   isAuthenticating: boolean;
   shareUrl: string;
   onCopyShareLink: () => void;
+  roomId?: string;
   settingsMenuRef?: RefObject<HTMLDivElement | null>;
 }
 
@@ -50,6 +51,7 @@ export const RoomSettingsMenu = ({
   isAuthenticating,
   shareUrl,
   onCopyShareLink,
+  roomId,
   settingsMenuRef,
 }: RoomSettingsMenuProps) => {
   useEffect(() => {
@@ -118,7 +120,11 @@ export const RoomSettingsMenu = ({
 
                 {showShare && (
                   <div className="rounded-2xl border border-theme bg-theme-surface p-4">
-                    <RoomSharePanel url={shareUrl} onCopy={onCopyShareLink} />
+                    <RoomSharePanel
+                      url={shareUrl}
+                      roomId={roomId || ''}
+                      onCopy={onCopyShareLink}
+                    />
                   </div>
                 )}
               </div>

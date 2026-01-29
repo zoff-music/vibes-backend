@@ -10,12 +10,12 @@ export const IdleView: React.FC = () => {
         <div className="mb-6 flex flex-col items-center gap-3">
           <span
             className="vhs-tear-strong glow-text font-display text-6xl text-readable text-theme uppercase tracking-[0.22em] md:text-7xl"
-            data-text="ノリ"
+            data-text="ゾフ"
           >
-            ノリ
+            ゾフ
           </span>
           <p className="font-mono text-theme-subtle text-xs lowercase tracking-[0.4em]">
-            nori
+            zoff
           </p>
         </div>
         <p className="font-display text-2xl text-readable text-theme">
