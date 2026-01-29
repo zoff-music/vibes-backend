@@ -52,9 +52,11 @@ if (!isDev || process.env.FORCE_MANIFEST === 'true') {
   }
 }
 
+import type { SSRInitialData } from './src/App';
+
 function createHTMLShell(
   appHTML: string,
-  initialData: any,
+  initialData: SSRInitialData,
   mainJS: string,
   mainCSS: string,
   themeClass: string = '',
@@ -136,7 +138,10 @@ async function handleStaticFiles(path: string) {
   return null;
 }
 
-async function getInitialData(path: string, req: Request) {
+async function getInitialData(
+  path: string,
+  req: Request,
+): Promise<{ data: SSRInitialData; redirect: Response | null }> {
   if (path === '/admin' || path === '/admin/') {
     const cookieHeader = req.headers.get('cookie') ?? req.headers.get('Cookie');
     console.log('[SSR Admin] Handling admin SSR path:', path);
@@ -176,7 +181,7 @@ async function getInitialData(path: string, req: Request) {
   }
 
   const authenticatedApi = cookieHeader
-    ? (api as any).withHeaders({ Cookie: cookieHeader })
+    ? api.withHeaders({ Cookie: cookieHeader })
     : api;
 
   // Fetch all necessary data for room view in parallel
@@ -207,10 +212,10 @@ async function getInitialData(path: string, req: Request) {
   };
 }
 
-function getThemeFromCookies(cookieHeader: string | null): string {
+function getThemeFromCookies(cookieHeader: string | null): 'dark' | 'light' {
   console.log('COOKIEHEADER', cookieHeader);
   if (!cookieHeader) {
-    return ''; // Default to light mode (no class)
+    return 'light';
   }
 
   try {
@@ -230,7 +235,7 @@ function getThemeFromCookies(cookieHeader: string | null): string {
 
     let preferencesEncoded = cookies.preferences;
     if (!preferencesEncoded) {
-      return ''; // Default to light mode (no class)
+      return 'light';
     }
 
     // Strip optional quotes around cookie values
@@ -251,13 +256,13 @@ function getThemeFromCookies(cookieHeader: string | null): string {
       return 'dark';
     }
 
-    return ''; // Default to light mode (no class)
+    return 'light';
   } catch (error) {
     console.log(
       '[SSR] Error parsing theme preferences, defaulting to light:',
       error,
     );
-    return ''; // Default to light mode (no class)
+    return 'light';
   }
 }
 
@@ -328,7 +333,7 @@ Bun.serve({
     });
   },
   websocket: {
-    message() {},
+    message() { },
     open() {
       console.log('[HMR] Connected');
     },

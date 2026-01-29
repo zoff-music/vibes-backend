@@ -4,7 +4,7 @@ type LogLevel = 'log' | 'error' | 'warn' | 'info' | 'debug';
 
 interface LogMessage {
   id: string;
-  content: any;
+  content: unknown;
 }
 
 interface LogEntry {
@@ -43,7 +43,7 @@ export const DebugConsole: React.FC<Props> = ({ enabled = false }) => {
       debug: console.debug,
     };
 
-    const addLog = (level: LogLevel, args: any[]) => {
+    const addLog = (level: LogLevel, args: unknown[]) => {
       const entry: LogEntry = {
         id: generateId(),
         timestamp: new Date().toLocaleTimeString(),

@@ -34,7 +34,8 @@ import {
   youTubeVideoSchema,
 } from '@vibez/models';
 import { safeWrapAsync } from '@vibez/shared';
-import { RequestClient, type RequestDefinitions } from 'wiretyped';
+import { RequestClient, type RequestDefinitions, getHttpError } from 'wiretyped';
+export { getHttpError };
 
 const API_BASE_PATH = '/api/v1';
 
@@ -240,7 +241,9 @@ const endpoints = {
       response: searchResponseSchema,
     },
   },
-} satisfies RequestDefinitions;
+} as const satisfies RequestDefinitions;
+
+type API = typeof endpoints;
 
 // Helper interface for wiretyped errors
 interface HTTPError extends Error {
@@ -298,7 +301,26 @@ async function formatError(error: Error, context: string): Promise<Error> {
   return formatted;
 }
 
-const createWrappedClient = (customHeaders: Record<string, string> = {}) => {
+// Define the return type of the wrapped client to avoid 'as any'
+export type WrappedClient = Pick<
+  RequestClient<API>,
+  | 'get'
+  | 'post'
+  | 'put'
+  | 'patch'
+  | 'delete'
+  | 'sse'
+  | 'url'
+  | 'config'
+  | 'dispose'
+  | 'download'
+> & {
+  withHeaders: (headers: Record<string, string>) => WrappedClient;
+};
+
+export const createWrappedClient = (
+  customHeaders: Record<string, string> = {},
+): WrappedClient => {
   const localBaseClient = new RequestClient({
     hostname: API_BASE_URL,
     baseUrl: API_BASE_URL,
@@ -392,6 +414,9 @@ const createWrappedClient = (customHeaders: Record<string, string> = {}) => {
     // Expose SSE and other methods from local base client
     sse: localBaseClient.sse.bind(localBaseClient),
     url: localBaseClient.url.bind(localBaseClient),
+    config: localBaseClient.config,
+    dispose: localBaseClient.dispose.bind(localBaseClient),
+    download: localBaseClient.download.bind(localBaseClient),
 
     // Method to create a new client with additional headers
     withHeaders(headers: Record<string, string>) {
@@ -399,7 +424,7 @@ const createWrappedClient = (customHeaders: Record<string, string> = {}) => {
     },
   };
 
-  return wrapped as any;
+  return wrapped as unknown as WrappedClient;
 };
 
 export const api = createWrappedClient();

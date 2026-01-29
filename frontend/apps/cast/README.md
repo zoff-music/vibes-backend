@@ -127,3 +127,34 @@ This app is built with:
 ---
 
 For more details on the architecture, see [MUSIC-PROVIDERS.md](../../../docs/MUSIC-PROVIDERS.md).
+
+## 🐛 Debugging
+
+### Remote Logging
+The Cast Receiver implements a custom logging system that broadcasts console logs (log, info, warn, error) back to the connected Sender application. This is crucial for debugging simple Chromecasts that do not have a remote debugger interface.
+
+**To enable remote logging:**
+1. **Via URL**: Append `?debug=true` to the receiver URL (useful for local development/emulators).
+2. **Via Sender**: When loading media, include `{ customData: { debug: true } }` in the Load Request.
+
+**How it works:**
+- The receiver intercepts all console methods.
+- Logs are serialized and sent via the custom namespace `urn:x-cast:com.vibez.cast` with action `LOG`.
+- The sender (web/mobile) listens for these messages and replays them in its own console with a `[RECEIVER]` prefix.
+- **Note**: `error` level logs are *always* sent to the sender, regardless of debug mode.
+
+### Common Issues & Fixes
+
+**Playback Position Resetting**
+If you notice the playback position resetting to `0:00` when play/pause is toggled rapidly or during sync updates:
+- **Cause**: The receiver receives `updatePlayback` or `syncPlayback` messages where `positionMs` might be 0 (default fallback) or slightly out of sync.
+- **Fix**: The `CastProvider` has logic to **preserve the local playback position** if:
+  1. The Song ID has not changed (same track).
+  2. The incoming message has `positionMs: 0` (or missing).
+  3. The local player has already progressed past 1 second (`> 1000ms`).
+- **Logic**: This prevents the "restart from beginning" glitch while still allowing legitimate track changes to start from 0.
+
+**Startup Crashes**
+If the receiver fails to load entirely (white screen):
+- We use a **global logging initialization** in `logging.ts` that runs *before* React mounts.
+- This ensures that syntax errors, missing imports, or early runtime crashes are caught and broadcast to the sender (if connected).

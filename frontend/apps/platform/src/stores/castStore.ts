@@ -1,4 +1,10 @@
-import type { CastDevice, CastError, CastSession } from '@vibez/models';
+import type {
+  CastDevice,
+  CastError,
+  CastSession,
+  PlaybackState,
+  Song,
+} from '@vibez/models';
 import { safeWrap, safeWrapAsync } from '@vibez/shared';
 import { create } from 'zustand';
 import { castManager } from '../services/castManager';
@@ -17,9 +23,9 @@ interface CastState {
   discoverDevices: () => Promise<void>;
   connectToDevice: (deviceId: string) => Promise<void>;
   disconnectFromDevice: (deviceId: string) => Promise<void>;
-  castCurrentSong: (song: any) => Promise<void>;
-  syncPlaybackState: (state: any) => Promise<void>;
-  updateQueue: (queue: any[]) => Promise<void>;
+  castCurrentSong: (song: Song) => Promise<void>;
+  syncPlaybackState: (state: PlaybackState) => Promise<void>;
+  updateQueue: (queue: Song[]) => Promise<void>;
   updateRoomInfo: (roomInfo: {
     name: string;
     participantCount: number;
@@ -168,7 +174,7 @@ export const useCastStore = create<CastState>((set, get) => ({
     });
   },
 
-  castCurrentSong: async (song: any) => {
+  castCurrentSong: async (song: Song) => {
     if (!get().isConnected) {
       throw new Error('No active casting session');
     }
@@ -179,35 +185,6 @@ export const useCastStore = create<CastState>((set, get) => ({
       sourceId: song?.sourceId,
     });
     set({ lastError: null });
-
-    if (song?.contentId && song?.contentType) {
-      const mediaInfo = {
-        contentId: song.contentId,
-        contentType: song.contentType,
-        streamType: song.streamType || ('BUFFERED' as const),
-        metadata: song.metadata || {
-          title: 'Unknown Title',
-          artist: 'Unknown Artist',
-          images: [],
-        },
-        duration: song.duration,
-      };
-
-      const [error, _] = await safeWrapAsync(castManager.castMedia(mediaInfo));
-      if (error) {
-        console.error('Failed to cast media info:', error);
-        set({
-          lastError: {
-            code: 'CAST_MEDIA_FAILED',
-            description: 'Failed to cast media to device',
-            details: error,
-          },
-        });
-        throw error;
-      }
-      console.log('[Cast] store castCurrentSong:done');
-      return;
-    }
 
     // Build content URL based on source type
     let contentId = '';
@@ -222,7 +199,7 @@ export const useCastStore = create<CastState>((set, get) => ({
         contentId = `https://soundcloud.com/${song.sourceId}`;
         break;
       default:
-        contentId = song.sourceId || song.url || '';
+        contentId = song.sourceId || '';
     }
 
     const mediaInfo = {
@@ -261,7 +238,7 @@ export const useCastStore = create<CastState>((set, get) => ({
     console.log('[Cast] store castCurrentSong:done');
   },
 
-  syncPlaybackState: async (state: any) => {
+  syncPlaybackState: async (state: PlaybackState) => {
     if (!get().isConnected) return;
 
     console.log('[Cast] store syncPlaybackState:start', {
@@ -286,7 +263,7 @@ export const useCastStore = create<CastState>((set, get) => ({
     }
   },
 
-  updateQueue: async (queue: any[]) => {
+  updateQueue: async (queue: Song[]) => {
     if (!get().isConnected) return;
 
     console.log('[Cast] store updateQueue:start', { count: queue.length });

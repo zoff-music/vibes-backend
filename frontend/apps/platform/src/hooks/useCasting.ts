@@ -89,6 +89,8 @@ export const useCasting = (_roomId: string) => {
         isPlaying,
         positionMs: actualPositionMs,
         currentSong,
+        updatedAt: new Date().toISOString(),
+        serverTimeMs: Date.now(),
       }).catch((error) => {
         console.error('Failed to sync playback state:', error);
       });

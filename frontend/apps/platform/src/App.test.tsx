@@ -11,7 +11,7 @@ describe('App Integration', () => {
     );
 
     // Check for main title
-    expect(screen.getByText('Vibez')).toBeInTheDocument();
+    expect(screen.getByText('Zoff')).toBeInTheDocument();
 
     // Check for "Start a Session" button
     expect(screen.getByText('Start a Session')).toBeInTheDocument();

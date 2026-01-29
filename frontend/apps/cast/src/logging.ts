@@ -2,6 +2,18 @@
 
 import { safeWrap } from '@vibez/shared';
 
+let isGlobalDebugEnabled = false;
+
+export const setGlobalDebug = (enabled: boolean) => {
+  isGlobalDebugEnabled = enabled;
+  if (typeof window !== 'undefined' && window.cast?.framework) {
+    const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
+    castDebugLogger.setEnabled(enabled);
+    castDebugLogger.showDebugLogs(enabled);
+    console.log(`[GlobalLogger] Debug mode set to: ${enabled}`);
+  }
+};
+
 // Initialize logging immediately
 const initLogging = () => {
   if (typeof window === 'undefined' || !window.cast?.framework) {
@@ -10,11 +22,14 @@ const initLogging = () => {
   }
 
   const castDebugLogger = cast.debug.CastDebugLogger.getInstance();
-  const LOG_TAG = 'VibezApp';
+  const LOG_TAG = 'Zoff';
 
-  // Enable debug logger
-  castDebugLogger.setEnabled(true);
-  castDebugLogger.showDebugLogs(true);
+  // Check URL params for initial state
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('debug') === 'true') {
+    setGlobalDebug(true);
+  }
+
   castDebugLogger.loggerLevelByEvents = {
     'cast.framework.events.category.CORE': cast.framework.LoggerLevel.INFO,
     'cast.framework.events.EventType.MEDIA_STATUS':
@@ -32,12 +47,18 @@ const initLogging = () => {
     debug: console.debug,
   };
 
-  const serializeArgs = (args: any[]) => {
+  const serializeArgs = (args: unknown[]) => {
     return args.map((arg) => {
       if (typeof arg === 'object' && arg !== null) {
         try {
           return JSON.stringify(arg, (key, value) => {
-            if (key === 'source' && value?.tagName) return '[DOM Element]';
+            if (
+              key === 'source' &&
+              value &&
+              typeof value === 'object' &&
+              'tagName' in value
+            )
+              return '[DOM Element]';
             return value;
           });
         } catch (_e) {
@@ -48,7 +69,9 @@ const initLogging = () => {
     });
   };
 
-  const sendLogToSender = (level: string, args: any[]) => {
+  const sendLogToSender = (level: string, args: unknown[]) => {
+    if (!isGlobalDebugEnabled && level !== 'error') return; // Only send errors if debug is off
+
     const ctx = cast.framework.CastReceiverContext.getInstance();
     const senders = ctx.getSenders();
 
@@ -70,31 +93,31 @@ const initLogging = () => {
   };
 
   console.log = (...args) => {
-    castDebugLogger?.info(LOG_TAG, ...args);
+    if (isGlobalDebugEnabled) castDebugLogger?.info(LOG_TAG, ...args);
     originalConsole.log(...args);
     sendLogToSender('info', args);
   };
 
   console.info = (...args) => {
-    castDebugLogger?.info(LOG_TAG, ...args);
+    if (isGlobalDebugEnabled) castDebugLogger?.info(LOG_TAG, ...args);
     originalConsole.info(...args);
     sendLogToSender('info', args);
   };
 
   console.warn = (...args) => {
-    castDebugLogger?.warn(LOG_TAG, ...args);
+    if (isGlobalDebugEnabled) castDebugLogger?.warn(LOG_TAG, ...args);
     originalConsole.warn(...args);
     sendLogToSender('warn', args);
   };
 
   console.error = (...args) => {
-    castDebugLogger?.error(LOG_TAG, ...args);
+    if (isGlobalDebugEnabled) castDebugLogger?.error(LOG_TAG, ...args);
     originalConsole.error(...args);
     sendLogToSender('error', args);
   };
 
   console.debug = (...args) => {
-    castDebugLogger?.debug(LOG_TAG, ...args);
+    if (isGlobalDebugEnabled) castDebugLogger?.debug(LOG_TAG, ...args);
     originalConsole.debug(...args);
     sendLogToSender('debug', args);
   };

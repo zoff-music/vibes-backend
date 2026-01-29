@@ -1,11 +1,10 @@
-import { api } from '@vibez/api';
+import { api, getHttpError } from '@vibez/api';
 import { ProviderToken } from '@vibez/models';
 import { safeWrapAsync } from '@vibez/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const tokenCache: Record<string, { token: string; expiresAt: string }> = {};
-// Using any here as simple placeholder promise type
-const pendingRequests: Record<string, Promise<any> | undefined> = {};
+const pendingRequests: Record<string, Promise<ProviderToken | null> | undefined> = {};
 const listeners = new Set<(provider: string, token: string | null) => void>();
 
 const emitChange = (provider: string, token: string | null) => {
@@ -51,7 +50,7 @@ export function useProviderToken() {
     // Check pending requests
     const pending = pendingRequests[provider];
     if (pending) {
-      const [err, data] = await safeWrapAsync<ProviderToken>(pending);
+      const [err, data] = await safeWrapAsync<ProviderToken | null>(pending);
       if (err) {
         setError('Failed to join pending request');
         return null;
@@ -71,10 +70,14 @@ export function useProviderToken() {
     const tokenRequest = async () => {
       const [err, data] = await api.get('/tokens/{provider}', { provider });
       if (err) {
-        if ((err as any).status === 403) {
+        const httpError = getHttpError(err);
+        if (httpError?.response.status === 403) {
           throw new Error("You don't seem to have premium");
         }
-        throw new Error((err as any).message || 'Failed to fetch token');
+        if (err instanceof Error) {
+          throw err;
+        }
+        throw new Error('Failed to fetch token', { cause: err });
       }
       return data;
     };

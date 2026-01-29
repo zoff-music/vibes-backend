@@ -1,4 +1,4 @@
-import type { CastDevice } from '@vibez/models';
+import type { CastDevice, Song } from '@vibez/models';
 import { safeWrapAsync, usePlaybackStore } from '@vibez/shared';
 import React, { useState } from 'react';
 import { castManager } from '../../services/castManager';
@@ -71,7 +71,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
     onClose();
   };
 
-  const handleCastCurrentSong = async (media?: any) => {
+  const handleCastCurrentSong = async (media?: Song) => {
     const songToCast = media || currentSong;
     if (!songToCast || !isConnected) return;
 
@@ -148,7 +148,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
             {isDev && currentSong && (
               <div className="border-primary/20 border-t pt-3 dark:border-primary/30">
                 <button
-                  onClick={handleCastCurrentSong}
+                  onClick={() => handleCastCurrentSong()}
                   disabled={isCasting}
                   className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2 text-white transition-colors duration-200 hover:bg-primary/90 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-primary-light dark:hover:bg-primary"
                 >
@@ -197,22 +197,17 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
                 {/* Test Cast Button for Demo */}
                 <button
                   onClick={() => {
-                    const testMedia = {
-                      contentId: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
-                      contentType: 'video/mp4',
-                      streamType: 'BUFFERED' as const,
-                      metadata: {
-                        title: 'Test Video - YouTube',
-                        artist: 'YouTube',
-                        images: [
-                          {
-                            url: 'https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
-                            height: 480,
-                            width: 640,
-                          },
-                        ],
-                      },
+                    const testMedia: Song = {
+                      id: 'test-song',
+                      sourceType: 'youtube',
+                      sourceId: 'dQw4w9WgXcQ',
+                      title: 'Test Video - YouTube',
+                      artist: 'YouTube',
+                      thumbnailUrl:
+                        'https://img.youtube.com/vi/dQw4w9WgXcQ/maxresdefault.jpg',
                       duration: 213,
+                      addedBy: 'test',
+                      addedAt: new Date().toISOString(),
                     };
                     handleCastCurrentSong(testMedia);
                   }}

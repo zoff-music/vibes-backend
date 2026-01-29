@@ -3,7 +3,7 @@ import { useEffect, useRef } from 'react';
 import { usePlaybackStore } from '../stores/playbackStore';
 import { useQueueStore } from '../stores/queueStore';
 import { useRoomStore } from '../stores/roomStore';
-import { PlaybackState, Song } from '../types';
+import { PlaybackState, Room, Song } from '../types';
 import { safeWrap } from '../utils/wrap';
 
 const ACTIVE_CONNECTIONS = new Map<
@@ -46,27 +46,37 @@ export const useSSE = (
       if (!connection) {
         let inFlight = IN_FLIGHT_CONNECTIONS.get(roomId);
 
+type SSEMessage =
+  | { type: 'connected'; data: Room } // connectedSchema usually returns Room-like info or just { connected: true }? Check schema.
+  | { type: 'songs_update'; data: Song[] }
+  | { type: 'playback_update'; data: PlaybackState }
+  | { type: 'users_update'; data: number }
+  | { type: 'song_added'; data: Song }
+  | { type: 'settings_update'; data: Room };
+
+// ...
+
         if (!inFlight) {
           inFlight = api.sse(
             '/rooms/{id}/events',
             { id: roomId },
-            (result: [Error | null, any]) => {
-              const [err, message] = result;
+            (result: [Error | null, unknown]) => {
+              const [err, msg] = result;
               if (err) {
                 console.error('SSE Error:', err);
                 return;
               }
 
-              if (!message) return;
+              if (!msg) return;
+              const message = msg as SSEMessage;
 
-              switch ((message as any).type) {
+              switch (message.type) {
                 case 'connected':
                   console.log('[SSE] connected:', message.data);
                   break;
                 case 'songs_update': {
                   const [_, error] = safeWrap(() => {
-                    const songs = message.data as Song[];
-                    setSongs(songs);
+                    setSongs(message.data);
                   });
                   if (error)
                     console.error('Failed to parse songs_update', error);
@@ -74,8 +84,7 @@ export const useSSE = (
                 }
                 case 'playback_update': {
                   const [_, error] = safeWrap(() => {
-                    const state = message.data as PlaybackState;
-                    setPlaybackState(state, room?.mode);
+                    setPlaybackState(message.data, room?.mode);
                   });
                   if (error)
                     console.error('Failed to parse playback_update', error);
@@ -83,7 +92,7 @@ export const useSSE = (
                 }
                 case 'song_added': {
                   const [_, error] = safeWrap(() => {
-                    const song = message.data as Song;
+                    const song = message.data;
                     console.log('[SSE] song_added received:', song);
                     if (callbacks?.onSongAdded) {
                       callbacks.onSongAdded(song);
@@ -102,7 +111,7 @@ export const useSSE = (
                 }
                 case 'settings_update': {
                   const [_, error] = safeWrap(() =>
-                    setRoom(message.data as any),
+                    setRoom(message.data),
                   );
                   if (error)
                     console.error('Failed to parse settings_update', error);
@@ -110,8 +119,7 @@ export const useSSE = (
                 }
                 case 'users_update': {
                   const [_, error] = safeWrap(() => {
-                    const count = message.data as number;
-                    setUsersCount(count);
+                    setUsersCount(message.data);
                   });
                   if (error)
                     console.error('Failed to parse users_update', error);

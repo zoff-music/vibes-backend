@@ -28,13 +28,10 @@ export const useRoomStore = create<RoomState>((set) => ({
   setRoom: (room) => {
     const isAdmin = room.isAdmin !== undefined ? room.isAdmin : false;
     const usersCount = room.userCount !== undefined ? room.userCount : 0;
-    const userId = (room as any).userId;
-
-    set((state) => ({
+    set(() => ({
       room,
       isAdmin,
       usersCount,
-      userId: userId || state.userId,
     }));
   },
   setUsers: (users) => set({ users, usersCount: users.length }),
