@@ -1,4 +1,4 @@
-import { api, setCachedToken } from '@vibez/api';
+import { API_BASE_URL, api, setCachedToken } from '@vibez/api';
 import { type Song, safeWrap, usePlaybackStore } from '@vibez/shared';
 import type { framework } from 'chromecast-caf-receiver';
 import React, {
@@ -61,6 +61,7 @@ interface CastContextType {
   debugMode: boolean;
   roomId: string | null;
   error: string | null;
+  apiUrl: string;
 }
 
 const CastContext = createContext<CastContextType | undefined>(undefined);
@@ -397,7 +398,6 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         console.error('[Cast Receiver] Start error', startErr);
       }
     };
-
     if (window.cast?.framework) {
       initCast();
     }
@@ -447,8 +447,18 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
           const [playbackErr, playbackState] = playbackRes;
 
           if (!songsErr && songs) {
+            console.log(
+              `[Cast Receiver] API fetched ${songs.length} songs. Raw:`,
+              songs,
+            );
             const normalizedSongs = songs.map((s) => normalizeSong(s));
             setQueue(normalizedSongs);
+          } else if (songsErr) {
+            console.error('[Cast Receiver] Failed to fetch songs:', songsErr);
+          } else {
+            console.log(
+              '[Cast Receiver] API returned NO songs (null/undefined)',
+            );
           }
 
           if (!playbackErr && playbackState && playbackState.currentSong) {
@@ -473,14 +483,28 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
           setError(`Fetch Error: ${unexpectedErr.message}`);
         });
 
+      // Define strict SSE Message types matching backend
+      type SSEMessage =
+        | { type: 'connected'; data: any }
+        | { type: 'playback_update'; data: any }
+        | { type: 'songs_update'; data: Song[] }
+        | { type: 'settings_update'; data: any }
+        | { type: 'users_update'; data: number };
+
       const [err, stop] = await api.sse(
         '/rooms/{id}/events',
         { id: roomId },
-        (result: [Error | null, any]) => {
+        (result: [Error | null, unknown]) => {
           const [eventError, message] = result;
-          if (eventError || !message || !isMounted) return;
+          if (eventError) {
+            console.error('[Cast Receiver] SSE Error:', eventError);
+            return;
+          }
+          if (!message || !isMounted) return;
 
-          const typedMessage = message as any;
+          // Type assertion with runtime check (implicit in switch)
+          const typedMessage = message as SSEMessage;
+          console.log('[Cast Receiver] SSE Event received:', typedMessage.type);
 
           switch (typedMessage.type) {
             case 'connected':
@@ -488,7 +512,6 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
               break;
             case 'playback_update': {
               const data = typedMessage.data;
-              // console.log('[Cast Receiver] Playback Update (SSE):', data);
               const normalizedSong = data.currentSong
                 ? normalizeSong(data.currentSong)
                 : null;
@@ -513,11 +536,25 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
               break;
             }
             case 'songs_update':
-              console.log(
-                '[Cast Receiver] Received songs update (SSE):',
-                typedMessage.data,
-              );
-              setQueue(typedMessage.data.map((s: Song) => normalizeSong(s)));
+              // console.log('[Cast Receiver] Raw songs_update:', JSON.stringify(typedMessage.data));
+              if (Array.isArray(typedMessage.data)) {
+                const normalizedQueue = typedMessage.data.map((s, index) => {
+                  const n = normalizeSong(s);
+                  // Log first item to verify structure
+                  if (index === 0)
+                    console.log('[Cast Receiver] First normalized song:', n);
+                  return n;
+                });
+                console.log(
+                  `[Cast Receiver] Setting queue with ${normalizedQueue.length} items`,
+                );
+                setQueue(normalizedQueue);
+              } else {
+                console.error(
+                  '[Cast Receiver] songs_update data is NOT an array:',
+                  typedMessage.data,
+                );
+              }
               break;
             case 'settings_update':
               setRoomMode(typedMessage.data.mode);
@@ -596,6 +633,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         debugMode,
         roomId: roomId || null,
         error,
+        apiUrl: API_BASE_URL,
       }}
     >
       {children}
