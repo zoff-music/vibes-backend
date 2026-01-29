@@ -92,8 +92,8 @@ const VideoPlayerComponent = ({
 
   useEffect(() => {
     console.log('[VideoPlayer] ID changed, resetting:', {
-       oldId: playerRef.current ? 'active' : 'null', // approximation
-       newId: currentSong?.id
+      oldId: playerRef.current ? 'active' : 'null', // approximation
+      newId: currentSong?.id,
     });
     setIsReady(false);
     setError(null);
