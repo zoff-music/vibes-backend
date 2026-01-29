@@ -69,9 +69,10 @@ func TestLoopQueueAndRemoveOnPlay(t *testing.T) {
 	// 1. Create Room with LoopQueue=true, RemoveOnPlay=false
 	roomID := createTestRoom(t, env, "Loop Room")
 	updateRoomSettings(t, env, roomID, &vibe.RoomSettings{
-		LoopQueue:    true,
-		RemoveOnPlay: false,
-		SkipAllowed:  true,
+		LoopQueue:      true,
+		RemoveOnPlay:   false,
+		SkipAllowed:    true,
+		EnabledSources: []string{"youtube", "spotify", "soundcloud"},
 	})
 
 	// 2. Add two songs
@@ -104,9 +105,10 @@ func TestLoopQueueAndRemoveOnPlay(t *testing.T) {
 
 	// 6. Enable RemoveOnPlay, Disable LoopQueue
 	updateRoomSettings(t, env, roomID, &vibe.RoomSettings{
-		LoopQueue:    false,
-		RemoveOnPlay: true,
-		SkipAllowed:  true,
+		LoopQueue:      false,
+		RemoveOnPlay:   true,
+		SkipAllowed:    true,
+		EnabledSources: []string{"youtube", "spotify", "soundcloud"},
 	})
 
 	// 7. Skip Song 1 - it should be removed, Song 2 should play

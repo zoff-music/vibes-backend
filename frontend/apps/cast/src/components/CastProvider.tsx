@@ -39,6 +39,7 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
   const [statusText, setStatusText] = useState('Ready for Casting');
   const [roomMode, setRoomMode] = useState<string | null>(null);
   const [debugMode, setDebugModeState] = useState(() => {
+    if (import.meta.env.VITE_CAST_DEBUG_MODE !== 'true') return false;
     const params = new URLSearchParams(window.location.search);
     return params.get('debug') === 'true';
   });
