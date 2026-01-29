@@ -8,6 +8,7 @@ export const roomSettingsSchema = yup.object({
   removeOnPlay: yup.boolean().required(),
   loopQueue: yup.boolean().required(),
   allowDuplicates: yup.boolean().required(),
+  enabledSources: yup.array(yup.string().required()).required(),
 });
 export type RoomSettings = yup.InferType<typeof roomSettingsSchema>;
 

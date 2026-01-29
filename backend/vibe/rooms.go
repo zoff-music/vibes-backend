@@ -7,18 +7,25 @@ import (
 
 // RoomSettings holds configuration for a room
 type RoomSettings struct {
-	SkipAllowed       bool    `json:"skipAllowed"`
-	DemocraticSkip    bool    `json:"democraticSkip"`
-	SkipVoteThreshold float64 `json:"skipVoteThreshold"`
-	MaxContinuousAdds int     `json:"maxContinuousAdds"`
-	RemoveOnPlay      bool    `json:"removeOnPlay"`
-	LoopQueue         bool    `json:"loopQueue"`
-	AllowDuplicates   bool    `json:"allowDuplicates"`
+	SkipAllowed       bool     `json:"skipAllowed"`
+	DemocraticSkip    bool     `json:"democraticSkip"`
+	SkipVoteThreshold float64  `json:"skipVoteThreshold"`
+	MaxContinuousAdds int      `json:"maxContinuousAdds"`
+	RemoveOnPlay      bool     `json:"removeOnPlay"`
+	LoopQueue         bool     `json:"loopQueue"`
+	AllowDuplicates   bool     `json:"allowDuplicates"`
+	EnabledSources    []string `json:"enabledSources"`
 }
 
 func (r RoomSettings) IsEmpty() bool {
-	defaultSettings := RoomSettings{}
-	return r == defaultSettings
+	return r.SkipAllowed == false &&
+		r.DemocraticSkip == false &&
+		r.SkipVoteThreshold == 0 &&
+		r.MaxContinuousAdds == 0 &&
+		r.RemoveOnPlay == false &&
+		r.LoopQueue == false &&
+		r.AllowDuplicates == false &&
+		len(r.EnabledSources) == 0
 }
 
 // DefaultRoomSettings returns sensible defaults
@@ -31,6 +38,7 @@ func DefaultRoomSettings() RoomSettings {
 		RemoveOnPlay:      true,
 		LoopQueue:         false,
 		AllowDuplicates:   false,
+		EnabledSources:    []string{"youtube", "spotify", "soundcloud"},
 	}
 }
 

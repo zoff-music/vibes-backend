@@ -62,5 +62,6 @@ type SongController interface {
 	SongRemover
 	SongVoter
 	SongsFetcher
+	RoomFetcher
 	PlaybackController
 }

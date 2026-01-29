@@ -73,16 +73,29 @@ export const AddToQueueModal: React.FC<Props> = ({
     currentSong?.sourceType === 'spotify';
 
   const { providers, fetchProviders } = useAuthCache();
+  const { room } = useRoom(roomId);
+  const enabledSources = room?.settings.enabledSources ?? [
+    'youtube',
+    'spotify',
+    'soundcloud',
+  ];
+
   // Ensure YouTube is first, then Spotify, then SoundCloud
   const orderedProviders: SourceType[] = ['youtube', 'spotify', 'soundcloud'];
-  const providerList = orderedProviders.filter((p) =>
-    (providers || []).includes(p),
+  const providerList = orderedProviders.filter(
+    (p) => (providers || []).includes(p) && enabledSources.includes(p),
   );
 
-  const [selectedProvider, setSelectedProvider] =
-    useState<SourceType>('youtube');
+  const [selectedProvider, setSelectedProvider] = useState<SourceType>(
+    providerList[0] ?? 'youtube',
+  );
 
-  useRoom(roomId);
+  useEffect(() => {
+    if (providerList.length > 0 && !providerList.includes(selectedProvider)) {
+      setSelectedProvider(providerList[0]);
+    }
+  }, [providerList, selectedProvider]);
+
   const searchTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
