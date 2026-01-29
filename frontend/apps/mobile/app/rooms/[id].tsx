@@ -82,12 +82,34 @@ export default function RoomView() {
               </Text>
             </View>
             <View className="flex-1">
-              <Text
-                className="mb-1 font-heading text-[13px] text-theme-text"
-                numberOfLines={1}
-              >
-                {song.title}
-              </Text>
+              <View className="flex-row items-center gap-2">
+                <Text
+                  className="mb-1 shrink font-heading text-[13px] text-theme-text"
+                  numberOfLines={1}
+                >
+                  {song.title}
+                </Text>
+                {/* Source Icon */}
+                <View className="mb-0.5">
+                  <FontAwesome
+                    name={
+                      song.sourceType === 'spotify'
+                        ? 'spotify'
+                        : song.sourceType === 'soundcloud'
+                          ? 'soundcloud'
+                          : 'youtube-play'
+                    }
+                    size={10}
+                    color={
+                      song.sourceType === 'spotify'
+                        ? '#1DB954'
+                        : song.sourceType === 'soundcloud'
+                          ? '#ff5500'
+                          : '#FF0000'
+                    }
+                  />
+                </View>
+              </View>
               <Text
                 className="font-body text-[11px] text-theme-text-muted"
                 numberOfLines={1}

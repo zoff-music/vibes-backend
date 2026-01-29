@@ -1,4 +1,4 @@
-import { QueueList } from '@vibez/ui';
+import { QueueList, SoundCloudIcon, SpotifyIcon, YouTubeIcon } from '@vibez/ui';
 import { QRCodeSVG } from 'qrcode.react';
 import React from 'react';
 import { useCast } from './CastProvider';
@@ -52,6 +52,17 @@ export const ActiveView: React.FC = () => {
                     votes
                   </span>
                 </div>
+              )}
+            </div>
+
+            {/* Source Icon on Right */}
+            <div className="mb-2 flex shrink-0 items-center justify-center pr-4 pb-1">
+              {currentSong.sourceType === 'spotify' ? (
+                <SpotifyIcon className="h-10 w-10 text-white/50" />
+              ) : currentSong.sourceType === 'soundcloud' ? (
+                <SoundCloudIcon className="h-10 w-10 text-white/50" />
+              ) : (
+                <YouTubeIcon className="h-10 w-10 text-white/50" />
               )}
             </div>
           </div>

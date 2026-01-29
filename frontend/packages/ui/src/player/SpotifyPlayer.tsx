@@ -200,8 +200,8 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
     (error?.includes('auth') ? error : null);
 
   const containerClass = fill
-    ? 'relative h-full w-full overflow-hidden bg-gradient-to-br from-green-900 to-black'
-    : 'relative w-full overflow-hidden rounded-xl bg-gradient-to-br from-green-900 to-black';
+    ? 'relative h-full w-full overflow-hidden bg-[#121212]'
+    : 'relative w-full overflow-hidden rounded-xl bg-[#121212]';
 
   const containerStyle = fill
     ? { height: '100%', width: '100%' }
@@ -226,69 +226,57 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
       className={`${containerClass} ${!isVisible ? 'hidden' : ''}`}
       style={containerStyle}
     >
-      {showOverlay &&
-        (fill ? (
-          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 p-8 text-center backdrop-blur-sm">
-            <div>
-              <div className="mx-auto mb-4 h-16 w-16 text-green-500 opacity-50">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  strokeWidth={1.5}
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
-                  />
-                </svg>
-              </div>
-              <h3 className="mb-2 font-display text-2xl text-white">
-                Playback Issue
-              </h3>
-              <p className="mx-auto max-w-lg text-white/70 text-xl">
-                {overlayErrorMessage ||
-                  'Authentication required. Please open the Vibes app on your device to reconnect Spotify.'}
-              </p>
-            </div>
-          </div>
-        ) : (
-          <AuthOverlay
-            provider="spotify"
-            errorMessage={overlayErrorMessage}
-            onAuthorize={handleAuthorize}
-          />
-        ))}
+      {/* Spotify Background Gradient - Bottom Layer */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1DB954]/20 via-black/40 to-black opacity-90" />
 
+      {/* Content Layer - Back Layer */}
       <div className="absolute inset-0 flex items-center justify-center p-8">
         <div className="flex max-w-full items-center gap-6">
           {currentSong.thumbnailUrl && (
-            <img
-              src={currentSong.thumbnailUrl}
-              alt={currentSong.title}
-              className="h-32 w-32 shrink-0 rounded-lg object-cover shadow-2xl"
-            />
+            <div className="relative h-32 w-32 shrink-0">
+              <img
+                src={currentSong.thumbnailUrl}
+                alt={currentSong.title}
+                className="h-full w-full rounded-lg object-cover shadow-[0_0_40px_rgba(29,185,84,0.4)]"
+              />
+              <div className="absolute inset-0 rounded-lg border border-white/10" />
+            </div>
           )}
           <div className="min-w-0">
-            <h3 className="truncate font-bold text-white text-xl">
+            <h3 className="truncate font-display text-2xl text-white tracking-tight">
               {currentSong.title}
             </h3>
-            <p className="mt-1 truncate text-sm text-white/70">
+            <p className="mt-1 truncate font-medium text-[#1DB954] text-lg">
               {currentSong.artist || 'Unknown Artist'}
             </p>
-            <div className="mt-3 flex items-center gap-2">
+            <div className="mt-4 flex items-center gap-3">
               <div
-                className={`h-2 w-2 rounded-full ${isPlaying ? 'animate-pulse bg-green-500' : 'bg-white/30'}`}
+                className={`h-2.5 w-2.5 rounded-full ${isPlaying ? 'animate-pulse bg-[#1DB954] shadow-[0_0_12px_rgba(29,185,84,0.8)]' : 'bg-white/30'}`}
               />
-              <span className="text-white/50 text-xs">
-                {isPlaying ? 'Playing on Spotify' : 'Paused'}
+              <span className="font-mono text-[10px] text-white/50 uppercase tracking-[0.2em]">
+                {isPlaying ? 'Streaming from Spotify' : 'Paused on Spotify'}
               </span>
             </div>
           </div>
         </div>
       </div>
+
+      {/* CRT Effects Layer - Middle Layer (if shown) */}
+      {showOverlay && (
+        <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
+          <div className="vhs-scanlines h-full w-full opacity-[0.2] mix-blend-overlay" />
+          <div className="crt-overlay !absolute !z-[6] pointer-events-none inset-0 opacity-[0.18]" />
+        </div>
+      )}
+
+      {/* Auth/Error Overlay - Top Layer */}
+      {showOverlay && (
+        <AuthOverlay
+          provider="spotify"
+          errorMessage={overlayErrorMessage}
+          onAuthorize={handleAuthorize}
+        />
+      )}
 
       <div className="absolute right-0 bottom-0 left-0 h-0 overflow-hidden opacity-0">
         {accessToken && (
@@ -310,10 +298,12 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
       </div>
 
       {!isReady && !error && !showOverlay && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="text-center">
-            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-green-500/30 border-t-green-500" />
-            <p className="text-sm text-white/70">Loading track...</p>
+            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-[#1DB954]/30 border-t-[#1DB954]" />
+            <p className="font-mono text-[#1DB954] text-[10px] uppercase tracking-widest">
+              Initialising Track...
+            </p>
           </div>
         </div>
       )}

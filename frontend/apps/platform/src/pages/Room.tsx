@@ -5,26 +5,20 @@ import {
   useQueueStore,
   useRoomStore,
 } from '@vibez/shared';
-import {
-  AlertCircleIcon,
-  PlayerControls,
-  QueueList,
-  SoundCloudPlayer,
-  SpotifyPlayer,
-  Toast,
-  VideoPlayer,
-} from '@vibez/ui';
+import { AlertCircleIcon, Toast } from '@vibez/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import type { SSRInitialData } from '../App';
 import { DeviceSelector } from '../components/cast/DeviceSelector';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { RoomHeader } from '../components/room/RoomHeader';
+import { RoomPlayer } from '../components/room/RoomPlayer';
+import { RoomQueue } from '../components/room/RoomQueue';
 import { useCasting } from '../hooks/useCasting';
 import { useProviderToken } from '../hooks/useProviderToken';
 import { useThemeStore } from '../stores/themeStore';
 
-interface RoomViewProps {
+interface RoomProps {
   initialData?: SSRInitialData;
 }
 
@@ -33,7 +27,7 @@ interface ToastEventDetail {
   type: 'success' | 'error' | 'info';
 }
 
-export default function RoomView({ initialData }: RoomViewProps) {
+export default function Room({ initialData }: RoomProps) {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
 
@@ -183,13 +177,6 @@ export default function RoomView({ initialData }: RoomViewProps) {
       }
     }
   }, [id, fetchRoom, fetchQueue, initialData]);
-
-  const formatTime = (ms: number) => {
-    const seconds = Math.floor(ms / 1000);
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
 
   const { actualPositionMs } = usePlayback(id || '');
   const progress = displayCurrentSong
@@ -364,18 +351,18 @@ export default function RoomView({ initialData }: RoomViewProps) {
   // Auto-redirect to create room if room not found
   useEffect(() => {
     if (error && id) {
-      console.log('[RoomView] Error detected:', error);
-      console.log('[RoomView] Error message:', error.message);
-      console.log('[RoomView] Room ID:', id);
+      console.log('[Room] Error detected:', error);
+      console.log('[Room] Error message:', error.message);
+      console.log('[Room] Room ID:', id);
 
       // Check if it's an HTTP error using wiretyped's getHttpError
       const httpError = getHttpError(error);
-      console.log('[RoomView] HTTP error:', httpError);
+      console.log('[Room] HTTP error:', httpError);
 
       let isRoomNotFound = false;
 
       if (httpError?.response) {
-        console.log('[RoomView] HTTP status:', httpError.response.status);
+        console.log('[Room] HTTP status:', httpError.response.status);
         isRoomNotFound = httpError.response.status === 404;
       } else {
         // Fallback to message checking if getHttpError doesn't work
@@ -386,11 +373,11 @@ export default function RoomView({ initialData }: RoomViewProps) {
           error.message.toLowerCase().includes('room not found');
       }
 
-      console.log('[RoomView] Is room not found?', isRoomNotFound);
+      console.log('[Room] Is room not found?', isRoomNotFound);
 
       if (isRoomNotFound) {
         console.log(
-          '[RoomView] Room not found, redirecting to create with name:',
+          '[Room] Room not found, redirecting to create with name:',
           id,
         );
         const timer = setTimeout(() => {
@@ -542,165 +529,33 @@ export default function RoomView({ initialData }: RoomViewProps) {
           <div className="flex-1 overflow-y-auto lg:overflow-hidden">
             <div className="mx-auto max-w-7xl items-start gap-8 px-4 py-8 lg:grid lg:h-[calc(100vh-var(--room-header-height))] lg:grid-cols-[1.3fr_0.7fr] lg:py-6">
               {/* Player Section */}
-              <div className="space-y-6 lg:flex lg:h-full lg:flex-col">
-                {/* Player - Reserve height to prevent CLS */}
-                <div className="crt-frame relative flex aspect-video min-h-[280px] w-full overflow-hidden rounded-[28px] bg-black sm:min-h-[340px] lg:aspect-auto lg:min-h-0 lg:flex-1">
-                  <div className="vhs-scanlines pointer-events-none absolute inset-0" />
-                  {isConnected && (
-                    <div className="crt-overlay !absolute !z-10 pointer-events-none inset-0" />
-                  )}
-                  {isConnected && castDeviceName && (
-                    <div className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center">
-                      <div className="panel-surface flex items-center gap-3 rounded-full px-5 py-2 text-sm text-theme shadow-[0_0_22px_rgba(0,0,0,0.28)]">
-                        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-primary" />
-                        <span className="font-medium">
-                          Casting to {castDeviceName}
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                  {displayCurrentSong ? (
-                    displayCurrentSong.sourceType === 'spotify' ? (
-                      <SpotifyPlayer
-                        onEnded={
-                          displayRoom?.mode === 'host' ? skip : undefined
-                        }
-                        isVisible={!isConnected}
-                      />
-                    ) : displayCurrentSong.sourceType === 'soundcloud' ? (
-                      <SoundCloudPlayer
-                        onEnded={
-                          displayRoom?.mode === 'host' ? skip : undefined
-                        }
-                        isVisible={!isConnected}
-                      />
-                    ) : (
-                      <VideoPlayer
-                        onEnded={
-                          displayRoom?.mode === 'host' ? skip : undefined
-                        }
-                        isVisible={!isConnected}
-                      />
-                    )
-                  ) : displaySongs.length > 0 ? (
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="text-center">
-                        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full border border-theme bg-theme-surface">
-                          <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-                        </div>
-                        <p className="text-sm text-theme-muted">
-                          Loading song...
-                        </p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center overflow-hidden">
-                      <div className="text-center">
-                        <div className="mb-6 inline-flex items-center rounded-full border border-theme px-4 py-2 text-[10px] text-theme-muted tracking-[0.35em]">
-                          NO SIGNAL
-                        </div>
-                        <h3 className="mb-2 font-display text-base text-theme">
-                          Add a song to light up the room
-                        </h3>
-                        <p className="text-theme-muted text-xs">
-                          Tap "Add Song" to start the music flow.
-                        </p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Controls (always below video) */}
-                <PlayerControls
-                  isPlaying={displayIsPlaying}
-                  canPlay={Boolean(
-                    displayCurrentSong || displaySongs.length > 0,
-                  )}
-                  canSkip={Boolean(displayCurrentSong)}
-                  onPlay={play}
-                  onPause={pause}
-                  onSkip={skip}
-                  onAddSong={handleAddSong}
-                  onOpenCast={() => setShowDeviceSelector(true)}
-                  isCasting={isConnected}
-                  castDeviceName={castDeviceName}
-                  showSpotifyConnect={hasSpotifySongs && !spotifyToken}
-                  onConnectSpotify={handleConnectSpotify}
-                />
-              </div>
+              <RoomPlayer
+                isConnected={isConnected}
+                castDeviceName={castDeviceName}
+                currentSong={displayCurrentSong}
+                room={displayRoom}
+                songs={displaySongs}
+                isPlaying={isPlaying}
+                onPlay={play}
+                onPause={pause}
+                onSkip={skip}
+                onAddSong={handleAddSong}
+                onOpenCast={() => setShowDeviceSelector(true)}
+                showSpotifyConnect={hasSpotifySongs && !spotifyToken}
+                onConnectSpotify={handleConnectSpotify}
+                displayIsPlaying={displayIsPlaying}
+              />
 
               {/* Queue & Now Playing Section */}
-              <div className="mt-8 space-y-8 lg:mt-0 lg:h-full lg:overflow-y-auto lg:pr-2">
-                <div className="lg:pb-6">
-                  {/* Now Playing (Integrated into list style) */}
-                  {displayCurrentSong && (
-                    <div className="mb-8">
-                      <div className="mb-3 flex items-center gap-2">
-                        <div
-                          className={`h-2 w-2 rounded-full ${
-                            displayIsPlaying
-                              ? 'animate-pulse bg-secondary shadow-[0_0_10px_rgba(0,217,255,0.6)]'
-                              : 'bg-white/30'
-                          }`}
-                        />
-                        <span className="font-display text-[10px] text-theme-muted tracking-[0.3em]">
-                          {displayIsPlaying ? 'Now Playing' : 'Paused'}
-                        </span>
-                      </div>
-
-                      <div className="group/card panel-surface no-box relative overflow-hidden rounded-2xl p-4">
-                        <div className="vhs-scanlines pointer-events-none absolute inset-0" />
-
-                        {displayCurrentSong.thumbnailUrl && (
-                          <div className="relative z-10 shrink-0">
-                            <img
-                              src={displayCurrentSong.thumbnailUrl}
-                              alt=""
-                              className="h-16 w-16 rounded-xl border border-theme object-cover shadow-xs transition-transform group-hover/card:scale-105"
-                            />
-                          </div>
-                        )}
-                        <div className="relative z-10 min-w-0 flex-1">
-                          <h3 className="truncate font-display text-theme text-xs">
-                            {displayCurrentSong.title}
-                          </h3>
-                          <p className="truncate text-theme-muted text-xs">
-                            {displayCurrentSong.artist || 'Unknown Artist'} •{' '}
-                            {formatTime(displayCurrentSong.duration * 1000)}
-                          </p>
-                        </div>
-                      </div>
-                      <progress
-                        className="progress-bar mt-3 h-1 w-full"
-                        value={isSSR ? 0 : progress}
-                        max={1}
-                      />
-
-                      <div className="mt-8 mb-4 h-px bg-theme-surface" />
-                    </div>
-                  )}
-
-                  {/* Up Next List */}
-                  <div>
-                    <h3 className="mb-4 font-display text-[10px] text-theme-muted tracking-[0.3em]">
-                      Up Next (
-                      {
-                        displaySongs.filter(
-                          (s) => s.id !== displayCurrentSong?.id,
-                        ).length
-                      }
-                      )
-                    </h3>
-                    <QueueList
-                      songs={displaySongs.filter(
-                        (s) => s.id !== displayCurrentSong?.id,
-                      )}
-                      roomId={id || ''}
-                      onVote={handleVote}
-                    />
-                  </div>
-                </div>
-              </div>
+              <RoomQueue
+                currentSong={displayCurrentSong}
+                displayIsPlaying={displayIsPlaying}
+                songs={displaySongs}
+                roomId={id || ''}
+                progress={progress}
+                isSSR={isSSR}
+                onVote={handleVote}
+              />
             </div>
           </div>
         )}

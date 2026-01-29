@@ -1,6 +1,12 @@
 import { usePlaybackStore } from '@vibez/shared';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import ReactPlayer from 'react-player';
+import { memo, useEffect, useRef, useState } from 'react';
+
+// Declare SC global on window
+declare global {
+  interface Window {
+    SC: any;
+  }
+}
 
 interface Props {
   isVisible?: boolean;
@@ -15,58 +21,110 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
 }) => {
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
-
-  const playerRef = useRef<any>(null);
+  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const widgetRef = useRef<any>(null);
   const [isReady, setIsReady] = useState(false);
-  const [error, setError] = useState<string | null>(null);
 
+  // Load SoundCloud Widget API script
   useEffect(() => {
-    setIsReady(false);
-    setError(null);
-  }, [currentSong?.id]);
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!isReady || !playerRef.current) {
-        return;
-      }
-
-      try {
-        const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
-        const targetTime = actualPositionMs / 1000;
-        const currentTime = playerRef.current.getCurrentTime();
-        const drift = Math.abs(currentTime - targetTime);
-
-        if (drift > 2) {
-          console.log('[SoundCloudPlayer] Seeking due to drift:', {
-            currentTime,
-            targetTime,
-            drift,
-          });
-          playerRef.current.seekTo(targetTime, 'seconds');
+    if (!window.SC) {
+      const script = document.createElement('script');
+      script.src = 'https://w.soundcloud.com/player/api.js';
+      script.async = true;
+      script.onload = () => {
+        // Initialize widget if iframe is already mounted
+        if (iframeRef.current) {
+          initializeWidget();
         }
-      } catch (err) {
-        console.warn('[SoundCloudPlayer] Error syncing position:', err);
-      }
+      };
+      document.body.appendChild(script);
+    } else if (iframeRef.current && !widgetRef.current) {
+      initializeWidget();
+    }
+  }, []);
+
+  const initializeWidget = () => {
+    if (!iframeRef.current || !window.SC) return;
+
+    try {
+      const widget = window.SC.Widget(iframeRef.current);
+      widgetRef.current = widget;
+
+      widget.bind(window.SC.Widget.Events.READY, () => {
+        setIsReady(true);
+        // Sync initial state
+        if (isPlaying) {
+          widget.play();
+        }
+      });
+
+      widget.bind(window.SC.Widget.Events.FINISH, () => {
+        onEnded?.();
+      });
+
+      widget.bind(window.SC.Widget.Events.SEEK, () => {
+        const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
+        console.log(
+          '[SoundCloud Widget] User sought, enforcing position:',
+          actualPositionMs,
+        );
+        widget.seekTo(actualPositionMs);
+      });
+
+      widget.bind(window.SC.Widget.Events.ERROR, (e: any) => {
+        console.error('[SoundCloud Widget] Error:', e);
+      });
+    } catch (err) {
+      console.error('[SoundCloud Widget] Initialization error:', err);
+    }
+  };
+
+  // Re-initialize when song changes (iframe src changes)
+  useEffect(() => {
+    // Reset state
+    widgetRef.current = null;
+    setIsReady(false);
+  }, [currentSong?.sourceId]);
+
+  // Sync Playback State
+  useEffect(() => {
+    if (!widgetRef.current || !isReady) return;
+
+    if (isPlaying) {
+      widgetRef.current.play();
+    } else {
+      widgetRef.current.pause();
+    }
+  }, [isPlaying, isReady]);
+
+  // Drift Correction Interval
+  useEffect(() => {
+    if (!isReady || !widgetRef.current) return;
+
+    const interval = setInterval(() => {
+      if (!isPlaying) return; // Only check drift if we are supposed to be playing
+
+      widgetRef.current.getPosition((currentTimeMs: number) => {
+        const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
+        // Allow 2 seconds of drift
+        if (Math.abs(currentTimeMs - actualPositionMs) > 2000) {
+          console.log(
+            '[SoundCloud Widget] Drift detected, seeking to:',
+            actualPositionMs,
+          );
+          widgetRef.current.seekTo(actualPositionMs);
+        }
+      });
     }, 1000);
 
     return () => clearInterval(interval);
   }, [isReady, isPlaying]);
 
-  const handleReady = useCallback(() => {
-    setIsReady(true);
-    setError(null);
-
-    const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
-    if (actualPositionMs > 0 && playerRef.current) {
-      const targetTime = actualPositionMs / 1000;
-      playerRef.current.seekTo(targetTime, 'seconds');
-    }
+  // Sync Volume - optional, but good to have
+  useEffect(() => {
+    if (!widgetRef.current || !isReady) return;
+    // widgetRef.current.setVolume(volume * 100);
   }, []);
-
-  const handleEnded = useCallback(() => {
-    onEnded?.();
-  }, [onEnded]);
 
   if (!currentSong || !isVisible) {
     return null;
@@ -76,11 +134,17 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
     return null;
   }
 
-  const soundcloudUrl = `https://api.soundcloud.com/tracks/${currentSong.sourceId}`;
+  const soundcloudUrl = currentSong.sourceId.startsWith('http')
+    ? currentSong.sourceId
+    : `https://api.soundcloud.com/tracks/${currentSong.sourceId}`;
+
+  // Construct iframe src with parameters
+  // visual=true makes it the big album art player
+  const src = `https://w.soundcloud.com/player/?url=${encodeURIComponent(soundcloudUrl)}&auto_play=false&visual=true&hide_related=true&show_comments=false&show_user=true&show_reposts=false&show_teaser=false`;
 
   const containerClass = fill
-    ? 'relative h-full w-full overflow-hidden bg-gradient-to-br from-orange-900 to-black'
-    : 'relative w-full overflow-hidden rounded-xl bg-gradient-to-br from-orange-900 to-black';
+    ? 'relative h-full w-full overflow-hidden'
+    : 'relative w-full overflow-hidden rounded-xl';
 
   const containerStyle = fill
     ? { height: '100%', width: '100%' }
@@ -88,68 +152,42 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
 
   return (
     <div
-      className={`${containerClass} ${!isVisible ? 'hidden' : ''}`}
+      className={`${containerClass} bg-black ${!isVisible ? 'hidden' : ''}`}
       style={containerStyle}
     >
-      {error && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/90">
-          <div className="px-4 text-center">
-            <p className="mb-2 text-error text-sm">SoundCloud Error</p>
-            <p className="text-text-muted text-xs">{error}</p>
-          </div>
+      {/* CRT Effects Layer - Behind content, only while loading */}
+      {!isReady && (
+        <div className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
+          <div className="vhs-scanlines h-full w-full opacity-40 mix-blend-overlay" />
+          <div className="crt-overlay !absolute !z-21 pointer-events-none inset-0 opacity-10" />
         </div>
       )}
 
-      <div className="absolute inset-0 z-10 flex items-center justify-center p-8">
-        <div className="flex max-w-full items-center gap-6">
-          {currentSong.thumbnailUrl && (
-            <img
-              src={currentSong.thumbnailUrl}
-              alt={currentSong.title}
-              className="h-32 w-32 shrink-0 rounded-lg object-cover shadow-2xl"
-            />
-          )}
-          <div className="min-w-0">
-            <h3 className="truncate font-bold text-white text-xl">
-              {currentSong.title}
-            </h3>
-            <p className="mt-1 truncate text-sm text-white/70">
-              {currentSong.artist || 'Unknown Artist'}
-            </p>
-            <div className="mt-3 flex items-center gap-2">
-              <div
-                className={`h-2 w-2 rounded-full ${isPlaying ? 'animate-pulse bg-orange-500' : 'bg-white/30'}`}
-              />
-              <span className="text-white/50 text-xs">
-                {isPlaying ? 'Playing on SoundCloud' : 'Paused'}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute right-0 bottom-0 left-0 h-0 overflow-hidden opacity-0">
-        <ReactPlayer
-          key={currentSong.id}
-          ref={playerRef}
-          src={soundcloudUrl}
-          playing={isPlaying}
-          controls={false}
-          width="100%"
-          height="100%"
-          onReady={handleReady}
-          onEnded={handleEnded}
-        />
-      </div>
-
-      {!isReady && !error && (
-        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/50">
+      {/* Loading State */}
+      {!isReady && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/80">
           <div className="text-center">
-            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-orange-500/30 border-t-orange-500" />
-            <p className="text-sm text-white/70">Loading track...</p>
+            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-orange-500/50 border-t-orange-500" />
+            <p className="glow-text font-mono text-orange-400 text-sm">
+              LOADING SYSTEM...
+            </p>
           </div>
         </div>
       )}
+
+      <iframe
+        ref={iframeRef}
+        id="sc-widget"
+        src={src}
+        onLoad={initializeWidget}
+        width="100%"
+        height="100%"
+        scrolling="no"
+        frameBorder="0"
+        allow="autoplay"
+        className={`h-full w-full ${isReady ? 'opacity-100' : 'opacity-0'} transition-opacity duration-700`}
+        title={currentSong.title}
+      />
     </div>
   );
 };

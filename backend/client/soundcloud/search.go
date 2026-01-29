@@ -73,7 +73,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		}
 
 		tracks = append(tracks, vibe.MusicTrack{
-			ID:           fmt.Sprintf("%d", res.ID),
+			ID:           res.Permalink,
 			Source:       vibe.SourceTypeSoundCloud,
 			Title:        res.Title,
 			ChannelTitle: username,
@@ -91,7 +91,7 @@ type trackResponse struct {
 	User        *user   `json:"user"`
 	ArtworkURL  *string `json:"artwork_url"`
 	Duration    int     `json:"duration"`
-	Permalink   string  `json:"permalink"`
+	Permalink   string  `json:"permalink_url"`
 	StreamURL   string  `json:"stream_url"`
 	Description string  `json:"description"`
 }
