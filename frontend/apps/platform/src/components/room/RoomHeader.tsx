@@ -1,8 +1,6 @@
-import type { Room, RoomSettings, RoomUpdate, RoomUser } from '@vibez/models';
+import type { Room, RoomSettings, RoomUpdate } from '@vibez/models';
 import {
   ArrowLeftIcon,
-  ChevronDownIcon,
-  CopyIcon,
   MoonIcon,
   SettingsIcon,
   ShareIcon,
@@ -19,10 +17,6 @@ interface RoomHeaderProps {
   headerRef: RefObject<HTMLDivElement | null>;
   displayRoom: Room | null;
   roomId?: string;
-  users?: RoomUser[];
-  showRoomInfo: boolean;
-  onToggleRoomInfo: () => void;
-  isSSR: boolean;
   showShare: boolean;
   onToggleShare: () => void;
   shareUrl: string;
@@ -48,10 +42,6 @@ export const RoomHeader = ({
   headerRef,
   displayRoom,
   roomId,
-  users,
-  showRoomInfo,
-  onToggleRoomInfo,
-  isSSR,
   showShare,
   onToggleShare,
   shareUrl,
@@ -89,19 +79,9 @@ export const RoomHeader = ({
         </Link>
 
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-          <button
-            onClick={onToggleRoomInfo}
-            className="flex cursor-pointer items-center justify-center gap-2 transition-opacity hover:opacity-80"
-          >
-            <h1 className="truncate whitespace-nowrap font-display text-sm text-theme sm:text-base">
-              {displayRoom?.name || 'Loading...'}
-            </h1>
-            <ChevronDownIcon
-              className={`h-4 w-4 text-theme-muted transition-transform ${
-                showRoomInfo ? 'rotate-180' : ''
-              }`}
-            />
-          </button>
+          <h1 className="truncate whitespace-nowrap font-display text-sm text-theme sm:text-base">
+            {displayRoom?.name || 'Loading...'}
+          </h1>
         </div>
 
         <div className="flex items-center gap-2">
@@ -148,7 +128,11 @@ export const RoomHeader = ({
                   exit={{ opacity: 0, y: 10, scale: 0.95 }}
                   className="panel-strong absolute right-0 z-50 mt-3 w-72 rounded-3xl p-4 shadow-2xl"
                 >
-                  <RoomSharePanel url={shareUrl} onCopy={onCopyShareLink} />
+                  <RoomSharePanel
+                    url={shareUrl}
+                    roomId={roomId || ''}
+                    onCopy={onCopyShareLink}
+                  />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -186,62 +170,12 @@ export const RoomHeader = ({
               isAuthenticating={isAuthenticating}
               shareUrl={shareUrl}
               onCopyShareLink={onCopyShareLink}
+              roomId={roomId}
               settingsMenuRef={settingsMenuRef}
             />
           </div>
         </div>
       </div>
-
-      {showRoomInfo && (
-        <div
-          className={`panel-surface mt-4 rounded-2xl p-5 ${
-            !isSSR ? 'animate-slide-down' : ''
-          }`}
-        >
-          <div className="space-y-4">
-            <div>
-              <p className="mb-2 font-display text-[10px] text-theme-muted tracking-[0.3em]">
-                Room Code
-              </p>
-              <div className="flex items-center gap-2">
-                <code className="rounded-xl border border-theme bg-theme-surface px-4 py-2 font-mono text-sm text-theme">
-                  {roomId}
-                </code>
-                <button
-                  onClick={() => navigator.clipboard.writeText(roomId || '')}
-                  className="cursor-pointer rounded-lg border border-transparent p-2 transition-colors hover:border-theme-strong hover:bg-theme-surface"
-                  title="Copy code"
-                >
-                  <CopyIcon className="h-5 w-5 text-theme-muted" />
-                </button>
-              </div>
-            </div>
-            {users && users.length > 0 && (
-              <div>
-                <p className="mb-2 font-display text-[10px] text-theme-muted tracking-[0.3em]">
-                  <span className="hidden sm:inline">Listeners </span>(
-                  {users.length})
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {users.slice(0, 8).map((user: RoomUser) => (
-                    <div
-                      key={user.id}
-                      className="rounded-full border border-theme bg-theme-surface px-3 py-1.5 text-theme text-xs"
-                    >
-                      {user.nickname || `User ${user.id.slice(0, 4)}`}
-                    </div>
-                  ))}
-                  {users.length > 8 && (
-                    <div className="rounded-full bg-theme-surface px-3 py-1.5 text-theme-muted text-xs">
-                      +{users.length - 8} more
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 };

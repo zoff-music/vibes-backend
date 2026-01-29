@@ -66,7 +66,6 @@ export default function Room({ initialData }: RoomProps) {
     error,
     joinRoom,
     userId,
-    users,
     updateRoomSettings,
     updateRoom,
   } = useRoom(id || '');
@@ -152,7 +151,6 @@ export default function Room({ initialData }: RoomProps) {
   }, [initialData, initialized, setRoom, setSongs, setPlaybackState]);
 
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
-  const [showRoomInfo, setShowRoomInfo] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
@@ -442,10 +440,6 @@ export default function Room({ initialData }: RoomProps) {
           headerRef={headerRef}
           displayRoom={displayRoom}
           roomId={id || ''}
-          users={users}
-          showRoomInfo={showRoomInfo}
-          onToggleRoomInfo={() => setShowRoomInfo(!showRoomInfo)}
-          isSSR={isSSR}
           showShare={showShare}
           onToggleShare={() => setShowShare(!showShare)}
           shareUrl={shareUrl}

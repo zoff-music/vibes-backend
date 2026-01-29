@@ -1,11 +1,95 @@
 import { api } from '@vibez/api';
-import { useState } from 'react';
+import { MoonIcon, SunIcon } from '@vibez/ui';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { useThemeStore } from '../stores/themeStore';
+
+const ANIMATED_WORDS = [
+  'electro',
+  'おんがく',
+  'party',
+  'ふんいき',
+  'jazz',
+  'のり',
+  'techno',
+  'よる',
+  'ambient',
+  'おと',
+  'house',
+  'againagainagain',
+  'ゆめ',
+  'drumandbass',
+  'くうき',
+  'hiphop',
+  'しんや',
+  'rnb',
+  'ちょうし',
+  'soul',
+  'きょうゆう',
+  'funk',
+  'disco',
+  'よいん',
+  'rock',
+  'しずか',
+  'punk',
+  'metal',
+  'indie',
+  'なみ',
+  'alternative',
+  'pop',
+  'かんかく',
+  'dance',
+  'でんし',
+];
 
 export default function Home() {
   const [roomCode, setRoomCode] = useState('');
   const [isValidating, setIsValidating] = useState(false);
+  const [placeholderText, setPlaceholderText] = useState('');
+  const [wordIndex, setWordIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [isBlinkerVisible, setIsBlinkerVisible] = useState(true);
   const navigate = useNavigate();
+  const { isDarkMode, toggleDarkMode } = useThemeStore();
+
+  useEffect(() => {
+    const currentWord = ANIMATED_WORDS[wordIndex];
+    const fullTarget = `${currentWord}...`;
+
+    if (isPaused) {
+      const timer = setTimeout(() => {
+        setIsPaused(false);
+        setCharIndex(0);
+        setWordIndex((prev) => (prev + 1) % ANIMATED_WORDS.length);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+
+    if (charIndex < fullTarget.length) {
+      const timer = setTimeout(() => {
+        setPlaceholderText(fullTarget.substring(0, charIndex + 1));
+        setCharIndex((prev) => prev + 1);
+      }, 150);
+      return () => clearTimeout(timer);
+    } else {
+      setIsPaused(true);
+    }
+  }, [wordIndex, charIndex, isPaused]);
+
+  // Handle blinking effect for the last dot
+  useEffect(() => {
+    if (!isPaused) {
+      setIsBlinkerVisible(true);
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setIsBlinkerVisible((prev) => !prev);
+    }, 500);
+
+    return () => clearInterval(interval);
+  }, [isPaused]);
 
   const handleJoinRoom = async () => {
     if (!roomCode.trim() || isValidating) return;
@@ -36,21 +120,39 @@ export default function Home() {
       <div className="retro-grid pointer-events-none fixed bottom-0 left-1/2 z-10 h-[45vh] w-[140%]" />
 
       <div className="relative z-10 mx-auto flex h-full w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-6">
-        <div className="crt-frame w-full max-w-3xl rounded-[36px] p-6 sm:p-10">
+        <div className="crt-frame relative w-full max-w-3xl rounded-[36px] p-6 sm:p-10">
+          <div className="absolute top-6 right-6 z-20 sm:top-10 sm:right-10">
+            <button
+              onClick={toggleDarkMode}
+              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
+                isDarkMode
+                  ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_18px_rgba(0,217,255,0.35)]'
+                  : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
+              }`}
+              title={
+                isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
+              }
+            >
+              {isDarkMode ? (
+                <SunIcon className="h-5 w-5" />
+              ) : (
+                <MoonIcon className="h-5 w-5" />
+              )}
+            </button>
+          </div>
           <div className="text-center">
-            <div className="mb-3 text-[12px] text-theme-muted tracking-[0.4em]">
-              ENTER THE VIBE
-            </div>
             <h1
               className="vhs-tear vhs-tear-strong glow-text jp-art text-4xl text-theme leading-none sm:text-5xl"
-              data-text="ノリ"
+              data-text="ゾフ"
             >
-              ノリ
+              ゾフ
             </h1>
             <p className="mt-3 text-sm text-theme-muted sm:text-base">
-              Shared music rooms for neon nights.
+              Shared music rooms, made for listening together
             </p>
-            <p className="jp-art mt-2 text-theme-subtle text-xs">音楽を共有</p>
+            <p className="jp-art mt-2 text-theme-subtle text-xs">
+              音楽は共有するもの
+            </p>
           </div>
 
           <div className="mt-8 space-y-5">
@@ -60,7 +162,13 @@ export default function Home() {
               </label>
               <input
                 type="text"
-                placeholder="Enter Room Name..."
+                placeholder={
+                  placeholderText
+                    ? isPaused && !isBlinkerVisible
+                      ? `${placeholderText.slice(0, -1)} `
+                      : placeholderText
+                    : 'Enter Room Name...'
+                }
                 value={roomCode}
                 onChange={(e) => setRoomCode(e.target.value.toLowerCase())}
                 onKeyDown={(e) => e.key === 'Enter' && handleJoinRoom()}
