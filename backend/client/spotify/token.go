@@ -15,13 +15,10 @@ import (
 	"github.com/zoff-music/vibes/vibe"
 )
 
-type tokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	ExpiresIn   int    `json:"expires_in"`
-}
-
 func (c *Client) getAccessToken(ctx context.Context) (string, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "getAccessToken")
+	defer span.Finish()
+
 	c.mu.RLock()
 	if c.accessToken != "" && time.Now().Before(c.expiresAt) {
 		token := c.accessToken
@@ -139,4 +136,10 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*vibe.T
 	}
 
 	return &res, nil
+}
+
+type tokenResponse struct {
+	AccessToken string `json:"access_token"`
+	TokenType   string `json:"token_type"`
+	ExpiresIn   int    `json:"expires_in"`
 }

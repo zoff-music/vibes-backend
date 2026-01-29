@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"html"
 	"net/http"
 	"net/url"
@@ -12,37 +13,11 @@ import (
 	"github.com/zoff-music/vibes/vibe"
 )
 
-type searchResponse struct {
-	Items []searchItem `json:"items"`
-}
-
-type searchItem struct {
-	ID      searchID      `json:"id"`
-	Snippet searchSnippet `json:"snippet"`
-}
-
-type searchID struct {
-	VideoID string `json:"videoId"`
-}
-
-type searchSnippet struct {
-	Title        string           `json:"title"`
-	ChannelTitle string           `json:"channelTitle"`
-	Thumbnails   searchThumbnails `json:"thumbnails"`
-}
-
-type searchThumbnails struct {
-	Default thumbnail `json:"default"`
-	Medium  thumbnail `json:"medium"`
-	High    thumbnail `json:"high"`
-}
-
-type thumbnail struct {
-	URL string `json:"url"`
-}
-
 // Search searches for videos on YouTube
 func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Search")
+	defer span.Finish()
+
 	if c.apiKey == "" {
 		return nil, fmt.Errorf("YouTube API key not configured")
 	}
@@ -155,4 +130,33 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	}
 
 	return tracks, nil
+}
+
+type searchResponse struct {
+	Items []searchItem `json:"items"`
+}
+
+type searchItem struct {
+	ID      searchID      `json:"id"`
+	Snippet searchSnippet `json:"snippet"`
+}
+
+type searchID struct {
+	VideoID string `json:"videoId"`
+}
+
+type searchSnippet struct {
+	Title        string           `json:"title"`
+	ChannelTitle string           `json:"channelTitle"`
+	Thumbnails   searchThumbnails `json:"thumbnails"`
+}
+
+type searchThumbnails struct {
+	Default thumbnail `json:"default"`
+	Medium  thumbnail `json:"medium"`
+	High    thumbnail `json:"high"`
+}
+
+type thumbnail struct {
+	URL string `json:"url"`
 }

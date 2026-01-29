@@ -20,7 +20,7 @@ type Client struct {
 }
 
 // Init initializes the YouTube API client
-func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
+func (c *Client) Init(_ context.Context, cfg *config.Config) error {
 	if cfg.YouTubeAPIKey == "" {
 		return fmt.Errorf("YouTube API key is required")
 	}

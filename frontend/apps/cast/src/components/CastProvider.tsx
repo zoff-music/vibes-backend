@@ -56,6 +56,7 @@ interface CastContextType {
   actualPositionMs: number;
   updateActualPosition: () => void;
   debugMode: boolean;
+  roomId: string | null;
 }
 
 const CastContext = createContext<CastContextType | undefined>(undefined);
@@ -67,11 +68,9 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [statusText, setStatusText] = useState('Ready for Casting');
   const [roomMode, setRoomMode] = useState<string | null>(null);
-  const [debugMode, setDebugModeState] = useState(() => {
-    const params = new URLSearchParams(window.location.search);
-    return params.get('debug') === 'true';
-  });
+  const [debugMode, setDebugModeState] = useState(true); // Hardcoded true for debugging
   const debugModeRef = useRef(debugMode);
+  const roomId = new URLSearchParams(window.location.search).get('roomId');
 
   const setDebugMode = useCallback((value: boolean) => {
     setDebugModeState(value);
@@ -95,17 +94,16 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
   // Helper to normalize song which might come from untyped sources
   const normalizeSong = useCallback((song: Song): Song => {
     return {
-      id: song.id,
+      id: String(song.id), // Ensure ID is always a string
       sourceType: song.sourceType,
       sourceId: song.sourceId,
       title: song.title,
       artist: song.artist,
       thumbnailUrl: song.thumbnailUrl || '',
-      duration: song.duration || 0,
-      addedBy: song.addedBy || 'cast-receiver',
-      addedAt: song.addedAt || new Date().toISOString(),
-      addedByNickname: song.addedByNickname,
+      duration: song.duration,
       voteCount: song.voteCount,
+      addedBy: song.addedBy,
+      addedAt: song.addedAt || new Date().toISOString(),
     };
   }, []);
 
@@ -208,6 +206,13 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
           if (message.currentSong) {
             const normalizedSong = normalizeSong(message.currentSong);
             const isSameSong = currentSongId === normalizedSong.id;
+            
+            console.log('[Cast Receiver] Sync ID Check:', {
+               currentId: currentSongId,
+               incomingId: normalizedSong.id,
+               isSame: isSameSong
+            });
+
             // Prevent reset to 0 if we are already playing this song and have a position
             const shouldPreservePosition =
               isSameSong &&
@@ -562,6 +567,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         actualPositionMs,
         updateActualPosition,
         debugMode,
+        roomId: roomId || null,
       }}
     >
       {children}

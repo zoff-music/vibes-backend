@@ -46,8 +46,8 @@ type PendingOAuthStateSaver interface {
 	SavePendingOAuthState(ctx context.Context, userID, state string) error
 }
 
-// CodeValidatorUserter handles database operations for OAuth callbacks
-type CodeValidatorUserter interface {
+// CodeValidatorUpserter handles database operations for OAuth callbacks
+type CodeValidatorUpserter interface {
 	ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (string, error)
 	UpsertAuthToken(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error
 	UpsertAccessToken(ctx context.Context, userID, provider, accessToken, refreshToken string, expiresAt, refreshExpiresAt time.Time) error

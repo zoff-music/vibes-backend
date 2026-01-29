@@ -5,11 +5,10 @@ import { useCast } from './CastProvider';
 import { PlayerLayer } from './PlayerLayer';
 
 export const ActiveView: React.FC = () => {
-  const { currentSong, queue, roomInfo, actualPositionMs } = useCast();
+  const { currentSong, queue, roomInfo, actualPositionMs, roomId } = useCast();
 
   if (!currentSong) return null;
 
-  const roomId = new URLSearchParams(window.location.search).get('roomId')!;
   const joinUrl = `${window.location.origin}/rooms/${roomId}`;
   const upNext = queue.filter((song) => song.id !== currentSong.id);
 
@@ -40,7 +39,7 @@ export const ActiveView: React.FC = () => {
               <img
                 src={currentSong.thumbnailUrl}
                 alt={currentSong.title}
-                className="relative h-40 w-40 rounded-xl border border-white/20 object-cover"
+                className="relative h-28 w-28 rounded-xl border border-white/20 object-cover"
               />
             </div>
             <div className="mb-2 min-w-0 flex-1">
@@ -105,9 +104,9 @@ export const ActiveView: React.FC = () => {
           </div>
           {roomInfo && (
             <div className="text-right">
-              <h3 className="font-medium text-theme text-xl">
+              {/* <h3 className="font-medium text-theme text-xl">
                 {roomInfo.name}
-              </h3>
+              </h3> */}
               <div className="mt-1 flex items-center justify-end gap-2 text-sm text-theme-muted">
                 <span className="h-2 w-2 rounded-full bg-green-500"></span>
                 {roomInfo.participantCount} listening
@@ -116,8 +115,15 @@ export const ActiveView: React.FC = () => {
           )}
         </div>
 
+        {/* Debug Overlay - Always visible for now */}
+        {(true) && (
+            <div className="mb-4 rounded bg-red-900/80 p-2 text-white text-xs font-mono">
+               Room: {roomId} | Queue: {queue.length} | Next: {upNext.length} | ID: {currentSong.id}
+            </div>
+        )}
+
         <div className="custom-scrollbar flex-1 overflow-y-auto pr-2">
-          <QueueList songs={upNext} roomId={roomId} />
+          <QueueList songs={upNext} roomId={roomId || undefined} />
         </div>
 
         <div className="mt-8 rounded-3xl border border-white/10 bg-white/5 p-6 text-center">

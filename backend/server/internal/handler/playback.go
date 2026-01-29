@@ -287,7 +287,7 @@ func (h *ReviewRoomPlayback) Handle(ctx context.Context, data []byte) error {
 
 // ReviewHostHealth handles host health checks
 type ReviewHostHealth struct {
-	DB  vibe.AbandonnedHostProcessor
+	DB  vibe.AbandonedHostProcessor
 	IPS vibe.RoomEventNotifier
 }
 

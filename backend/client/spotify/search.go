@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"net/http"
 	"net/url"
 	"strings"
@@ -14,8 +15,11 @@ import (
 
 // Search searches for tracks on Spotify
 func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "Search")
+	defer span.Finish()
+
 	if !c.Enabled {
-		return nil, fmt.Errorf("Spotify client is not enabled")
+		return nil, fmt.Errorf("error Spotify client is not enabled")
 	}
 
 	token, err := c.getAccessToken(ctx)
