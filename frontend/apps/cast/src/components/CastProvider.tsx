@@ -68,7 +68,10 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
   const [queue, setQueue] = useState<QueueItem[]>([]);
   const [statusText, setStatusText] = useState('Ready for Casting');
   const [roomMode, setRoomMode] = useState<string | null>(null);
-  const [debugMode, setDebugModeState] = useState(true); // Hardcoded true for debugging
+  const [debugMode, setDebugModeState] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('debug') === 'true';
+  });
   const debugModeRef = useRef(debugMode);
   const roomId = new URLSearchParams(window.location.search).get('roomId');
 

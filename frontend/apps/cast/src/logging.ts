@@ -25,9 +25,10 @@ const initLogging = () => {
   const LOG_TAG = 'Zoff';
 
   // Check URL params for initial state
-  // const params = new URLSearchParams(window.location.search);
-  // Force debug mode
-  setGlobalDebug(true);
+  const params = new URLSearchParams(window.location.search);
+  if (params.get('debug') === 'true') {
+    setGlobalDebug(true);
+  }
 
   castDebugLogger.loggerLevelByEvents = {
     'cast.framework.events.category.CORE': cast.framework.LoggerLevel.INFO,
