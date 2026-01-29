@@ -60,6 +60,7 @@ interface CastContextType {
   updateActualPosition: () => void;
   debugMode: boolean;
   roomId: string | null;
+  error: string | null;
 }
 
 const CastContext = createContext<CastContextType | undefined>(undefined);
@@ -69,6 +70,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
 }) => {
   const [roomInfo, setRoomInfo] = useState<RoomInfo | null>(null);
   const [queue, setQueue] = useState<QueueItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
   const [statusText, setStatusText] = useState('Ready for Casting');
   const [roomMode, setRoomMode] = useState<string | null>(null);
   const [debugMode, setDebugModeState] = useState(() => {
@@ -259,7 +261,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         case 'updateQueue':
           console.log('Updating queue:', message);
           if (message.queue) {
-            setQueue(message.queue);
+            setQueue(message.queue.map((s) => normalizeSong(s)));
           }
           break;
 
@@ -444,7 +446,10 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
           const [songsErr, songs] = queueRes;
           const [playbackErr, playbackState] = playbackRes;
 
-          if (!songsErr && songs) setQueue(songs);
+          if (!songsErr && songs) {
+            const normalizedSongs = songs.map((s) => normalizeSong(s));
+            setQueue(normalizedSongs);
+          }
 
           if (!playbackErr && playbackState && playbackState.currentSong) {
             const normalizedSong = normalizeSong(playbackState.currentSong);
@@ -465,6 +470,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
             '[Cast Receiver] Unexpected fetch error:',
             unexpectedErr,
           );
+          setError(`Fetch Error: ${unexpectedErr.message}`);
         });
 
       const [err, stop] = await api.sse(
@@ -482,16 +488,27 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
               break;
             case 'playback_update': {
               const data = typedMessage.data;
+              // console.log('[Cast Receiver] Playback Update (SSE):', data);
+              const normalizedSong = data.currentSong
+                ? normalizeSong(data.currentSong)
+                : null;
+
               setPlaybackState(
                 {
                   ...data,
-                  currentSong: data.currentSong
-                    ? normalizeSong(data.currentSong)
-                    : null,
+                  currentSong: normalizedSong,
                 },
                 // Use a ref or get the value directly to avoid effect restart
                 undefined,
               );
+
+              if (normalizedSong) {
+                updateMediaMetadata(normalizedSong);
+                setStatusText(`Now Playing: ${normalizedSong.title}`);
+              } else {
+                setStatusText('Ready for Casting');
+              }
+
               setIsPlaying(data.isPlaying);
               break;
             }
@@ -500,7 +517,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
                 '[Cast Receiver] Received songs update (SSE):',
                 typedMessage.data,
               );
-              setQueue(typedMessage.data);
+              setQueue(typedMessage.data.map((s: Song) => normalizeSong(s)));
               break;
             case 'settings_update':
               setRoomMode(typedMessage.data.mode);
@@ -578,6 +595,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         updateActualPosition,
         debugMode,
         roomId: roomId || null,
+        error,
       }}
     >
       {children}
