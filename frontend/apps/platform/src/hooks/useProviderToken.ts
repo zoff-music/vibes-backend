@@ -4,7 +4,10 @@ import { safeWrapAsync } from '@vibez/shared';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 const tokenCache: Record<string, { token: string; expiresAt: string }> = {};
-const pendingRequests: Record<string, Promise<ProviderToken | null> | undefined> = {};
+const pendingRequests: Record<
+  string,
+  Promise<ProviderToken | null> | undefined
+> = {};
 const listeners = new Set<(provider: string, token: string | null) => void>();
 
 const emitChange = (provider: string, token: string | null) => {

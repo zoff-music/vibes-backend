@@ -29,27 +29,27 @@ export type QueueItem = Song;
 
 type LocalCastMessage =
   | {
-    action: 'updatePlayback';
-    currentSong?: QueueItem;
-    isPlaying?: boolean;
-    positionMs?: number;
-    queue?: QueueItem[];
-    roomInfo?: RoomInfo;
-  }
+      action: 'updatePlayback';
+      currentSong?: QueueItem;
+      isPlaying?: boolean;
+      positionMs?: number;
+      queue?: QueueItem[];
+      roomInfo?: RoomInfo;
+    }
   | {
-    action: 'syncPlayback';
-    currentSong?: QueueItem;
-    isPlaying?: boolean;
-    positionMs?: number;
-  }
+      action: 'syncPlayback';
+      currentSong?: QueueItem;
+      isPlaying?: boolean;
+      positionMs?: number;
+    }
   | {
-    action: 'updateQueue';
-    queue?: QueueItem[];
-  }
+      action: 'updateQueue';
+      queue?: QueueItem[];
+    }
   | {
-    action: 'updateRoomInfo';
-    roomInfo?: RoomInfo;
-  };
+      action: 'updateRoomInfo';
+      roomInfo?: RoomInfo;
+    };
 
 // Global flag to prevent multiple Cast receiver initializations
 let isCastReceiverInitialized = false;
@@ -345,7 +345,9 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
 
               // Handle tokens if present
               if (data.tokens) {
-                for (const [provider, tokenData] of Object.entries(data.tokens)) {
+                for (const [provider, tokenData] of Object.entries(
+                  data.tokens,
+                )) {
                   if (tokenData?.token) {
                     console.log('[Cast Receiver] caching token for provider', {
                       provider,
@@ -354,7 +356,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
                       provider,
                       tokenData.token,
                       tokenData.expiresAt ||
-                      new Date(Date.now() + 3600000).toISOString(),
+                        new Date(Date.now() + 3600000).toISOString(),
                     );
                   }
                 }
@@ -387,7 +389,6 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
                 updateMediaMetadata(normalizedSong);
               }
             }
-
           }
 
           // Return null to prevent the default player from trying to load the content

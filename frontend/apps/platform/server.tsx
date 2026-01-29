@@ -145,7 +145,7 @@ async function getInitialData(
   if (path === '/admin' || path === '/admin/') {
     const cookieHeader = req.headers.get('cookie') ?? req.headers.get('Cookie');
     console.log('[SSR Admin] Handling admin SSR path:', path);
-    const [roomsErr, rooms] = await api.get('/admin/rooms', {
+    const [roomsErr, rooms] = await api.get('/admin/rooms', null, {
       headers: { Cookie: cookieHeader },
     });
     if (roomsErr) {
@@ -205,7 +205,7 @@ async function getInitialData(
     data: {
       room,
       songs: songs || [],
-      playback: playback || null,
+      playback: (playback || null) as any,
       theme: getThemeFromCookies(cookieHeader), // Pass theme to client
     },
     redirect: null,
@@ -333,7 +333,7 @@ Bun.serve({
     });
   },
   websocket: {
-    message() { },
+    message() {},
     open() {
       console.log('[HMR] Connected');
     },
