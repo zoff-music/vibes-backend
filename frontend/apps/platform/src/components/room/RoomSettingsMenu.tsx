@@ -85,7 +85,7 @@ export const RoomSettingsMenu = ({
                 <div className="flex items-center gap-3">
                   <button
                     onClick={onToggleShare}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 text-xs transition-all ${
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${
                       showShare
                         ? 'border-theme-strong bg-theme-surface text-theme'
                         : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
@@ -98,7 +98,7 @@ export const RoomSettingsMenu = ({
 
                   <button
                     onClick={onToggleDarkMode}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 text-xs transition-all ${
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${
                       isDarkMode
                         ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_12px_rgba(0,217,255,0.35)]'
                         : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
@@ -129,7 +129,7 @@ export const RoomSettingsMenu = ({
                 )}
               </div>
 
-              <h4 className="border-theme border-b pb-2 font-display text-[10px] text-theme-muted tracking-[0.3em]">
+              <h4 className="border-theme border-b pb-2 font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
                 Room Control
               </h4>
 
@@ -137,7 +137,7 @@ export const RoomSettingsMenu = ({
                 <div className="rounded-lg border border-secondary/30 bg-secondary/10 p-3">
                   <div className="flex items-center gap-2">
                     <div className="h-2 w-2 rounded-full bg-secondary"></div>
-                    <span className="text-secondary text-sm">
+                    <span className="font-pixel text-secondary text-sm">
                       Host Mode Active
                     </span>
                   </div>
@@ -151,7 +151,7 @@ export const RoomSettingsMenu = ({
               <div className="group flex items-center justify-between">
                 <div className="flex flex-col">
                   <span
-                    className={`text-sm ${
+                    className={`font-pixel text-sm ${
                       (room?.hasPassword && !isAdmin) || room?.mode === 'host'
                         ? 'text-theme-subtle'
                         : 'text-theme'
@@ -195,7 +195,7 @@ export const RoomSettingsMenu = ({
               <div className="group flex items-center justify-between">
                 <div className="flex flex-col">
                   <span
-                    className={`text-sm ${
+                    className={`font-pixel text-sm ${
                       (room?.hasPassword && !isAdmin) || room?.mode === 'host'
                         ? 'text-theme-subtle'
                         : 'text-theme'
@@ -239,7 +239,7 @@ export const RoomSettingsMenu = ({
               <div className="group flex items-center justify-between">
                 <div className="flex flex-col">
                   <span
-                    className={`text-sm ${
+                    className={`font-pixel text-sm ${
                       room?.hasPassword && !isAdmin
                         ? 'text-theme-subtle'
                         : 'text-theme'
@@ -275,7 +275,7 @@ export const RoomSettingsMenu = ({
               <div className="group flex items-center justify-between">
                 <div className="flex flex-col">
                   <span
-                    className={`text-sm ${
+                    className={`font-pixel text-sm ${
                       room?.hasPassword && !isAdmin
                         ? 'text-theme-subtle'
                         : 'text-theme'
@@ -311,7 +311,7 @@ export const RoomSettingsMenu = ({
               <div className="group flex items-center justify-between">
                 <div className="flex flex-col">
                   <span
-                    className={`text-sm ${
+                    className={`font-pixel text-sm ${
                       room?.hasPassword && !isAdmin
                         ? 'text-theme-subtle'
                         : 'text-theme'
@@ -345,7 +345,7 @@ export const RoomSettingsMenu = ({
               </div>
 
               <div className="border-theme border-t pt-4">
-                <h5 className="mb-3 font-display text-[10px] text-theme-muted tracking-[0.3em]">
+                <h5 className="mb-3 font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
                   Sources
                 </h5>
                 <div className="grid grid-cols-3 gap-2">
@@ -402,7 +402,7 @@ export const RoomSettingsMenu = ({
               </div>
 
               <div className="border-theme border-t pt-4">
-                <h5 className="mb-3 font-display text-[10px] text-theme-muted tracking-[0.3em]">
+                <h5 className="mb-3 font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
                   Room Mode
                 </h5>
 
@@ -416,7 +416,9 @@ export const RoomSettingsMenu = ({
                         : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
                     } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                   >
-                    <div className="mb-1 text-sm text-theme">Server Mode</div>
+                    <div className="mb-1 font-pixel text-sm text-theme">
+                      Server Mode
+                    </div>
                     <div className="text-[10px] text-theme-muted">
                       Auto-play music 24/7. Perfect for radio stations.
                     </div>
@@ -431,7 +433,9 @@ export const RoomSettingsMenu = ({
                         : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
                     } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                   >
-                    <div className="mb-1 text-sm text-theme">Host Mode</div>
+                    <div className="mb-1 font-pixel text-sm text-theme">
+                      Host Mode
+                    </div>
                     <div className="text-[10px] text-theme-muted">
                       Host controls playback. Great for parties.
                     </div>
@@ -440,8 +444,8 @@ export const RoomSettingsMenu = ({
               </div>
 
               {!isAdmin && (
-                <div className="group mt-6 flex flex-col gap-2 border-theme border-t pt-4">
-                  <span className="text-sm text-theme">Admin Access</span>
+                <div className="group mt-6 flex flex-col gap-2 border-theme border-t pt-4 text-theme">
+                  <span className="font-pixel text-sm">Admin Access</span>
                   <div className="flex gap-2">
                     <input
                       type="password"

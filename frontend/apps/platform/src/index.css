@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;800&family=Space+Grotesk:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap")
+@import url("https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Pixelify+Sans:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=Space+Mono:wght@400;700&family=Zen+Maru+Gothic:wght@300;400;500;700&display=swap")
   layer(base);
 
 @import "tailwindcss";
@@ -44,11 +44,14 @@
   --color-success: #00d9a3;
   --color-warning: #ffd93d;
   --color-error: #ff2e63;
-
-  --font-body: "Space Grotesk", "Noto Sans JP", system-ui, sans-serif;
-  --font-heading: "Orbitron", "Noto Sans JP", system-ui, sans-serif;
-  --font-mono: "Space Mono", "Courier New", monospace;
-  --font-japanese: "Noto Sans JP", "Hiragino Sans", sans-serif;
+  /* Fonts */
+  --font-body: "Pixelify Sans", "Zen Maru Gothic", system-ui, sans-serif;
+  --font-heading: "Pixelify Sans", sans-serif;
+  /* Also make headings pixel by default */
+  --font-mono: "Pixelify Sans", "Courier New", monospace;
+  /* Even mono for now as per user request */
+  --font-pixel: "Pixelify Sans", cursive;
+  --font-japanese: "Zen Maru Gothic", "Hiragino Sans", sans-serif;
 
   --text-xs: 12px;
   --text-xs--line-height: 16px;
@@ -274,12 +277,41 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
+  :root,
+  body {
+    font-family: var(--font-body);
+  }
+
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
     border-color: var(--color-gray-200, currentcolor);
+    font-family: inherit;
+    /* Ensure everything inherits the pixel font */
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: var(--font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+  }
+
+  button,
+  label,
+  input,
+  textarea,
+  select,
+  span,
+  div,
+  p {
+    font-family: var(--font-body);
   }
 }
 
@@ -367,6 +399,17 @@
 
 @utility font-mono {
   font-family: var(--font-mono);
+}
+
+@utility font-pixel {
+  font-family: var(--font-pixel);
+  letter-spacing: 0.05em;
+}
+
+@utility font-wide {
+  font-family: "Syncopate", sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.25em;
 }
 
 @layer utilities {
@@ -507,12 +550,12 @@
     background: radial-gradient(
       circle at 50% 35%,
       var(--sunset-core),
-      var(--sunset-mid) 55%,
-      var(--sunset-glow) 70%,
-      transparent 75%
+      var(--sunset-mid) 50%,
+      var(--sunset-glow) 75%,
+      transparent 85%
     );
-    filter: drop-shadow(0 0 40px rgba(255, 120, 160, 0.6));
-    mask-image: linear-gradient(to bottom, black 70%, transparent 100%);
+    filter: drop-shadow(0 0 50px rgba(255, 120, 160, 0.7));
+    mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
   }
 
   .sunset-orb::after {
@@ -523,24 +566,24 @@
     opacity: 0.65;
 
     background:
+      linear-gradient(rgba(15, 5, 30, 0.9), rgba(15, 5, 30, 0.9)),
       linear-gradient(rgba(15, 5, 30, 0.8), rgba(15, 5, 30, 0.8)),
-      linear-gradient(rgba(15, 5, 30, 0.8), rgba(15, 5, 30, 0.8)),
-      linear-gradient(rgba(15, 5, 30, 0.8), rgba(15, 5, 30, 0.8)),
-      linear-gradient(rgba(15, 5, 30, 0.8), rgba(15, 5, 30, 0.8));
+      linear-gradient(rgba(15, 5, 30, 0.7), rgba(15, 5, 30, 0.7)),
+      linear-gradient(rgba(15, 5, 30, 0.6), rgba(15, 5, 30, 0.6));
 
     background-repeat: no-repeat;
 
     background-size:
-      90% 6px,
-      85% 6px,
-      80% 5.5px,
-      70% 5px;
+      95% 4px,
+      90% 4.5px,
+      82% 5px,
+      70% 6px;
 
     background-position:
-      center 20px,
-      center 35px,
-      center 50px,
-      center 65px;
+      center 15px,
+      center 32px,
+      center 52px,
+      center 75px;
   }
 
   .sun-hero {
@@ -552,15 +595,17 @@
   }
 
   .retro-grid {
-    transform: translateX(-50%) perspective(600px) rotateX(68deg);
+    transform: translateX(-50%) perspective(400px) rotateX(60deg);
     transform-origin: bottom;
     background-image:
-      linear-gradient(to right, rgba(255, 105, 180, 0.35) 1px, transparent 1px),
-      linear-gradient(to bottom, rgba(0, 217, 255, 0.35) 1px, transparent 1px);
-    background-size: 60px 60px;
-    animation: retro-grid-scroll 18s linear infinite;
-    will-change: background-position;
-    filter: drop-shadow(0 0 20px rgba(255, 46, 151, 0.4));
+      linear-gradient(to right, rgba(255, 105, 180, 0.45) 2px, transparent 2px),
+      linear-gradient(to bottom, rgba(0, 217, 255, 0.45) 2px, transparent 2px);
+    background-size: 80px 80px;
+    animation: retro-grid-scroll 12s linear infinite;
+    will-change: transform, background-position;
+    image-rendering: crisp-edges;
+    backface-visibility: hidden;
+    filter: drop-shadow(0 0 25px rgba(255, 46, 151, 0.5));
     opacity: 1;
   }
 
@@ -570,6 +615,7 @@
         0 0,
         0 0;
     }
+
     to {
       background-position:
         0 60px,

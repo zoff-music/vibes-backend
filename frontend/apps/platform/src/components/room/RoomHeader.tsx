@@ -73,13 +73,11 @@ export const RoomHeader = ({
           className="group inline-flex cursor-pointer items-center gap-2 text-theme-muted transition-colors hover:text-theme"
         >
           <ArrowLeftIcon className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
-          <span className="font-display text-[10px] tracking-[0.3em]">
-            Leave
-          </span>
+          <span className="text-[10px] tracking-[0.3em]">Leave</span>
         </Link>
 
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-          <h1 className="truncate whitespace-nowrap font-display text-sm text-theme sm:text-base">
+          <h1 className="truncate whitespace-nowrap text-theme text-xs sm:text-sm">
             {displayRoom?.name || 'Loading...'}
           </h1>
         </div>

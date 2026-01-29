@@ -142,19 +142,19 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
             className="group inline-flex cursor-pointer items-center gap-2 text-theme-muted transition-colors hover:text-theme"
           >
             <ArrowLeftIcon className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
-            <span className="font-display text-xs tracking-[0.3em]">Back</span>
+            <span className="font-pixel text-xs tracking-[0.3em]">Back</span>
           </Link>
-          <div className="text-right text-theme-muted text-xs tracking-[0.3em]">
+          <div className="text-right font-pixel text-theme-muted text-xs tracking-[0.3em]">
             CREATE A SESSION
           </div>
         </div>
 
         <div className="crt-frame rounded-[36px] p-6 sm:p-10">
           <div className="mb-10 text-center">
-            <h1 className="font-display text-4xl text-theme sm:text-5xl">
+            <h1 className="font-wide text-3xl text-theme sm:text-4xl">
               CREATE A SESSION
             </h1>
-            <p className="mt-3 text-sm text-theme-muted">
+            <p className="mt-3 font-pixel text-sm text-theme-muted">
               Build a neon listening room in seconds.
             </p>
             <p className="jp-art mt-2 text-theme-subtle text-xs">
@@ -165,7 +165,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
           <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
             <div className="space-y-6">
               <div className="panel-surface rounded-[24px] p-6">
-                <label className="mb-3 block font-display text-[10px] text-theme-muted tracking-[0.3em]">
+                <label className="mb-3 block font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
                   SESSION NAME
                 </label>
                 <input
@@ -180,7 +180,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
               </div>
 
               <div className="panel-surface rounded-[24px] p-6">
-                <label className="mb-4 block font-display text-[10px] text-theme-muted tracking-[0.3em]">
+                <label className="mb-4 block font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
                   ROOM MODE
                 </label>
                 <div className="grid gap-4 sm:grid-cols-2">
@@ -193,7 +193,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                         : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
                     }`}
                   >
-                    <div className="mb-2 font-display text-xs tracking-[0.2em]">
+                    <div className="mb-2 font-pixel text-xs tracking-[0.2em]">
                       SERVER MODE
                     </div>
                     <div className="text-theme-muted text-xs">
@@ -209,7 +209,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                         : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
                     }`}
                   >
-                    <div className="mb-2 font-display text-xs tracking-[0.2em]">
+                    <div className="mb-2 font-pixel text-xs tracking-[0.2em]">
                       HOST MODE
                     </div>
                     <div className="text-theme-muted text-xs">
@@ -220,7 +220,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
               </div>
 
               <div className="panel-surface rounded-[24px] p-6">
-                <label className="mb-3 block font-display text-[10px] text-theme-muted tracking-[0.3em]">
+                <label className="mb-3 block font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
                   ADMIN PASSWORD
                   <span className="ml-2 text-theme-subtle">(optional)</span>
                 </label>
@@ -238,13 +238,13 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
             </div>
 
             <div className="panel-surface rounded-[24px] p-6">
-              <h2 className="mb-6 font-display text-[11px] text-theme-muted tracking-[0.4em]">
+              <h2 className="mb-6 font-pixel text-[11px] text-theme-muted tracking-[0.4em]">
                 PLAYBACK SETTINGS
               </h2>
               <div className="space-y-4">
                 <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
                   <div className="mr-4 flex-1">
-                    <div className="font-display text-theme text-xs tracking-[0.2em]">
+                    <div className="font-pixel text-theme text-xs tracking-[0.2em]">
                       ALLOW SKIP
                     </div>
                     <div className="mt-1 text-theme-muted text-xs">
@@ -266,7 +266,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
 
                 <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
                   <div className="mr-4 flex-1">
-                    <div className="font-display text-theme text-xs tracking-[0.2em]">
+                    <div className="font-pixel text-theme text-xs tracking-[0.2em]">
                       DEMOCRATIC SKIP
                     </div>
                     <div className="mt-1 text-theme-muted text-xs">
@@ -288,7 +288,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
 
                 <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
                   <div className="mr-4 flex-1">
-                    <div className="font-display text-theme text-xs tracking-[0.2em]">
+                    <div className="font-pixel text-theme text-xs tracking-[0.2em]">
                       LOOP QUEUE
                     </div>
                     <div className="mt-1 text-theme-muted text-xs">
@@ -310,7 +310,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
 
                 <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
                   <div className="mr-4 flex-1">
-                    <div className="font-display text-theme text-xs tracking-[0.2em]">
+                    <div className="font-pixel text-theme text-xs tracking-[0.2em]">
                       REMOVE PLAYED
                     </div>
                     <div className="mt-1 text-theme-muted text-xs">
@@ -332,7 +332,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
 
                 <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
                   <div className="mr-4 flex-1">
-                    <div className="font-display text-theme text-xs tracking-[0.2em]">
+                    <div className="font-pixel text-theme text-xs tracking-[0.2em]">
                       ALLOW DUPLICATES
                     </div>
                     <div className="mt-1 text-theme-muted text-xs">
@@ -369,7 +369,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
           <button
             onClick={handleCreate}
             disabled={!name.trim() || isLoading}
-            className="mt-8 flex w-full cursor-pointer items-center justify-center gap-3 rounded-2xl bg-primary px-6 py-4 font-display text-sm text-white shadow-[0_0_24px_rgba(255,46,151,0.45)] transition-all hover:-translate-y-0.5 hover:bg-primary-muted disabled:cursor-not-allowed disabled:bg-theme-surface disabled:text-theme-subtle"
+            className="mt-8 flex w-full cursor-pointer items-center justify-center gap-3 rounded-2xl bg-primary px-6 py-4 font-pixel text-sm text-white shadow-[0_0_24px_rgba(255,46,151,0.45)] transition-all hover:-translate-y-0.5 hover:bg-primary-muted disabled:cursor-not-allowed disabled:bg-theme-surface disabled:text-theme-subtle"
           >
             {isLoading ? (
               <>
