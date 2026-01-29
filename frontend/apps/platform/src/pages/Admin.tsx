@@ -187,7 +187,6 @@ export default function Admin({ initialData }: AdminProps) {
           <div className="glass rounded-3xl border-2 border-ink/10 p-8 text-center dark:border-gray-700">
             <h1
               className="mb-2 font-black text-3xl text-ink tracking-tight dark:text-white"
-              style={{ fontFamily: 'Poppins' }}
             >
               Admin Access
             </h1>
@@ -215,7 +214,6 @@ export default function Admin({ initialData }: AdminProps) {
                 onClick={handleLogin}
                 disabled={!password.trim() || isLoading}
                 className="w-full rounded-xl bg-primary py-3 font-bold text-white transition-all hover:bg-primary/90 hover:shadow-retro-pink active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-ink/10 disabled:text-ink/30 dark:disabled:bg-gray-700 dark:disabled:text-gray-500"
-                style={{ fontFamily: 'Poppins' }}
               >
                 {isLoading ? 'Checking...' : 'Enter Dashboard'}
               </button>
@@ -233,7 +231,6 @@ export default function Admin({ initialData }: AdminProps) {
           <div>
             <h1
               className="font-black text-3xl tracking-tight"
-              style={{ fontFamily: 'Poppins' }}
             >
               Live Rooms
             </h1>
@@ -247,14 +244,12 @@ export default function Admin({ initialData }: AdminProps) {
             <button
               onClick={fetchRooms}
               className="rounded-xl border border-ink/15 px-4 py-2 font-semibold text-sm transition-all hover:border-primary hover:text-primary dark:border-gray-700 dark:hover:border-primary-light dark:hover:text-primary-light"
-              style={{ fontFamily: 'Poppins' }}
             >
               Refresh
             </button>
             <button
               onClick={handleLogout}
               className="rounded-xl bg-ink/10 px-4 py-2 font-semibold text-sm transition-all hover:bg-ink/20 dark:bg-gray-800 dark:hover:bg-gray-700"
-              style={{ fontFamily: 'Poppins' }}
             >
               Sign Out
             </button>
@@ -271,7 +266,6 @@ export default function Admin({ initialData }: AdminProps) {
                 <div className="flex items-center gap-3">
                   <h2
                     className="font-bold text-ink text-xl dark:text-white"
-                    style={{ fontFamily: 'Poppins' }}
                   >
                     {room.name}
                   </h2>
