@@ -13,6 +13,18 @@ export const ActiveView: React.FC = () => {
   const joinUrl = `${window.location.origin}/rooms/${roomId}`;
   const upNext = queue.filter((song) => song.id !== currentSong.id);
 
+  if (
+    process.env.NODE_ENV !== 'production' ||
+    new URLSearchParams(window.location.search).get('debug') === 'true'
+  ) {
+    console.log('[ActiveView] Queue filtering:', {
+      totalQueue: queue.length,
+      currentSongId: currentSong.id,
+      upNextCount: upNext.length,
+      firstQueueId: queue[0]?.id,
+    });
+  }
+
   return (
     <div className="flex h-screen w-screen flex-row overflow-hidden bg-black font-body">
       {/* Left Column: Player & Current Song Info - FIXED WIDTH */}

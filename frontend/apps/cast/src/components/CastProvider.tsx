@@ -398,19 +398,58 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
     let unsubscribe: (() => void) | null = null;
 
     const connect = async () => {
-      console.log('[Cast Receiver] Connecting to SSE', { roomId, casterId });
+      console.log('[Cast Receiver] Connect sequence started', {
+        roomId,
+        casterId,
+        debug: debugMode,
+      });
+
+      if (!roomId) {
+        console.error(
+          '[Cast Receiver] Room ID is missing from URL parameters!',
+        );
+        return;
+      }
 
       // Fetch initial state immediately, don't wait for SSE
-      api
-        .get('/rooms/{id}/songs', {
-          id: roomId,
-        })
-        .then(([songsErr, songs]) => {
-          console.log('[Cast Receiver] Initial songs fetch result:', {
-            err: songsErr,
-            count: songs?.length,
+      console.log(`[Cast Receiver] Fetching queue & playback from: ${roomId}`);
+
+      Promise.all([
+        api.get('/rooms/{id}/songs', { id: roomId }),
+        api.get('/rooms/{id}/states', { id: roomId }),
+      ])
+        .then(([queueRes, playbackRes]) => {
+          const [songsErr, songs] = queueRes;
+          const [playbackErr, playbackState] = playbackRes;
+
+          console.log('[Cast Receiver] Initial fetch results:', {
+            queueErr: songsErr ? songsErr.message : null,
+            queueCount: songs?.length,
+            playbackErr: playbackErr ? playbackErr.message : null,
+            hasPlayback: !!playbackState,
           });
+
           if (!songsErr && songs) setQueue(songs);
+
+          if (!playbackErr && playbackState && playbackState.currentSong) {
+            const normalizedSong = normalizeSong(playbackState.currentSong);
+            setPlaybackState(
+              {
+                ...playbackState,
+                currentSong: normalizedSong,
+              },
+              roomMode || undefined,
+            );
+            setIsPlaying(playbackState.isPlaying);
+            setStatusText(`Now Playing: ${normalizedSong.title}`);
+            updateMediaMetadata(normalizedSong);
+          }
+        })
+        .catch((unexpectedErr) => {
+          console.error(
+            '[Cast Receiver] Unexpected fetch error:',
+            unexpectedErr,
+          );
         });
 
       const [err, stop] = await api.sse(

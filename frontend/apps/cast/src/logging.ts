@@ -70,7 +70,8 @@ const initLogging = () => {
   };
 
   const sendLogToSender = (level: string, args: unknown[]) => {
-    if (!isGlobalDebugEnabled && level !== 'error') return; // Only send errors if debug is off
+    // Always attempt to forward logs to sender for better debugging
+    // if (!isGlobalDebugEnabled && level !== 'error') return;
 
     const ctx = cast.framework.CastReceiverContext.getInstance();
     const senders = ctx.getSenders();
