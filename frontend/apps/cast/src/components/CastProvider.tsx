@@ -206,11 +206,11 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
           if (message.currentSong) {
             const normalizedSong = normalizeSong(message.currentSong);
             const isSameSong = currentSongId === normalizedSong.id;
-            
+
             console.log('[Cast Receiver] Sync ID Check:', {
-               currentId: currentSongId,
-               incomingId: normalizedSong.id,
-               isSame: isSameSong
+              currentId: currentSongId,
+              incomingId: normalizedSong.id,
+              isSame: isSameSong,
             });
 
             // Prevent reset to 0 if we are already playing this song and have a position

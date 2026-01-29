@@ -116,10 +116,11 @@ export const ActiveView: React.FC = () => {
         </div>
 
         {/* Debug Overlay - Always visible for now */}
-        {(true) && (
-            <div className="mb-4 rounded bg-red-900/80 p-2 text-white text-xs font-mono">
-               Room: {roomId} | Queue: {queue.length} | Next: {upNext.length} | ID: {currentSong.id}
-            </div>
+        {true && (
+          <div className="mb-4 rounded bg-red-900/80 p-2 font-mono text-white text-xs">
+            Room: {roomId} | Queue: {queue.length} | Next: {upNext.length} | ID:{' '}
+            {currentSong.id}
+          </div>
         )}
 
         <div className="custom-scrollbar flex-1 overflow-y-auto pr-2">
