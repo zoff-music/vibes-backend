@@ -1,5 +1,12 @@
 import type { Room, RoomSettings, RoomUpdate } from '@vibez/models';
-import { MoonIcon, ShareIcon, SunIcon } from '@vibez/ui';
+import {
+  MoonIcon,
+  ShareIcon,
+  SoundCloudIcon,
+  SpotifyIcon,
+  SunIcon,
+  YouTubeIcon,
+} from '@vibez/ui';
 import { AnimatePresence, motion } from 'framer-motion';
 import { type RefObject, useEffect } from 'react';
 import { RoomSharePanel } from './RoomSharePanel';
@@ -69,7 +76,7 @@ export const RoomSettingsMenu = ({
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="fixed top-[var(--room-header-height)] right-0 left-0 z-10 h-[calc(100dvh-var(--room-header-height))] w-full overflow-y-auto overscroll-contain border-theme border-t bg-theme-surface p-5 text-theme shadow-2xl sm:absolute sm:top-auto sm:right-0 sm:left-auto sm:mt-3 sm:h-auto sm:w-72 sm:overflow-visible sm:rounded-3xl sm:border"
+            className="fixed top-[var(--room-header-height)] right-0 left-0 z-10 h-[calc(100dvh-var(--room-header-height))] w-full overflow-y-auto overscroll-contain border-theme border-t bg-theme-surface p-5 text-theme shadow-2xl sm:absolute sm:top-auto sm:right-0 sm:left-auto sm:mt-3 sm:max-h-[70vh] sm:w-72 sm:overflow-y-auto sm:rounded-3xl sm:border"
           >
             <div className="space-y-4">
               <div className="space-y-3 sm:hidden">
@@ -329,6 +336,63 @@ export const RoomSettingsMenu = ({
                     className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.removeOnPlay ? 'right-1.5' : 'left-1.5'}`}
                   />
                 </button>
+              </div>
+
+              <div className="border-theme border-t pt-4">
+                <h5 className="mb-3 font-display text-[10px] text-theme-muted tracking-[0.3em]">
+                  Sources
+                </h5>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    {
+                      id: 'youtube',
+                      Icon: YouTubeIcon,
+                      color:
+                        'bg-red-500/20 border-red-500/40 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]',
+                    },
+                    {
+                      id: 'spotify',
+                      Icon: SpotifyIcon,
+                      color:
+                        'bg-green-500/20 border-green-500/40 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.2)]',
+                    },
+                    {
+                      id: 'soundcloud',
+                      Icon: SoundCloudIcon,
+                      color:
+                        'bg-orange-500/20 border-orange-500/40 text-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.2)]',
+                    },
+                  ].map(({ id, Icon, color }) => {
+                    const isEnabled =
+                      room?.settings.enabledSources.includes(id) ?? true;
+                    return (
+                      <button
+                        key={id}
+                        disabled={room?.hasPassword && !isAdmin}
+                        onClick={() => {
+                          if (!room) return;
+                          const newSources = isEnabled
+                            ? room.settings.enabledSources.filter(
+                                (s) => s !== id,
+                              )
+                            : [...room.settings.enabledSources, id];
+                          updateRoomSettings({
+                            ...room.settings,
+                            enabledSources: newSources,
+                          });
+                        }}
+                        className={`group relative flex cursor-pointer items-center justify-center rounded-xl border py-3 transition-all ${
+                          isEnabled
+                            ? color
+                            : 'border-theme bg-theme-surface text-theme-muted opacity-40 hover:border-theme-strong hover:opacity-60'
+                        } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed grayscale' : ''}`}
+                        title={`${isEnabled ? 'Disable' : 'Enable'} ${id}`}
+                      >
+                        <Icon className="h-6 w-6" />
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
 
               <div className="border-theme border-t pt-4">

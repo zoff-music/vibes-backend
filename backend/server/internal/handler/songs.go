@@ -87,6 +87,37 @@ func AddSong(
 			return
 		}
 
+		// Get room to check enabled sources
+		room, err := db.GetRoom(ctx, roomID, session.UserID)
+		if err != nil {
+			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+
+		if room.IsEmpty() {
+			handleError(w, fmt.Errorf("room not found"), http.StatusNotFound, false)
+			return
+		}
+
+		// Validate source type
+		sourceEnabled := false
+		for _, source := range room.Settings.EnabledSources {
+			if string(req.SourceType) == source {
+				sourceEnabled = true
+				break
+			}
+		}
+
+		if !sourceEnabled {
+			handleError(
+				w,
+				fmt.Errorf("source type %s is not enabled for this room", req.SourceType),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
 		artist := req.Artist
 		song := &vibe.Song{
 			ID:           uuid.New().String(),

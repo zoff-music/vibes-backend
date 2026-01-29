@@ -112,7 +112,8 @@ func (c *Client) prepareGetRoomStmt() error {
 			b.remove_on_play,
 			b.loop_queue,
 			b.allow_duplicates,
-			COALESCE(c.is_admin, 0) as is_requester_admin
+			COALESCE(c.is_admin, 0) as is_requester_admin,
+			b.enabled_sources
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
@@ -147,7 +148,8 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 			b.remove_on_play,
 			b.loop_queue,
 			b.allow_duplicates,
-			COALESCE(c.is_admin, 0) as is_requester_admin
+			COALESCE(c.is_admin, 0) as is_requester_admin,
+			b.enabled_sources
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
@@ -388,6 +390,7 @@ type roomRow struct {
 	LoopQueue         sql.NullInt64
 	AllowDuplicates   sql.NullInt64
 	IsRequesterAdmin  sql.NullInt64
+	EnabledSources    sql.NullString
 }
 
 func (r *roomRow) scanRow(row *sql.Row) error {
@@ -406,6 +409,7 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.LoopQueue,
 		&r.AllowDuplicates,
 		&r.IsRequesterAdmin,
+		&r.EnabledSources,
 	)
 }
 
@@ -429,6 +433,17 @@ func (r *roomRow) toRoom() (*vibe.Room, error) {
 }
 
 func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
+	sources := []string{}
+	if r.EnabledSources.Valid && r.EnabledSources.String != "" {
+		sources = strings.Split(r.EnabledSources.String, ",")
+	} else if r.EnabledSources.Valid && r.EnabledSources.String == "" {
+		// Empty string means no sources enabled
+		sources = []string{}
+	} else {
+		// Default to all sources if NULL (though column is NOT NULL)
+		sources = []string{"youtube", "spotify", "soundcloud"}
+	}
+
 	return &vibe.RoomSettings{
 		SkipAllowed:       int(r.SkipAllowed.Int64) == 1,
 		DemocraticSkip:    int(r.DemocraticSkip.Int64) == 1,
@@ -437,6 +452,7 @@ func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
 		RemoveOnPlay:      int(r.RemoveOnPlay.Int64) == 1,
 		LoopQueue:         int(r.LoopQueue.Int64) == 1,
 		AllowDuplicates:   r.AllowDuplicates.Int64 == 1,
+		EnabledSources:    sources,
 	}, nil
 }
 
@@ -456,8 +472,9 @@ func (c *Client) prepareCreateRoomStmt() error {
 			max_continuous_adds,
 			remove_on_play,
 			loop_queue,
-			allow_duplicates
-		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)
+			allow_duplicates,
+			enabled_sources
+		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
 		RETURNING id
 	`)
 	if err != nil {
@@ -492,6 +509,7 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		boolToInt(room.Settings.RemoveOnPlay),
 		boolToInt(room.Settings.LoopQueue),
 		boolToInt(room.Settings.AllowDuplicates),
+		strings.Join(room.Settings.EnabledSources, ","),
 	)
 
 	var scanned createRoomRow
@@ -526,7 +544,8 @@ func (c *Client) prepareUpdateRoomStmt() error {
 			max_continuous_adds = ?6,
 			remove_on_play = ?7,
 			loop_queue = ?8,
-			allow_duplicates = ?9
+			allow_duplicates = ?9,
+			enabled_sources = ?13
 		WHERE id = ?2
 	`)
 	if err != nil {
@@ -559,6 +578,7 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		room.Mode,
 		room.HostID,
 		room.AdminPasswordHash,
+		strings.Join(room.Settings.EnabledSources, ","),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error updating room: %w", err)

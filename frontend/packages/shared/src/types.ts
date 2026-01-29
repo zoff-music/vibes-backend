@@ -17,6 +17,7 @@ export const DEFAULT_ROOM_SETTINGS: RoomSettings = {
   removeOnPlay: true,
   loopQueue: false,
   allowDuplicates: false,
+  enabledSources: ['youtube', 'spotify', 'soundcloud'],
 };
 
 // User types
