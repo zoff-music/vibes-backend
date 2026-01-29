@@ -69,6 +69,17 @@ export const useCasting = (_roomId: string) => {
     }
   }, [isConnected, currentSong, currentSession, stableCastCurrentSong]);
 
+  // Send Join Room message when connected
+  useEffect(() => {
+    if (isConnected && currentSession && _roomId) {
+      console.log('[Cast] Sending joinRoom handshake for room:', _roomId);
+      const { joinRoom } = useCastStore.getState();
+      joinRoom(_roomId).catch((err) => {
+        console.error('Failed to send joinRoom handshake:', err);
+      });
+    }
+  }, [isConnected, currentSession, _roomId]);
+
   // Sync playback state with cast device
   useEffect(() => {
     const isLocalSession = currentSession?.deviceId === 'local-cast-emulator';
