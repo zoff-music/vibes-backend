@@ -33,6 +33,13 @@ const VideoPlayerComponent = ({
   const [isVerifying, setIsVerifying] = useState(false);
 
   const handleAuthorize = () => {
+    // Check if running on Chromecast (CrKey)
+    const isChromecast = /CrKey/i.test(navigator.userAgent);
+    if (isChromecast) {
+      setError('Please authorize YouTube on your phone to continue casting.');
+      return;
+    }
+
     const width = 600;
     const height = 800;
     const left = window.screen.width / 2 - width / 2;

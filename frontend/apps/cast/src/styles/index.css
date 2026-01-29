@@ -25,15 +25,11 @@
 
 @layer utilities {
   .text-readable {
-    text-shadow:
-      0 2px 8px rgba(8, 2, 20, 0.9),
-      0 0 14px rgba(0, 0, 0, 0.5);
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.8);
   }
 
   .glow-text {
-    text-shadow:
-      0 0 14px rgba(255, 62, 166, 0.7),
-      0 0 26px rgba(53, 211, 255, 0.45);
+    text-shadow: 0 0 10px rgba(255, 62, 166, 0.6);
   }
 
   .bg-theme {
@@ -74,8 +70,8 @@
     width: clamp(240px, 40vw, 420px);
     aspect-ratio: 1 / 1;
     border-radius: 9999px;
-    @apply bg-sun-hero-gradient shadow-neon-pink;
-    box-shadow: 0 0 80px rgba(255, 102, 153, 0.55);
+    @apply bg-sun-hero-gradient;
+    box-shadow: 0 0 40px rgba(255, 102, 153, 0.3);
   }
 
   .sun-hero::after {
@@ -100,19 +96,15 @@
   }
 
   .panel-surface {
-    @apply bg-panel-surface-gradient shadow-soft rounded-xl border;
-    border-color: rgba(255, 120, 195, 0.35);
-    box-shadow:
-      0 0 0 1px rgba(53, 211, 255, 0.25) inset,
-      0 10px 30px rgba(7, 3, 15, 0.45);
+    @apply bg-panel-surface-gradient rounded-xl border;
+    border-color: rgba(255, 120, 195, 0.2);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.4);
   }
 
   .panel-frame {
     @apply rounded-2xl border;
-    border-color: rgba(255, 120, 195, 0.4);
-    box-shadow:
-      0 0 0 1px rgba(53, 211, 255, 0.3) inset,
-      0 20px 40px rgba(4, 2, 12, 0.65);
+    border-color: rgba(255, 120, 195, 0.3);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.5);
   }
 
   .cast-queue button {

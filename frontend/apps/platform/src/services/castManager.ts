@@ -770,6 +770,7 @@ class GoogleCastManager implements CastManager {
         tokens: {
           spotify: { token: getToken('spotify') },
           soundcloud: { token: getToken('soundcloud') },
+          youtube: { token: getToken('youtube') },
         },
         debug:
           new URLSearchParams(window.location.search).get('debug') === 'true',
