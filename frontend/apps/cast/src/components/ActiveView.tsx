@@ -116,7 +116,9 @@ export const ActiveView: React.FC = () => {
         </div>
 
         {/* Debug Overlay - Only visible in debug mode */}
-        {(process.env.NODE_ENV !== 'production' || new URLSearchParams(window.location.search).get('debug') === 'true') && (
+        {(process.env.NODE_ENV !== 'production' ||
+          new URLSearchParams(window.location.search).get('debug') ===
+            'true') && (
           <div className="mb-4 rounded bg-red-900/80 p-2 font-mono text-white text-xs">
             Room: {roomId} | Queue: {queue.length} | Next: {upNext.length} | ID:{' '}
             {currentSong.id}

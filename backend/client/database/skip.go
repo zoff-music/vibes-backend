@@ -203,20 +203,20 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 		}
 	}
 
-	// 2. Check host mode restrictions
+	// 4. Check host mode restrictions
 	if room.Mode == vibe.RoomModeHost && !isHost && !isAdmin {
 		return nil, internalerror.ErrHostModeSkipOnly{
 			Err: fmt.Errorf("only hosts can skip in host mode"),
 		}
 	}
 
-	// 3. Determine if this should be a forced skip
+	// 5. Determine if this should be a forced skip
 	shouldForce := isHost || isAdmin
 	if !room.Settings.DemocraticSkip {
 		shouldForce = true
 	}
 
-	// 2. Execute Force Skip
+	// 6. Execute Force Skip
 	if shouldForce {
 		log.Printf("[DEBUG-SKIP] Room: %s, User: %s, Force Skip (Host: %v, Admin: %v, User: %s, HostID: %s)\n", roomID, userID, isHost, isAdmin, userID, room.HostID)
 
@@ -228,7 +228,7 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 		return state, nil
 	}
 
-	// 3. Execute Vote Skip
+	// 7. Execute Vote Skip
 	log.Printf("[DEBUG-SKIP] Room: %s, User: %s, Voting to Skip\n", roomID, userID)
 
 	state, err := c.GetPlaybackState(ctx, roomID)
