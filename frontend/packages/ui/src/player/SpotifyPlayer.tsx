@@ -1,8 +1,5 @@
-import {
-  safeWrapAsync,
-  usePlaybackStore,
-  useProviderToken,
-} from '@vibez/shared';
+import { useProviderToken } from '@vibez/api';
+import { safeWrapAsync, usePlaybackStore } from '@vibez/shared';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import SpotifyWebPlayer, {
   type CallbackState,

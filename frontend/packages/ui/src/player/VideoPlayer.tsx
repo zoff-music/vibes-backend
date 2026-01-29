@@ -1,4 +1,5 @@
-import { usePlaybackStore, useProviderToken } from '@vibez/shared';
+import { useProviderToken } from '@vibez/api';
+import { usePlaybackStore } from '@vibez/shared';
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import YouTube, { type YouTubeProps } from 'react-youtube';
 import { AuthOverlay } from './AuthOverlay';
