@@ -63,3 +63,8 @@ export const castErrorSchema = yup.object({
   description: yup.string().required(),
   details: yup.mixed().optional(),
 });
+
+export const sseQuerySchema = yup.object({
+  castReceiver: yup.string().optional(),
+  casterId: yup.string().optional(),
+});
