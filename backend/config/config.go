@@ -29,7 +29,6 @@ type Config struct {
 	YouTubeRedirectURI  string `envconfig:"YOUTUBE_REDIRECT_URI" default:"https://localhost/api/v1/callbacks/youtube"`
 
 	// SoundCloud configuration
-	SoundCloudAPIKey       string `envconfig:"SOUNDCLOUD_API_KEY" default:""`
 	SoundCloudEndpoint     string `envconfig:"SOUNDCLOUD_ENDPOINT" default:"https://api.soundcloud.com"`
 	SoundCloudClientID     string `envconfig:"SOUNDCLOUD_CLIENT_ID" default:""`
 	SoundCloudClientSecret string `envconfig:"SOUNDCLOUD_CLIENT_SECRET" default:""`

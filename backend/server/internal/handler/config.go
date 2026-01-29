@@ -18,7 +18,7 @@ func GetProviders(cfg *config.Config) http.HandlerFunc {
 		if cfg.YouTubeAPIKey != "" || cfg.YouTubeClientID != "" {
 			providers = append(providers, "youtube")
 		}
-		if cfg.SoundCloudClientID != "" || cfg.SoundCloudAPIKey != "" {
+		if cfg.SoundCloudClientID != "" || cfg.SoundCloudClientSecret != "" {
 			providers = append(providers, "soundcloud")
 		}
 
