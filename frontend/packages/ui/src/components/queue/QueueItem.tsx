@@ -1,7 +1,13 @@
 import { Song } from '@vibez/shared';
 import { motion } from 'framer-motion';
 import React from 'react';
-import { TrashIcon, VoteIcon } from '../../icons';
+import {
+  SoundCloudIcon,
+  SpotifyIcon,
+  TrashIcon,
+  VoteIcon,
+  YouTubeIcon,
+} from '../../icons';
 
 interface Props {
   song: Song;
@@ -69,7 +75,18 @@ export const QueueItem: React.FC<Props> = ({
       </div>
 
       {/* Actions */}
-      <div className="flex shrink-0 items-center gap-1">
+      <div className="flex shrink-0 items-center gap-3 pr-4">
+        {/* Source Icon */}
+        <div className="flex items-center justify-center opacity-70">
+          {song.sourceType === 'spotify' ? (
+            <SpotifyIcon className="h-5 w-5" />
+          ) : song.sourceType === 'soundcloud' ? (
+            <SoundCloudIcon className="h-5 w-5" />
+          ) : (
+            <YouTubeIcon className="h-5 w-5" />
+          )}
+        </div>
+
         {isAdmin && (
           <button
             onClick={(e) => {

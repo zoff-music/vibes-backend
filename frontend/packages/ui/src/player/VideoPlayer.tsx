@@ -26,7 +26,7 @@ const VideoPlayerComponent = ({
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
 
-  const { token, fetchToken } = useProviderToken();
+  const { fetchToken } = useProviderToken();
   const playerRef = useRef<YouTubePlayerRef | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -207,74 +207,68 @@ const VideoPlayerComponent = ({
   const showOverlay = !!error;
 
   const containerClass = fill
-    ? 'relative h-full w-full overflow-hidden bg-black [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:scale-[1.65] [&_iframe]:origin-center'
-    : 'relative w-full overflow-hidden rounded-xl bg-black';
+    ? 'relative h-full w-full overflow-hidden bg-black/40 backdrop-blur-md [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:scale-[1.65] [&_iframe]:origin-center'
+    : 'relative w-full overflow-hidden rounded-xl bg-black/40 backdrop-blur-md';
 
   const containerStyle = fill
     ? { height: '100%', width: '100%' }
     : { aspectRatio: '16/9', minHeight: '200px' };
 
-  if (showOverlay) {
-    return (
-      <div className={containerClass} style={containerStyle}>
-        <AuthOverlay
-          provider="youtube"
-          errorMessage={error}
-          onAuthorize={handleAuthorize}
-        />
-      </div>
-    );
-  }
-
-  if (!token && error) {
-    return (
-      <div
-        className={`${containerClass} flex items-center justify-center`}
-        style={containerStyle}
-      >
-        <AuthOverlay
-          provider="youtube"
-          errorMessage={error}
-          onAuthorize={handleAuthorize}
-        />
-      </div>
-    );
-  }
-
-  if (isVerifying) {
-    return (
-      <div
-        className={`${containerClass} flex items-center justify-center`}
-        style={containerStyle}
-      >
-        <div className="text-center">
-          <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-red-500/30 border-t-red-500" />
-          <p className="text-sm text-white/70">Verifying authorization...</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Main render logic always includes the container and CRT layers
   return (
     <div
       className={`${containerClass} ${!isVisible ? 'hidden' : ''}`}
       style={containerStyle}
     >
-      <YouTube
-        videoId={videoId}
-        opts={opts}
-        onReady={handleReady}
-        onStateChange={handleStateChange}
-        onEnd={handleEnd}
-        onError={handleError}
-        className="absolute inset-0 h-full w-full"
-      />
+      {/* Video Content - Back Layer */}
+      {!isVerifying && videoId && (
+        <YouTube
+          videoId={videoId}
+          opts={opts}
+          onReady={handleReady}
+          onStateChange={handleStateChange}
+          onEnd={handleEnd}
+          onError={handleError}
+          className="absolute inset-0 h-full w-full"
+        />
+      )}
 
-      {!isReady && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/50">
+      {/* CRT Effects Layer - Middle Layer (if shown) */}
+      {showOverlay && (
+        <div className="pointer-events-none absolute inset-0 z-[5] overflow-hidden">
+          <div className="vhs-scanlines h-full w-full opacity-[0.14] mix-blend-overlay" />
+          <div className="crt-overlay !absolute !z-[6] pointer-events-none inset-0 opacity-[0.1]" />
+        </div>
+      )}
+
+      {/* Auth/Error Overlay - Top Layer */}
+      {showOverlay && (
+        <AuthOverlay
+          provider="youtube"
+          errorMessage={error}
+          onAuthorize={handleAuthorize}
+        />
+      )}
+
+      {/* Loading States */}
+      {isVerifying && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm">
           <div className="text-center">
             <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-red-500/30 border-t-red-500" />
-            <p className="text-sm text-white/70">Loading video...</p>
+            <p className="font-mono text-[10px] text-white/70 uppercase tracking-widest">
+              Verifying Authorization...
+            </p>
+          </div>
+        </div>
+      )}
+
+      {!isReady && !showOverlay && !isVerifying && (
+        <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className="text-center">
+            <div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-red-500/30 border-t-red-500" />
+            <p className="font-mono text-[10px] text-white/70 uppercase tracking-widest">
+              Loading Satellite Feed...
+            </p>
           </div>
         </div>
       )}

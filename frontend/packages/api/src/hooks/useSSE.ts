@@ -63,7 +63,7 @@ export const useSSE = (
         if (!inFlight) {
           inFlight = api.sse(
             '/rooms/{id}/events',
-            { id: roomId },
+            { id: roomId, $search: undefined },
             (result: [Error | null, unknown]) => {
               const [err, msg] = result;
               if (err) {

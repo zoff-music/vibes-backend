@@ -1,9 +1,14 @@
-import { usePlaybackStore, useRoomStore } from '@vibez/shared';
+import {
+  type PlaybackState,
+  usePlaybackStore,
+  useRoomStore,
+} from '@vibez/shared';
+
 import { useCallback, useEffect } from 'react';
 import { api, getHttpError } from '../index';
 import { USE_SSE_CALLBACKS } from './useSSE';
 
-export const usePlayback = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
+export function usePlayback(roomId: string, callbacks?: USE_SSE_CALLBACKS) {
   const playback = usePlaybackStore();
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
   const setLocalPlayingState = usePlaybackStore(
@@ -103,7 +108,9 @@ export const usePlayback = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
 
       if (data) {
         // Handle wrapped responses (SkipActionResponse/VoteActionResponse)
-        const state = (data as any).playback || data;
+        // Handle wrapped responses (SkipActionResponse/VoteActionResponse)
+        const state = ((data as { playback?: PlaybackState }).playback ||
+          data) as PlaybackState;
         setPlaybackState(state, room?.mode);
       }
     },
@@ -138,4 +145,4 @@ export const usePlayback = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
     vote,
     fetchPlayback,
   };
-};
+}

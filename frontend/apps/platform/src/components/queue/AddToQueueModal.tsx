@@ -73,11 +73,10 @@ export const AddToQueueModal: React.FC<Props> = ({
     currentSong?.sourceType === 'spotify';
 
   const { providers, fetchProviders } = useAuthCache();
-  const providerList = (providers || []).filter(
-    (provider): provider is SourceType =>
-      provider === 'youtube' ||
-      provider === 'spotify' ||
-      provider === 'soundcloud',
+  // Ensure YouTube is first, then Spotify, then SoundCloud
+  const orderedProviders: SourceType[] = ['youtube', 'spotify', 'soundcloud'];
+  const providerList = orderedProviders.filter((p) =>
+    (providers || []).includes(p),
   );
 
   const [selectedProvider, setSelectedProvider] =
@@ -90,28 +89,9 @@ export const AddToQueueModal: React.FC<Props> = ({
   useEffect(() => {
     // Fetch available providers and authorizations via cache
     const loadData = async () => {
-      const pData = (await fetchProviders()).filter(
-        (provider): provider is SourceType =>
-          provider === 'youtube' ||
-          provider === 'spotify' ||
-          provider === 'soundcloud',
-      );
-      // Set default selected provider if not set or invalid
-      if (
-        pData.length > 0 &&
-        !pData.includes(selectedProvider) &&
-        selectedProvider === 'youtube' &&
-        !pData.includes('youtube')
-      ) {
-        if (pData.includes('spotify')) setSelectedProvider('spotify');
-        else setSelectedProvider(pData[0]);
-      } else if (
-        pData.length > 0 &&
-        selectedProvider === 'youtube' &&
-        pData.includes('youtube')
-      ) {
-        // keep youtube
-      }
+      await fetchProviders();
+      // Logic to set default provider is handled by initial state + effect if needed,
+      // but 'youtube' as default is good enough if available.
     };
     loadData();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -330,10 +310,10 @@ export const AddToQueueModal: React.FC<Props> = ({
                   setSearchQuery('');
                   setPreviewVideo(null);
                 }}
-                className={`cursor-pointer rounded-full px-4 py-1.5 text-xs transition-all ${
+                className={`cursor-pointer rounded-full px-4 py-1.5 font-medium text-xs transition-all ${
                   selectedProvider === p
-                    ? 'bg-theme-surface text-theme shadow-[0_0_12px_rgba(255,255,255,0.25)]'
-                    : 'bg-theme text-theme-muted hover:bg-theme-surface'
+                    ? 'border border-theme-subtle bg-theme-surface text-theme shadow-[0_0_12px_rgba(255,255,255,0.25)]'
+                    : 'border border-transparent bg-theme-bg/10 text-theme-muted hover:bg-theme-surface/50 hover:text-theme'
                 }`}
               >
                 {p.charAt(0).toUpperCase() + p.slice(1)}

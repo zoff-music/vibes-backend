@@ -1,7 +1,7 @@
 import type {
   AdminRoomSummary,
   PlaybackState,
-  Room,
+  Room as RoomModel,
   Song,
 } from '@vibez/models';
 import { DebugConsole } from '@vibez/ui';
@@ -10,11 +10,11 @@ import Admin from './pages/Admin';
 import Callback from './pages/Callback';
 import CreateRoom from './pages/CreateRoom';
 import Home from './pages/Home';
-import RoomView from './pages/RoomView';
+import Room from './pages/Room';
 
 export interface SSRInitialData {
   createRoomName?: string;
-  room?: Room;
+  room?: RoomModel;
   songs?: Song[];
   playback?: PlaybackState;
   theme?: 'dark' | 'light';
@@ -43,10 +43,7 @@ export default function App({ initialData }: AppProps) {
           path="/rooms/create"
           element={<CreateRoom initialData={initialData} />}
         />
-        <Route
-          path="/rooms/:id"
-          element={<RoomView initialData={initialData} />}
-        />
+        <Route path="/rooms/:id" element={<Room initialData={initialData} />} />
         <Route path="/callback" element={<Callback />} />
         <Route path="/admin" element={<Admin initialData={initialData} />} />
       </Routes>

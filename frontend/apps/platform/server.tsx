@@ -1,7 +1,7 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
-import { api } from '@vibez/api';
-import { safeWrap } from '@vibez/shared';
+import { api, createApiClient } from '@vibez/api';
+import { type PlaybackState, safeWrap } from '@vibez/shared';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router';
 import App from './src/App';
@@ -181,7 +181,7 @@ async function getInitialData(
   }
 
   const authenticatedApi = cookieHeader
-    ? api.withHeaders({ Cookie: cookieHeader })
+    ? createApiClient({ Cookie: cookieHeader })
     : api;
 
   // Fetch all necessary data for room view in parallel
@@ -205,7 +205,7 @@ async function getInitialData(
     data: {
       room,
       songs: songs || [],
-      playback: (playback || null) as any,
+      playback: (playback || undefined) as PlaybackState | undefined,
       theme: getThemeFromCookies(cookieHeader), // Pass theme to client
     },
     redirect: null,
