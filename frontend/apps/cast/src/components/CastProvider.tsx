@@ -9,7 +9,6 @@ import React, {
   useRef,
   useState,
 } from 'react';
-import { setGlobalDebug } from '../logging';
 
 // Types are available globally via @types/chromecast-caf-receiver
 
@@ -42,6 +41,10 @@ type LocalCastMessage =
   | {
       action: 'updateRoomInfo';
       roomInfo?: RoomInfo;
+    }
+  | {
+      action: 'joinRoom';
+      roomId: string;
     };
 
 // Global flag to prevent multiple Cast receiver initializations
@@ -73,12 +76,14 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
     return params.get('debug') === 'true';
   });
   const debugModeRef = useRef(debugMode);
-  const roomId = new URLSearchParams(window.location.search).get('roomId');
+  // Room ID State - can come from URL (dev/emulator) or via joinRoom message
+  const [roomId, setRoomId] = useState<string | null>(() => {
+    return new URLSearchParams(window.location.search).get('roomId');
+  });
 
   const setDebugMode = useCallback((value: boolean) => {
     setDebugModeState(value);
     debugModeRef.current = value;
-    setGlobalDebug(value);
   }, []);
 
   // Use global store for playback state to share with components
@@ -164,6 +169,16 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       const currentActualPosition = currentState.actualPositionMs;
 
       switch (action) {
+        case 'joinRoom':
+          if (message.roomId) {
+            console.log(
+              '[Cast Receiver] Received joinRoom request:',
+              message.roomId,
+            );
+            setRoomId(message.roomId);
+          }
+          break;
+
         case 'updatePlayback':
           console.log('Updating playback state:', message);
           if (message.currentSong) {
@@ -209,12 +224,6 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
           if (message.currentSong) {
             const normalizedSong = normalizeSong(message.currentSong);
             const isSameSong = currentSongId === normalizedSong.id;
-
-            console.log('[Cast Receiver] Sync ID Check:', {
-              currentId: currentSongId,
-              incomingId: normalizedSong.id,
-              isSame: isSameSong,
-            });
 
             // Prevent reset to 0 if we are already playing this song and have a position
             const shouldPreservePosition =
@@ -262,7 +271,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
           break;
 
         default:
-          console.log('Unknown message action:', action);
+        // console.log('Unknown message action:', action);
       }
     },
     [
@@ -394,9 +403,14 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
 
   const sseStartedRef = useRef(false);
 
+  // Reset SSE ref if room ID changes (though improbable in single session)
+  useEffect(() => {
+    if (roomId) sseStartedRef.current = false;
+  }, [roomId]);
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const roomId = params.get('roomId');
+    // Use state roomId, not params
     if (!roomId || sseStartedRef.current) return;
 
     sseStartedRef.current = true;
@@ -429,13 +443,6 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
         .then(([queueRes, playbackRes]) => {
           const [songsErr, songs] = queueRes;
           const [playbackErr, playbackState] = playbackRes;
-
-          console.log('[Cast Receiver] Initial fetch results:', {
-            queueErr: songsErr ? songsErr.message : null,
-            queueCount: songs?.length,
-            playbackErr: playbackErr ? playbackErr.message : null,
-            hasPlayback: !!playbackState,
-          });
 
           if (!songsErr && songs) setQueue(songs);
 
@@ -530,7 +537,7 @@ export const CastProvider: React.FC<{ children: React.ReactNode }> = ({
       if (unsubscribe) unsubscribe();
       // WE DO NOT reset sseStartedRef.current here to avoid infinite loops on re-renders
     };
-  }, [normalizeSong, setIsPlaying, setPlaybackState]);
+  }, [normalizeSong, setIsPlaying, setPlaybackState, roomId]);
 
   useEffect(() => {
     const interval = setInterval(() => {

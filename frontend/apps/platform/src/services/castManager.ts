@@ -1345,6 +1345,46 @@ class GoogleCastManager implements CastManager {
     }
   }
 
+  async joinRoom(roomId: string): Promise<void> {
+    if (!this.currentSession) return;
+    if (this.currentSession.deviceId === LOCAL_EMULATOR_DEVICE_ID) {
+      // For local emulator, we actually might want to send it too,
+      // but currently it's handled via URL params usually.
+      // But let's support it for consistency if needed.
+      return;
+    }
+
+    const session = this.actualCastSession;
+    if (!session) return;
+
+    return new Promise((resolve, reject) => {
+      const message = {
+        action: 'joinRoom',
+        roomId,
+        timestamp: Date.now(),
+      };
+
+      console.log('[Cast] sending joinRoom message', message);
+
+      const [err] = safeWrap(() => {
+        session.sendMessage(
+          'urn:x-cast:com.vibez.cast',
+          message,
+          () => {
+            console.log('✅ joinRoom message sent');
+            resolve();
+          },
+          (error: chrome.cast.Error) => {
+            console.error('Failed to send joinRoom message:', error);
+            reject(error);
+          },
+        );
+      });
+
+      if (err) reject(err);
+    });
+  }
+
   // Force refresh device discovery
   async forceDiscovery(): Promise<void> {
     console.log('🔍 Forcing device discovery...');

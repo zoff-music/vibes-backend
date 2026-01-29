@@ -30,6 +30,7 @@ interface CastState {
     name: string;
     participantCount: number;
   }) => Promise<void>;
+  joinRoom: (roomId: string) => Promise<void>;
   clearError: () => void;
   cleanup: () => void;
 }
@@ -300,6 +301,25 @@ export const useCastStore = create<CastState>((set, get) => ({
         lastError: {
           code: 'ROOM_UPDATE_FAILED',
           description: 'Failed to update room info on cast device',
+          details: error,
+        },
+      });
+    }
+  },
+
+  joinRoom: async (roomId: string) => {
+    if (!get().isConnected) return;
+
+    console.log('[Cast] store joinRoom:start', { roomId });
+    set({ lastError: null });
+    const [error, _] = await safeWrapAsync(castManager.joinRoom(roomId));
+
+    if (error) {
+      console.error('Failed to join room on cast device:', error);
+      set({
+        lastError: {
+          code: 'JOIN_ROOM_FAILED',
+          description: 'Failed to send join room message',
           details: error,
         },
       });
