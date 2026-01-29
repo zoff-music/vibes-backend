@@ -93,7 +93,8 @@ export const useCastReceiver = ({
               }
             }
 
-            if (data.debug) setDebugMode(true);
+            if (data.debug && import.meta.env.VITE_CAST_DEBUG_MODE === 'true')
+              setDebugMode(true);
 
             if (data.currentSong) {
               const normalizedSong = normalizeSong(data.currentSong);
