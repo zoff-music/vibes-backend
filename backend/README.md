@@ -1,6 +1,6 @@
 # Vibez Backend
 
-High-performance Go server for the Vibez ecosystem. Handles room state, real-time synchronization, and multi-provider music integration.
+High-performance Go server for the Vibez ecosystem. Handles room state, real-time synchronization, and multi-provider music integration for web, cast, and mobile clients.
 
 ## Features
 

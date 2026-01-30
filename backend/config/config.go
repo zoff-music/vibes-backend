@@ -19,7 +19,7 @@ type Config struct {
 	OtelBatchSize       int           `envconfig:"OTEL_BATCH_SIZE" default:"512"`
 
 	// SQLite configuration
-	DatabasePath        string `envconfig:"DATABASE_PATH" default:"./data/vibes.db"`
+	DatabasePath        string `envconfig:"DATABASE_PATH" default:"./data/db/vibes.db"`
 	MaxNameLength       int    `envconfig:"MAX_NAME_LENGTH" default:"100"`
 	MaxQueueLength      int    `envconfig:"MAX_QUEUE_LENGTH" default:"200"`
 	YouTubeAPIKey       string `envconfig:"YOUTUBE_API_KEY" default:""`

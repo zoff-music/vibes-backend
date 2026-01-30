@@ -31,8 +31,8 @@ make migrate-down  # Run down migrations
 
 | Layer | Tech |
 |-------|------|
-| Frontend | React 19 + Vite + Tailwind CSS v4 + TypeScript + SSR |
-| Backend | Go + SQLite (`modernc.org/sqlite`) + OpenTelemetry |
+| Frontend | React 19 + Vite + Tailwind CSS v3 + TypeScript + SSR |
+| Backend | Go + SQLite (`github.com/mattn/go-sqlite3`) + OpenTelemetry |
 | Migrator | Go + SQLite |
 | Real-time | Server-Sent Events (SSE) |
 | Package Manager | Bun |
@@ -118,7 +118,8 @@ DATABASE_PATH=./data/db/vibes.db
 YOUTUBE_API_KEY=required
 SPOTIFY_CLIENT_ID=optional
 SPOTIFY_CLIENT_SECRET=optional
-SOUNDCLOUD_API_KEY=optional
+SOUNDCLOUD_CLIENT_ID=optional
+SOUNDCLOUD_CLIENT_SECRET=optional
 
 # OpenTelemetry (optional)
 OTEL_SAMPLER_PARAM=1

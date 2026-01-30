@@ -8,9 +8,11 @@ Collaborative music queue with perfectly synchronized playback across devices. S
 - **Synchronized Playback**: Low-latency sync using Server-Sent Events (SSE)
 - **Multi-Provider**: Search and play from YouTube, Spotify (Premium), and SoundCloud
 - **Cast Support**: Dedicated Chromecast receiver application for big-screen vibes
+- **Mobile Support**: Native iOS and Android apps for on-the-go room management
 - **Server-Side Rendering**: SSR-enabled React apps for better performance and SEO
 - **HTTPS Development**: Local development with automatic SSL certificates via Caddy
 - **Dark Mode Support**: System preference detection with manual toggle
+- **Advanced Permissions**: Toggleable "Only Admin Add Songs" and source restrictions
 
 ## 🚀 Quick Start
 
