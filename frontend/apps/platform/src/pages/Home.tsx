@@ -56,9 +56,8 @@ export default function Home({ initialData }: HomeProps) {
   const [isPaused, setIsPaused] = useState(false);
   const [isBlinkerVisible, setIsBlinkerVisible] = useState(true);
   const [isSSR, setIsSSR] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(initialData?.theme === 'dark');
   const navigate = useNavigate();
-  const { toggleDarkMode } = useThemeStore();
+  const { toggleDarkMode, isDarkMode } = useThemeStore();
 
   useEffect(() => {
     setIsSSR(false);
@@ -66,7 +65,6 @@ export default function Home({ initialData }: HomeProps) {
 
   const handleToggleDarkMode = useCallback(() => {
     toggleDarkMode();
-    setIsDarkMode((prev) => !prev);
   }, [toggleDarkMode]);
 
   useEffect(() => {
@@ -129,9 +127,8 @@ export default function Home({ initialData }: HomeProps) {
 
   return (
     <div
-      className={`relative flex min-h-screen flex-col overflow-x-hidden bg-theme text-theme md:block ${
-        !isSSR ? 'animate-fade-in' : ''
-      }`}
+      className={`relative flex min-h-screen flex-col overflow-x-hidden bg-theme text-theme md:block ${!isSSR ? 'animate-fade-in' : ''
+        }`}
     >
       <div className="synth-sky pointer-events-none fixed inset-0" />
       <div className="synth-haze pointer-events-none fixed inset-0" />
@@ -144,11 +141,10 @@ export default function Home({ initialData }: HomeProps) {
           <div className="absolute top-6 right-6 z-20 sm:top-10 sm:right-10">
             <button
               onClick={handleToggleDarkMode}
-              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
-                isDarkMode
+              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${isDarkMode
                   ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_18px_rgba(0,217,255,0.35)]'
                   : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
-              }`}
+                }`}
               title={
                 isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
               }
