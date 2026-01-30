@@ -1,8 +1,11 @@
-import { safeWrap } from '@vibez/shared';
+import { applyConsoleLogGuard, isTruthyFlag, safeWrap } from '@vibez/shared';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './src/styles/index.css';
 import App from './src/App';
+
+const debugEnabled = isTruthyFlag(import.meta.env.VITE_DEBUG);
+applyConsoleLogGuard(debugEnabled);
 
 // Wrap initialization in safeWrap to report errors
 const [err] = safeWrap(() => {

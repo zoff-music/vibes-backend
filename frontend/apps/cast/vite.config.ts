@@ -40,6 +40,9 @@ export default defineConfig({
     'import.meta.env.VITE_FRONTEND_URL': JSON.stringify(
       process.env.FRONTEND_URL || '',
     ),
+    'import.meta.env.VITE_DEBUG': JSON.stringify(
+      process.env.VITE_DEBUG || process.env.DEBUG || 'false',
+    ),
     'import.meta.env.VITE_CAST_DEBUG_MODE': JSON.stringify(
       process.env.CAST_DEBUG_MODE || 'false',
     ),

@@ -5,7 +5,8 @@ import type {
   Song,
 } from '@vibez/models';
 import { DebugConsole } from '@vibez/ui';
-import { Route, Routes } from 'react-router';
+import { useEffect } from 'react';
+import { Route, Routes, useLocation } from 'react-router';
 import Admin from './pages/Admin';
 import Callback from './pages/Callback';
 import CreateRoom from './pages/CreateRoom';
@@ -17,7 +18,7 @@ export interface SSRInitialData {
   room?: RoomModel;
   songs?: Song[];
   playback?: PlaybackState;
-  theme?: 'dark' | 'light';
+  theme?: 'dark' | 'light' | 'auto';
   adminRooms?: AdminRoomSummary[];
   adminAuthorized?: boolean;
 }
@@ -27,8 +28,15 @@ interface AppProps {
 }
 
 import { Background } from './components/layout/Background';
+import { updateNavigationHistory } from './utils/navigationHistory';
 
 export default function App({ initialData }: AppProps) {
+  const location = useLocation();
+
+  useEffect(() => {
+    updateNavigationHistory(location.pathname);
+  }, [location.pathname]);
+
   console.warn('🔥 [App] Received initialData:', initialData);
   console.warn('🔥 [App] typeof window:', typeof window);
   console.warn(

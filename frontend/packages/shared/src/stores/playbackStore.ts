@@ -21,6 +21,8 @@ interface PlaybackStoreState extends PlaybackState {
   updateActualPosition: () => void;
 }
 
+let visibilityListenerAttached = false;
+
 export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
   currentSong: null,
   isPlaying: false,
@@ -140,9 +142,32 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
     const { autoUpdateInterval, isPlaying } = get();
     if (autoUpdateInterval || !isPlaying) return;
 
+    if (typeof document !== 'undefined' && !visibilityListenerAttached) {
+      const handleVisibilityChange = () => {
+        const { isPlaying: currentlyPlaying } = get();
+        if (document.visibilityState === 'hidden') {
+          get().stopAutoUpdate();
+          return;
+        }
+        if (currentlyPlaying) {
+          get().startAutoUpdate();
+        }
+      };
+
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      visibilityListenerAttached = true;
+    }
+
+    if (
+      typeof document !== 'undefined' &&
+      document.visibilityState === 'hidden'
+    ) {
+      return;
+    }
+
     const interval = setInterval(() => {
       get().updateActualPosition();
-    }, 100);
+    }, 1000);
 
     set({ autoUpdateInterval: interval });
   },

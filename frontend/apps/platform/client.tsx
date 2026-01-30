@@ -1,9 +1,12 @@
-import { safeWrap } from '@vibez/shared';
+import { applyConsoleLogGuard, isTruthyFlag, safeWrap } from '@vibez/shared';
 import { StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router';
 import App from './src/App';
 import './src/index.css';
+
+const debugEnabled = isTruthyFlag(import.meta.env.VITE_DEBUG);
+applyConsoleLogGuard(debugEnabled);
 
 // Check if we're in development mode with Vite HMR
 const isDev = import.meta.env.DEV;

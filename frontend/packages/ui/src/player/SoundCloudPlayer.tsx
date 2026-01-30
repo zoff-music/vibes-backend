@@ -99,10 +99,15 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
 
   // Drift Correction Interval
   useEffect(() => {
-    if (!isReady || !widgetRef.current) return;
+    if (!isReady || !widgetRef.current || !isPlaying) return;
 
     const interval = setInterval(() => {
-      if (!isPlaying) return; // Only check drift if we are supposed to be playing
+      if (
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'hidden'
+      ) {
+        return;
+      }
 
       widgetRef.current.getPosition((currentTimeMs: number) => {
         const actualPositionMs = usePlaybackStore.getState().actualPositionMs;

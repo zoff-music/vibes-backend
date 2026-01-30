@@ -12,6 +12,8 @@ services:
     environment:
       - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
       - VITE_CAST_LOCAL_EMULATOR=true
+      - DEBUG=${DEBUG:-}
+      - VITE_DEBUG=${VITE_DEBUG:-}
     command:
       [
         "sh",
@@ -36,6 +38,8 @@ services:
       ]
     environment:
       - EXPO_DEVTOOLS_LISTEN_ADDRESS=0.0.0.0
+      - DEBUG=${DEBUG:-}
+      - VITE_DEBUG=${VITE_DEBUG:-}
     stdin_open: true
     tty: true
 

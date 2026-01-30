@@ -308,3 +308,20 @@ export const PlusIcon = (props: IconProps) => (
     <path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4" />
   </svg>
 );
+
+export const CircleHalfIcon = (props: IconProps) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth={2.5}
+    {...props}
+  >
+    <path
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      d="M12 21a9 9 0 100-18 9 9 0 000 18z"
+    />
+    <path fill="currentColor" d="M12 3v18a9 9 0 000-18z" />
+  </svg>
+);
