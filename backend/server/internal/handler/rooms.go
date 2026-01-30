@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes/internalerror"
 	"github.com/zoff-music/vibes/server/internal/helper"
 	"github.com/zoff-music/vibes/vibe"
 	"golang.org/x/crypto/bcrypt"
@@ -109,6 +110,16 @@ func CreateRoom(
 		settings := vibe.DefaultRoomSettings()
 		if req.Settings != nil {
 			settings = *req.Settings
+		}
+
+		if req.Settings != nil && req.Settings.OnlyAdminAddSongs && req.Password == "" {
+			handleError(
+				w,
+				fmt.Errorf("admin password is required when enabling 'only admin add songs'"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
 		}
 
 		room := &vibe.Room{
@@ -251,6 +262,17 @@ func UpdateRoomSettings(
 		}
 		if req.Mode != "" {
 			room.Mode = req.Mode
+		}
+
+		// Validation: If OnlyAdminAddSongs is enabled, room must have a password
+		if room.Settings.OnlyAdminAddSongs && !room.HasPassword {
+			handleError(
+				w,
+				internalerror.ErrMissingAdminPassword{Err: fmt.Errorf("room must have a password to enable 'only admin add songs'")},
+				http.StatusBadRequest,
+				false,
+			)
+			return
 		}
 
 		updated, err := db.UpdateRoom(ctx, room)

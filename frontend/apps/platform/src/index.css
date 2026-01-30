@@ -5,19 +5,24 @@
 @tailwind utilities;
 
 @keyframes vhsJitter {
+
   0%,
   100% {
     transform: translate(0, 0);
   }
+
   20% {
     transform: translate(-1px, 1px);
   }
+
   40% {
     transform: translate(1px, -1px);
   }
+
   60% {
     transform: translate(-2px, 0);
   }
+
   80% {
     transform: translate(2px, 1px);
   }
@@ -27,24 +32,30 @@
   0% {
     clip-path: inset(0 0 80% 0);
   }
+
   20% {
     clip-path: inset(10% 0 60% 0);
   }
+
   40% {
     clip-path: inset(30% 0 30% 0);
   }
+
   60% {
     clip-path: inset(55% 0 10% 0);
   }
+
   80% {
     clip-path: inset(20% 0 50% 0);
   }
+
   100% {
     clip-path: inset(0 0 80% 0);
   }
 }
 
 @layer base {
+
   :root,
   body {
     font-family: theme("fontFamily.body");
@@ -213,13 +224,11 @@
   }
 
   .vhs-scanlines {
-    background-image: repeating-linear-gradient(
-      to bottom,
-      rgba(255, 255, 255, 0.05),
-      rgba(255, 255, 255, 0.05) 1px,
-      transparent 1px,
-      transparent 3px
-    );
+    background-image: repeating-linear-gradient(to bottom,
+        rgba(255, 255, 255, 0.05),
+        rgba(255, 255, 255, 0.05) 1px,
+        transparent 1px,
+        transparent 3px);
     mix-blend-mode: screen;
     opacity: 0.25;
     animation: scanlines 1.8s linear infinite;
@@ -230,12 +239,10 @@
     inset: 0;
     pointer-events: none;
     z-index: 9999;
-    background: radial-gradient(
-      circle,
-      rgba(18, 16, 16, 0) 50%,
-      rgba(0, 0, 0, 0.4) 90%,
-      rgba(0, 0, 0, 0.7) 100%
-    );
+    background: radial-gradient(circle,
+        rgba(18, 16, 16, 0) 50%,
+        rgba(0, 0, 0, 0.4) 90%,
+        rgba(0, 0, 0, 0.7) 100%);
     box-shadow: inset 0 0 10rem rgba(0, 0, 0, 0.5);
   }
 
@@ -249,12 +256,10 @@
     right: 0;
     background:
       linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%),
-      linear-gradient(
-        90deg,
+      linear-gradient(90deg,
         rgba(255, 0, 0, 0.06),
         rgba(0, 255, 0, 0.02),
-        rgba(0, 0, 255, 0.06)
-      );
+        rgba(0, 0, 255, 0.06));
     z-index: 2;
     background-size:
       100% 2px,
@@ -263,18 +268,17 @@
   }
 
   .synth-sky {
-    background: linear-gradient(
-      120deg,
-      var(--synth-sky-1),
-      var(--synth-sky-2),
-      var(--synth-sky-3),
-      var(--synth-sky-4)
-    );
+    background: linear-gradient(120deg,
+        var(--synth-sky-1),
+        var(--synth-sky-2),
+        var(--synth-sky-3),
+        var(--synth-sky-4));
     background-size: 180% 180%;
     animation: gradientShift 12s ease-in-out infinite;
   }
 
   @keyframes vhsJitter {
+
     0%,
     100% {
       transform: translate(0, 0);
@@ -333,13 +337,11 @@
   .sunset-orb {
     position: relative;
     border-radius: 9999px;
-    background: radial-gradient(
-      circle at 50% 35%,
-      var(--sunset-core),
-      var(--sunset-mid) 50%,
-      var(--sunset-glow) 75%,
-      transparent 85%
-    );
+    background: radial-gradient(circle at 50% 35%,
+        var(--sunset-core),
+        var(--sunset-mid) 50%,
+        var(--sunset-glow) 75%,
+        transparent 85%);
     filter: drop-shadow(0 0 50px rgba(255, 120, 160, 0.7));
     mask-image: linear-gradient(to bottom, black 65%, transparent 100%);
   }
@@ -396,11 +398,9 @@
   }
 
   .neon-panel {
-    background: linear-gradient(
-      145deg,
-      rgba(11, 6, 24, 0.95),
-      rgba(37, 16, 61, 0.85)
-    );
+    background: linear-gradient(145deg,
+        rgba(11, 6, 24, 0.95),
+        rgba(37, 16, 61, 0.85));
     border: 1px solid rgba(255, 120, 200, 0.3);
     box-shadow:
       0 0 0 1px rgba(255, 120, 200, 0.15),
@@ -509,6 +509,7 @@
 }
 
 @layer base {
+
   /* ===== THEME VARIABLES ===== */
   :root {
     /* Background colors */
@@ -612,5 +613,19 @@
     --sunset-core: rgba(255, 46, 151, 0.8);
     --sunset-mid: rgba(180, 30, 100, 0.7);
     --sunset-glow: rgba(100, 20, 60, 0.4);
+  }
+}
+
+@keyframes retro-grid-scroll {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+
+  to {
+    background-position:
+      0 80px,
+      0 80px;
   }
 }
