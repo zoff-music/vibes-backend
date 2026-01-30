@@ -54,7 +54,7 @@ export default function Room({ initialData }: RoomProps) {
   /* 3. State */
   const [initialized, setInitialized] = useState(false);
   const [isSSR, setIsSSR] = useState(true);
-  const [isDarkMode, setIsDarkMode] = useState(initialData?.theme === 'dark');
+  const { isDarkMode } = useThemeStore();
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -75,7 +75,6 @@ export default function Room({ initialData }: RoomProps) {
   /* 5. Handlers (Arrow Functions) */
   const handleToggleDarkMode = useCallback(() => {
     toggleDarkMode();
-    setIsDarkMode((prev) => !prev);
   }, [toggleDarkMode]);
 
   const handleAddSong = useCallback(() => setIsAddModalVisible(true), []);
@@ -276,9 +275,8 @@ export default function Room({ initialData }: RoomProps) {
 
   return (
     <div
-      className={`relative min-h-screen overflow-hidden bg-theme text-theme ${
-        !isSSR ? 'animate-fade-in' : ''
-      }`}
+      className={`relative min-h-screen overflow-hidden bg-theme text-theme ${!isSSR ? 'animate-fade-in' : ''
+        }`}
     >
       <div className="synth-sky pointer-events-none fixed inset-0" />
       <div className="synth-haze pointer-events-none fixed inset-0" />

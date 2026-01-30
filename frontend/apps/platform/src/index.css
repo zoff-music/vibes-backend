@@ -59,6 +59,8 @@
   :root,
   body {
     font-family: theme("fontFamily.body");
+    background-color: var(--theme-bg);
+    color: var(--theme-text);
   }
 
   *,
