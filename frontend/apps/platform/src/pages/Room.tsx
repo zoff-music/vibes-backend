@@ -37,10 +37,22 @@ export default function Room({ initialData }: RoomProps) {
   /* 2. Hooks */
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toggleDarkMode } = useThemeStore();
+  const { toggleDarkMode, setIsWarping } = useThemeStore();
   const { room, fetchRoom, isLoading, error, joinRoom, userId } = useRoom(
     id || '',
   );
+
+  // Set warping state based on loading
+  useEffect(() => {
+    if (isLoading && !room && !initialData?.room) {
+      setIsWarping(true);
+    } else {
+      setIsWarping(false);
+    }
+
+    return () => setIsWarping(false);
+  }, [isLoading, room, initialData?.room, setIsWarping]);
+
   const { fetchQueue } = useQueue(id || '');
 
   // Granular store setters (subscription-free/minimized re-renders)
@@ -61,6 +73,7 @@ export default function Room({ initialData }: RoomProps) {
   const [showDeviceSelector, setShowDeviceSelector] = useState(false);
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+
   const [toasts, setToasts] = useState<
     { id: string; message: string; type: 'success' | 'info' | 'error' }[]
   >([]);
@@ -122,6 +135,10 @@ export default function Room({ initialData }: RoomProps) {
       ]);
     }
   }, [adminPassword, joinRoom, room?.hasPassword]);
+
+  const handleLeave = useCallback(() => {
+    navigate('/');
+  }, [navigate]);
 
   /* 6. Effects */
 
@@ -275,15 +292,11 @@ export default function Room({ initialData }: RoomProps) {
 
   return (
     <div
-      className={`relative min-h-screen overflow-hidden bg-theme text-theme ${!isSSR ? 'animate-fade-in' : ''
-        }`}
+      className={`relative h-screen overflow-hidden ${
+        !isSSR ? 'animate-fade-in' : ''
+      }`}
     >
-      <div className="synth-sky pointer-events-none fixed inset-0" />
-      <div className="synth-haze pointer-events-none fixed inset-0" />
-      <div className="vhs-scanlines pointer-events-none fixed inset-0" />
-      <div className="retro-grid pointer-events-none fixed bottom-0 left-1/2 h-[100vh] w-[200%]" />
-
-      <div className="relative z-10 flex min-h-screen flex-col">
+      <div className="relative z-10 flex h-screen flex-col overflow-hidden">
         {/* Header */}
         <RoomHeader
           headerRef={headerRef}
@@ -304,6 +317,7 @@ export default function Room({ initialData }: RoomProps) {
           onAdminPasswordChange={setAdminPassword}
           onJoinAdmin={handleJoinAdmin}
           isAuthenticating={isAuthenticating}
+          onLeave={handleLeave}
         />
 
         {/* Main content */}
