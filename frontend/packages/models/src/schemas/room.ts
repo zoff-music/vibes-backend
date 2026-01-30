@@ -9,6 +9,7 @@ export const roomSettingsSchema = yup.object({
   loopQueue: yup.boolean().required(),
   allowDuplicates: yup.boolean().required(),
   enabledSources: yup.array(yup.string().required()).required(),
+  onlyAdminAddSongs: yup.boolean().optional(),
 });
 export type RoomSettings = yup.InferType<typeof roomSettingsSchema>;
 

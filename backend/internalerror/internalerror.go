@@ -96,3 +96,16 @@ func (e ErrAccessTokenNotFound) Error() string {
 func (e ErrAccessTokenNotFound) Unwrap() error {
 	return e.Err
 }
+
+// ErrMissingAdminPassword is an error type for errors where an admin password is required but missing.
+type ErrMissingAdminPassword struct {
+	Err error
+}
+
+func (e ErrMissingAdminPassword) Error() string {
+	return fmt.Sprintf("Missing admin password error: %v", e.Err)
+}
+
+func (e ErrMissingAdminPassword) Unwrap() error {
+	return e.Err
+}

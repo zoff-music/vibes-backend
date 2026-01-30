@@ -15,6 +15,7 @@ type RoomSettings struct {
 	LoopQueue         bool     `json:"loopQueue"`
 	AllowDuplicates   bool     `json:"allowDuplicates"`
 	EnabledSources    []string `json:"enabledSources"`
+	OnlyAdminAddSongs bool     `json:"onlyAdminAddSongs"`
 }
 
 func (r RoomSettings) IsEmpty() bool {
@@ -25,7 +26,8 @@ func (r RoomSettings) IsEmpty() bool {
 		r.RemoveOnPlay == false &&
 		r.LoopQueue == false &&
 		r.AllowDuplicates == false &&
-		len(r.EnabledSources) == 0
+		len(r.EnabledSources) == 0 &&
+		r.OnlyAdminAddSongs == false
 }
 
 // DefaultRoomSettings returns sensible defaults
@@ -35,10 +37,11 @@ func DefaultRoomSettings() RoomSettings {
 		DemocraticSkip:    true,
 		SkipVoteThreshold: 0.5,
 		MaxContinuousAdds: 3,
-		RemoveOnPlay:      true,
-		LoopQueue:         false,
+		RemoveOnPlay:      false,
+		LoopQueue:         true,
 		AllowDuplicates:   false,
 		EnabledSources:    []string{"youtube", "spotify", "soundcloud"},
+		OnlyAdminAddSongs: false,
 	}
 }
 

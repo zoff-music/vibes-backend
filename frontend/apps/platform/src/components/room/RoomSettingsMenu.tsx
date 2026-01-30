@@ -9,7 +9,7 @@ import {
   YouTubeIcon,
 } from '@vibez/ui';
 import { AnimatePresence, motion } from 'framer-motion';
-import { type RefObject, useEffect } from 'react';
+import { type RefObject, useEffect, useRef, useState } from 'react';
 import { RoomSharePanel } from './RoomSharePanel';
 
 interface RoomSettingsMenuProps {
@@ -55,6 +55,36 @@ export const RoomSettingsMenu = ({
   roomId,
   settingsMenuRef,
 }: RoomSettingsMenuProps) => {
+  const [wobblePassword, setWobblePassword] = useState(false);
+  const adminSectionRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (wobblePassword) {
+      const timer = setTimeout(() => setWobblePassword(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [wobblePassword]);
+
+  // Auto-disable "Only Admin Add" if password input is cleared (only for rooms without password)
+  useEffect(() => {
+    if (
+      !room?.hasPassword &&
+      !adminPassword &&
+      room?.settings.onlyAdminAddSongs
+    ) {
+      updateRoomSettings({
+        ...room.settings,
+        onlyAdminAddSongs: false,
+      });
+    }
+  }, [
+    adminPassword,
+    room?.hasPassword,
+    room?.settings.onlyAdminAddSongs,
+    room,
+    updateRoomSettings,
+  ]);
+
   useEffect(() => {
     if (!showSettings) return;
     const previousOverflow = document.body.style.overflow;
@@ -86,11 +116,10 @@ export const RoomSettingsMenu = ({
                 <div className="flex items-center gap-3">
                   <button
                     onClick={onToggleShare}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${
-                      showShare
-                        ? 'border-theme-strong bg-theme-surface text-theme'
-                        : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
-                    }`}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${showShare
+                      ? 'border-theme-strong bg-theme-surface text-theme'
+                      : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
+                      }`}
                     title="Share Room"
                   >
                     <ShareIcon className="h-4 w-4" />
@@ -99,11 +128,10 @@ export const RoomSettingsMenu = ({
 
                   <button
                     onClick={onToggleDarkMode}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${
-                      isDarkMode
-                        ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_12px_rgba(0,217,255,0.35)]'
-                        : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
-                    }`}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${isDarkMode
+                      ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_12px_rgba(0,217,255,0.35)]'
+                      : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
+                      }`}
                     title={
                       isDarkMode
                         ? 'Switch to Light Mode'
@@ -246,6 +274,37 @@ export const RoomSettingsMenu = ({
                 />
               </div>
 
+              <div className="group flex items-center justify-between">
+                <Toggle
+                  label="Admins Only Add"
+                  description="Only admins add songs"
+                  disabled={room?.hasPassword && !isAdmin}
+                  checked={room?.settings.onlyAdminAddSongs ?? false}
+                  onChange={(checked) => {
+                    if (
+                      room &&
+                      checked &&
+                      !room.hasPassword &&
+                      !adminPassword
+                    ) {
+                      setWobblePassword(true);
+                      adminSectionRef.current?.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center',
+                      });
+                      return;
+                    }
+
+                    room &&
+                      updateRoomSettings({
+                        ...room.settings,
+                        onlyAdminAddSongs: checked,
+                      });
+                  }}
+                  className="!border-0 !bg-transparent !p-0 w-full"
+                />
+              </div>
+
               <div className="border-theme border-t pt-4">
                 <h5 className="mb-3 font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
                   Sources
@@ -281,19 +340,18 @@ export const RoomSettingsMenu = ({
                           if (!room) return;
                           const newSources = isEnabled
                             ? room.settings.enabledSources.filter(
-                                (s) => s !== id,
-                              )
+                              (s) => s !== id,
+                            )
                             : [...room.settings.enabledSources, id];
                           updateRoomSettings({
                             ...room.settings,
                             enabledSources: newSources,
                           });
                         }}
-                        className={`group relative flex cursor-pointer items-center justify-center rounded-xl border py-3 transition-all ${
-                          isEnabled
-                            ? color
-                            : 'border-theme bg-theme-surface text-theme-muted opacity-40 hover:border-theme-strong hover:opacity-60'
-                        } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed grayscale' : ''}`}
+                        className={`group relative flex cursor-pointer items-center justify-center rounded-xl border py-3 transition-all ${isEnabled
+                          ? color
+                          : 'border-theme bg-theme-surface text-theme-muted opacity-40 hover:border-theme-strong hover:opacity-60'
+                          } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed grayscale' : ''}`}
                         title={`${isEnabled ? 'Disable' : 'Enable'} ${id}`}
                       >
                         <Icon className="h-6 w-6" />
@@ -312,11 +370,10 @@ export const RoomSettingsMenu = ({
                   <button
                     disabled={room?.hasPassword && !isAdmin}
                     onClick={() => room && updateRoom({ mode: 'server' })}
-                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${
-                      room?.mode === 'server'
-                        ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_14px_rgba(0,217,255,0.3)]'
-                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                    } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${room?.mode === 'server'
+                      ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_14px_rgba(0,217,255,0.3)]'
+                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                      } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                   >
                     <div className="mb-1 font-pixel text-sm text-theme">
                       Server Mode
@@ -329,11 +386,10 @@ export const RoomSettingsMenu = ({
                   <button
                     disabled={room?.hasPassword && !isAdmin}
                     onClick={() => room && updateRoom({ mode: 'host' })}
-                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${
-                      room?.mode === 'host'
-                        ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_14px_rgba(255,46,151,0.3)]'
-                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                    } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${room?.mode === 'host'
+                      ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_14px_rgba(255,46,151,0.3)]'
+                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                      } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                   >
                     <div className="mb-1 font-pixel text-sm text-theme">
                       Host Mode
@@ -346,8 +402,13 @@ export const RoomSettingsMenu = ({
               </div>
 
               {!isAdmin && (
-                <div className="group mt-6 flex flex-col gap-2 border-theme border-t pt-4 text-theme">
-                  <span className="font-pixel text-sm">Admin Access</span>
+                <div
+                  ref={adminSectionRef}
+                  className={`group mt-6 flex flex-col gap-2 border-theme border-t pt-4 text-theme transition-all duration-300 ${wobblePassword ? 'rounded-xl border-red-500' : ''}`}
+                >
+                  <span className={`font-pixel text-sm transition-colors ${wobblePassword ? 'animate-bounce text-red-500' : ''}`}>
+                    {wobblePassword ? 'Password required!' : 'Admin Access'}
+                  </span>
                   <div className="flex gap-2">
                     <input
                       type="password"
@@ -358,7 +419,7 @@ export const RoomSettingsMenu = ({
                           ? 'Login as admin'
                           : 'Add password'
                       }
-                      className="flex-1 rounded-xl border border-theme bg-theme-surface px-3 py-2 text-sm text-theme outline-none transition-all focus:border-secondary/60"
+                      className={`flex-1 rounded-xl border bg-theme-surface px-3 py-2 text-sm text-theme outline-none transition-all focus:border-secondary/60 ${wobblePassword ? 'border-red-500 ring-2 ring-red-500/50' : 'border-theme'}`}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') onJoinAdmin();
                       }}

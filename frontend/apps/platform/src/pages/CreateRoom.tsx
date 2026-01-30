@@ -14,10 +14,11 @@ import { ArrowRightIcon } from '../components/icons/ArrowRightIcon';
 const DEFAULT_SETTINGS = {
   skipAllowed: true,
   democraticSkip: true,
-  loopQueue: false,
-  removeOnPlay: true,
+  loopQueue: true,
+  removeOnPlay: false,
   allowDuplicates: false,
   enabledSources: ['youtube', 'spotify', 'soundcloud'],
+  onlyAdminAddSongs: false,
 };
 
 import type { SSRInitialData } from '../App';
@@ -55,6 +56,23 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isHydrated, setIsHydrated] = useState(false);
+  const [wobblePassword, setWobblePassword] = useState(false);
+  const passwordRef = React.useRef<HTMLDivElement>(null);
+
+  // Reset wobble after animation
+  useEffect(() => {
+    if (wobblePassword) {
+      const timer = setTimeout(() => setWobblePassword(false), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [wobblePassword]);
+
+  // Auto-disable "Only Admin Add" if password is cleared
+  useEffect(() => {
+    if (!password && settings.onlyAdminAddSongs) {
+      updateSetting('onlyAdminAddSongs', false);
+    }
+  }, [password, settings.onlyAdminAddSongs]);
 
   // Handle hydration
   useEffect(() => {
@@ -173,8 +191,11 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
             </p>
           </div>
 
-          <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+
+
+          <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
             <div className="space-y-6">
+              {/* 1. SESSION NAME */}
               <div className="panel-surface rounded-[24px] p-6">
                 <label className="mb-3 block font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
                   SESSION NAME
@@ -190,6 +211,77 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                 />
               </div>
 
+              {/* 2. ADMIN PASSWORD */}
+              <div ref={passwordRef} className={`panel-surface rounded-[24px] p-6 transition-all duration-300 ${wobblePassword ? 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] ring-2 ring-red-500/50' : ''}`}>
+                <label className={`mb-3 block font-pixel text-[10px] tracking-[0.3em] transition-colors ${wobblePassword ? 'animate-bounce text-red-500' : 'text-theme-muted'}`}>
+                  ADMIN PASSWORD
+                  <span className="ml-2 text-theme-subtle">(optional)</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="For room control"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className={`w-full rounded-2xl border bg-theme-surface px-4 py-4 text-base text-theme placeholder:text-theme-subtle focus:outline-hidden focus:ring-2 ${wobblePassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30' : 'border-theme focus:border-primary focus:ring-primary/30'}`}
+                />
+                <p className={`mt-3 text-xs transition-colors ${wobblePassword ? 'text-red-400 font-bold' : 'text-theme-subtle'}`}>
+                  {wobblePassword ? 'Password required for "Only Admin Add Songs"' : 'Leave empty to allow anyone to control playback.'}
+                </p>
+              </div>
+
+              {/* 3. ALLOWED SOURCES */}
+              <div className="panel-surface rounded-[24px] p-6">
+                <label className="mb-4 block font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
+                  ALLOWED SOURCES
+                </label>
+                <div className="flex gap-2">
+                  {[
+                    {
+                      id: 'youtube',
+                      Icon: YouTubeIcon,
+                      color: 'text-red-500 hover:bg-red-500/10',
+                      activeColor:
+                        'bg-red-500 text-white shadow-[0_0_12px_rgba(239,68,68,0.4)]',
+                    },
+                    {
+                      id: 'spotify',
+                      Icon: SpotifyIcon,
+                      color: 'text-green-500 hover:bg-green-500/10',
+                      activeColor:
+                        'bg-green-500 text-black shadow-[0_0_12px_rgba(34,197,94,0.4)]',
+                    },
+                    {
+                      id: 'soundcloud',
+                      Icon: SoundCloudIcon,
+                      color: 'text-orange-500 hover:bg-orange-500/10',
+                      activeColor:
+                        'bg-orange-500 text-white shadow-[0_0_12px_rgba(249,115,22,0.4)]',
+                    },
+                  ].map(({ id, Icon, color, activeColor }) => {
+                    const isEnabled = settings.enabledSources.includes(id);
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => {
+                          const newSources = isEnabled
+                            ? settings.enabledSources.filter((s) => s !== id)
+                            : [...settings.enabledSources, id];
+                          updateSetting('enabledSources', newSources);
+                        }}
+                        className={`group relative flex h-10 w-full flex-1 items-center justify-center rounded-xl transition-all ${isEnabled
+                          ? activeColor
+                          : `bg-theme-surface-strong/50 ${color}`
+                          }`}
+                        title={`${isEnabled ? 'Disable' : 'Enable'} ${id}`}
+                      >
+                        <Icon className="h-5 w-5" />
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4. ROOM MODE */}
               <div className="panel-surface rounded-[24px] p-6">
                 <label className="mb-4 block font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
                   ROOM MODE
@@ -198,11 +290,10 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   <button
                     type="button"
                     onClick={() => setMode('server')}
-                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${
-                      mode === 'server'
-                        ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_18px_rgba(0,217,255,0.35)]'
-                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                    }`}
+                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${mode === 'server'
+                      ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_18px_rgba(0,217,255,0.35)]'
+                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                      }`}
                   >
                     <div className="mb-2 font-pixel text-xs tracking-[0.2em]">
                       SERVER MODE
@@ -214,11 +305,10 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   <button
                     type="button"
                     onClick={() => setMode('host')}
-                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${
-                      mode === 'host'
-                        ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_18px_rgba(255,46,151,0.35)]'
-                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                    }`}
+                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${mode === 'host'
+                      ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_18px_rgba(255,46,151,0.35)]'
+                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                      }`}
                   >
                     <div className="mb-2 font-pixel text-xs tracking-[0.2em]">
                       HOST MODE
@@ -229,117 +319,75 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   </button>
                 </div>
               </div>
+            </div>
+
+            <div className="space-y-6">
 
               <div className="panel-surface rounded-[24px] p-6">
-                <label className="mb-3 block font-pixel text-[10px] text-theme-muted tracking-[0.3em]">
-                  ADMIN PASSWORD
-                  <span className="ml-2 text-theme-subtle">(optional)</span>
-                </label>
-                <input
-                  type="password"
-                  placeholder="For room control"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className="w-full rounded-2xl border border-theme bg-theme-surface px-4 py-4 text-base text-theme placeholder:text-theme-subtle focus:border-primary focus:outline-hidden focus:ring-2 focus:ring-primary/30"
-                />
-                <p className="mt-3 text-theme-subtle text-xs">
-                  Leave empty to allow anyone to control playback.
-                </p>
-              </div>
-            </div>
+                <div className="mb-6">
+                  <h2 className="font-pixel text-[11px] text-theme-muted tracking-[0.4em]">
+                    PLAYBACK SETTINGS
+                  </h2>
+                </div>
 
-            <div className="panel-surface rounded-[24px] p-6">
-              <h2 className="mb-6 font-pixel text-[11px] text-theme-muted tracking-[0.4em]">
-                SOURCES
-              </h2>
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  {
-                    id: 'youtube',
-                    Icon: YouTubeIcon,
-                    color:
-                      'bg-red-500/20 border-red-500/40 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]',
-                  },
-                  {
-                    id: 'spotify',
-                    Icon: SpotifyIcon,
-                    color:
-                      'bg-green-500/20 border-green-500/40 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.2)]',
-                  },
-                  {
-                    id: 'soundcloud',
-                    Icon: SoundCloudIcon,
-                    color:
-                      'bg-orange-500/20 border-orange-500/40 text-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.2)]',
-                  },
-                ].map(({ id, Icon, color }) => {
-                  const isEnabled = settings.enabledSources.includes(id);
-                  return (
-                    <button
-                      key={id}
-                      onClick={() => {
-                        const newSources = isEnabled
-                          ? settings.enabledSources.filter((s) => s !== id)
-                          : [...settings.enabledSources, id];
-                        updateSetting('enabledSources', newSources);
-                      }}
-                      className={`group relative flex cursor-pointer items-center justify-center rounded-xl border py-4 transition-all ${
-                        isEnabled
-                          ? color
-                          : 'border-theme bg-theme-surface text-theme-muted opacity-40 hover:border-theme-strong hover:opacity-60'
-                      }`}
-                      title={`${isEnabled ? 'Disable' : 'Enable'} ${id}`}
-                    >
-                      <Icon className="h-6 w-6" />
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+                <div className="space-y-4">
+                  <Toggle
+                    label="ALLOW SKIP"
+                    description="Anyone can skip songs"
+                    checked={settings.skipAllowed}
+                    onChange={(checked) => updateSetting('skipAllowed', checked)}
+                  />
 
-            <div className="panel-surface rounded-[24px] p-6">
-              <h2 className="mb-6 font-pixel text-[11px] text-theme-muted tracking-[0.4em]">
-                PLAYBACK SETTINGS
-              </h2>
-              <div className="space-y-4">
-                <Toggle
-                  label="ALLOW SKIP"
-                  description="Anyone can skip songs"
-                  checked={settings.skipAllowed}
-                  onChange={(checked) => updateSetting('skipAllowed', checked)}
-                />
+                  <Toggle
+                    label="DEMOCRATIC SKIP"
+                    description="Require votes to skip"
+                    checked={settings.democraticSkip}
+                    onChange={(checked) =>
+                      updateSetting('democraticSkip', checked)
+                    }
+                  />
 
-                <Toggle
-                  label="DEMOCRATIC SKIP"
-                  description="Require votes to skip"
-                  checked={settings.democraticSkip}
-                  onChange={(checked) =>
-                    updateSetting('democraticSkip', checked)
-                  }
-                />
+                  <Toggle
+                    label="LOOP QUEUE"
+                    description="Restart when queue ends"
+                    checked={settings.loopQueue}
+                    onChange={(checked) => updateSetting('loopQueue', checked)}
+                  />
 
-                <Toggle
-                  label="LOOP QUEUE"
-                  description="Restart when queue ends"
-                  checked={settings.loopQueue}
-                  onChange={(checked) => updateSetting('loopQueue', checked)}
-                />
+                  <Toggle
+                    label="REMOVE PLAYED"
+                    description="Removed after play"
+                    checked={settings.removeOnPlay}
+                    onChange={(checked) => updateSetting('removeOnPlay', checked)}
+                  />
 
-                <Toggle
-                  label="REMOVE PLAYED"
-                  description="Removed after play"
-                  checked={settings.removeOnPlay}
-                  onChange={(checked) => updateSetting('removeOnPlay', checked)}
-                />
+                  <Toggle
+                    label="ALLOW DUPLICATES"
+                    description="Same song multiple times"
+                    checked={settings.allowDuplicates}
+                    onChange={(checked) =>
+                      updateSetting('allowDuplicates', checked)
+                    }
+                  />
 
-                <Toggle
-                  label="ALLOW DUPLICATES"
-                  description="Same song multiple times"
-                  checked={settings.allowDuplicates}
-                  onChange={(checked) =>
-                    updateSetting('allowDuplicates', checked)
-                  }
-                />
+                  <Toggle
+                    label="ADMINS ONLY ADD"
+                    description="Only admins can add songs"
+                    checked={settings.onlyAdminAddSongs}
+                    onChange={(checked) => {
+                      if (checked && !password) {
+                        setWobblePassword(true);
+                        passwordRef.current?.scrollIntoView({
+                          behavior: 'smooth',
+                          block: 'center',
+                        });
+                        // Don't enable it if password is missing
+                        return;
+                      }
+                      updateSetting('onlyAdminAddSongs', checked);
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </div>

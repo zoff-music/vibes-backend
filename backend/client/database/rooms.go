@@ -113,7 +113,8 @@ func (c *Client) prepareGetRoomStmt() error {
 			b.loop_queue,
 			b.allow_duplicates,
 			COALESCE(c.is_admin, 0) as is_requester_admin,
-			b.enabled_sources
+			b.enabled_sources,
+			b.only_admin_add_songs
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
@@ -149,7 +150,8 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 			b.loop_queue,
 			b.allow_duplicates,
 			COALESCE(c.is_admin, 0) as is_requester_admin,
-			b.enabled_sources
+			b.enabled_sources,
+			b.only_admin_add_songs
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
@@ -391,6 +393,7 @@ type roomRow struct {
 	AllowDuplicates   sql.NullInt64
 	IsRequesterAdmin  sql.NullInt64
 	EnabledSources    sql.NullString
+	OnlyAdminAddSongs sql.NullInt64
 }
 
 func (r *roomRow) scanRow(row *sql.Row) error {
@@ -410,6 +413,7 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.AllowDuplicates,
 		&r.IsRequesterAdmin,
 		&r.EnabledSources,
+		&r.OnlyAdminAddSongs,
 	)
 }
 
@@ -453,6 +457,7 @@ func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
 		LoopQueue:         int(r.LoopQueue.Int64) == 1,
 		AllowDuplicates:   r.AllowDuplicates.Int64 == 1,
 		EnabledSources:    sources,
+		OnlyAdminAddSongs: int(r.OnlyAdminAddSongs.Int64) == 1,
 	}, nil
 }
 
@@ -473,8 +478,9 @@ func (c *Client) prepareCreateRoomStmt() error {
 			remove_on_play,
 			loop_queue,
 			allow_duplicates,
-			enabled_sources
-		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)
+			enabled_sources,
+			only_admin_add_songs
+		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
 		RETURNING id
 	`)
 	if err != nil {
@@ -510,6 +516,7 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		boolToInt(room.Settings.LoopQueue),
 		boolToInt(room.Settings.AllowDuplicates),
 		strings.Join(room.Settings.EnabledSources, ","),
+		boolToInt(room.Settings.OnlyAdminAddSongs),
 	)
 
 	var scanned createRoomRow
@@ -545,7 +552,8 @@ func (c *Client) prepareUpdateRoomStmt() error {
 			remove_on_play = ?7,
 			loop_queue = ?8,
 			allow_duplicates = ?9,
-			enabled_sources = ?13
+			enabled_sources = ?13,
+			only_admin_add_songs = ?14
 		WHERE id = ?2
 	`)
 	if err != nil {
@@ -579,6 +587,7 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		room.HostID,
 		room.AdminPasswordHash,
 		strings.Join(room.Settings.EnabledSources, ","),
+		boolToInt(room.Settings.OnlyAdminAddSongs),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error updating room: %w", err)
