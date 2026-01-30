@@ -8,3 +8,4 @@ export * from './components/Text';
 export * from './components/Toast';
 export * from './icons';
 export * from './player';
+export * from './components/Toggle';
