@@ -300,11 +300,11 @@ export default function Room({ initialData }: RoomProps) {
 
   return (
     <div
-      className={`relative h-screen overflow-hidden ${
+      className={`relative min-h-screen overflow-x-hidden lg:h-screen lg:overflow-hidden ${
         !isSSR ? 'animate-fade-in' : ''
       }`}
     >
-      <div className="relative z-10 flex h-screen flex-col overflow-hidden">
+      <div className="relative z-10 flex min-h-screen flex-col overflow-x-hidden lg:h-screen lg:overflow-hidden">
         {/* Header */}
         <RoomHeader
           headerRef={headerRef}
@@ -350,7 +350,7 @@ export default function Room({ initialData }: RoomProps) {
             onRetry={() => fetchRoom()}
           />
         ) : (
-          <div className="flex-1 overflow-y-auto lg:overflow-hidden">
+          <div className="flex-1 overflow-visible lg:overflow-hidden">
             <div className="mx-auto max-w-7xl items-start gap-8 px-4 py-8 lg:grid lg:h-[calc(100vh-var(--room-header-height))] lg:grid-cols-[1.3fr_0.7fr] lg:py-6">
               {/* Player Section */}
               <RoomPlayer
