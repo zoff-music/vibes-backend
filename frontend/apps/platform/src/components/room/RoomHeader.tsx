@@ -62,6 +62,7 @@ export const RoomHeader = ({
   onJoinAdmin,
   isAuthenticating,
 }: RoomHeaderProps) => {
+  console.log("RoomHeader")
   return (
     <div
       ref={headerRef}
@@ -88,11 +89,10 @@ export const RoomHeader = ({
           <div className="hidden sm:block">
             <button
               onClick={onToggleDarkMode}
-              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
-                isDarkMode
+              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${isDarkMode
                   ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_18px_rgba(0,217,255,0.35)]'
                   : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
-              }`}
+                }`}
               title={
                 isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
               }
@@ -108,11 +108,10 @@ export const RoomHeader = ({
           <div className="relative hidden sm:block">
             <button
               onClick={onToggleShare}
-              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
-                showShare
+              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${showShare
                   ? 'border-theme-strong bg-theme-surface text-theme'
                   : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
-              }`}
+                }`}
               title="Share Room"
             >
               <ShareIcon className="h-5 w-5" />
@@ -140,11 +139,10 @@ export const RoomHeader = ({
             <button
               ref={settingsButtonRef}
               onClick={onToggleSettings}
-              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
-                showSettings
+              className={`cursor-pointer rounded-xl border p-2.5 transition-all ${showSettings
                   ? 'border-theme-strong bg-theme-surface text-theme'
                   : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
-              }`}
+                }`}
               title="Room Settings"
             >
               <SettingsIcon className="h-5 w-5" />

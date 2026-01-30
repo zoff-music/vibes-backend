@@ -5,6 +5,7 @@ import {
   SoundCloudIcon,
   SpotifyIcon,
   SunIcon,
+  Toggle,
   YouTubeIcon,
 } from '@vibez/ui';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -85,11 +86,10 @@ export const RoomSettingsMenu = ({
                 <div className="flex items-center gap-3">
                   <button
                     onClick={onToggleShare}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${
-                      showShare
-                        ? 'border-theme-strong bg-theme-surface text-theme'
-                        : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
-                    }`}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${showShare
+                      ? 'border-theme-strong bg-theme-surface text-theme'
+                      : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
+                      }`}
                     title="Share Room"
                   >
                     <ShareIcon className="h-4 w-4" />
@@ -98,11 +98,10 @@ export const RoomSettingsMenu = ({
 
                   <button
                     onClick={onToggleDarkMode}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${
-                      isDarkMode
-                        ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_12px_rgba(0,217,255,0.35)]'
-                        : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
-                    }`}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${isDarkMode
+                      ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_12px_rgba(0,217,255,0.35)]'
+                      : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
+                      }`}
                     title={
                       isDarkMode
                         ? 'Switch to Light Mode'
@@ -149,199 +148,100 @@ export const RoomSettingsMenu = ({
               )}
 
               <div className="group flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span
-                    className={`font-pixel text-sm ${
-                      (room?.hasPassword && !isAdmin) || room?.mode === 'host'
-                        ? 'text-theme-subtle'
-                        : 'text-theme'
-                    }`}
-                  >
-                    Allow Skip
-                  </span>
-                  <span className="text-[10px] text-theme-muted">
-                    {room?.mode === 'host'
+                <Toggle
+                  label="Allow Skip"
+                  description={
+                    room?.mode === 'host'
                       ? 'Host controls skipping'
-                      : 'Anyone can skip'}
-                  </span>
-                </div>
-                <button
+                      : 'Anyone can skip'
+                  }
                   disabled={
                     (room?.hasPassword && !isAdmin) || room?.mode === 'host'
                   }
-                  onClick={() =>
+                  checked={room?.settings.skipAllowed ?? false}
+                  onChange={() =>
                     room &&
                     updateRoomSettings({
                       ...room.settings,
                       skipAllowed: !room.settings.skipAllowed,
                     })
                   }
-                  className={`relative h-6 w-12 cursor-pointer rounded-full border border-theme transition-colors ${
-                    room?.settings.skipAllowed
-                      ? 'bg-secondary'
-                      : 'bg-theme-surface opacity-50'
-                  } ${
-                    (room?.hasPassword && !isAdmin) || room?.mode === 'host'
-                      ? 'cursor-not-allowed opacity-30 grayscale'
-                      : ''
-                  }`}
-                >
-                  <div
-                    className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.skipAllowed ? 'right-1.5' : 'left-1.5'}`}
-                  />
-                </button>
+                  className="w-full !border-0 !bg-transparent !p-0"
+                />
               </div>
 
               <div className="group flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span
-                    className={`font-pixel text-sm ${
-                      (room?.hasPassword && !isAdmin) || room?.mode === 'host'
-                        ? 'text-theme-subtle'
-                        : 'text-theme'
-                    }`}
-                  >
-                    Democratic Skip
-                  </span>
-                  <span className="text-[10px] text-theme-muted">
-                    {room?.mode === 'host'
+                <Toggle
+                  label="Democratic Skip"
+                  description={
+                    room?.mode === 'host'
                       ? 'Host decides skipping'
-                      : 'Require votes'}
-                  </span>
-                </div>
-                <button
+                      : 'Require votes'
+                  }
                   disabled={
                     (room?.hasPassword && !isAdmin) || room?.mode === 'host'
                   }
-                  onClick={() =>
+                  checked={room?.settings.democraticSkip ?? false}
+                  onChange={() =>
                     room &&
                     updateRoomSettings({
                       ...room.settings,
                       democraticSkip: !room.settings.democraticSkip,
                     })
                   }
-                  className={`relative h-6 w-12 cursor-pointer rounded-full border border-theme transition-colors ${
-                    room?.settings.democraticSkip
-                      ? 'bg-secondary'
-                      : 'bg-theme-surface opacity-50'
-                  } ${
-                    (room?.hasPassword && !isAdmin) || room?.mode === 'host'
-                      ? 'cursor-not-allowed opacity-30 grayscale'
-                      : ''
-                  }`}
-                >
-                  <div
-                    className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.democraticSkip ? 'right-1.5' : 'left-1.5'}`}
-                  />
-                </button>
+                  className="w-full !border-0 !bg-transparent !p-0"
+                />
               </div>
 
               <div className="group flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span
-                    className={`font-pixel text-sm ${
-                      room?.hasPassword && !isAdmin
-                        ? 'text-theme-subtle'
-                        : 'text-theme'
-                    }`}
-                  >
-                    Loop Queue
-                  </span>
-                  <span className="text-[10px] text-theme-muted">
-                    Cycled back to end
-                  </span>
-                </div>
-                <button
+                <Toggle
+                  label="Loop Queue"
+                  description="Cycled back to end"
                   disabled={room?.hasPassword && !isAdmin}
-                  onClick={() =>
+                  checked={room?.settings.loopQueue ?? false}
+                  onChange={() =>
                     room &&
                     updateRoomSettings({
                       ...room.settings,
                       loopQueue: !room.settings.loopQueue,
                     })
                   }
-                  className={`relative h-6 w-12 cursor-pointer rounded-full border border-theme transition-colors ${
-                    room?.settings.loopQueue
-                      ? 'bg-secondary'
-                      : 'bg-theme-surface opacity-50'
-                  } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
-                >
-                  <div
-                    className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.loopQueue ? 'right-1.5' : 'left-1.5'}`}
-                  />
-                </button>
+                  className="w-full !border-0 !bg-transparent !p-0"
+                />
               </div>
 
               <div className="group flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span
-                    className={`font-pixel text-sm ${
-                      room?.hasPassword && !isAdmin
-                        ? 'text-theme-subtle'
-                        : 'text-theme'
-                    }`}
-                  >
-                    Allow Duplicates
-                  </span>
-                  <span className="text-[10px] text-theme-muted">
-                    Same song multiple times
-                  </span>
-                </div>
-                <button
+                <Toggle
+                  label="Allow Duplicates"
+                  description="Same song multiple times"
                   disabled={room?.hasPassword && !isAdmin}
-                  onClick={() =>
+                  checked={room?.settings.allowDuplicates ?? false}
+                  onChange={() =>
                     room &&
                     updateRoomSettings({
                       ...room.settings,
                       allowDuplicates: !room.settings.allowDuplicates,
                     })
                   }
-                  className={`relative h-6 w-12 cursor-pointer rounded-full border border-theme transition-colors ${
-                    room?.settings.allowDuplicates
-                      ? 'bg-secondary'
-                      : 'bg-theme-surface opacity-50'
-                  } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
-                >
-                  <div
-                    className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.allowDuplicates ? 'right-1.5' : 'left-1.5'}`}
-                  />
-                </button>
+                  className="w-full !border-0 !bg-transparent !p-0"
+                />
               </div>
 
               <div className="group flex items-center justify-between">
-                <div className="flex flex-col">
-                  <span
-                    className={`font-pixel text-sm ${
-                      room?.hasPassword && !isAdmin
-                        ? 'text-theme-subtle'
-                        : 'text-theme'
-                    }`}
-                  >
-                    Remove Played
-                  </span>
-                  <span className="text-[10px] text-theme-muted">
-                    Removed after play
-                  </span>
-                </div>
-                <button
+                <Toggle
+                  label="Remove Played"
+                  description="Removed after play"
                   disabled={room?.hasPassword && !isAdmin}
-                  onClick={() =>
+                  checked={room?.settings.removeOnPlay ?? false}
+                  onChange={() =>
                     room &&
                     updateRoomSettings({
                       ...room.settings,
                       removeOnPlay: !room.settings.removeOnPlay,
                     })
                   }
-                  className={`relative h-6 w-12 cursor-pointer rounded-full border border-theme transition-colors ${
-                    room?.settings.removeOnPlay
-                      ? 'bg-secondary'
-                      : 'bg-theme-surface opacity-50'
-                  } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
-                >
-                  <div
-                    className={`absolute top-1 h-2 w-2 rounded-full bg-white shadow-xs transition-all ${room?.settings.removeOnPlay ? 'right-1.5' : 'left-1.5'}`}
-                  />
-                </button>
+                  className="w-full !border-0 !bg-transparent !p-0"
+                />
               </div>
 
               <div className="border-theme border-t pt-4">
@@ -379,19 +279,18 @@ export const RoomSettingsMenu = ({
                           if (!room) return;
                           const newSources = isEnabled
                             ? room.settings.enabledSources.filter(
-                                (s) => s !== id,
-                              )
+                              (s) => s !== id,
+                            )
                             : [...room.settings.enabledSources, id];
                           updateRoomSettings({
                             ...room.settings,
                             enabledSources: newSources,
                           });
                         }}
-                        className={`group relative flex cursor-pointer items-center justify-center rounded-xl border py-3 transition-all ${
-                          isEnabled
-                            ? color
-                            : 'border-theme bg-theme-surface text-theme-muted opacity-40 hover:border-theme-strong hover:opacity-60'
-                        } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed grayscale' : ''}`}
+                        className={`group relative flex cursor-pointer items-center justify-center rounded-xl border py-3 transition-all ${isEnabled
+                          ? color
+                          : 'border-theme bg-theme-surface text-theme-muted opacity-40 hover:border-theme-strong hover:opacity-60'
+                          } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed grayscale' : ''}`}
                         title={`${isEnabled ? 'Disable' : 'Enable'} ${id}`}
                       >
                         <Icon className="h-6 w-6" />
@@ -410,11 +309,10 @@ export const RoomSettingsMenu = ({
                   <button
                     disabled={room?.hasPassword && !isAdmin}
                     onClick={() => room && updateRoom({ mode: 'server' })}
-                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${
-                      room?.mode === 'server'
-                        ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_14px_rgba(0,217,255,0.3)]'
-                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                    } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${room?.mode === 'server'
+                      ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_14px_rgba(0,217,255,0.3)]'
+                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                      } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                   >
                     <div className="mb-1 font-pixel text-sm text-theme">
                       Server Mode
@@ -427,11 +325,10 @@ export const RoomSettingsMenu = ({
                   <button
                     disabled={room?.hasPassword && !isAdmin}
                     onClick={() => room && updateRoom({ mode: 'host' })}
-                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${
-                      room?.mode === 'host'
-                        ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_14px_rgba(255,46,151,0.3)]'
-                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                    } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${room?.mode === 'host'
+                      ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_14px_rgba(255,46,151,0.3)]'
+                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                      } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                   >
                     <div className="mb-1 font-pixel text-sm text-theme">
                       Host Mode

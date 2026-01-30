@@ -4,6 +4,12 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ArrowLeftIcon } from '../components/icons/ArrowLeftIcon';
 import { ArrowRightIcon } from '../components/icons/ArrowRightIcon';
+import {
+  SoundCloudIcon,
+  SpotifyIcon,
+  Toggle,
+  YouTubeIcon,
+} from '@vibez/ui';
 
 const DEFAULT_SETTINGS = {
   skipAllowed: true,
@@ -11,6 +17,7 @@ const DEFAULT_SETTINGS = {
   loopQueue: false,
   removeOnPlay: true,
   allowDuplicates: false,
+  enabledSources: ['youtube', 'spotify', 'soundcloud'],
 };
 
 import type { SSRInitialData } from '../App';
@@ -97,7 +104,11 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
       name: name.trim(),
       password: password || undefined,
       mode,
-      settings,
+      settings: {
+        ...settings,
+        // Ensure enabledSources is passed correctly, though backend schema handles it
+        enabledSources: settings.enabledSources,
+      },
     });
 
     if (err) {
@@ -187,11 +198,10 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   <button
                     type="button"
                     onClick={() => setMode('server')}
-                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${
-                      mode === 'server'
-                        ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_18px_rgba(0,217,255,0.35)]'
-                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                    }`}
+                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${mode === 'server'
+                      ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_18px_rgba(0,217,255,0.35)]'
+                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                      }`}
                   >
                     <div className="mb-2 font-pixel text-xs tracking-[0.2em]">
                       SERVER MODE
@@ -203,11 +213,10 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   <button
                     type="button"
                     onClick={() => setMode('host')}
-                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${
-                      mode === 'host'
-                        ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_18px_rgba(255,46,151,0.35)]'
-                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                    }`}
+                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${mode === 'host'
+                      ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_18px_rgba(255,46,151,0.35)]'
+                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                      }`}
                   >
                     <div className="mb-2 font-pixel text-xs tracking-[0.2em]">
                       HOST MODE
@@ -239,118 +248,91 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
 
             <div className="panel-surface rounded-[24px] p-6">
               <h2 className="mb-6 font-pixel text-[11px] text-theme-muted tracking-[0.4em]">
+                SOURCES
+              </h2>
+              <div className="grid grid-cols-3 gap-3">
+                {[
+                  {
+                    id: 'youtube',
+                    Icon: YouTubeIcon,
+                    color:
+                      'bg-red-500/20 border-red-500/40 text-red-500 shadow-[0_0_10px_rgba(239,68,68,0.2)]',
+                  },
+                  {
+                    id: 'spotify',
+                    Icon: SpotifyIcon,
+                    color:
+                      'bg-green-500/20 border-green-500/40 text-green-500 shadow-[0_0_10px_rgba(34,197,94,0.2)]',
+                  },
+                  {
+                    id: 'soundcloud',
+                    Icon: SoundCloudIcon,
+                    color:
+                      'bg-orange-500/20 border-orange-500/40 text-orange-500 shadow-[0_0_10px_rgba(249,115,22,0.2)]',
+                  },
+                ].map(({ id, Icon, color }) => {
+                  const isEnabled = settings.enabledSources.includes(id);
+                  return (
+                    <button
+                      key={id}
+                      onClick={() => {
+                        const newSources = isEnabled
+                          ? settings.enabledSources.filter((s) => s !== id)
+                          : [...settings.enabledSources, id];
+                        updateSetting('enabledSources', newSources);
+                      }}
+                      className={`group relative flex cursor-pointer items-center justify-center rounded-xl border py-4 transition-all ${isEnabled
+                        ? color
+                        : 'border-theme bg-theme-surface text-theme-muted opacity-40 hover:border-theme-strong hover:opacity-60'
+                        }`}
+                      title={`${isEnabled ? 'Disable' : 'Enable'} ${id}`}
+                    >
+                      <Icon className="h-6 w-6" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="panel-surface rounded-[24px] p-6">
+              <h2 className="mb-6 font-pixel text-[11px] text-theme-muted tracking-[0.4em]">
                 PLAYBACK SETTINGS
               </h2>
               <div className="space-y-4">
-                <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
-                  <div className="mr-4 flex-1">
-                    <div className="font-pixel text-theme text-xs tracking-[0.2em]">
-                      ALLOW SKIP
-                    </div>
-                    <div className="mt-1 text-theme-muted text-xs">
-                      Anyone can skip songs
-                    </div>
-                  </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={settings.skipAllowed}
-                      onChange={(e) =>
-                        updateSetting('skipAllowed', e.target.checked)
-                      }
-                      className="peer sr-only"
-                    />
-                    <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-[0_0_10px_rgba(0,0,0,0.1)] after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-subtle after:transition-all after:content-[''] peer-checked:bg-secondary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-secondary/30"></div>
-                  </label>
-                </div>
+                <Toggle
+                  label="ALLOW SKIP"
+                  description="Anyone can skip songs"
+                  checked={settings.skipAllowed}
+                  onChange={(checked) => updateSetting('skipAllowed', checked)}
+                />
 
-                <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
-                  <div className="mr-4 flex-1">
-                    <div className="font-pixel text-theme text-xs tracking-[0.2em]">
-                      DEMOCRATIC SKIP
-                    </div>
-                    <div className="mt-1 text-theme-muted text-xs">
-                      Require votes to skip
-                    </div>
-                  </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={settings.democraticSkip}
-                      onChange={(e) =>
-                        updateSetting('democraticSkip', e.target.checked)
-                      }
-                      className="peer sr-only"
-                    />
-                    <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-[0_0_10px_rgba(0,0,0,0.1)] after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-subtle after:transition-all after:content-[''] peer-checked:bg-secondary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-secondary/30"></div>
-                  </label>
-                </div>
+                <Toggle
+                  label="DEMOCRATIC SKIP"
+                  description="Require votes to skip"
+                  checked={settings.democraticSkip}
+                  onChange={(checked) => updateSetting('democraticSkip', checked)}
+                />
 
-                <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
-                  <div className="mr-4 flex-1">
-                    <div className="font-pixel text-theme text-xs tracking-[0.2em]">
-                      LOOP QUEUE
-                    </div>
-                    <div className="mt-1 text-theme-muted text-xs">
-                      Restart when queue ends
-                    </div>
-                  </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={settings.loopQueue}
-                      onChange={(e) =>
-                        updateSetting('loopQueue', e.target.checked)
-                      }
-                      className="peer sr-only"
-                    />
-                    <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-[0_0_10px_rgba(0,0,0,0.1)] after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-subtle after:transition-all after:content-[''] peer-checked:bg-secondary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-secondary/30"></div>
-                  </label>
-                </div>
+                <Toggle
+                  label="LOOP QUEUE"
+                  description="Restart when queue ends"
+                  checked={settings.loopQueue}
+                  onChange={(checked) => updateSetting('loopQueue', checked)}
+                />
 
-                <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
-                  <div className="mr-4 flex-1">
-                    <div className="font-pixel text-theme text-xs tracking-[0.2em]">
-                      REMOVE PLAYED
-                    </div>
-                    <div className="mt-1 text-theme-muted text-xs">
-                      Removed after play
-                    </div>
-                  </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={settings.removeOnPlay}
-                      onChange={(e) =>
-                        updateSetting('removeOnPlay', e.target.checked)
-                      }
-                      className="peer sr-only"
-                    />
-                    <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-[0_0_10px_rgba(0,0,0,0.1)] after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-subtle after:transition-all after:content-[''] peer-checked:bg-secondary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-secondary/30"></div>
-                  </label>
-                </div>
+                <Toggle
+                  label="REMOVE PLAYED"
+                  description="Removed after play"
+                  checked={settings.removeOnPlay}
+                  onChange={(checked) => updateSetting('removeOnPlay', checked)}
+                />
 
-                <div className="group flex items-center justify-between rounded-2xl border border-theme bg-theme-surface p-5 transition-all hover:border-theme-strong">
-                  <div className="mr-4 flex-1">
-                    <div className="font-pixel text-theme text-xs tracking-[0.2em]">
-                      ALLOW DUPLICATES
-                    </div>
-                    <div className="mt-1 text-theme-muted text-xs">
-                      Same song multiple times
-                    </div>
-                  </div>
-                  <label className="relative inline-flex cursor-pointer items-center">
-                    <input
-                      type="checkbox"
-                      checked={settings.allowDuplicates}
-                      onChange={(e) =>
-                        updateSetting('allowDuplicates', e.target.checked)
-                      }
-                      className="peer sr-only"
-                    />
-                    <div className="peer h-7 w-12 rounded-full bg-theme-surface shadow-[0_0_10px_rgba(0,0,0,0.1)] after:absolute after:top-[2px] after:left-[2px] after:h-6 after:w-6 after:rounded-full after:bg-theme-subtle after:transition-all after:content-[''] peer-checked:bg-secondary peer-checked:after:translate-x-full peer-checked:after:bg-white peer-focus:outline-hidden peer-focus:ring-2 peer-focus:ring-secondary/30"></div>
-                  </label>
-                </div>
+                <Toggle
+                  label="ALLOW DUPLICATES"
+                  description="Same song multiple times"
+                  checked={settings.allowDuplicates}
+                  onChange={(checked) => updateSetting('allowDuplicates', checked)}
+                />
               </div>
             </div>
           </div>

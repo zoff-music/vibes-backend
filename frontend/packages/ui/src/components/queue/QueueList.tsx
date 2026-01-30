@@ -26,7 +26,7 @@ const QueueListComponent: React.FC<Props> = ({
 
   if (songs.length === 0) {
     return (
-      <div className="panel-surface animate-fade-in rounded-3xl p-12 text-center">
+      <div className="panel-surface animate-fade-in rounded-3xl py-20 px-4 text-center sm:px-12">
         <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border border-theme bg-theme-surface">
           <QueueEmptyIcon className="h-10 w-10 text-theme-muted" />
         </div>
