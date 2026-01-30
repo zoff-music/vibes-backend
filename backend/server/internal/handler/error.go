@@ -22,7 +22,7 @@ func handleError(
 	errorBody, _ := json.Marshal(struct {
 		Error string `json:"error"`
 	}{
-		Error: err.Error(), // Change to something generic if this API is publicly exposed
+		Error: "something went wrong",
 	})
 
 	var errorCodeWrapper client.ErrorCodeWrapper
