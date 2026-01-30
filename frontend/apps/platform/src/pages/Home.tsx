@@ -1,7 +1,8 @@
 import { api } from '@vibez/api';
 import { MoonIcon, SunIcon } from '@vibez/ui';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import type { SSRInitialData } from '../App';
 import { useThemeStore } from '../stores/themeStore';
 
 const ANIMATED_WORDS = [
@@ -42,7 +43,11 @@ const ANIMATED_WORDS = [
   'でんし',
 ];
 
-export default function Home() {
+interface HomeProps {
+  initialData?: SSRInitialData;
+}
+
+export default function Home({ initialData }: HomeProps) {
   const [roomCode, setRoomCode] = useState('');
   const [isValidating, setIsValidating] = useState(false);
   const [placeholderText, setPlaceholderText] = useState('');
@@ -50,8 +55,19 @@ export default function Home() {
   const [charIndex, setCharIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isBlinkerVisible, setIsBlinkerVisible] = useState(true);
+  const [isSSR, setIsSSR] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(initialData?.theme === 'dark');
   const navigate = useNavigate();
-  const { isDarkMode, toggleDarkMode } = useThemeStore();
+  const { toggleDarkMode } = useThemeStore();
+
+  useEffect(() => {
+    setIsSSR(false);
+  }, []);
+
+  const handleToggleDarkMode = useCallback(() => {
+    toggleDarkMode();
+    setIsDarkMode((prev) => !prev);
+  }, [toggleDarkMode]);
 
   useEffect(() => {
     const currentWord = ANIMATED_WORDS[wordIndex];
@@ -112,7 +128,11 @@ export default function Home() {
   };
 
   return (
-    <div className="relative flex min-h-screen flex-col overflow-x-hidden bg-theme text-theme md:block">
+    <div
+      className={`relative flex min-h-screen flex-col overflow-x-hidden bg-theme text-theme md:block ${
+        !isSSR ? 'animate-fade-in' : ''
+      }`}
+    >
       <div className="synth-sky pointer-events-none fixed inset-0" />
       <div className="synth-haze pointer-events-none fixed inset-0" />
       <div className="vhs-scanlines pointer-events-none fixed inset-0" />
@@ -123,7 +143,7 @@ export default function Home() {
         <div className="crt-frame relative w-full max-w-3xl rounded-[36px] p-6 sm:p-10">
           <div className="absolute top-6 right-6 z-20 sm:top-10 sm:right-10">
             <button
-              onClick={toggleDarkMode}
+              onClick={handleToggleDarkMode}
               className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
                 isDarkMode
                   ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_18px_rgba(0,217,255,0.35)]'

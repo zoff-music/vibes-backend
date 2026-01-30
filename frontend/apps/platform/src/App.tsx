@@ -38,7 +38,7 @@ export default function App({ initialData }: AppProps) {
     <>
       <DebugConsole />
       <Routes>
-        <Route path="/" element={<Home />} />
+        <Route path="/" element={<Home initialData={initialData} />} />
         <Route
           path="/rooms/create"
           element={<CreateRoom initialData={initialData} />}
