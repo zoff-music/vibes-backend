@@ -1,3 +1,4 @@
+import { safeWrap } from '@vibez/shared';
 import { create } from 'zustand';
 
 // Theme definitions - easy to add new themes by adding to this object
@@ -49,7 +50,7 @@ interface ThemeState {
 const COOKIE_NAME = 'preferences';
 const CURRENT_VERSION = 1;
 
-const setCookie = (name: string, value: string, days: number = 365) => {
+function setCookie(name: string, value: string, days: number = 365) {
   if (typeof document === 'undefined') return;
 
   const expires = new Date();
@@ -58,21 +59,21 @@ const setCookie = (name: string, value: string, days: number = 365) => {
   const cookieString = `${name}=${value};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
 
   // Use a function to set the cookie to avoid direct assignment warning
-  const setCookieValue = (value: string) => {
+  function setCookieValue(value: string) {
     // biome-ignore lint/suspicious/noDocumentCookie: Cookie setting is necessary for theme persistence
     document.cookie = value;
-  };
+  }
 
   setCookieValue(cookieString);
-};
+}
 
-const savePreferences = (preferences: Preferences) => {
+function savePreferences(preferences: Preferences) {
   const encoded = btoa(JSON.stringify(preferences));
   setCookie(COOKIE_NAME, encoded);
-};
+}
 
 // Apply theme class to document
-const applyTheme = (themeId: ThemeId) => {
+function applyTheme(themeId: ThemeId) {
   if (typeof document === 'undefined') return;
   const html = document.documentElement;
 
@@ -88,20 +89,37 @@ const applyTheme = (themeId: ThemeId) => {
   if (newTheme.class) {
     html.classList.add(newTheme.class);
   }
-};
+}
 
-// Initialize theme by checking the actual DOM state (what SSR rendered)
-const getInitialThemeSync = (): ThemeId => {
+// Initialize theme by checking the initial data provided by SSR, then DOM state
+function getInitialThemeSync(): ThemeId {
   if (typeof document === 'undefined') {
     return 'light'; // Server-side fallback
   }
 
-  // Check if the HTML element has the 'dark' class (what SSR actually rendered)
+  // 1. Try to get theme from SSR data (most reliable source of truth)
+  const dataElement = document.getElementById('ssr-data');
+  if (dataElement) {
+    const [err, data] = safeWrap(() =>
+      JSON.parse(dataElement.textContent || '{}'),
+    );
+
+    if (!err && data && data.theme) {
+      // Validate that the theme is valid
+      if (data.theme === 'dark' || data.theme === 'light') {
+        console.log('[Theme] Initialized from SSR data:', data.theme);
+        return data.theme;
+      }
+    }
+  }
+
+  // 2. Fallback: Check if the HTML element has the 'dark' class (what SSR actually rendered)
+  // This is kept as a backup in case the script tag is missing or malformed
   const hasDarkClass = document.documentElement.classList.contains('dark');
-  console.log('[Theme] DOM has dark class:', hasDarkClass);
+  console.log('[Theme] Fallback: DOM has dark class:', hasDarkClass);
 
   return hasDarkClass ? 'dark' : 'light';
-};
+}
 
 // Initialize theme immediately - before any React rendering
 const INITIAL_THEME = getInitialThemeSync();
