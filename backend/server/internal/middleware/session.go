@@ -59,7 +59,8 @@ func (m *SessionMiddleware) extractSession(r *http.Request) (helper.SessionPaylo
 	}
 
 	var payload helper.SessionPayload
-	if err := json.Unmarshal(decoded, &payload); err != nil {
+	err = json.Unmarshal(decoded, &payload)
+	if err != nil {
 		log.Printf("SessionMiddleware: invalid json: %v", err)
 		return helper.SessionPayload{}, false
 	}

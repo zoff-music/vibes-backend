@@ -22,7 +22,8 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	}
 
 	// Ensure valid access token
-	if err := c.EnsureToken(ctx); err != nil {
+	err := c.EnsureToken(ctx)
+	if err != nil {
 		return nil, fmt.Errorf("failed to ensure token: %w", err)
 	}
 

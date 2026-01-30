@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"html"
 	"net/http"
 	"net/url"
+
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 
 	"github.com/zoff-music/vibes/client"
 	"github.com/zoff-music/vibes/vibe"
@@ -39,7 +40,8 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	}
 
 	var result videoResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
+	err = json.Unmarshal(resp, &result)
+	if err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 

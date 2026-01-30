@@ -48,7 +48,8 @@ func TestCreateRoomWithOnlyAdminAddSongs(t *testing.T) {
 	}
 
 	var result vibe.Room
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 

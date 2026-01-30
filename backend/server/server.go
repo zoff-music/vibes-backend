@@ -133,7 +133,8 @@ func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
 
 		log.Println("HTTP server has received a shutdown signal")
 
-		if err := httpServ.Shutdown(ctx); err != nil {
+		err := httpServ.Shutdown(ctx)
+		if err != nil {
 			log.Println(err.Error())
 		}
 	}(ctx, s.HTTP)
@@ -141,7 +142,8 @@ func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
 	log.Printf("Ready at: %s", s.Config.Port)
 
 	// Block until httpServ.Shutdown is called
-	if err := s.HTTP.ListenAndServe(); err != http.ErrServerClosed {
+	err := s.HTTP.ListenAndServe()
+	if err != http.ErrServerClosed {
 		errc <- fmt.Errorf("unexpected server error: %w", err)
 		return
 	}

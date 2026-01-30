@@ -4,9 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"net/http"
 	"net/url"
+
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 
 	"github.com/zoff-music/vibes/client"
 	"github.com/zoff-music/vibes/vibe"
@@ -55,7 +56,8 @@ func (c *Client) ExchangeCode(ctx context.Context, code string) (*vibe.TokenResp
 	}
 
 	var res vibe.TokenResponse
-	if err := json.Unmarshal(resp, &res); err != nil {
+	err = json.Unmarshal(resp, &res)
+	if err != nil {
 		return nil, fmt.Errorf("error decoding token response: %w", err)
 	}
 
@@ -88,7 +90,8 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*vibe.T
 	}
 
 	var res vibe.TokenResponse
-	if err := json.Unmarshal(resp, &res); err != nil {
+	err = json.Unmarshal(resp, &res)
+	if err != nil {
 		return nil, fmt.Errorf("error decoding token response: %w", err)
 	}
 

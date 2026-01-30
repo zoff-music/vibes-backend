@@ -204,7 +204,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	}
 
 	for _, prepareStmt := range prepareStatements {
-		if err := prepareStmt(); err != nil {
+		err := prepareStmt()
+		if err != nil {
 			return fmt.Errorf("failed to prepare statements: %w", err)
 		}
 	}

@@ -134,7 +134,7 @@ export default function Home({ initialData }: HomeProps) {
       <div className="synth-haze pointer-events-none fixed inset-0" />
       <div className="vhs-scanlines pointer-events-none fixed inset-0" />
       <div className="sun-hero sunset-orb pointer-events-none fixed" />
-      <div className="retro-grid pointer-events-none fixed bottom-0 left-1/2 z-10 h-[45vh] w-[140%]" />
+      <div className="retro-grid pointer-events-none fixed bottom-0 left-1/2 z-10 h-[100vh] w-[200%]" />
 
       <div className="relative z-10 mx-auto flex h-full w-full max-w-5xl flex-1 flex-col items-center justify-center px-6 py-6">
         <div className="crt-frame relative w-full max-w-3xl rounded-[36px] p-6 sm:p-10">
@@ -142,8 +142,8 @@ export default function Home({ initialData }: HomeProps) {
             <button
               onClick={handleToggleDarkMode}
               className={`cursor-pointer rounded-xl border p-2.5 transition-all ${isDarkMode
-                  ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_18px_rgba(0,217,255,0.35)]'
-                  : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
+                ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_18px_rgba(0,217,255,0.35)]'
+                : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
                 }`}
               title={
                 isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
