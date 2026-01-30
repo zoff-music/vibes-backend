@@ -4,10 +4,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
+	"github.com/zoff-music/vibes/internalerror"
 	"github.com/zoff-music/vibes/server/internal/helper"
 	"github.com/zoff-music/vibes/vibe"
 )
@@ -152,6 +154,17 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 		// Get current access token
 		token, err := db.GetAccessToken(ctx, session.UserID, providerName)
 		if err != nil {
+			var notFoundErr internalerror.ErrAccessTokenNotFound
+			if errors.As(err, &notFoundErr) {
+				handleError(
+					w,
+					fmt.Errorf("error getting access token: %w", err),
+					http.StatusPreconditionFailed,
+					false,
+				)
+				return
+			}
+
 			// If not found or error, return 403
 			handleError(
 				w,
@@ -186,24 +199,13 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 			return
 		}
 
-		// Access token expired, check refresh token
-		if token.RefreshToken == "" {
-			handleError(
-				w,
-				fmt.Errorf("no refresh token available"),
-				http.StatusForbidden,
-				false,
-			)
-			return
-		}
-
 		// Check Refresh Token expiration if we track it (optional check, provider will fail anyway)
-		if !token.RefreshExpiresAt.IsZero() && token.RefreshExpiresAt.Before(time.Now().UTC()) {
+		if token.RefreshToken == "" || !token.RefreshExpiresAt.IsZero() && token.RefreshExpiresAt.Before(time.Now().UTC()) {
 			handleError(
 				w,
 				fmt.Errorf("refresh token expired"),
-				http.StatusForbidden,
-				false,
+				http.StatusPreconditionFailed,
+				true,
 			)
 			return
 		}
@@ -215,7 +217,7 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 				w,
 				fmt.Errorf("error refreshing token: %w", err),
 				http.StatusForbidden,
-				false,
+				true,
 			)
 			return
 		}

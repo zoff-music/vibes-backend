@@ -1,4 +1,4 @@
-import { getHttpError, useRoom } from '@vibez/api';
+import { getHttpError, useQueue, useRoom } from '@vibez/api';
 import {
   type Song,
   usePlaybackStore,
@@ -41,6 +41,7 @@ export default function Room({ initialData }: RoomProps) {
   const { room, fetchRoom, isLoading, error, joinRoom, userId } = useRoom(
     id || '',
   );
+  const { fetchQueue } = useQueue(id || '');
 
   // Granular store setters (subscription-free/minimized re-renders)
   const setRoom = useRoomStore((state) => state.setRoom);
@@ -186,14 +187,16 @@ export default function Room({ initialData }: RoomProps) {
       fetchAttemptedRef.current = id;
       if (!initialData || initialData.room?.id !== id) {
         fetchRoom();
+        fetchQueue();
       }
     }
 
     if (!userId && joinAttemptedRef.current !== id) {
       joinAttemptedRef.current = id;
       fetchRoom();
+      fetchQueue();
     }
-  }, [id, userId, fetchRoom, initialData]);
+  }, [id, userId, fetchRoom, fetchQueue, initialData]);
 
   // Global events (Toast, Song Added)
   useEffect(() => {

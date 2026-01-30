@@ -147,6 +147,11 @@ func (c *Client) GetAccessToken(ctx context.Context, userID, provider string) (*
 	var row accessTokenRow
 	err := row.scan(r)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, internalerror.ErrAccessTokenNotFound{
+				Err: fmt.Errorf("access token not found for user %s and provider %s", userID, provider),
+			}
+		}
 		return nil, fmt.Errorf("error in db: get access token: %w", err)
 	}
 	return row.toAccessToken(), nil

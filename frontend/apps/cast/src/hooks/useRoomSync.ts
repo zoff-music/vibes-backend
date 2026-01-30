@@ -59,8 +59,16 @@ export function useRoomSync({
           const [playbackErr, playbackState] = playbackRes;
 
           if (!songsErr && songs) {
+            console.log(
+              `[Cast] Fetched ${songs.length} songs for room ${roomId}`,
+            );
             const normalizedSongs = songs.map((s) => normalizeSong(s));
             setQueue(normalizedSongs);
+          } else if (songsErr) {
+            console.error(
+              `[Cast] Failed to fetch songs for room ${roomId}:`,
+              songsErr,
+            );
           }
 
           if (!playbackErr && playbackState && playbackState.currentSong) {
