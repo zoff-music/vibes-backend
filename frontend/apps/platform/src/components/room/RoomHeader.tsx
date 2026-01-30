@@ -9,7 +9,7 @@ import {
 } from '@vibez/ui';
 import { AnimatePresence, motion } from 'framer-motion';
 import React, { type RefObject } from 'react';
-import { Link } from 'react-router';
+
 import { RoomSettingsMenu } from './RoomSettingsMenu';
 import { RoomSharePanel } from './RoomSharePanel';
 import { UserCount } from './UserCount';
@@ -33,6 +33,7 @@ interface RoomHeaderProps {
   onAdminPasswordChange: (value: string) => void;
   onJoinAdmin: () => void;
   isAuthenticating: boolean;
+  onLeave: () => void;
 }
 
 export const RoomHeader = React.memo(
@@ -55,6 +56,7 @@ export const RoomHeader = React.memo(
     onAdminPasswordChange,
     onJoinAdmin,
     isAuthenticating,
+    onLeave,
   }: RoomHeaderProps) => {
     const { room, isAdmin, updateRoomSettings, updateRoom } = useRoom(roomId);
     return (
@@ -63,13 +65,13 @@ export const RoomHeader = React.memo(
         className="panel-surface sticky top-0 z-20 border-theme border-b px-4 py-4"
       >
         <div className="relative mx-auto flex max-w-7xl items-center justify-between">
-          <Link
-            to="/"
+          <button
+            onClick={onLeave}
             className="group inline-flex cursor-pointer items-center gap-2 text-theme-muted transition-colors hover:text-theme"
           >
             <ArrowLeftIcon className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
             <span className="text-[10px] tracking-[0.3em]">Leave</span>
-          </Link>
+          </button>
 
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
             <h1 className="truncate whitespace-nowrap text-theme text-xs sm:text-sm">

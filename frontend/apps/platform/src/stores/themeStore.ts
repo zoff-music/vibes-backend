@@ -41,9 +41,11 @@ interface Preferences {
 interface ThemeState {
   themeId: ThemeId;
   isDarkMode: boolean;
+  isWarping: boolean;
   currentTheme: Theme;
   setTheme: (themeId: ThemeId) => void;
   toggleDarkMode: () => void; // Convenience method for simple light/dark toggle
+  setIsWarping: (warp: boolean) => void;
 }
 
 // Cookie utilities
@@ -133,6 +135,7 @@ export const useThemeStore = create<ThemeState>((set, get) => {
   return {
     themeId: INITIAL_THEME,
     isDarkMode: INITIAL_THEME === 'dark',
+    isWarping: false,
     currentTheme: themes[INITIAL_THEME],
 
     setTheme: (themeId: ThemeId) => {
@@ -157,6 +160,10 @@ export const useThemeStore = create<ThemeState>((set, get) => {
         isDarkMode: newTheme === 'dark',
         currentTheme: themes[newTheme],
       });
+    },
+
+    setIsWarping: (warp: boolean) => {
+      set({ isWarping: warp });
     },
   };
 });

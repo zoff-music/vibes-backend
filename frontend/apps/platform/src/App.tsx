@@ -26,6 +26,8 @@ interface AppProps {
   initialData?: SSRInitialData;
 }
 
+import { Background } from './components/layout/Background';
+
 export default function App({ initialData }: AppProps) {
   console.warn('🔥 [App] Received initialData:', initialData);
   console.warn('🔥 [App] typeof window:', typeof window);
@@ -37,8 +39,9 @@ export default function App({ initialData }: AppProps) {
   return (
     <>
       <DebugConsole />
+      <Background />
       <Routes>
-        <Route path="/" element={<Home initialData={initialData} />} />
+        <Route path="/" element={<Home />} />
         <Route
           path="/rooms/create"
           element={<CreateRoom initialData={initialData} />}

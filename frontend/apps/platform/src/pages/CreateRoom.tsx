@@ -10,6 +10,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ArrowLeftIcon } from '../components/icons/ArrowLeftIcon';
 import { ArrowRightIcon } from '../components/icons/ArrowRightIcon';
+import { useThemeStore } from '../stores/themeStore';
 
 const DEFAULT_SETTINGS = {
   skipAllowed: true,
@@ -30,6 +31,7 @@ interface CreateRoomProps {
 const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { setIsWarping } = useThemeStore();
 
   // Initialize name - prioritize SSR data, then URL params
   const [name, setName] = useState(() => {
@@ -116,6 +118,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
     if (!name.trim() || isLoading) return;
 
     setIsLoading(true);
+    setIsWarping(true);
     setError(null);
 
     const [err, room] = await api.post('/rooms', null, {
@@ -133,6 +136,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
       console.error('Failed to create room:', err);
       setError(err.message || 'Failed to create room');
       setIsLoading(false);
+      setIsWarping(false);
       return;
     }
 
@@ -157,14 +161,8 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
   };
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-theme text-theme">
-      <div className="synth-sky pointer-events-none fixed inset-0" />
-      <div className="synth-haze pointer-events-none fixed inset-0" />
-      <div className="vhs-scanlines pointer-events-none fixed inset-0" />
-      <div className="sun-hero sunset-orb pointer-events-none fixed" />
-      <div className="retro-grid pointer-events-none fixed bottom-0 left-1/2 z-10 h-[100vh] w-[200%]" />
-
-      <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-6 py-10">
+    <div className="relative flex min-h-screen w-full flex-col items-center justify-start overflow-hidden">
+      <div className="relative z-10 mx-auto mt-[min(26.5vh_,_230px)] flex w-full max-w-6xl flex-col px-6 pb-24">
         <div className="mb-8 flex items-center justify-between">
           <Link
             to="/"
@@ -191,8 +189,6 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
             </p>
           </div>
 
-
-
           <div className="grid gap-6 lg:grid-cols-2 lg:items-start">
             <div className="space-y-6">
               {/* 1. SESSION NAME */}
@@ -212,8 +208,13 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
               </div>
 
               {/* 2. ADMIN PASSWORD */}
-              <div ref={passwordRef} className={`panel-surface rounded-[24px] p-6 transition-all duration-300 ${wobblePassword ? 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] ring-2 ring-red-500/50' : ''}`}>
-                <label className={`mb-3 block font-pixel text-[10px] tracking-[0.3em] transition-colors ${wobblePassword ? 'animate-bounce text-red-500' : 'text-theme-muted'}`}>
+              <div
+                ref={passwordRef}
+                className={`panel-surface rounded-[24px] p-6 transition-all duration-300 ${wobblePassword ? 'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.4)] ring-2 ring-red-500/50' : ''}`}
+              >
+                <label
+                  className={`mb-3 block font-pixel text-[10px] tracking-[0.3em] transition-colors ${wobblePassword ? 'animate-bounce text-red-500' : 'text-theme-muted'}`}
+                >
                   ADMIN PASSWORD
                   <span className="ml-2 text-theme-subtle">(optional)</span>
                 </label>
@@ -224,8 +225,12 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   onChange={(e) => setPassword(e.target.value)}
                   className={`w-full rounded-2xl border bg-theme-surface px-4 py-4 text-base text-theme placeholder:text-theme-subtle focus:outline-hidden focus:ring-2 ${wobblePassword ? 'border-red-500 focus:border-red-500 focus:ring-red-500/30' : 'border-theme focus:border-primary focus:ring-primary/30'}`}
                 />
-                <p className={`mt-3 text-xs transition-colors ${wobblePassword ? 'text-red-400 font-bold' : 'text-theme-subtle'}`}>
-                  {wobblePassword ? 'Password required for "Only Admin Add Songs"' : 'Leave empty to allow anyone to control playback.'}
+                <p
+                  className={`mt-3 text-xs transition-colors ${wobblePassword ? 'font-bold text-red-400' : 'text-theme-subtle'}`}
+                >
+                  {wobblePassword
+                    ? 'Password required for "Only Admin Add Songs"'
+                    : 'Leave empty to allow anyone to control playback.'}
                 </p>
               </div>
 
@@ -268,10 +273,11 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                             : [...settings.enabledSources, id];
                           updateSetting('enabledSources', newSources);
                         }}
-                        className={`group relative flex h-10 w-full flex-1 items-center justify-center rounded-xl transition-all ${isEnabled
-                          ? activeColor
-                          : `bg-theme-surface-strong/50 ${color}`
-                          }`}
+                        className={`group relative flex h-10 w-full flex-1 items-center justify-center rounded-xl transition-all ${
+                          isEnabled
+                            ? activeColor
+                            : `bg-theme-surface-strong/50 ${color}`
+                        }`}
                         title={`${isEnabled ? 'Disable' : 'Enable'} ${id}`}
                       >
                         <Icon className="h-5 w-5" />
@@ -290,10 +296,11 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   <button
                     type="button"
                     onClick={() => setMode('server')}
-                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${mode === 'server'
-                      ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_18px_rgba(0,217,255,0.35)]'
-                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                      }`}
+                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${
+                      mode === 'server'
+                        ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_18px_rgba(0,217,255,0.35)]'
+                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                    }`}
                   >
                     <div className="mb-2 font-pixel text-xs tracking-[0.2em]">
                       SERVER MODE
@@ -305,10 +312,11 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   <button
                     type="button"
                     onClick={() => setMode('host')}
-                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${mode === 'host'
-                      ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_18px_rgba(255,46,151,0.35)]'
-                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                      }`}
+                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${
+                      mode === 'host'
+                        ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_18px_rgba(255,46,151,0.35)]'
+                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                    }`}
                   >
                     <div className="mb-2 font-pixel text-xs tracking-[0.2em]">
                       HOST MODE
@@ -322,7 +330,6 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
             </div>
 
             <div className="space-y-6">
-
               <div className="panel-surface rounded-[24px] p-6">
                 <div className="mb-6">
                   <h2 className="font-pixel text-[11px] text-theme-muted tracking-[0.4em]">
@@ -335,7 +342,9 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                     label="ALLOW SKIP"
                     description="Anyone can skip songs"
                     checked={settings.skipAllowed}
-                    onChange={(checked) => updateSetting('skipAllowed', checked)}
+                    onChange={(checked) =>
+                      updateSetting('skipAllowed', checked)
+                    }
                   />
 
                   <Toggle
@@ -358,7 +367,9 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                     label="REMOVE PLAYED"
                     description="Removed after play"
                     checked={settings.removeOnPlay}
-                    onChange={(checked) => updateSetting('removeOnPlay', checked)}
+                    onChange={(checked) =>
+                      updateSetting('removeOnPlay', checked)
+                    }
                   />
 
                   <Toggle
