@@ -185,9 +185,7 @@ export default function Admin({ initialData }: AdminProps) {
       <div className="relative flex min-h-screen items-center justify-center overflow-hidden px-6 py-12">
         <div className="relative z-10 w-full max-w-md">
           <div className="glass rounded-3xl border-2 border-ink/10 p-8 text-center dark:border-gray-700">
-            <h1
-              className="mb-2 font-black text-3xl text-ink tracking-tight dark:text-white"
-            >
+            <h1 className="mb-2 font-black text-3xl text-ink tracking-tight dark:text-white">
               Admin Access
             </h1>
             <p className="mb-6 text-ink/60 text-sm dark:text-gray-400">
@@ -229,11 +227,7 @@ export default function Admin({ initialData }: AdminProps) {
       <div className="mx-auto max-w-5xl space-y-8">
         <header className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
           <div>
-            <h1
-              className="font-black text-3xl tracking-tight"
-            >
-              Live Rooms
-            </h1>
+            <h1 className="font-black text-3xl tracking-tight">Live Rooms</h1>
             <p className="text-ink/60 text-sm dark:text-gray-400">
               {hasRooms
                 ? `${rooms.length} rooms, ${totalViewers} viewers online`
@@ -264,9 +258,7 @@ export default function Admin({ initialData }: AdminProps) {
             >
               <div>
                 <div className="flex items-center gap-3">
-                  <h2
-                    className="font-bold text-ink text-xl dark:text-white"
-                  >
+                  <h2 className="font-bold text-ink text-xl dark:text-white">
                     {room.name}
                   </h2>
                   <span className="rounded-full bg-ink/10 px-3 py-1 font-mono text-ink/60 text-xs uppercase tracking-wider dark:bg-gray-800 dark:text-gray-400">
