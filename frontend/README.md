@@ -6,6 +6,7 @@ A React + Vite + TypeScript monorepo using Bun workspaces with Server-Side Rende
 
 - **`apps/platform`**: The main web application for room management, queueing, and social interaction (SSR-enabled)
 - **`apps/cast`**: A standalone Chromecast Receiver application for synchronized playback on Google Cast devices (SSR-enabled)
+- **`apps/mobile`**: Cross-platform mobile application built with Expo/React Native
 
 ## Shared Packages
 

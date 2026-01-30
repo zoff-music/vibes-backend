@@ -413,7 +413,7 @@ Backend uses these environment variables:
 ```bash
 # Required
 PORT=8080
-DATABASE_PATH=./data/vibes.db
+DATABASE_PATH=./data/db/vibes.db
 YOUTUBE_API_KEY=your-youtube-api-key
 
 # Optional OAuth
