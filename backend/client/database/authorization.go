@@ -74,13 +74,15 @@ func (c *Client) GetAuthProviders(ctx context.Context, userID string) ([]string,
 	var providers []string
 	for rows.Next() {
 		var provider string
-		if err := rows.Scan(&provider); err != nil {
+		err := rows.Scan(&provider)
+		if err != nil {
 			return nil, fmt.Errorf("error in db: scan auth provider: %w", err)
 		}
 		providers = append(providers, provider)
 	}
 
-	if err := rows.Err(); err != nil {
+	err = rows.Err()
+	if err != nil {
 		return nil, fmt.Errorf("error in db: iterate auth providers: %w", err)
 	}
 

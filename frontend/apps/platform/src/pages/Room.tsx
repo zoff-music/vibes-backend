@@ -281,7 +281,7 @@ export default function Room({ initialData }: RoomProps) {
       <div className="synth-sky pointer-events-none fixed inset-0" />
       <div className="synth-haze pointer-events-none fixed inset-0" />
       <div className="vhs-scanlines pointer-events-none fixed inset-0" />
-      <div className="retro-grid pointer-events-none fixed bottom-0 left-1/2 h-[45vh] w-[140%]" />
+      <div className="retro-grid pointer-events-none fixed bottom-0 left-1/2 h-[100vh] w-[200%]" />
 
       <div className="relative z-10 flex min-h-screen flex-col">
         {/* Header */}

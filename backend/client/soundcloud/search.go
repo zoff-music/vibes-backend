@@ -23,7 +23,8 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	}
 
 	// Ensure valid access token
-	if err := c.EnsureToken(ctx); err != nil {
+	err := c.EnsureToken(ctx)
+	if err != nil {
 		return nil, fmt.Errorf("failed to ensure token: %w", err)
 	}
 

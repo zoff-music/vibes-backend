@@ -33,7 +33,8 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 		}
 
 		// Store state in database
-		if err := db.SavePendingOAuthState(ctx, session.UserID, state); err != nil {
+		err := db.SavePendingOAuthState(ctx, session.UserID, state)
+		if err != nil {
 			handleError(
 				w,
 				fmt.Errorf("error saving pending oauth state: %w", err),

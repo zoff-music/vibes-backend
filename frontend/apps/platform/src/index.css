@@ -385,18 +385,18 @@
   }
 
   .retro-grid {
-    transform: translateX(-50%) perspective(400px) rotateX(60deg);
+    transform: translateX(-50%) perspective(600px) rotateX(60deg);
     transform-origin: bottom;
     background-image:
-      linear-gradient(to right, rgba(255, 105, 180, 0.45) 2px, transparent 2px),
-      linear-gradient(to bottom, rgba(0, 217, 255, 0.45) 2px, transparent 2px);
+      linear-gradient(to right, rgba(255, 105, 180, 0) 0px, rgba(255, 105, 180, 0.45) 1px, rgba(255, 105, 180, 0) 2px),
+      linear-gradient(to bottom, rgba(0, 217, 255, 0) 0px, rgba(0, 217, 255, 0.45) 1px, rgba(0, 217, 255, 0) 2px);
     background-size: 80px 80px;
-    animation: retro-grid-scroll 12s linear infinite;
+    animation: retro-grid-scroll 2s linear infinite;
     will-change: transform, background-position;
-    image-rendering: crisp-edges;
     backface-visibility: hidden;
     filter: drop-shadow(0 0 25px rgba(255, 46, 151, 0.5));
     opacity: 1;
+    mask-image: linear-gradient(to top, black 30%, transparent 95%);
   }
 
   .neon-panel {

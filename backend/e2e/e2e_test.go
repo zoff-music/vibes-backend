@@ -40,7 +40,8 @@ func TestCreateAndGetRoom(t *testing.T) {
 	}
 
 	var result map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
@@ -71,7 +72,8 @@ func TestCreateAndGetRoom(t *testing.T) {
 	}
 
 	var roomResult map[string]interface{}
-	if err := json.NewDecoder(resp.Body).Decode(&roomResult); err != nil {
+	err = json.NewDecoder(resp.Body).Decode(&roomResult)
+	if err != nil {
 		t.Fatalf("failed to decode room response: %v", err)
 	}
 

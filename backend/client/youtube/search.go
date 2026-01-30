@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/vibes/monitoring/opentracing"
 	"html"
 	"net/http"
 	"net/url"
+
+	"github.com/zoff-music/vibes/monitoring/opentracing"
 
 	"github.com/zoff-music/vibes/client"
 	"github.com/zoff-music/vibes/vibe"
@@ -41,7 +42,8 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	}
 
 	var result searchResponse
-	if err := json.Unmarshal(resp, &result); err != nil {
+	err = json.Unmarshal(resp, &result)
+	if err != nil {
 		return nil, fmt.Errorf("error decoding response: %w", err)
 	}
 
@@ -73,7 +75,8 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	vresp, err := c.HTTPClient.RequestBytes(ctx, vreqData)
 	if err == nil {
 		var vresult videoResponse
-		if err := json.Unmarshal(vresp, &vresult); err == nil {
+		err := json.Unmarshal(vresp, &vresult)
+		if err == nil {
 			durations := make(map[string]string)
 			for _, vitem := range vresult.Items {
 				durations[vitem.ID] = vitem.ContentDetails.Duration

@@ -162,7 +162,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
       <div className="synth-haze pointer-events-none fixed inset-0" />
       <div className="vhs-scanlines pointer-events-none fixed inset-0" />
       <div className="sun-hero sunset-orb pointer-events-none fixed" />
-      <div className="retro-grid pointer-events-none fixed bottom-0 left-1/2 z-10 h-[45vh] w-[140%]" />
+      <div className="retro-grid pointer-events-none fixed bottom-0 left-1/2 z-10 h-[100vh] w-[200%]" />
 
       <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-6 py-10">
         <div className="mb-8 flex items-center justify-between">

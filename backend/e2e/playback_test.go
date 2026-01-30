@@ -44,7 +44,8 @@ func TestAutoPlayOnJoin(t *testing.T) {
 				if strings.HasPrefix(dataLine, "data: ") {
 					data := strings.TrimPrefix(dataLine, "data: ")
 					var state vibe.PlaybackState
-					if err := json.Unmarshal([]byte(data), &state); err != nil {
+					err := json.Unmarshal([]byte(data), &state)
+					if err != nil {
 						t.Fatalf("failed to unmarshal playback state: %v", err)
 					}
 					if state.IsPlaying {

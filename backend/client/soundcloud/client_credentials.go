@@ -64,7 +64,8 @@ func (c *Client) GetClientCredentialsToken(ctx context.Context) (*vibe.TokenResp
 	}
 
 	var res vibe.TokenResponse
-	if err := json.Unmarshal(resp, &res); err != nil {
+	err = json.Unmarshal(resp, &res)
+	if err != nil {
 		return nil, fmt.Errorf("error decoding token response: %w", err)
 	}
 
