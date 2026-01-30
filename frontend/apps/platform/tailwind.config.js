@@ -50,7 +50,12 @@ export default {
         error: '#ff2e63',
       },
       fontFamily: {
-        body: ['"Pixelify Sans"', '"Zen Maru Gothic"', 'system-ui', 'sans-serif'],
+        body: [
+          '"Pixelify Sans"',
+          '"Zen Maru Gothic"',
+          'system-ui',
+          'sans-serif',
+        ],
         heading: ['"Pixelify Sans"', 'sans-serif'],
         mono: ['"Pixelify Sans"', '"Courier New"', 'monospace'],
         pixel: ['"Pixelify Sans"', 'cursive'],
@@ -98,7 +103,6 @@ export default {
         'scale-in': 'scaleIn 0.2s ease-out',
         'neon-pulse': 'neonPulse 2s ease-in-out infinite',
         float: 'float 3s ease-in-out infinite',
-        'vhs-jitter': 'vhsJitter 1.4s infinite linear',
         scanlines: 'scanlines 1.8s linear infinite',
         'glow-pulse': 'glowPulse 2.6s ease-in-out infinite',
         'gradient-shift': 'gradientShift 10s ease-in-out infinite',
@@ -128,33 +132,20 @@ export default {
           '0%, 100%': { transform: 'translateY(0px)' },
           '50%': { transform: 'translateY(-10px)' },
         },
-        vhsJitter: {
-          '0%, 100%': { transform: 'translate(0, 0)' },
-          '20%': { transform: 'translate(-1px, 1px)' },
-          '40%': { transform: 'translate(1px, -1px)' },
-          '60%': { transform: 'translate(-2px, 0)' },
-          '80%': { transform: 'translate(2px, 1px)' },
-        },
         scanlines: {
           '0%': { backgroundPosition: '0 0' },
           '100%': { backgroundPosition: '0 12px' },
         },
         glowPulse: {
-          '0%, 100%': { filter: 'drop-shadow(0 0 12px rgba(255, 63, 164, 0.6))' },
+          '0%, 100%': {
+            filter: 'drop-shadow(0 0 12px rgba(255, 63, 164, 0.6))',
+          },
           '50%': { filter: 'drop-shadow(0 0 18px rgba(0, 217, 255, 0.5))' },
         },
         gradientShift: {
           '0%': { backgroundPosition: '0% 50%' },
           '50%': { backgroundPosition: '100% 50%' },
           '100%': { backgroundPosition: '0% 50%' },
-        },
-        vhsSlice: {
-          '0%': { clipPath: 'inset(0 0 80% 0)' },
-          '20%': { clipPath: 'inset(10% 0 60% 0)' },
-          '40%': { clipPath: 'inset(30% 0 30% 0)' },
-          '60%': { clipPath: 'inset(55% 0 10% 0)' },
-          '80%': { clipPath: 'inset(20% 0 50% 0)' },
-          '100%': { clipPath: 'inset(0 0 80% 0)' },
         },
       },
     },

@@ -6,6 +6,6 @@ export * from './components/queue/QueueItem';
 export * from './components/queue/QueueList';
 export * from './components/Text';
 export * from './components/Toast';
+export * from './components/Toggle';
 export * from './icons';
 export * from './player';
-export * from './components/Toggle';

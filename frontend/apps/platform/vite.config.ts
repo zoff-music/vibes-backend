@@ -40,6 +40,7 @@ export default defineConfig({
     alias: {
       '@': path.resolve(__dirname, './src'),
     },
+    dedupe: ['react', 'react-dom'],
   },
   define: {
     'process.env.NODE_ENV': JSON.stringify(

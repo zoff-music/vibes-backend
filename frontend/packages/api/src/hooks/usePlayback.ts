@@ -4,26 +4,22 @@ import {
   useRoomStore,
 } from '@vibez/shared';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback } from 'react';
 import { api, getHttpError } from '../index';
 import { USE_SSE_CALLBACKS } from './useSSE';
 
 export function usePlayback(roomId: string, callbacks?: USE_SSE_CALLBACKS) {
-  const playback = usePlaybackStore();
+  const currentSong = usePlaybackStore((state) => state.currentSong);
+  const isPlaying = usePlaybackStore((state) => state.isPlaying);
+  const positionMs = usePlaybackStore((state) => state.positionMs);
+  const updatedAt = usePlaybackStore((state) => state.updatedAt);
+  const serverTimeMs = usePlaybackStore((state) => state.serverTimeMs);
+
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
   const setLocalPlayingState = usePlaybackStore(
     (state) => state.setLocalPlayingState,
   );
-  const room = useRoomStore((state) => state.room);
-
-  // Update actual position every 100ms for smooth UI progress bars
-  useEffect(() => {
-    const interval = setInterval(() => {
-      playback.updateActualPosition();
-    }, 100);
-
-    return () => clearInterval(interval);
-  }, [playback]);
+  const roomMode = useRoomStore((state) => state.room?.mode);
 
   const performAction = useCallback(
     async (
@@ -35,8 +31,8 @@ export function usePlayback(roomId: string, callbacks?: USE_SSE_CALLBACKS) {
 
       if (action === 'play' || action === 'pause' || action === 'seek') {
         // Optimistic update for play/pause in server/host mode
-        if (room?.mode && (action === 'play' || action === 'pause')) {
-          setLocalPlayingState(action === 'play', room.mode);
+        if (roomMode && (action === 'play' || action === 'pause')) {
+          setLocalPlayingState(action === 'play', roomMode);
         }
 
         const [err, result] = await api.put(
@@ -49,10 +45,10 @@ export function usePlayback(roomId: string, callbacks?: USE_SSE_CALLBACKS) {
 
         if (
           data &&
-          room?.mode === 'server' &&
+          roomMode === 'server' &&
           (action === 'play' || action === 'pause')
         ) {
-          setLocalPlayingState(data.isPlaying, room.mode);
+          setLocalPlayingState(data.isPlaying, roomMode);
         }
       } else if (action === 'skip' || action === 'vote') {
         const [err, result] = await api.post(
@@ -108,13 +104,12 @@ export function usePlayback(roomId: string, callbacks?: USE_SSE_CALLBACKS) {
 
       if (data) {
         // Handle wrapped responses (SkipActionResponse/VoteActionResponse)
-        // Handle wrapped responses (SkipActionResponse/VoteActionResponse)
         const state = ((data as { playback?: PlaybackState }).playback ||
           data) as PlaybackState;
-        setPlaybackState(state, room?.mode);
+        setPlaybackState(state, roomMode);
       }
     },
-    [roomId, setPlaybackState, setLocalPlayingState, room?.mode, callbacks],
+    [roomId, setPlaybackState, setLocalPlayingState, roomMode, callbacks],
   );
 
   const play = useCallback(() => performAction('play'), [performAction]);
@@ -131,13 +126,17 @@ export function usePlayback(roomId: string, callbacks?: USE_SSE_CALLBACKS) {
 
     const [err, data] = await api.get('/rooms/{id}/states', { id: roomId });
     if (data) {
-      setPlaybackState(data, room?.mode);
+      setPlaybackState(data, roomMode);
     }
     return [err, data];
-  }, [roomId, setPlaybackState, room?.mode]);
+  }, [roomId, setPlaybackState, roomMode]);
 
   return {
-    ...playback,
+    currentSong,
+    isPlaying,
+    positionMs,
+    updatedAt,
+    serverTimeMs,
     play,
     pause,
     seek,
@@ -145,4 +144,12 @@ export function usePlayback(roomId: string, callbacks?: USE_SSE_CALLBACKS) {
     vote,
     fetchPlayback,
   };
+}
+
+/**
+ * Hook to get high-frequency position updates.
+ * Only use this in components that actually need to render a progress bar.
+ */
+export function usePlaybackPosition() {
+  return usePlaybackStore((state) => state.actualPositionMs);
 }

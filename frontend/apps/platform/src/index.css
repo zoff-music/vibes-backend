@@ -4,10 +4,50 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes vhsJitter {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  20% {
+    transform: translate(-1px, 1px);
+  }
+  40% {
+    transform: translate(1px, -1px);
+  }
+  60% {
+    transform: translate(-2px, 0);
+  }
+  80% {
+    transform: translate(2px, 1px);
+  }
+}
+
+@keyframes vhsSlice {
+  0% {
+    clip-path: inset(0 0 80% 0);
+  }
+  20% {
+    clip-path: inset(10% 0 60% 0);
+  }
+  40% {
+    clip-path: inset(30% 0 30% 0);
+  }
+  60% {
+    clip-path: inset(55% 0 10% 0);
+  }
+  80% {
+    clip-path: inset(20% 0 50% 0);
+  }
+  100% {
+    clip-path: inset(0 0 80% 0);
+  }
+}
+
 @layer base {
   :root,
   body {
-    font-family: theme('fontFamily.body');
+    font-family: theme("fontFamily.body");
   }
 
   *,
@@ -24,7 +64,7 @@
   h4,
   h5,
   h6 {
-    font-family: theme('fontFamily.heading');
+    font-family: theme("fontFamily.heading");
     text-transform: uppercase;
     letter-spacing: 0.15em;
   }
@@ -58,6 +98,7 @@
       0 0 10px rgba(255, 46, 151, 0.3),
       0 0 20px rgba(255, 46, 151, 0.15);
   }
+
   .dark .neon-pink {
     box-shadow:
       0 0 15px rgba(255, 46, 151, 0.5),
@@ -69,6 +110,7 @@
       0 0 10px rgba(0, 217, 255, 0.3),
       0 0 20px rgba(0, 217, 255, 0.15);
   }
+
   .dark .neon-cyan {
     box-shadow:
       0 0 15px rgba(0, 217, 255, 0.5),
@@ -85,20 +127,20 @@
   }
 
   .font-display {
-    font-family: theme('fontFamily.heading');
+    font-family: theme("fontFamily.heading");
     letter-spacing: 0.08em;
   }
 
   .font-body {
-    font-family: theme('fontFamily.body');
+    font-family: theme("fontFamily.body");
   }
 
   .font-mono {
-    font-family: theme('fontFamily.mono');
+    font-family: theme("fontFamily.mono");
   }
 
   .font-pixel {
-    font-family: theme('fontFamily.pixel');
+    font-family: theme("fontFamily.pixel");
     letter-spacing: 0.05em;
   }
 
@@ -230,6 +272,55 @@
     );
     background-size: 180% 180%;
     animation: gradientShift 12s ease-in-out infinite;
+  }
+
+  @keyframes vhsJitter {
+    0%,
+    100% {
+      transform: translate(0, 0);
+    }
+
+    20% {
+      transform: translate(-1px, 1px);
+    }
+
+    40% {
+      transform: translate(1px, -1px);
+    }
+
+    60% {
+      transform: translate(-2px, 0);
+    }
+
+    80% {
+      transform: translate(2px, 1px);
+    }
+  }
+
+  @keyframes vhsSlice {
+    0% {
+      clip-path: inset(0 0 80% 0);
+    }
+
+    20% {
+      clip-path: inset(10% 0 60% 0);
+    }
+
+    40% {
+      clip-path: inset(30% 0 30% 0);
+    }
+
+    60% {
+      clip-path: inset(55% 0 10% 0);
+    }
+
+    80% {
+      clip-path: inset(20% 0 50% 0);
+    }
+
+    100% {
+      clip-path: inset(0 0 80% 0);
+    }
   }
 
   .synth-haze {

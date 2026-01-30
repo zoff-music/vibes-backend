@@ -1,15 +1,15 @@
 import { api } from '@vibez/api';
-import { AlertCircleIcon } from '@vibez/ui';
-import { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
-import { ArrowLeftIcon } from '../components/icons/ArrowLeftIcon';
-import { ArrowRightIcon } from '../components/icons/ArrowRightIcon';
 import {
+  AlertCircleIcon,
   SoundCloudIcon,
   SpotifyIcon,
   Toggle,
   YouTubeIcon,
 } from '@vibez/ui';
+import React, { useEffect, useState } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import { ArrowLeftIcon } from '../components/icons/ArrowLeftIcon';
+import { ArrowRightIcon } from '../components/icons/ArrowRightIcon';
 
 const DEFAULT_SETTINGS = {
   skipAllowed: true,
@@ -198,10 +198,11 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   <button
                     type="button"
                     onClick={() => setMode('server')}
-                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${mode === 'server'
-                      ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_18px_rgba(0,217,255,0.35)]'
-                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                      }`}
+                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${
+                      mode === 'server'
+                        ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_18px_rgba(0,217,255,0.35)]'
+                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                    }`}
                   >
                     <div className="mb-2 font-pixel text-xs tracking-[0.2em]">
                       SERVER MODE
@@ -213,10 +214,11 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   <button
                     type="button"
                     onClick={() => setMode('host')}
-                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${mode === 'host'
-                      ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_18px_rgba(255,46,151,0.35)]'
-                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                      }`}
+                    className={`cursor-pointer rounded-2xl border px-4 py-4 text-left transition-all ${
+                      mode === 'host'
+                        ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_18px_rgba(255,46,151,0.35)]'
+                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                    }`}
                   >
                     <div className="mb-2 font-pixel text-xs tracking-[0.2em]">
                       HOST MODE
@@ -281,10 +283,11 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                           : [...settings.enabledSources, id];
                         updateSetting('enabledSources', newSources);
                       }}
-                      className={`group relative flex cursor-pointer items-center justify-center rounded-xl border py-4 transition-all ${isEnabled
-                        ? color
-                        : 'border-theme bg-theme-surface text-theme-muted opacity-40 hover:border-theme-strong hover:opacity-60'
-                        }`}
+                      className={`group relative flex cursor-pointer items-center justify-center rounded-xl border py-4 transition-all ${
+                        isEnabled
+                          ? color
+                          : 'border-theme bg-theme-surface text-theme-muted opacity-40 hover:border-theme-strong hover:opacity-60'
+                      }`}
                       title={`${isEnabled ? 'Disable' : 'Enable'} ${id}`}
                     >
                       <Icon className="h-6 w-6" />
@@ -310,7 +313,9 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   label="DEMOCRATIC SKIP"
                   description="Require votes to skip"
                   checked={settings.democraticSkip}
-                  onChange={(checked) => updateSetting('democraticSkip', checked)}
+                  onChange={(checked) =>
+                    updateSetting('democraticSkip', checked)
+                  }
                 />
 
                 <Toggle
@@ -331,7 +336,9 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
                   label="ALLOW DUPLICATES"
                   description="Same song multiple times"
                   checked={settings.allowDuplicates}
-                  onChange={(checked) => updateSetting('allowDuplicates', checked)}
+                  onChange={(checked) =>
+                    updateSetting('allowDuplicates', checked)
+                  }
                 />
               </div>
             </div>

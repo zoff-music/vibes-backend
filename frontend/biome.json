@@ -36,7 +36,8 @@
         }
       },
       "correctness": {
-        "useExhaustiveDependencies": "off"
+        "useExhaustiveDependencies": "off",
+        "noUnknownFunction": "off"
       },
       "suspicious": {
         "noImplicitAnyLet": "off",

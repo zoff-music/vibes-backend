@@ -10,6 +10,11 @@ interface PlaybackStoreState extends PlaybackState {
   localIsPlaying: boolean | null; // null means use server state, boolean means local override
   roomMode: string | null;
 
+  // Interval management
+  autoUpdateInterval: ReturnType<typeof setInterval> | null;
+  startAutoUpdate: () => void;
+  stopAutoUpdate: () => void;
+
   setPlaybackState: (state: PlaybackState, roomMode?: string) => void;
   setIsPlaying: (isPlaying: boolean) => void;
   setLocalPlayingState: (isPlaying: boolean, roomMode: string) => void;
@@ -24,6 +29,7 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
   serverTimeMs: Date.now(),
   actualPositionMs: 0,
   clientReferenceTime: Date.now(),
+  autoUpdateInterval: null,
   localIsPlaying: null,
   roomMode: null,
 
@@ -68,9 +74,23 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
       roomMode: roomMode || currentState.roomMode,
     });
     get().updateActualPosition();
+
+    // Manage update interval based on playback state
+    if (state.isPlaying) {
+      get().startAutoUpdate();
+    } else {
+      get().stopAutoUpdate();
+    }
   },
 
-  setIsPlaying: (isPlaying) => set({ isPlaying }),
+  setIsPlaying: (isPlaying) => {
+    set({ isPlaying });
+    if (isPlaying) {
+      get().startAutoUpdate();
+    } else {
+      get().stopAutoUpdate();
+    }
+  },
 
   setLocalPlayingState: (isPlaying, roomMode) => {
     if (roomMode === 'server') {
@@ -87,6 +107,12 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
         roomMode,
       });
     }
+
+    if (isPlaying) {
+      get().startAutoUpdate();
+    } else {
+      get().stopAutoUpdate();
+    }
   },
 
   updateActualPosition: () => {
@@ -100,5 +126,24 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
     // Simple calculation: add time elapsed since we received this state
     const elapsedOnClient = Math.max(0, Date.now() - clientReferenceTime);
     set({ actualPositionMs: positionMs + elapsedOnClient });
+  },
+
+  startAutoUpdate: () => {
+    const { autoUpdateInterval, isPlaying } = get();
+    if (autoUpdateInterval || !isPlaying) return;
+
+    const interval = setInterval(() => {
+      get().updateActualPosition();
+    }, 100);
+
+    set({ autoUpdateInterval: interval });
+  },
+
+  stopAutoUpdate: () => {
+    const { autoUpdateInterval } = get();
+    if (!autoUpdateInterval) return;
+
+    clearInterval(autoUpdateInterval);
+    set({ autoUpdateInterval: null });
   },
 }));

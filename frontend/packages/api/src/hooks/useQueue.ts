@@ -7,8 +7,11 @@ import { useCallback, useRef } from 'react';
 import { api } from '../index';
 
 export const useQueue = (roomId: string) => {
-  const { songs, setSongs, addSong, removeSong } = useQueueStore();
-  const { setPlaybackState } = usePlaybackStore();
+  const songs = useQueueStore((state) => state.songs);
+  const setSongs = useQueueStore((state) => state.setSongs);
+  const addSong = useQueueStore((state) => state.addSong);
+  const removeSong = useQueueStore((state) => state.removeSong);
+  const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
   const lastAddTimestamp = useRef<number>(0);
 
   const fetchQueue = useCallback(async () => {
