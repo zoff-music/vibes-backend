@@ -86,10 +86,11 @@ export const RoomSettingsMenu = ({
                 <div className="flex items-center gap-3">
                   <button
                     onClick={onToggleShare}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${showShare
-                      ? 'border-theme-strong bg-theme-surface text-theme'
-                      : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
-                      }`}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${
+                      showShare
+                        ? 'border-theme-strong bg-theme-surface text-theme'
+                        : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
+                    }`}
                     title="Share Room"
                   >
                     <ShareIcon className="h-4 w-4" />
@@ -98,10 +99,11 @@ export const RoomSettingsMenu = ({
 
                   <button
                     onClick={onToggleDarkMode}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${isDarkMode
-                      ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_12px_rgba(0,217,255,0.35)]'
-                      : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
-                      }`}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${
+                      isDarkMode
+                        ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_12px_rgba(0,217,255,0.35)]'
+                        : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
+                    }`}
                     title={
                       isDarkMode
                         ? 'Switch to Light Mode'
@@ -159,14 +161,14 @@ export const RoomSettingsMenu = ({
                     (room?.hasPassword && !isAdmin) || room?.mode === 'host'
                   }
                   checked={room?.settings.skipAllowed ?? false}
-                  onChange={() =>
+                  onChange={(checked) =>
                     room &&
                     updateRoomSettings({
                       ...room.settings,
-                      skipAllowed: !room.settings.skipAllowed,
+                      skipAllowed: checked,
                     })
                   }
-                  className="w-full !border-0 !bg-transparent !p-0"
+                  className="!border-0 !bg-transparent !p-0 w-full"
                 />
               </div>
 
@@ -182,14 +184,14 @@ export const RoomSettingsMenu = ({
                     (room?.hasPassword && !isAdmin) || room?.mode === 'host'
                   }
                   checked={room?.settings.democraticSkip ?? false}
-                  onChange={() =>
+                  onChange={(checked) =>
                     room &&
                     updateRoomSettings({
                       ...room.settings,
-                      democraticSkip: !room.settings.democraticSkip,
+                      democraticSkip: checked,
                     })
                   }
-                  className="w-full !border-0 !bg-transparent !p-0"
+                  className="!border-0 !bg-transparent !p-0 w-full"
                 />
               </div>
 
@@ -199,14 +201,14 @@ export const RoomSettingsMenu = ({
                   description="Cycled back to end"
                   disabled={room?.hasPassword && !isAdmin}
                   checked={room?.settings.loopQueue ?? false}
-                  onChange={() =>
+                  onChange={(checked) =>
                     room &&
                     updateRoomSettings({
                       ...room.settings,
-                      loopQueue: !room.settings.loopQueue,
+                      loopQueue: checked,
                     })
                   }
-                  className="w-full !border-0 !bg-transparent !p-0"
+                  className="!border-0 !bg-transparent !p-0 w-full"
                 />
               </div>
 
@@ -216,14 +218,14 @@ export const RoomSettingsMenu = ({
                   description="Same song multiple times"
                   disabled={room?.hasPassword && !isAdmin}
                   checked={room?.settings.allowDuplicates ?? false}
-                  onChange={() =>
+                  onChange={(checked) =>
                     room &&
                     updateRoomSettings({
                       ...room.settings,
-                      allowDuplicates: !room.settings.allowDuplicates,
+                      allowDuplicates: checked,
                     })
                   }
-                  className="w-full !border-0 !bg-transparent !p-0"
+                  className="!border-0 !bg-transparent !p-0 w-full"
                 />
               </div>
 
@@ -233,14 +235,14 @@ export const RoomSettingsMenu = ({
                   description="Removed after play"
                   disabled={room?.hasPassword && !isAdmin}
                   checked={room?.settings.removeOnPlay ?? false}
-                  onChange={() =>
+                  onChange={(checked) =>
                     room &&
                     updateRoomSettings({
                       ...room.settings,
-                      removeOnPlay: !room.settings.removeOnPlay,
+                      removeOnPlay: checked,
                     })
                   }
-                  className="w-full !border-0 !bg-transparent !p-0"
+                  className="!border-0 !bg-transparent !p-0 w-full"
                 />
               </div>
 
@@ -279,18 +281,19 @@ export const RoomSettingsMenu = ({
                           if (!room) return;
                           const newSources = isEnabled
                             ? room.settings.enabledSources.filter(
-                              (s) => s !== id,
-                            )
+                                (s) => s !== id,
+                              )
                             : [...room.settings.enabledSources, id];
                           updateRoomSettings({
                             ...room.settings,
                             enabledSources: newSources,
                           });
                         }}
-                        className={`group relative flex cursor-pointer items-center justify-center rounded-xl border py-3 transition-all ${isEnabled
-                          ? color
-                          : 'border-theme bg-theme-surface text-theme-muted opacity-40 hover:border-theme-strong hover:opacity-60'
-                          } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed grayscale' : ''}`}
+                        className={`group relative flex cursor-pointer items-center justify-center rounded-xl border py-3 transition-all ${
+                          isEnabled
+                            ? color
+                            : 'border-theme bg-theme-surface text-theme-muted opacity-40 hover:border-theme-strong hover:opacity-60'
+                        } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed grayscale' : ''}`}
                         title={`${isEnabled ? 'Disable' : 'Enable'} ${id}`}
                       >
                         <Icon className="h-6 w-6" />
@@ -309,10 +312,11 @@ export const RoomSettingsMenu = ({
                   <button
                     disabled={room?.hasPassword && !isAdmin}
                     onClick={() => room && updateRoom({ mode: 'server' })}
-                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${room?.mode === 'server'
-                      ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_14px_rgba(0,217,255,0.3)]'
-                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                      } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${
+                      room?.mode === 'server'
+                        ? 'border-secondary/60 bg-secondary/10 text-theme shadow-[0_0_14px_rgba(0,217,255,0.3)]'
+                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                    } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                   >
                     <div className="mb-1 font-pixel text-sm text-theme">
                       Server Mode
@@ -325,10 +329,11 @@ export const RoomSettingsMenu = ({
                   <button
                     disabled={room?.hasPassword && !isAdmin}
                     onClick={() => room && updateRoom({ mode: 'host' })}
-                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${room?.mode === 'host'
-                      ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_14px_rgba(255,46,151,0.3)]'
-                      : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
-                      } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
+                    className={`w-full cursor-pointer rounded-xl border p-3 text-left transition-all ${
+                      room?.mode === 'host'
+                        ? 'border-primary/60 bg-primary/10 text-theme shadow-[0_0_14px_rgba(255,46,151,0.3)]'
+                        : 'border-theme bg-theme-surface text-theme-muted hover:border-theme-strong'
+                    } ${room?.hasPassword && !isAdmin ? 'cursor-not-allowed opacity-30 grayscale' : ''}`}
                   >
                     <div className="mb-1 font-pixel text-sm text-theme">
                       Host Mode

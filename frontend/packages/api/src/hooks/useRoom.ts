@@ -14,7 +14,12 @@ const IN_FLIGHT_REQUESTS = new Map<string, Promise<any>>();
 export const useRoom = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
-  const { room, users, userId, setRoom, setSession, reset } = useRoomStore();
+  const room = useRoomStore((state) => state.room);
+  const users = useRoomStore((state) => state.users);
+  const userId = useRoomStore((state) => state.userId);
+  const setRoom = useRoomStore((state) => state.setRoom);
+  const setSession = useRoomStore((state) => state.setSession);
+  const reset = useRoomStore((state) => state.reset);
 
   useSSE(roomId, callbacks);
 
@@ -140,6 +145,7 @@ export const useRoom = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
     room,
     users,
     userId,
+    isAdmin: useRoomStore.getState().isAdmin, // Getting it from store
     isLoading,
     error,
     fetchRoom,

@@ -1,115 +1,131 @@
-import type { Song } from '@vibez/models';
+import { useQueue } from '@vibez/api';
+import { type PlaybackState } from '@vibez/models';
+import { usePlaybackStore } from '@vibez/shared';
 import { QueueList, SoundCloudIcon, SpotifyIcon, YouTubeIcon } from '@vibez/ui';
+import React from 'react';
+import { PlaybackProgress } from './PlaybackProgress';
 
 interface RoomQueueProps {
-  currentSong: Song | null;
-  displayIsPlaying: boolean;
-  songs: Song[];
   roomId: string;
-  progress: number;
   isSSR: boolean;
-  onVote: (songId: string) => Promise<void>;
+  initialPlayback?: PlaybackState;
 }
 
-export function RoomQueue({
-  currentSong,
-  displayIsPlaying,
-  songs,
-  roomId,
-  progress,
-  isSSR,
-  onVote,
-}: RoomQueueProps) {
-  const formatTime = (ms: number) => {
-    const seconds = Math.floor(ms / 1000);
-    const m = Math.floor(seconds / 60);
-    const s = seconds % 60;
-    return `${m}:${s.toString().padStart(2, '0')}`;
-  };
+export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
+  ({ roomId, isSSR, initialPlayback }: RoomQueueProps) => {
+    /* 1. Hooks */
+    const { songs, voteSong } = useQueue(roomId);
 
-  return (
-    <div className="mt-8 space-y-8 lg:mt-0 lg:h-full lg:overflow-y-auto lg:pr-2">
-      <div className="lg:pb-6">
-        {/* Now Playing (Integrated into list style) */}
-        {currentSong && (
-          <div className="mb-8">
-            <div className="mb-3 flex items-center gap-2">
-              <div
-                className={`h-2 w-2 rounded-full ${
-                  displayIsPlaying
-                    ? 'animate-pulse bg-secondary shadow-[0_0_10px_rgba(0,217,255,0.6)]'
-                    : 'bg-white/30'
-                }`}
-              />
-              <span className="font-display text-[10px] text-theme-muted tracking-[0.3em]">
-                {displayIsPlaying ? 'Now Playing' : 'Paused'}
-              </span>
-            </div>
+    // Granular store subscriptions
+    const currentSongFromStore = usePlaybackStore((state) => state.currentSong);
+    const isPlayingFromStore = usePlaybackStore((state) => state.isPlaying);
 
-            <div className="group/card panel-surface no-box relative flex items-center gap-4 overflow-hidden rounded-2xl p-4">
-              <div className="vhs-scanlines pointer-events-none absolute inset-0" />
+    /* 2. State & Computed */
+    const currentSong =
+      currentSongFromStore || initialPlayback?.currentSong || null;
+    const isPlaying =
+      isPlayingFromStore !== undefined
+        ? isPlayingFromStore
+        : initialPlayback?.isPlaying || false;
 
-              {/* Thumbnail */}
-              {currentSong.thumbnailUrl && (
-                <div className="relative z-10 shrink-0">
-                  <img
-                    src={currentSong.thumbnailUrl}
-                    alt=""
-                    className="h-16 w-16 rounded-xl border border-theme object-cover shadow-xs transition-transform group-hover/card:scale-105"
-                  />
-                </div>
-              )}
+    /* 3. Handlers */
+    const handleVote = React.useCallback(
+      async (songId: string) => {
+        await voteSong(songId);
+      },
+      [voteSong],
+    );
 
-              {/* Song info */}
-              <div className="relative z-10 min-w-0 flex-1">
-                <h3 className="mb-1 truncate font-display text-theme text-xs">
-                  {currentSong.title}
-                </h3>
-                <div className="flex items-center gap-2 text-theme-muted text-xs">
-                  <span className="truncate">
-                    {currentSong.artist || 'Unknown Artist'}
-                  </span>
-                  <span className="text-theme-subtle">•</span>
-                  <span className="shrink-0 font-mono text-theme-subtle text-xs">
-                    {formatTime(currentSong.duration * 1000)}
-                  </span>
-                </div>
+    const formatTime = (ms: number) => {
+      const seconds = Math.floor(ms / 1000);
+      const m = Math.floor(seconds / 60);
+      const s = seconds % 60;
+      return `${m}:${s.toString().padStart(2, '0')}`;
+    };
+
+    return (
+      <div className="mt-8 space-y-8 lg:mt-0 lg:h-full lg:overflow-y-auto lg:pr-2">
+        <div className="lg:pb-6">
+          {/* Now Playing (Integrated into list style) */}
+          {currentSong && (
+            <div className="mb-8">
+              <div className="mb-3 flex items-center gap-2">
+                <div
+                  className={`h-2 w-2 rounded-full ${
+                    isPlaying
+                      ? 'animate-pulse bg-secondary shadow-[0_0_10px_rgba(0,217,255,0.6)]'
+                      : 'bg-white/30'
+                  }`}
+                />
+                <span className="font-display text-[10px] text-theme-muted tracking-[0.3em]">
+                  {isPlaying ? 'Now Playing' : 'Paused'}
+                </span>
               </div>
 
-              {/* Source Icon */}
-              <div className="relative z-10 flex shrink-0 items-center justify-center opacity-70">
-                {currentSong.sourceType === 'spotify' ? (
-                  <SpotifyIcon className="h-5 w-5" />
-                ) : currentSong.sourceType === 'soundcloud' ? (
-                  <SoundCloudIcon className="h-5 w-5" />
-                ) : (
-                  <YouTubeIcon className="h-5 w-5" />
+              <div className="group/card panel-surface no-box relative flex items-center gap-4 overflow-hidden rounded-2xl p-4">
+                <div className="vhs-scanlines pointer-events-none absolute inset-0" />
+
+                {/* Thumbnail */}
+                {currentSong.thumbnailUrl && (
+                  <div className="relative z-10 shrink-0">
+                    <img
+                      src={currentSong.thumbnailUrl}
+                      alt=""
+                      className="h-16 w-16 rounded-xl border border-theme object-cover shadow-xs transition-transform group-hover/card:scale-105"
+                    />
+                  </div>
                 )}
+
+                {/* Song info */}
+                <div className="relative z-10 min-w-0 flex-1">
+                  <h3 className="mb-1 truncate font-display text-theme text-xs">
+                    {currentSong.title}
+                  </h3>
+                  <div className="flex items-center gap-2 text-theme-muted text-xs">
+                    <span className="truncate">
+                      {currentSong.artist || 'Unknown Artist'}
+                    </span>
+                    <span className="text-theme-subtle">•</span>
+                    <span className="shrink-0 font-mono text-theme-subtle text-xs">
+                      {formatTime(currentSong.duration * 1000)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Source Icon */}
+                <div className="relative z-10 flex shrink-0 items-center justify-center opacity-70">
+                  {currentSong.sourceType === 'spotify' ? (
+                    <SpotifyIcon className="h-5 w-5" />
+                  ) : currentSong.sourceType === 'soundcloud' ? (
+                    <SoundCloudIcon className="h-5 w-5" />
+                  ) : (
+                    <YouTubeIcon className="h-5 w-5" />
+                  )}
+                </div>
               </div>
+
+              <PlaybackProgress
+                durationMs={currentSong.duration * 1000}
+                isSSR={isSSR}
+              />
+
+              <div className="mt-8 mb-4 h-px bg-theme-surface" />
             </div>
+          )}
 
-            <progress
-              className="progress-bar mt-3 h-1 w-full"
-              value={isSSR ? 0 : progress}
-              max={1}
+          {/* Up Next List */}
+          <div>
+            <h3 className="mb-4 font-display text-[10px] text-theme-muted tracking-[0.3em]">
+              Up Next ({songs.filter((s) => s.id !== currentSong?.id).length})
+            </h3>
+            <QueueList
+              songs={songs.filter((s) => s.id !== currentSong?.id)}
+              roomId={roomId}
+              onVote={handleVote}
             />
-
-            <div className="mt-8 mb-4 h-px bg-theme-surface" />
           </div>
-        )}
-
-        {/* Up Next List */}
-        <div>
-          <h3 className="mb-4 font-display text-[10px] text-theme-muted tracking-[0.3em]">
-            Up Next ({songs.filter((s) => s.id !== currentSong?.id).length})
-          </h3>
-          <QueueList
-            songs={songs.filter((s) => s.id !== currentSong?.id)}
-            roomId={roomId}
-            onVote={onVote}
-          />
         </div>
       </div>
-    </div>
-  );
-}
+    );
+  },
+);

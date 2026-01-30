@@ -1,21 +1,20 @@
-import { getHttpError, usePlayback, useQueue, useRoom } from '@vibez/api';
+import { getHttpError, useRoom } from '@vibez/api';
 import {
   type Song,
   usePlaybackStore,
   useQueueStore,
   useRoomStore,
 } from '@vibez/shared';
-import { AlertCircleIcon, Toast } from '@vibez/ui';
+import { Toast } from '@vibez/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 import type { SSRInitialData } from '../App';
 import { DeviceSelector } from '../components/cast/DeviceSelector';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
+import { RoomErrorView } from '../components/room/RoomErrorView';
 import { RoomHeader } from '../components/room/RoomHeader';
 import { RoomPlayer } from '../components/room/RoomPlayer';
 import { RoomQueue } from '../components/room/RoomQueue';
-import { useCasting } from '../hooks/useCasting';
-import { useProviderToken } from '../hooks/useProviderToken';
 import { useThemeStore } from '../stores/themeStore';
 
 interface RoomProps {
@@ -28,55 +27,110 @@ interface ToastEventDetail {
 }
 
 export default function Room({ initialData }: RoomProps) {
+  /* 1. Refs */
+  const headerRef = useRef<HTMLDivElement | null>(null);
+  const fetchAttemptedRef = useRef<string | null>(null);
+  const joinAttemptedRef = useRef<string | null>(null);
+  const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
+  const settingsMenuRef = useRef<HTMLDivElement | null>(null);
+
+  /* 2. Hooks */
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-
-  const { currentSong, skip, isPlaying, play, pause } = usePlayback(id || '');
-  const { songs, fetchQueue, voteSong } = useQueue(id || '');
-  const { isConnected, castDeviceName } = useCasting(id || '');
-
-  const headerRef = useRef<HTMLDivElement | null>(null);
-
-  // Use songs from store, fallback to initial data for SSR
-  const displaySongs = songs.length > 0 ? songs : initialData?.songs || [];
-
-  // Use playing state from store, fallback to initial data for SSR
-  const displayIsPlaying =
-    isPlaying !== undefined
-      ? isPlaying
-      : initialData?.playback?.isPlaying || false;
-
-  // Use current song from store, fallback to initial data for SSR
-  const displayCurrentSong = useMemo(() => {
-    if (currentSong) return currentSong;
-    if (initialData?.playback?.currentSong)
-      return initialData.playback.currentSong;
-    // No fallback needed since currentSong comes from playback state
-    return null;
-  }, [
-    currentSong,
-    initialData?.playback?.currentSong,
-    initialData?.songs?.length,
-  ]);
-
-  const {
-    room,
-    fetchRoom,
-    isLoading,
-    error,
-    joinRoom,
-    userId,
-    updateRoomSettings,
-    updateRoom,
-  } = useRoom(id || '');
   const { toggleDarkMode } = useThemeStore();
+  const { room, fetchRoom, isLoading, error, joinRoom, userId } = useRoom(
+    id || '',
+  );
 
-  // Use theme from server-side initialData to avoid hydration mismatch
-  const [isDarkMode, setIsDarkMode] = useState(initialData?.theme === 'dark');
+  // Granular store setters (subscription-free/minimized re-renders)
+  const setRoom = useRoomStore((state) => state.setRoom);
+  const setSongs = useQueueStore((state) => state.setSongs);
+  const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
 
-  // Track if we're in SSR mode to disable animations
+  // Granular store query (only re-render if isAdmin changes)
+  // storeIsAdmin removed as it was unused
+
+  /* 3. State */
+  const [initialized, setInitialized] = useState(false);
   const [isSSR, setIsSSR] = useState(true);
+  const [isDarkMode, setIsDarkMode] = useState(initialData?.theme === 'dark');
+  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
+  const [showShare, setShowShare] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [showDeviceSelector, setShowDeviceSelector] = useState(false);
+  const [adminPassword, setAdminPassword] = useState('');
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [toasts, setToasts] = useState<
+    { id: string; message: string; type: 'success' | 'info' | 'error' }[]
+  >([]);
 
+  /* 4. Computed / Derived */
+  const shareUrl = typeof window === 'undefined' ? '' : window.location.href;
+  const displayRoom = useMemo(
+    () => room || initialData?.room || null,
+    [room, initialData?.room],
+  );
+
+  /* 5. Handlers (Arrow Functions) */
+  const handleToggleDarkMode = useCallback(() => {
+    toggleDarkMode();
+    setIsDarkMode((prev) => !prev);
+  }, [toggleDarkMode]);
+
+  const handleAddSong = useCallback(() => setIsAddModalVisible(true), []);
+
+  const handleCopyShareLink = useCallback(() => {
+    if (!shareUrl) return;
+    navigator.clipboard.writeText(shareUrl);
+    setToasts((prev) => [
+      ...prev,
+      {
+        id: Math.random().toString(36).substr(2, 9),
+        message: 'Link copied!',
+        type: 'success',
+      },
+    ]);
+    setShowShare(false);
+  }, [shareUrl]);
+
+  const handleJoinAdmin = useCallback(async () => {
+    if (!adminPassword) return;
+    setIsAuthenticating(true);
+    const data = await joinRoom(adminPassword);
+    setIsAuthenticating(false);
+
+    if (data) {
+      setToasts((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          message: room?.hasPassword
+            ? 'Logged in as admin!'
+            : 'Password set and admin granted!',
+          type: 'success',
+        },
+      ]);
+      setAdminPassword('');
+    } else {
+      setToasts((prev) => [
+        ...prev,
+        {
+          id: Math.random().toString(36).substr(2, 9),
+          message: 'Failed to authenticate. Incorrect password?',
+          type: 'error',
+        },
+      ]);
+    }
+  }, [adminPassword, joinRoom, room?.hasPassword]);
+
+  /* 6. Effects */
+
+  // Client-side detection for animations/hydration
+  useEffect(() => {
+    setIsSSR(false);
+  }, []);
+
+  // Header height syncing
   useEffect(() => {
     const header = headerRef.current;
     if (!header) return;
@@ -104,30 +158,7 @@ export default function Room({ initialData }: RoomProps) {
     };
   }, []);
 
-  // Sync with theme store when toggling
-  const handleToggleDarkMode = () => {
-    toggleDarkMode();
-    setIsDarkMode(!isDarkMode);
-  };
-
-  // Detect client-side hydration
-  useEffect(() => {
-    setIsSSR(false);
-  }, []);
-
-  // Handle SSR initial data
-  const { setRoom, isAdmin: storeIsAdmin } = useRoomStore();
-  const { setSongs } = useQueueStore();
-  const { setPlaybackState } = usePlaybackStore();
-  const [initialized, setInitialized] = useState(false);
-
-  // Use consistent room data between server and client
-  const displayRoom = useMemo(() => {
-    return room || initialData?.room || null;
-  }, [room, initialData?.room]);
-
-  const isAdmin = storeIsAdmin || initialData?.room?.isAdmin || false;
-
+  // SSR Initialization
   useEffect(() => {
     if (initialData && !initialized) {
       console.log(
@@ -136,55 +167,38 @@ export default function Room({ initialData }: RoomProps) {
       );
       if (initialData.room) {
         setRoom(initialData.room);
-        console.log('[SSR] Set room. isAdmin:', initialData.room.isAdmin);
       }
       if (initialData.songs) {
-        console.log('[SSR] Setting songs:', initialData.songs);
         setSongs(initialData.songs);
       }
       if (initialData.playback) {
-        console.log('[SSR] Setting playback state:', initialData.playback);
         setPlaybackState(initialData.playback);
       }
       setInitialized(true);
     }
   }, [initialData, initialized, setRoom, setSongs, setPlaybackState]);
 
-  const [isAddModalVisible, setIsAddModalVisible] = useState(false);
-  const [showShare, setShowShare] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [showDeviceSelector, setShowDeviceSelector] = useState(false);
-  const [toasts, setToasts] = useState<
-    { id: string; message: string; type: 'success' | 'info' | 'error' }[]
-  >([]);
-  const [adminPassword, setAdminPassword] = useState('');
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const shareUrl = typeof window === 'undefined' ? '' : window.location.href;
-  const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
-  const settingsMenuRef = useRef<HTMLDivElement | null>(null);
-
-  const fetchAttemptedRef = useRef<string | null>(null);
+  // Initial fetch and session join
   useEffect(() => {
-    if (id && fetchAttemptedRef.current !== id) {
-      fetchAttemptedRef.current = id;
+    if (!id) return;
 
-      // Only fetch if we don't have initial data for this specific room
+    if (fetchAttemptedRef.current !== id) {
+      fetchAttemptedRef.current = id;
       if (!initialData || initialData.room?.id !== id) {
         fetchRoom();
-        fetchQueue();
       }
     }
-  }, [id, fetchRoom, fetchQueue, initialData]);
 
-  const { actualPositionMs } = usePlayback(id || '');
-  const progress = displayCurrentSong
-    ? actualPositionMs / (displayCurrentSong.duration * 1000)
-    : 0;
+    if (!userId && joinAttemptedRef.current !== id) {
+      joinAttemptedRef.current = id;
+      fetchRoom();
+    }
+  }, [id, userId, fetchRoom, initialData]);
 
+  // Global events (Toast, Song Added)
   useEffect(() => {
     const handleSongAdded = (event: Event) => {
       const customEvent = event as CustomEvent<Song>;
-      console.log('[UI] song-added event received:', customEvent.detail);
       const song = customEvent.detail;
       setToasts((prev) => [
         ...prev,
@@ -218,6 +232,7 @@ export default function Room({ initialData }: RoomProps) {
     };
   }, []);
 
+  // Settings menu outside click
   useEffect(() => {
     if (!showSettings) return;
 
@@ -238,190 +253,23 @@ export default function Room({ initialData }: RoomProps) {
     };
   }, [showSettings]);
 
-  const joinAttemptedRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!id || userId) return;
-
-    if (joinAttemptedRef.current !== id) {
-      joinAttemptedRef.current = id;
-      const checkJoin = async () => {
-        // Implicit session creation happens via middleware on any request.
-        // We just need to fetch the room to be sure.
-        await fetchRoom();
-      };
-
-      checkJoin();
-    }
-  }, [id, userId, fetchRoom]);
-
-  // Render logic moved inside main return
-
-  /* Player Controls Handlers */
-  const handleAddSong = useCallback(() => setIsAddModalVisible(true), []);
-
-  /* Queue Handlers */
-  const handleVote = useCallback(
-    async (songId: string) => {
-      const result = await voteSong(songId);
-      if (result === 'success') {
-        setToasts((prev) => [
-          ...prev,
-          {
-            id: Math.random().toString(36).substr(2, 9),
-            message: 'Vote recorded!',
-            type: 'success',
-          },
-        ]);
-      } else if (result === 'already_voted') {
-        setToasts((prev) => [
-          ...prev,
-          {
-            id: Math.random().toString(36).substr(2, 9),
-            message: 'You have already voted for this song',
-            type: 'info',
-          },
-        ]);
-      }
-    },
-    [voteSong],
-  );
-
-  const handleJoinAdmin = useCallback(async () => {
-    if (!adminPassword) return;
-    setIsAuthenticating(true);
-    const data = await joinRoom(adminPassword);
-    setIsAuthenticating(false);
-
-    if (data) {
-      setToasts((prev) => [
-        ...prev,
-        {
-          id: Math.random().toString(36).substr(2, 9),
-          message: room?.hasPassword
-            ? 'Logged in as admin!'
-            : 'Password set and admin granted!',
-          type: 'success',
-        },
-      ]);
-      setAdminPassword('');
-    } else {
-      setToasts((prev) => [
-        ...prev,
-        {
-          id: Math.random().toString(36).substr(2, 9),
-          message: 'Failed to authenticate. Incorrect password?',
-          type: 'error',
-        },
-      ]);
-    }
-  }, [adminPassword, joinRoom, room?.hasPassword]);
-
-  const handleCopyShareLink = useCallback(() => {
-    if (!shareUrl) return;
-    navigator.clipboard.writeText(shareUrl);
-    setToasts((prev) => [
-      ...prev,
-      {
-        id: Math.random().toString(36).substr(2, 9),
-        message: 'Link copied!',
-        type: 'success',
-      },
-    ]);
-    setShowShare(false);
-  }, [shareUrl]);
-
-  /* Spotify Proactive Auth Logic */
-  const { token: spotifyToken, fetchToken: fetchSpotifyToken } =
-    useProviderToken();
-
-  const hasSpotifySongs = useMemo(
-    () => displaySongs.some((s) => s.sourceType === 'spotify'),
-    [displaySongs],
-  );
-
-  useEffect(() => {
-    if (hasSpotifySongs) {
-      // Check auth status if we have Spotify songs
-      fetchSpotifyToken('spotify');
-    }
-  }, [hasSpotifySongs, fetchSpotifyToken]);
-
-  // Auto-redirect to create room if room not found
+  // Navigation on error (Room not found)
   useEffect(() => {
     if (error && id) {
-      console.log('[Room] Error detected:', error);
-      console.log('[Room] Error message:', error.message);
-      console.log('[Room] Room ID:', id);
-
-      // Check if it's an HTTP error using wiretyped's getHttpError
       const httpError = getHttpError(error);
-      console.log('[Room] HTTP error:', httpError);
-
-      let isRoomNotFound = false;
-
-      if (httpError?.response) {
-        console.log('[Room] HTTP status:', httpError.response.status);
-        isRoomNotFound = httpError.response.status === 404;
-      } else {
-        // Fallback to message checking if getHttpError doesn't work
-        isRoomNotFound =
-          error.message.includes('not found') ||
-          error.message.includes('404') ||
-          error.message.includes('Room does not exist') ||
-          error.message.toLowerCase().includes('room not found');
-      }
-
-      console.log('[Room] Is room not found?', isRoomNotFound);
+      const isRoomNotFound =
+        httpError?.response?.status === 404 ||
+        error.message.includes('not found') ||
+        error.message.includes('404');
 
       if (isRoomNotFound) {
-        console.log(
-          '[Room] Room not found, redirecting to create with name:',
-          id,
-        );
         const timer = setTimeout(() => {
-          const createUrl = `/rooms/create?name=${encodeURIComponent(id)}`;
-          console.log('[RoomView] Navigating to:', createUrl);
-          navigate(createUrl);
-        }, 2000); // Wait 2 seconds to show the error message
-
+          navigate(`/rooms/create?name=${encodeURIComponent(id)}`);
+        }, 2000);
         return () => clearTimeout(timer);
       }
     }
   }, [error, id, navigate]);
-
-  const handleConnectSpotify = useCallback(() => {
-    const width = 600;
-    const height = 800;
-    const left = window.screen.width / 2 - width / 2;
-    const top = window.screen.height / 2 - height / 2;
-
-    const popup = window.open(
-      '/api/v1/authorizations/spotify',
-      'SpotifyAuth',
-      `width=${width},height=${height},left=${left},top=${top}`,
-    );
-
-    const handleMessage = (event: MessageEvent) => {
-      if (
-        event.data?.type === 'oauth-success' &&
-        event.data?.provider === 'spotify'
-      ) {
-        fetchSpotifyToken('spotify', true);
-        popup?.close();
-        window.removeEventListener('message', handleMessage);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-
-    const timer = setInterval(() => {
-      if (popup?.closed) {
-        window.removeEventListener('message', handleMessage);
-        clearInterval(timer);
-        fetchSpotifyToken('spotify', true);
-      }
-    }, 1000);
-  }, [fetchSpotifyToken]);
 
   return (
     <div
@@ -451,10 +299,6 @@ export default function Room({ initialData }: RoomProps) {
           onCloseSettings={() => setShowSettings(false)}
           settingsButtonRef={settingsButtonRef}
           settingsMenuRef={settingsMenuRef}
-          room={room}
-          isAdmin={isAdmin}
-          updateRoomSettings={updateRoomSettings}
-          updateRoom={updateRoom}
           adminPassword={adminPassword}
           onAdminPasswordChange={setAdminPassword}
           onJoinAdmin={handleJoinAdmin}
@@ -476,79 +320,28 @@ export default function Room({ initialData }: RoomProps) {
             </div>
           </div>
         ) : error ? (
-          <div className="flex flex-1 flex-col items-center justify-center px-4">
-            <div className="panel-surface w-full max-w-md animate-scale-in rounded-[28px] p-8 text-center">
-              <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border border-error/50 bg-error/10">
-                <AlertCircleIcon className="h-10 w-10 text-error" />
-              </div>
-              <h2 className="mb-2 font-display text-lg text-theme">
-                Connection Failed
-              </h2>
-              <p className="mb-6 text-sm text-theme-muted">{error.message}</p>
-              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
-                <button
-                  onClick={() => fetchRoom()}
-                  className="cursor-pointer rounded-xl border border-theme bg-theme-surface px-6 py-3 text-theme text-xs transition-all hover:border-theme-strong"
-                >
-                  Try Again
-                </button>
-                {(() => {
-                  const httpError = getHttpError(error);
-                  const isRoomNotFound =
-                    httpError?.response?.status === 404 ||
-                    error.message.includes('not found') ||
-                    error.message.includes('404') ||
-                    error.message.includes('Room does not exist') ||
-                    error.message.toLowerCase().includes('room not found');
-
-                  return (
-                    isRoomNotFound && (
-                      <button
-                        onClick={() =>
-                          navigate(
-                            `/rooms/create?name=${encodeURIComponent(id || '')}`,
-                          )
-                        }
-                        className="cursor-pointer rounded-xl border border-primary/60 bg-primary/80 px-6 py-3 text-white text-xs shadow-[0_0_18px_rgba(255,46,151,0.4)] transition-all hover:bg-primary"
-                      >
-                        Create Room
-                      </button>
-                    )
-                  );
-                })()}
-              </div>
-            </div>
-          </div>
+          <RoomErrorView
+            error={error}
+            roomId={id || ''}
+            onRetry={() => fetchRoom()}
+          />
         ) : (
           <div className="flex-1 overflow-y-auto lg:overflow-hidden">
             <div className="mx-auto max-w-7xl items-start gap-8 px-4 py-8 lg:grid lg:h-[calc(100vh-var(--room-header-height))] lg:grid-cols-[1.3fr_0.7fr] lg:py-6">
               {/* Player Section */}
               <RoomPlayer
-                isConnected={isConnected}
-                castDeviceName={castDeviceName}
-                currentSong={displayCurrentSong}
-                room={displayRoom}
-                songs={displaySongs}
-                isPlaying={isPlaying}
-                onPlay={play}
-                onPause={pause}
-                onSkip={skip}
+                roomId={id || ''}
+                displayRoom={displayRoom}
                 onAddSong={handleAddSong}
                 onOpenCast={() => setShowDeviceSelector(true)}
-                showSpotifyConnect={hasSpotifySongs && !spotifyToken}
-                onConnectSpotify={handleConnectSpotify}
-                displayIsPlaying={displayIsPlaying}
+                initialPlayback={initialData?.playback}
               />
 
               {/* Queue & Now Playing Section */}
               <RoomQueue
-                currentSong={displayCurrentSong}
-                displayIsPlaying={displayIsPlaying}
-                songs={displaySongs}
                 roomId={id || ''}
-                progress={progress}
                 isSSR={isSSR}
-                onVote={handleVote}
+                initialPlayback={initialData?.playback}
               />
             </div>
           </div>
