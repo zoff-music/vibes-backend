@@ -73,6 +73,8 @@ services:
     environment:
       - PORT=3000
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8080}
+      - DEBUG=${DEBUG:-}
+      - VITE_DEBUG=${VITE_DEBUG:-}
       - NODE_ENV=${NODE_ENV:-development}
       - FORCE_MANIFEST=${FORCE_MANIFEST:-false}
     healthcheck:
@@ -96,6 +98,8 @@ services:
     command: ${FRONTEND_CAST_CMD_OVERRIDE:-sh -c "bun install && bun --filter @vibez/cast ${FRONTEND_CMD:-dev}"}
     environment:
       - PORT=${FRONTEND_CAST_INTERNAL_PORT:-3001}
+      - DEBUG=${DEBUG:-}
+      - VITE_DEBUG=${VITE_DEBUG:-}
     healthcheck:
       test: ["CMD", "sh", "-c", "${FRONTEND_CAST_HEALTHCHECK_CMD:-curl -f http://localhost:3001}"]
       interval: 10s

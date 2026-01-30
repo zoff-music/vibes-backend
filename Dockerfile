@@ -97,6 +97,7 @@ FROM frontend-builder AS platform-builder
 ARG VITE_CAST_APP_ID
 ARG VITE_CAST_RECEIVER_URL
 ARG VITE_APP_TITLE
+ARG VITE_DEBUG
 WORKDIR /app/apps/platform
 COPY frontend/apps/platform .
 # Build CSS, client, and server bundles
@@ -104,6 +105,7 @@ RUN NODE_ENV=production \
     VITE_CAST_APP_ID=$VITE_CAST_APP_ID \
     VITE_CAST_RECEIVER_URL=$VITE_CAST_RECEIVER_URL \
     VITE_APP_TITLE=$VITE_APP_TITLE \
+    VITE_DEBUG=$VITE_DEBUG \
     bun run build
 
 # Cast build
@@ -112,6 +114,7 @@ ARG VITE_CAST_APP_ID
 ARG VITE_CAST_RECEIVER_URL
 ARG VITE_API_URL
 ARG VITE_APP_TITLE
+ARG VITE_DEBUG
 WORKDIR /app/apps/cast
 COPY frontend/apps/cast .
 RUN NODE_ENV=production \
@@ -119,6 +122,7 @@ RUN NODE_ENV=production \
     VITE_CAST_RECEIVER_URL=$VITE_CAST_RECEIVER_URL \
     VITE_API_URL=$VITE_API_URL \
     VITE_APP_TITLE=$VITE_APP_TITLE \
+    VITE_DEBUG=$VITE_DEBUG \
     bun run build
 
 # Platform production image
@@ -181,4 +185,3 @@ RUN mkdir -p /data/db
 
 EXPOSE 8080
 ENTRYPOINT ["/bin/sh", "-c", "/app/main"]
-

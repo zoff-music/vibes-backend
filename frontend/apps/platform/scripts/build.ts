@@ -35,6 +35,11 @@ for (const [key, value] of Object.entries(envVars)) {
 }
 
 // Default values if missing
+if (!defines['import.meta.env.VITE_DEBUG']) {
+  defines['import.meta.env.VITE_DEBUG'] = JSON.stringify(
+    envVars.DEBUG ?? 'false',
+  );
+}
 if (!defines['import.meta.env.VITE_CAST_APP_ID']) {
   defines['import.meta.env.VITE_CAST_APP_ID'] = JSON.stringify('1FAF5D9F');
 }

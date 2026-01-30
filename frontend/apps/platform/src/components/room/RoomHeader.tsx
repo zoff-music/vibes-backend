@@ -2,6 +2,7 @@ import { useRoom } from '@vibez/api';
 import type { Room } from '@vibez/models';
 import {
   ArrowLeftIcon,
+  CircleHalfIcon,
   MoonIcon,
   SettingsIcon,
   ShareIcon,
@@ -22,7 +23,8 @@ interface RoomHeaderProps {
   onToggleShare: () => void;
   shareUrl: string;
   onCopyShareLink: () => void;
-  isDarkMode: boolean;
+  themeId: string;
+  currentTheme: any;
   onToggleDarkMode: () => void;
   showSettings: boolean;
   onToggleSettings: () => void;
@@ -45,7 +47,8 @@ export const RoomHeader = React.memo(
     onToggleShare,
     shareUrl,
     onCopyShareLink,
-    isDarkMode,
+    themeId,
+    currentTheme,
     onToggleDarkMode,
     showSettings,
     onToggleSettings,
@@ -86,19 +89,15 @@ export const RoomHeader = React.memo(
               <button
                 onClick={onToggleDarkMode}
                 className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
-                  isDarkMode
+                  themeId !== 'light'
                     ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_18px_rgba(0,217,255,0.35)]'
                     : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
                 }`}
-                title={
-                  isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
-                }
+                title={`Theme: ${currentTheme.name}`}
               >
-                {isDarkMode ? (
-                  <SunIcon className="h-5 w-5" />
-                ) : (
-                  <MoonIcon className="h-5 w-5" />
-                )}
+                {themeId === 'light' && <SunIcon className="h-5 w-5" />}
+                {themeId === 'dark' && <MoonIcon className="h-5 w-5" />}
+                {themeId === 'auto' && <CircleHalfIcon className="h-5 w-5" />}
               </button>
             </div>
 
@@ -152,7 +151,8 @@ export const RoomHeader = React.memo(
                 onClose={onCloseSettings}
                 showShare={showShare}
                 onToggleShare={onToggleShare}
-                isDarkMode={isDarkMode}
+                themeId={themeId}
+                currentTheme={currentTheme}
                 onToggleDarkMode={onToggleDarkMode}
                 room={room}
                 displayRoom={displayRoom}

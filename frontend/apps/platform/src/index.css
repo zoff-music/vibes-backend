@@ -620,6 +620,61 @@
     --sunset-glow: rgba(255, 80, 200, 0.3);
   }
 
+  /* Auto Dark Mode (baseline when no class is present and system is dark) */
+  @media (prefers-color-scheme: dark) {
+    :root:not(.theme-light) {
+      /* Background colors */
+      --theme-bg: #120b1e;
+      --theme-bg-paper: #1a102a;
+      --theme-bg-surface: #1e1330;
+      --theme-bg-elevated: #251838;
+      --theme-bg-hover: #2a1b40;
+
+      /* Text colors */
+      --theme-text: #e8dff5;
+      --theme-text-muted: #bfa8d6;
+      --theme-text-subtle: #8c74a8;
+
+      /* Brand/accent colors */
+      --theme-primary: #ff2e97;
+      --theme-primary-muted: #d61c78;
+      --theme-primary-light: #ff74be;
+
+      /* Border colors */
+      --theme-border: rgba(112, 72, 140, 0.25);
+      --theme-border-strong: rgba(112, 72, 140, 0.4);
+
+      /* Shadow colors */
+      --theme-shadow: rgba(0, 0, 0, 0.4);
+      --theme-shadow-accent: rgba(255, 46, 151, 0.25);
+
+      /* Glass effect */
+      --theme-glass-bg: rgba(30, 19, 48, 0.7);
+      --theme-glass-border: rgba(112, 72, 140, 0.25);
+
+      /* Panel surfaces */
+      --theme-panel-bg: rgba(24, 14, 40, 0.8);
+      --theme-panel-strong-bg: rgba(30, 19, 48, 0.9);
+      --theme-panel-border: rgba(112, 72, 140, 0.3);
+      --theme-panel-border-strong: rgba(112, 72, 140, 0.45);
+
+      /* CRT frame */
+      --theme-crt-bg: rgba(18, 11, 30, 0.9);
+      --theme-crt-shadow: rgba(0, 0, 0, 0.6);
+
+      /* Synth sky */
+      --synth-sky-1: #2a1b40;
+      --synth-sky-2: #1a102a;
+      --synth-sky-3: #120b1e;
+      --synth-sky-4: #3c2a5c;
+      --synth-haze-1: rgba(180, 80, 140, 0.25);
+      --synth-haze-2: rgba(46, 20, 80, 0.4);
+      --sunset-core: rgba(255, 46, 151, 0.8);
+      --sunset-mid: rgba(180, 30, 100, 0.7);
+      --sunset-glow: rgba(100, 20, 60, 0.4);
+    }
+  }
+
   .dark {
     /* Background colors */
     --theme-bg: #120b1e;
@@ -684,5 +739,30 @@
     background-position:
       0 80px,
       0 80px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+  }
+
+  .vhs-tear::before,
+  .vhs-tear::after,
+  .vhs-tear-strong::before,
+  .vhs-tear-strong::after,
+  .vhs-scanlines,
+  .synth-sky,
+  .retro-grid,
+  .float-slow,
+  .float-fast,
+  .scanlines,
+  .glow-pulse,
+  .gradient-shift {
+    animation: none;
   }
 }

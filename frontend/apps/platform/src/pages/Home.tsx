@@ -1,9 +1,11 @@
 import { api } from '@vibez/api';
-import { MoonIcon, SunIcon } from '@vibez/ui';
+import { usePageVisibility } from '@vibez/shared';
+import { CircleHalfIcon, MoonIcon, SunIcon } from '@vibez/ui';
 import { useCallback, useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate, useNavigationType } from 'react-router';
 
 import { useThemeStore } from '../stores/themeStore';
+import { getPreviousPath } from '../utils/navigationHistory';
 
 const ANIMATED_WORDS = [
   'electro',
@@ -51,19 +53,22 @@ export default function Home() {
   const [charIndex, setCharIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
   const [isBlinkerVisible, setIsBlinkerVisible] = useState(true);
-  const [isSSR, setIsSSR] = useState(true);
+  const isTabVisible = usePageVisibility();
   const navigate = useNavigate();
-  const { toggleDarkMode, isDarkMode, setIsWarping } = useThemeStore();
-
-  useEffect(() => {
-    setIsSSR(false);
-  }, []);
+  const navigationType = useNavigationType();
+  const { toggleDarkMode, themeId, currentTheme, setIsWarping } =
+    useThemeStore();
+  const previousPath = getPreviousPath();
+  const shouldFadeIn =
+    navigationType === 'POP' &&
+    Boolean(previousPath && /^\/rooms\/[^/]+$/.test(previousPath));
 
   const handleToggleDarkMode = useCallback(() => {
     toggleDarkMode();
   }, [toggleDarkMode]);
 
   useEffect(() => {
+    if (!isTabVisible) return;
     const currentWord = ANIMATED_WORDS[wordIndex];
     const fullTarget = `${currentWord}...`;
 
@@ -85,10 +90,15 @@ export default function Home() {
     } else {
       setIsPaused(true);
     }
-  }, [wordIndex, charIndex, isPaused]);
+  }, [wordIndex, charIndex, isPaused, isTabVisible]);
 
   // Handle blinking effect for the last dot
   useEffect(() => {
+    if (!isTabVisible) {
+      setIsBlinkerVisible(true);
+      return;
+    }
+
     if (!isPaused) {
       setIsBlinkerVisible(true);
       return;
@@ -99,7 +109,7 @@ export default function Home() {
     }, 500);
 
     return () => clearInterval(interval);
-  }, [isPaused]);
+  }, [isPaused, isTabVisible]);
 
   const handleJoinRoom = async () => {
     if (!roomCode.trim() || isValidating) return;
@@ -125,9 +135,7 @@ export default function Home() {
 
   return (
     <div
-      className={`relative flex min-h-screen w-full flex-col items-center justify-start overflow-x-hidden ${
-        !isSSR ? 'animate-fade-in' : ''
-      }`}
+      className={`relative flex min-h-screen w-full flex-col items-center justify-start overflow-x-hidden ${shouldFadeIn ? 'animate-fade-in' : ''}`}
     >
       <div className="relative z-10 mx-auto mt-[min(35vh_,_285px)] flex w-full max-w-5xl flex-col items-center px-6">
         <div className="crt-frame relative w-full max-w-3xl rounded-[36px] p-6 sm:p-10">
@@ -135,19 +143,15 @@ export default function Home() {
             <button
               onClick={handleToggleDarkMode}
               className={`cursor-pointer rounded-xl border p-2.5 transition-all ${
-                isDarkMode
+                themeId !== 'light'
                   ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_18px_rgba(0,217,255,0.35)]'
                   : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
               }`}
-              title={
-                isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'
-              }
+              title={`Theme: ${currentTheme.name}`}
             >
-              {isDarkMode ? (
-                <SunIcon className="h-5 w-5" />
-              ) : (
-                <MoonIcon className="h-5 w-5" />
-              )}
+              {themeId === 'light' && <SunIcon className="h-5 w-5" />}
+              {themeId === 'dark' && <MoonIcon className="h-5 w-5" />}
+              {themeId === 'auto' && <CircleHalfIcon className="h-5 w-5" />}
             </button>
           </div>
           <div className="text-center">

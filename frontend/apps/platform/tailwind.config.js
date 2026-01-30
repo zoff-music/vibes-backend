@@ -150,5 +150,12 @@ export default {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    ({ addVariant }) => {
+      addVariant('dark', [
+        '.dark &',
+        '@media (prefers-color-scheme: dark) { html:not(.theme-light) & }',
+      ]);
+    },
+  ],
 };

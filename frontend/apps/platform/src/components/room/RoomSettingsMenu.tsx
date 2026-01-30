@@ -1,5 +1,6 @@
 import type { Room, RoomSettings, RoomUpdate } from '@vibez/models';
 import {
+  CircleHalfIcon,
   MoonIcon,
   ShareIcon,
   SoundCloudIcon,
@@ -17,7 +18,8 @@ interface RoomSettingsMenuProps {
   onClose: () => void;
   showShare: boolean;
   onToggleShare: () => void;
-  isDarkMode: boolean;
+  themeId: string;
+  currentTheme: any;
   onToggleDarkMode: () => void;
   room: Room | null;
   displayRoom: Room | null;
@@ -39,7 +41,8 @@ export const RoomSettingsMenu = ({
   onClose,
   showShare,
   onToggleShare,
-  isDarkMode,
+  themeId,
+  currentTheme,
   onToggleDarkMode,
   room,
   displayRoom,
@@ -130,22 +133,20 @@ export const RoomSettingsMenu = ({
                   <button
                     onClick={onToggleDarkMode}
                     className={`flex flex-1 items-center justify-center gap-2 rounded-xl border p-3 font-pixel text-xs transition-all ${
-                      isDarkMode
+                      themeId !== 'light'
                         ? 'border-secondary/60 bg-secondary/20 text-white shadow-[0_0_12px_rgba(0,217,255,0.35)]'
                         : 'border-theme text-theme-muted hover:border-theme-strong hover:text-theme'
                     }`}
-                    title={
-                      isDarkMode
-                        ? 'Switch to Light Mode'
-                        : 'Switch to Dark Mode'
-                    }
+                    title={`Theme: ${currentTheme.name}`}
                   >
-                    {isDarkMode ? (
-                      <SunIcon className="h-4 w-4" />
-                    ) : (
-                      <MoonIcon className="h-4 w-4" />
-                    )}
-                    Theme
+                    <div className="flex h-4 w-4 items-center justify-center">
+                      {themeId === 'light' && <SunIcon className="h-4 w-4" />}
+                      {themeId === 'dark' && <MoonIcon className="h-4 w-4" />}
+                      {themeId === 'auto' && (
+                        <CircleHalfIcon className="h-4 w-4" />
+                      )}
+                    </div>
+                    {currentTheme.name}
                   </button>
                 </div>
 

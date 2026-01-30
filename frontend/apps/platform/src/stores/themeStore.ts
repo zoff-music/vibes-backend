@@ -6,14 +6,17 @@ export const themes = {
   light: {
     id: 'light',
     name: 'Light',
-    icon: '☀️',
-    class: '', // No class needed for light (default)
+    class: 'theme-light',
   },
   dark: {
     id: 'dark',
     name: 'Dark',
-    icon: '🌙',
     class: 'dark',
+  },
+  auto: {
+    id: 'auto',
+    name: 'Auto',
+    class: '', // Auto is the baseline (no class)
   },
   // Add new themes here:
   // midnight: {
@@ -40,6 +43,7 @@ interface Preferences {
 
 interface ThemeState {
   themeId: ThemeId;
+  resolvedTheme: 'light' | 'dark';
   isDarkMode: boolean;
   isWarping: boolean;
   currentTheme: Theme;
@@ -96,7 +100,7 @@ function applyTheme(themeId: ThemeId) {
 // Initialize theme by checking the initial data provided by SSR, then DOM state
 function getInitialThemeSync(): ThemeId {
   if (typeof document === 'undefined') {
-    return 'light'; // Server-side fallback
+    return 'auto'; // Server-side fallback
   }
 
   // 1. Try to get theme from SSR data (most reliable source of truth)
@@ -108,19 +112,31 @@ function getInitialThemeSync(): ThemeId {
 
     if (!err && data && data.theme) {
       // Validate that the theme is valid
-      if (data.theme === 'dark' || data.theme === 'light') {
+      if (
+        data.theme === 'dark' ||
+        data.theme === 'light' ||
+        data.theme === 'auto'
+      ) {
         console.log('[Theme] Initialized from SSR data:', data.theme);
-        return data.theme;
+        return data.theme as ThemeId;
       }
     }
   }
 
-  // 2. Fallback: Check if the HTML element has the 'dark' class (what SSR actually rendered)
-  // This is kept as a backup in case the script tag is missing or malformed
-  const hasDarkClass = document.documentElement.classList.contains('dark');
-  console.log('[Theme] Fallback: DOM has dark class:', hasDarkClass);
+  // 2. Fallback: Check if the HTML element has any theme class
+  const classList = document.documentElement.classList;
+  if (classList.contains('dark')) return 'dark';
+  if (classList.contains('theme-light')) return 'light';
 
-  return hasDarkClass ? 'dark' : 'light';
+  return 'auto';
+}
+
+function resolveTheme(themeId: ThemeId): 'light' | 'dark' {
+  if (themeId !== 'auto') return themeId as 'light' | 'dark';
+  if (typeof window === 'undefined') return 'light';
+  return window.matchMedia('(prefers-color-scheme: dark)').matches
+    ? 'dark'
+    : 'light';
 }
 
 // Initialize theme immediately - before any React rendering
@@ -132,9 +148,27 @@ console.log('[Theme] Initial theme detected from DOM:', INITIAL_THEME);
 export const useThemeStore = create<ThemeState>((set, get) => {
   console.log('[Theme] Store initialized with theme:', INITIAL_THEME);
 
+  // Set up listener for system theme changes if in auto mode
+  if (typeof window !== 'undefined') {
+    window
+      .matchMedia('(prefers-color-scheme: dark)')
+      .addEventListener('change', (e) => {
+        if (get().themeId === 'auto') {
+          const newResolved = e.matches ? 'dark' : 'light';
+          set({
+            resolvedTheme: newResolved,
+            isDarkMode: newResolved === 'dark',
+          });
+        }
+      });
+  }
+
+  const initialResolved = resolveTheme(INITIAL_THEME);
+
   return {
     themeId: INITIAL_THEME,
-    isDarkMode: INITIAL_THEME === 'dark',
+    resolvedTheme: initialResolved,
+    isDarkMode: initialResolved === 'dark',
     isWarping: false,
     currentTheme: themes[INITIAL_THEME],
 
@@ -142,22 +176,33 @@ export const useThemeStore = create<ThemeState>((set, get) => {
       console.log('[Theme] Setting theme to:', themeId);
       applyTheme(themeId);
       savePreferences({ theme: themeId, version: CURRENT_VERSION });
+
+      const resolved = resolveTheme(themeId);
       set({
         themeId,
-        isDarkMode: themeId === 'dark',
+        resolvedTheme: resolved,
+        isDarkMode: resolved === 'dark',
         currentTheme: themes[themeId],
       });
     },
 
     toggleDarkMode: () => {
       const current = get().themeId;
-      const newTheme = current === 'dark' ? 'light' : 'dark';
+      // Toggle cycles: light -> dark -> auto -> light
+      let newTheme: ThemeId;
+      if (current === 'light') newTheme = 'dark';
+      else if (current === 'dark') newTheme = 'auto';
+      else newTheme = 'light';
+
       console.log('[Theme] Toggling from', current, 'to', newTheme);
       applyTheme(newTheme);
       savePreferences({ theme: newTheme, version: CURRENT_VERSION });
+
+      const resolved = resolveTheme(newTheme);
       set({
         themeId: newTheme,
-        isDarkMode: newTheme === 'dark',
+        resolvedTheme: resolved,
+        isDarkMode: resolved === 'dark',
         currentTheme: themes[newTheme],
       });
     },

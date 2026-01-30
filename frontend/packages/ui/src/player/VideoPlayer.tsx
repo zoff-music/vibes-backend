@@ -97,8 +97,16 @@ const VideoPlayerComponent = ({
   }, [currentSong?.id]);
 
   useEffect(() => {
+    if (!isReady || !playerRef.current || !isPlaying) return;
+
     const interval = setInterval(() => {
       if (!isReady || !playerRef.current) {
+        return;
+      }
+      if (
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'hidden'
+      ) {
         return;
       }
 

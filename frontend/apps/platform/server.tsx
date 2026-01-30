@@ -1,13 +1,20 @@
 import { existsSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 import { api, createApiClient } from '@vibez/api';
-import { type PlaybackState, safeWrap } from '@vibez/shared';
+import {
+  applyConsoleLogGuard,
+  isTruthyFlag,
+  type PlaybackState,
+  safeWrap,
+} from '@vibez/shared';
 import { renderToString } from 'react-dom/server';
 import { StaticRouter } from 'react-router';
 import App from './src/App';
 
 const port = process.env.PORT || 3000;
 const isDev = process.env.NODE_ENV !== 'production';
+const debugEnabled = isTruthyFlag(process.env.VITE_DEBUG ?? process.env.DEBUG);
+applyConsoleLogGuard(debugEnabled);
 
 // Load manifest for hashed filenames (Synchronously at startup for absolute reliability)
 let manifest: Record<string, string> = {};
@@ -206,16 +213,18 @@ async function getInitialData(
       room,
       songs: songs || [],
       playback: (playback || undefined) as PlaybackState | undefined,
-      theme: getThemeFromCookies(cookieHeader), // Pass theme to client
+      theme: getThemeFromCookies(cookieHeader) as any, // Pass theme to client
     },
     redirect: null,
   };
 }
 
-function getThemeFromCookies(cookieHeader: string | null): 'dark' | 'light' {
+function getThemeFromCookies(
+  cookieHeader: string | null,
+): 'light' | 'dark' | 'auto' {
   console.log('COOKIEHEADER', cookieHeader);
   if (!cookieHeader) {
-    return 'light';
+    return 'auto';
   }
 
   try {
@@ -235,7 +244,7 @@ function getThemeFromCookies(cookieHeader: string | null): 'dark' | 'light' {
 
     let preferencesEncoded = cookies.preferences;
     if (!preferencesEncoded) {
-      return 'light';
+      return 'auto';
     }
 
     // Strip optional quotes around cookie values
@@ -251,18 +260,15 @@ function getThemeFromCookies(cookieHeader: string | null): 'dark' | 'light' {
     const preferencesJson = Buffer.from(normalized, 'base64').toString('utf-8');
     const preferences = JSON.parse(preferencesJson);
 
-    // Only return 'dark' if explicitly set to dark, otherwise default to light
-    if (preferences.theme === 'dark') {
-      return 'dark';
-    }
+    // Only return 'dark' if explicitly set to dark, etc.
+    if (preferences.theme === 'dark') return 'dark';
+    if (preferences.theme === 'auto') return 'auto';
+    if (preferences.theme === 'light') return 'light';
 
-    return 'light';
+    return 'auto';
   } catch (error) {
-    console.log(
-      '[SSR] Error parsing theme preferences, defaulting to light:',
-      error,
-    );
-    return 'light';
+    console.error('[SSR] Error parsing theme preferences:', error);
+    return 'auto';
   }
 }
 
@@ -295,10 +301,18 @@ Bun.serve({
 
     // Get theme from cookies for SSR
     const cookieHeader = req.headers.get('cookie') ?? req.headers.get('Cookie');
-    const themeClass = getThemeFromCookies(cookieHeader);
+    const themeId = getThemeFromCookies(cookieHeader);
+
+    // Map theme ID to HTML class
+    const themeClassMap = {
+      dark: 'dark',
+      light: 'theme-light',
+      auto: '',
+    };
+    const themeClass = themeClassMap[themeId] ?? '';
 
     // Add theme to initialData for all routes
-    initialData.theme = themeClass === 'dark' ? 'dark' : 'light';
+    initialData.theme = themeId;
 
     // Get asset filenames from manifest
     const mainJS = manifest['main.js']

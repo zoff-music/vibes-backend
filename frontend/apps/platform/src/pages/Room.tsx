@@ -1,4 +1,4 @@
-import { getHttpError, useQueue, useRoom } from '@vibez/api';
+import { getHttpError, usePlayback, useQueue, useRoom } from '@vibez/api';
 import {
   type Song,
   usePlaybackStore,
@@ -41,6 +41,7 @@ export default function Room({ initialData }: RoomProps) {
   const { room, fetchRoom, isLoading, error, joinRoom, userId } = useRoom(
     id || '',
   );
+  const { fetchPlayback } = usePlayback(id || '');
 
   // Set warping state based on loading
   useEffect(() => {
@@ -54,6 +55,13 @@ export default function Room({ initialData }: RoomProps) {
   }, [isLoading, room, initialData?.room, setIsWarping]);
 
   const { fetchQueue } = useQueue(id || '');
+  const primeQueue = useCallback(async () => {
+    if (!id) return;
+    if (!initialData || initialData.room?.id !== id || !initialData.playback) {
+      await fetchPlayback();
+    }
+    fetchQueue();
+  }, [id, initialData, fetchPlayback, fetchQueue]);
 
   // Granular store setters (subscription-free/minimized re-renders)
   const setRoom = useRoomStore((state) => state.setRoom);
@@ -66,7 +74,7 @@ export default function Room({ initialData }: RoomProps) {
   /* 3. State */
   const [initialized, setInitialized] = useState(false);
   const [isSSR, setIsSSR] = useState(true);
-  const { isDarkMode } = useThemeStore();
+  const { themeId, currentTheme } = useThemeStore();
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -137,7 +145,7 @@ export default function Room({ initialData }: RoomProps) {
   }, [adminPassword, joinRoom, room?.hasPassword]);
 
   const handleLeave = useCallback(() => {
-    navigate('/');
+    navigate('/', { state: { fromRoom: true } });
   }, [navigate]);
 
   /* 6. Effects */
@@ -203,16 +211,16 @@ export default function Room({ initialData }: RoomProps) {
       fetchAttemptedRef.current = id;
       if (!initialData || initialData.room?.id !== id) {
         fetchRoom();
-        fetchQueue();
+        void primeQueue();
       }
     }
 
     if (!userId && joinAttemptedRef.current !== id) {
       joinAttemptedRef.current = id;
       fetchRoom();
-      fetchQueue();
+      void primeQueue();
     }
-  }, [id, userId, fetchRoom, fetchQueue, initialData]);
+  }, [id, userId, fetchRoom, initialData, primeQueue]);
 
   // Global events (Toast, Song Added)
   useEffect(() => {
@@ -306,7 +314,8 @@ export default function Room({ initialData }: RoomProps) {
           onToggleShare={() => setShowShare(!showShare)}
           shareUrl={shareUrl}
           onCopyShareLink={handleCopyShareLink}
-          isDarkMode={isDarkMode}
+          themeId={themeId}
+          currentTheme={currentTheme}
           onToggleDarkMode={handleToggleDarkMode}
           showSettings={showSettings}
           onToggleSettings={() => setShowSettings(!showSettings)}

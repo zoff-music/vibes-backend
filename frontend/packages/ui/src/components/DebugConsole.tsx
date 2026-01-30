@@ -1,3 +1,4 @@
+import { isTruthyFlag } from '@vibez/shared';
 import React, { useEffect, useRef, useState } from 'react';
 
 type LogLevel = 'log' | 'error' | 'warn' | 'info' | 'debug';
@@ -20,12 +21,15 @@ interface Props {
   enabled?: boolean;
 }
 
+const envDebugEnabled = isTruthyFlag(import.meta.env.VITE_DEBUG);
+
 export const DebugConsole: React.FC<Props> = ({ enabled = false }) => {
   const [isVisible, setIsVisible] = useState(false);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    if (!envDebugEnabled) return;
     // Check for debug flag in URL OR if enabled prop is true
     const searchParams = new URLSearchParams(window.location.search);
     const debug = searchParams.get('debug') === 'true';
@@ -97,7 +101,7 @@ export const DebugConsole: React.FC<Props> = ({ enabled = false }) => {
     }
   }, [logs, isVisible]); // Add isVisible dependency to ensure scroll on show
 
-  if (!isVisible) return null;
+  if (!envDebugEnabled || !isVisible) return null;
 
   return (
     <div
