@@ -162,7 +162,7 @@ const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
 
         <div className="crt-frame rounded-[36px] p-6 sm:p-10">
           <div className="mb-10 text-center">
-            <h1 className="font-wide text-3xl text-theme sm:text-4xl">
+            <h1 className="font-pixel text-3xl text-theme sm:text-4xl">
               CREATE A SESSION
             </h1>
             <p className="mt-3 font-pixel text-sm text-theme-muted">
