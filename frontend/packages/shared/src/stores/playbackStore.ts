@@ -116,7 +116,7 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
   },
 
   updateActualPosition: () => {
-    const { positionMs, isPlaying, clientReferenceTime } = get();
+    const { positionMs, isPlaying, clientReferenceTime, currentSong } = get();
 
     if (!isPlaying) {
       set({ actualPositionMs: positionMs });
@@ -125,7 +125,15 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
 
     // Simple calculation: add time elapsed since we received this state
     const elapsedOnClient = Math.max(0, Date.now() - clientReferenceTime);
-    set({ actualPositionMs: positionMs + elapsedOnClient });
+    let newPositionMs = positionMs + elapsedOnClient;
+
+    // Clamp to song duration if available
+    if (currentSong?.duration) {
+      const durationMs = currentSong.duration * 1000;
+      newPositionMs = Math.min(newPositionMs, durationMs);
+    }
+
+    set({ actualPositionMs: newPositionMs });
   },
 
   startAutoUpdate: () => {
