@@ -4,14 +4,10 @@ import type {
   Room as RoomModel,
   Song,
 } from '@vibez/models';
-import { DebugConsole } from '@vibez/ui';
-import { useEffect } from 'react';
-import { Route, Routes, useLocation } from 'react-router';
-import Admin from './pages/Admin';
-import Callback from './pages/Callback';
-import CreateRoom from './pages/CreateRoom';
-import Home from './pages/Home';
-import Room from './pages/Room';
+import { isTruthyFlag, safeWrapAsync } from '@vibez/shared';
+import { type ComponentType, useEffect, useState } from 'react';
+import { Outlet, useLocation } from 'react-router';
+import { InitialDataProvider } from './context/InitialDataContext';
 
 export interface SSRInitialData {
   createRoomName?: string;
@@ -30,6 +26,43 @@ interface AppProps {
 import { Background } from './components/layout/Background';
 import { updateNavigationHistory } from './utils/navigationHistory';
 
+const debugEnabled = isTruthyFlag(import.meta.env?.VITE_DEBUG);
+
+type DebugConsoleComponent = ComponentType;
+
+function DebugConsoleLoader() {
+  const [DebugConsole, setDebugConsole] = useState<DebugConsoleComponent | null>(
+    null,
+  );
+
+  useEffect(() => {
+    if (!debugEnabled) return;
+
+    let isMounted = true;
+
+    const loadDebugConsole = async () => {
+      const [loadErr, module] = await safeWrapAsync(import('@vibez/ui'));
+      if (!isMounted || loadErr || !module?.DebugConsole) {
+        if (loadErr) {
+          console.error('[DebugConsole] Failed to load', loadErr);
+        }
+        return;
+      }
+      setDebugConsole(() => module.DebugConsole);
+    };
+
+    loadDebugConsole();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  if (!debugEnabled || !DebugConsole) return null;
+
+  return <DebugConsole />;
+}
+
 export default function App({ initialData }: AppProps) {
   const location = useLocation();
 
@@ -37,27 +70,11 @@ export default function App({ initialData }: AppProps) {
     updateNavigationHistory(location.pathname);
   }, [location.pathname]);
 
-  console.warn('🔥 [App] Received initialData:', initialData);
-  console.warn('🔥 [App] typeof window:', typeof window);
-  console.warn(
-    '🔥 [App] initialData.createRoomName:',
-    initialData?.createRoomName,
-  );
-
   return (
-    <>
-      <DebugConsole />
+    <InitialDataProvider initialData={initialData}>
+      <DebugConsoleLoader />
       <Background />
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route
-          path="/rooms/create"
-          element={<CreateRoom initialData={initialData} />}
-        />
-        <Route path="/rooms/:id" element={<Room initialData={initialData} />} />
-        <Route path="/callback" element={<Callback />} />
-        <Route path="/admin" element={<Admin initialData={initialData} />} />
-      </Routes>
-    </>
+      <Outlet />
+    </InitialDataProvider>
   );
 }
