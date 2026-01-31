@@ -1,4 +1,4 @@
-import { redirect, type RouteObject } from 'react-router';
+import { type RouteObject, redirect } from 'react-router';
 import App, { type SSRInitialData } from './App';
 import Admin from './pages/Admin';
 import Callback from './pages/Callback';

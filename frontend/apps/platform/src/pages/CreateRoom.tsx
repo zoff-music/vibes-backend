@@ -10,8 +10,8 @@ import React, { useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ArrowLeftIcon } from '../components/icons/ArrowLeftIcon';
 import { ArrowRightIcon } from '../components/icons/ArrowRightIcon';
-import { useThemeStore } from '../stores/themeStore';
 import { useInitialData } from '../context/InitialDataContext';
+import { useThemeStore } from '../stores/themeStore';
 
 const DEFAULT_SETTINGS = {
   skipAllowed: true,

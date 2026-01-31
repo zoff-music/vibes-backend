@@ -7,8 +7,8 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useState,
   useRef,
+  useState,
 } from 'react';
 import { useCasting } from '../../hooks/useCasting';
 import { useProviderToken } from '../../hooks/useProviderToken';
@@ -81,12 +81,11 @@ export const RoomPlayer = React.memo(
       useState<PlayerComponent | null>(null);
     const [VideoPlayerComponent, setVideoPlayerComponent] =
       useState<PlayerComponent | null>(null);
-    const [playerLoadErrors, setPlayerLoadErrors] =
-      useState<PlayerLoadErrors>({
-        spotify: null,
-        soundcloud: null,
-        video: null,
-      });
+    const [playerLoadErrors, setPlayerLoadErrors] = useState<PlayerLoadErrors>({
+      spotify: null,
+      soundcloud: null,
+      video: null,
+    });
     const playbackFetchAttemptedRef = useRef<string | null>(null);
 
     /* 3. Handlers */
@@ -128,8 +127,7 @@ export const RoomPlayer = React.memo(
     useEffect(() => {
       setPlayerLoadErrors((prev) => ({
         ...prev,
-        spotify:
-          currentSong?.sourceType === 'spotify' ? null : prev.spotify,
+        spotify: currentSong?.sourceType === 'spotify' ? null : prev.spotify,
         soundcloud:
           currentSong?.sourceType === 'soundcloud' ? null : prev.soundcloud,
         video:
@@ -200,11 +198,13 @@ export const RoomPlayer = React.memo(
         const [loadErr, module] = await safeWrapAsync(
           import('../../players/SoundCloudPlayer'),
         );
-        const resolvedComponent =
-          module?.SoundCloudPlayer ?? module?.default;
+        const resolvedComponent = module?.SoundCloudPlayer ?? module?.default;
         if (!isMounted || loadErr || !resolvedComponent) {
           if (loadErr) {
-            console.error('[RoomPlayer] SoundCloud player load failed', loadErr);
+            console.error(
+              '[RoomPlayer] SoundCloud player load failed',
+              loadErr,
+            );
             setPlayerLoadErrors((prev) => ({
               ...prev,
               soundcloud: 'Failed to load SoundCloud player',

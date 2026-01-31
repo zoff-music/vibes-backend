@@ -7,10 +7,10 @@ import {
 import { type ComponentType, StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import {
-  RouterProvider,
   createBrowserRouter,
   matchRoutes,
   type RouteObject,
+  RouterProvider,
 } from 'react-router';
 import type { SSRInitialData } from './src/App';
 import { createClientRoutes } from './src/routes.client';
@@ -81,7 +81,9 @@ if (rootElement) {
     }
   };
 
-  const renderApp = (routerInstance: ReturnType<typeof createBrowserRouter>) => {
+  const renderApp = (
+    routerInstance: ReturnType<typeof createBrowserRouter>,
+  ) => {
     const AppComponent = (
       <StrictMode>
         <RouterProvider router={routerInstance} />

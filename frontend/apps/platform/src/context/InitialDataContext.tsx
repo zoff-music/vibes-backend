@@ -1,5 +1,5 @@
+import { createContext, type ReactNode, useContext } from 'react';
 import type { SSRInitialData } from '../App';
-import { type ReactNode, createContext, useContext } from 'react';
 
 interface InitialDataProviderProps {
   initialData?: SSRInitialData;

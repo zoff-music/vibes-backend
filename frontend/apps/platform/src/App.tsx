@@ -31,9 +31,8 @@ const debugEnabled = isTruthyFlag(import.meta.env?.VITE_DEBUG);
 type DebugConsoleComponent = ComponentType;
 
 function DebugConsoleLoader() {
-  const [DebugConsole, setDebugConsole] = useState<DebugConsoleComponent | null>(
-    null,
-  );
+  const [DebugConsole, setDebugConsole] =
+    useState<DebugConsoleComponent | null>(null);
 
   useEffect(() => {
     if (!debugEnabled) return;

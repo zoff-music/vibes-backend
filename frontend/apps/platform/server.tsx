@@ -10,9 +10,9 @@ import {
 } from '@vibez/shared';
 import { renderToString } from 'react-dom/server';
 import {
-  StaticRouterProvider,
   createStaticHandler,
   createStaticRouter,
+  StaticRouterProvider,
 } from 'react-router';
 import type { SSRInitialData } from './src/App';
 import { createServerRoutes } from './src/routes.server';
@@ -110,8 +110,7 @@ function resolveAssetsFromManifest() {
   if (manifest['main.js'] && typeof manifest['main.js'] === 'string') {
     const mainJS = toAssetUrl(manifest['main.js'] as string);
     const cssEntry = manifest['index.css'];
-    const cssFiles =
-      typeof cssEntry === 'string' ? [toAssetUrl(cssEntry)] : [];
+    const cssFiles = typeof cssEntry === 'string' ? [toAssetUrl(cssEntry)] : [];
 
     return {
       mainJS,
@@ -119,24 +118,27 @@ function resolveAssetsFromManifest() {
     };
   }
 
-  const manifestEntries = Object.values(manifest).filter(
-    (entry) => entry && typeof entry === 'object',
-  ) as Array<{
+  type ManifestEntry = {
     file?: string;
     css?: string[];
     isEntry?: boolean;
-  }>;
+  };
+
+  const manifestEntries = Object.values(manifest).filter(
+    (entry) => entry && typeof entry === 'object',
+  ) as ManifestEntry[];
 
   const entryByKey = Object.keys(manifest).find((key) =>
     key.endsWith('client.tsx'),
   );
-  const entry =
-    (entryByKey ? (manifest[entryByKey] as any) : null) ||
-    manifestEntries.find((item) => item.isEntry);
+  const entryFromKey = entryByKey
+    ? (manifest[entryByKey] as ManifestEntry)
+    : null;
+  const entry = entryFromKey || manifestEntries.find((item) => item.isEntry);
 
   const mainJS = entry?.file ? toAssetUrl(entry.file) : '';
   const cssFiles = Array.isArray(entry?.css)
-    ? entry.css.map((css) => toAssetUrl(css))
+    ? entry.css.map((css: string) => toAssetUrl(css))
     : [];
 
   return {

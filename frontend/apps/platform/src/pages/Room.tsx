@@ -8,13 +8,13 @@ import {
 import { Toast } from '@vibez/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import { useInitialData } from '../context/InitialDataContext';
 import { DeviceSelector } from '../components/cast/DeviceSelector';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { RoomErrorView } from '../components/room/RoomErrorView';
 import { RoomHeader } from '../components/room/RoomHeader';
 import { RoomPlayer } from '../components/room/RoomPlayer';
 import { RoomQueue } from '../components/room/RoomQueue';
+import { useInitialData } from '../context/InitialDataContext';
 import { useThemeStore } from '../stores/themeStore';
 
 interface ToastEventDetail {
@@ -67,9 +67,7 @@ export default function Room() {
   const setSongs = useQueueStore((state) => state.setSongs);
   const songsFromStore = useQueueStore((state) => state.songs);
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
-  const currentSongFromStore = usePlaybackStore(
-    (state) => state.currentSong,
-  );
+  const currentSongFromStore = usePlaybackStore((state) => state.currentSong);
 
   // Granular store query (only re-render if isAdmin changes)
   // storeIsAdmin removed as it was unused
@@ -214,9 +212,7 @@ export default function Room() {
       fetchAttemptedRef.current = id;
       const shouldFetchRoom = !initialData || initialData.room?.id !== id;
       const shouldPrimeQueue =
-        shouldFetchRoom ||
-        !initialData?.playback ||
-        !initialData?.songs;
+        shouldFetchRoom || !initialData?.playback || !initialData?.songs;
 
       if (shouldFetchRoom) {
         fetchRoom();
@@ -248,12 +244,7 @@ export default function Room() {
     playbackAttemptedRef.current = attemptKey;
 
     void fetchPlayback();
-  }, [
-    id,
-    currentSongFromStore,
-    songsFromStore.length,
-    fetchPlayback,
-  ]);
+  }, [id, currentSongFromStore, songsFromStore.length, fetchPlayback]);
 
   // Global events (Toast, Song Added)
   useEffect(() => {
