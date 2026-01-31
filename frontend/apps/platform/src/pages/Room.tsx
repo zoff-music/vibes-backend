@@ -8,7 +8,7 @@ import {
 import { Toast } from '@vibez/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
-import type { SSRInitialData } from '../App';
+import { useInitialData } from '../context/InitialDataContext';
 import { DeviceSelector } from '../components/cast/DeviceSelector';
 import { AddToQueueModal } from '../components/queue/AddToQueueModal';
 import { RoomErrorView } from '../components/room/RoomErrorView';
@@ -17,20 +17,19 @@ import { RoomPlayer } from '../components/room/RoomPlayer';
 import { RoomQueue } from '../components/room/RoomQueue';
 import { useThemeStore } from '../stores/themeStore';
 
-interface RoomProps {
-  initialData?: SSRInitialData;
-}
-
 interface ToastEventDetail {
   message: string;
   type: 'success' | 'error' | 'info';
 }
 
-export default function Room({ initialData }: RoomProps) {
+export default function Room() {
+  const initialData = useInitialData();
   /* 1. Refs */
   const headerRef = useRef<HTMLDivElement | null>(null);
   const fetchAttemptedRef = useRef<string | null>(null);
   const joinAttemptedRef = useRef<string | null>(null);
+  const primeAttemptedRef = useRef<string | null>(null);
+  const playbackAttemptedRef = useRef<string | null>(null);
   const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
   const settingsMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -66,7 +65,11 @@ export default function Room({ initialData }: RoomProps) {
   // Granular store setters (subscription-free/minimized re-renders)
   const setRoom = useRoomStore((state) => state.setRoom);
   const setSongs = useQueueStore((state) => state.setSongs);
+  const songsFromStore = useQueueStore((state) => state.songs);
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
+  const currentSongFromStore = usePlaybackStore(
+    (state) => state.currentSong,
+  );
 
   // Granular store query (only re-render if isAdmin changes)
   // storeIsAdmin removed as it was unused
@@ -209,8 +212,18 @@ export default function Room({ initialData }: RoomProps) {
 
     if (fetchAttemptedRef.current !== id) {
       fetchAttemptedRef.current = id;
-      if (!initialData || initialData.room?.id !== id) {
+      const shouldFetchRoom = !initialData || initialData.room?.id !== id;
+      const shouldPrimeQueue =
+        shouldFetchRoom ||
+        !initialData?.playback ||
+        !initialData?.songs;
+
+      if (shouldFetchRoom) {
         fetchRoom();
+      }
+
+      if (shouldPrimeQueue && primeAttemptedRef.current !== id) {
+        primeAttemptedRef.current = id;
         void primeQueue();
       }
     }
@@ -218,9 +231,29 @@ export default function Room({ initialData }: RoomProps) {
     if (!userId && joinAttemptedRef.current !== id) {
       joinAttemptedRef.current = id;
       fetchRoom();
-      void primeQueue();
+      if (primeAttemptedRef.current !== id) {
+        primeAttemptedRef.current = id;
+        void primeQueue();
+      }
     }
   }, [id, userId, fetchRoom, initialData, primeQueue]);
+
+  // If queue is present but playback is missing, retry fetching playback once per queue size.
+  useEffect(() => {
+    if (!id) return;
+    if (currentSongFromStore || songsFromStore.length === 0) return;
+
+    const attemptKey = `${id}:${songsFromStore.length}`;
+    if (playbackAttemptedRef.current === attemptKey) return;
+    playbackAttemptedRef.current = attemptKey;
+
+    void fetchPlayback();
+  }, [
+    id,
+    currentSongFromStore,
+    songsFromStore.length,
+    fetchPlayback,
+  ]);
 
   // Global events (Toast, Song Added)
   useEffect(() => {

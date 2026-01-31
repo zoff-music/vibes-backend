@@ -6,10 +6,16 @@ import {
   isTruthyFlag,
   type PlaybackState,
   safeWrap,
+  safeWrapAsync,
 } from '@vibez/shared';
 import { renderToString } from 'react-dom/server';
-import { StaticRouter } from 'react-router';
-import App from './src/App';
+import {
+  StaticRouterProvider,
+  createStaticHandler,
+  createStaticRouter,
+} from 'react-router';
+import type { SSRInitialData } from './src/App';
+import { createServerRoutes } from './src/routes.server';
 
 const port = process.env.PORT || 3000;
 const isDev = process.env.NODE_ENV !== 'production';
@@ -17,7 +23,7 @@ const debugEnabled = isTruthyFlag(process.env.VITE_DEBUG ?? process.env.DEBUG);
 applyConsoleLogGuard(debugEnabled);
 
 // Load manifest for hashed filenames (Synchronously at startup for absolute reliability)
-let manifest: Record<string, string> = {};
+let manifest: Record<string, unknown> = {};
 
 console.log('[SSR] --- Production Startup (Final Refinement) ---');
 console.log('[SSR] NODE_ENV:', process.env.NODE_ENV);
@@ -28,9 +34,12 @@ console.log('[SSR] import.meta.dir:', import.meta.dir);
 if (!isDev || process.env.FORCE_MANIFEST === 'true') {
   const [criticalErr] = safeWrap(() => {
     const pathsToTry = [
-      '/app/apps/platform/dist/manifest.json', // Exact confirmed path in container
-      join(import.meta.dir, '../manifest.json'), // Relative to server.js in dist/server/
-      join(process.cwd(), 'dist/manifest.json'), // CWD based
+      '/app/apps/platform/dist/assets/platform/manifest.json', // Vite manifest path in container
+      '/app/apps/platform/dist/manifest.json', // Legacy Bun manifest path in container
+      join(import.meta.dir, '../assets/platform/manifest.json'), // Relative to server.js in dist/server/
+      join(import.meta.dir, '../manifest.json'), // Legacy Bun manifest relative to server.js
+      join(process.cwd(), 'dist/assets/platform/manifest.json'), // CWD based Vite manifest
+      join(process.cwd(), 'dist/manifest.json'), // Legacy Bun manifest
     ];
 
     for (const p of pathsToTry) {
@@ -38,7 +47,7 @@ if (!isDev || process.env.FORCE_MANIFEST === 'true') {
         console.log(`[SSR] Checking manifest: ${p}`);
         if (existsSync(p)) {
           const content = readFileSync(p, 'utf8');
-          manifest = JSON.parse(content);
+          manifest = JSON.parse(content) as Record<string, unknown>;
           console.log(`[SSR] Manifest LOADED from ${p}:`, manifest);
           return true;
         }
@@ -59,13 +68,11 @@ if (!isDev || process.env.FORCE_MANIFEST === 'true') {
   }
 }
 
-import type { SSRInitialData } from './src/App';
-
 function createHTMLShell(
   appHTML: string,
   initialData: SSRInitialData,
   mainJS: string,
-  mainCSS: string,
+  cssFiles: string[],
   themeClass: string = '',
 ) {
   const [err, dataScript] = safeWrap(() => JSON.stringify(initialData));
@@ -82,7 +89,9 @@ function createHTMLShell(
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ゾフ - Shared Music Queue</title>
-    <link rel="stylesheet" href="${mainCSS}" />
+    ${cssFiles
+      .map((css) => `<link rel="stylesheet" href="${css}" />`)
+      .join('\n    ')}
     <script id="ssr-data" type="application/json">${dataScriptContent}</script>
   </head>
   <body>
@@ -90,6 +99,50 @@ function createHTMLShell(
     <script type="module" src="${mainJS}"></script>
   </body>
 </html>`;
+}
+
+function resolveAssetsFromManifest() {
+  const toAssetUrl = (file: string | undefined) => {
+    if (!file) return '';
+    return file.startsWith('/') ? file : `/assets/platform/${file}`;
+  };
+
+  if (manifest['main.js'] && typeof manifest['main.js'] === 'string') {
+    const mainJS = toAssetUrl(manifest['main.js'] as string);
+    const cssEntry = manifest['index.css'];
+    const cssFiles =
+      typeof cssEntry === 'string' ? [toAssetUrl(cssEntry)] : [];
+
+    return {
+      mainJS,
+      cssFiles,
+    };
+  }
+
+  const manifestEntries = Object.values(manifest).filter(
+    (entry) => entry && typeof entry === 'object',
+  ) as Array<{
+    file?: string;
+    css?: string[];
+    isEntry?: boolean;
+  }>;
+
+  const entryByKey = Object.keys(manifest).find((key) =>
+    key.endsWith('client.tsx'),
+  );
+  const entry =
+    (entryByKey ? (manifest[entryByKey] as any) : null) ||
+    manifestEntries.find((item) => item.isEntry);
+
+  const mainJS = entry?.file ? toAssetUrl(entry.file) : '';
+  const cssFiles = Array.isArray(entry?.css)
+    ? entry.css.map((css) => toAssetUrl(css))
+    : [];
+
+  return {
+    mainJS,
+    cssFiles,
+  };
 }
 
 async function handleStaticFiles(path: string) {
@@ -315,18 +368,26 @@ Bun.serve({
     initialData.theme = themeId;
 
     // Get asset filenames from manifest
-    const mainJS = manifest['main.js']
-      ? `/assets/platform/${manifest['main.js']}`
-      : '/assets/platform/client.js';
-    const mainCSS = manifest['index.css']
-      ? `/assets/platform/${manifest['index.css']}`
-      : '/assets/platform/index.css';
+    const { mainJS, cssFiles } = resolveAssetsFromManifest();
+    const resolvedMainJS = mainJS || '/assets/platform/client.js';
+    const resolvedCSSFiles =
+      cssFiles.length > 0 ? cssFiles : ['/assets/platform/index.css'];
 
+    const routes = createServerRoutes(initialData);
+    const { query, dataRoutes } = createStaticHandler(routes);
+    const [queryErr, context] = await safeWrapAsync(query(req));
+    if (queryErr || !context) {
+      console.error('[SSR] Static handler error:', queryErr);
+      return new Response('Internal Server Error', { status: 500 });
+    }
+    if (context instanceof Response) {
+      return context;
+    }
+
+    const router = createStaticRouter(dataRoutes, context);
     const [error, appHTML] = safeWrap(() =>
       renderToString(
-        <StaticRouter location={path}>
-          <App initialData={initialData} />
-        </StaticRouter>,
+        <StaticRouterProvider router={router} context={context} />,
       ),
     );
 
@@ -338,8 +399,8 @@ Bun.serve({
     const fullHTML = createHTMLShell(
       appHTML,
       initialData,
-      mainJS,
-      mainCSS,
+      resolvedMainJS,
+      resolvedCSSFiles,
       themeClass,
     );
     return new Response(fullHTML, {

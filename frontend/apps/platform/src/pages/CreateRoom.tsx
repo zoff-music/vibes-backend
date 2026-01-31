@@ -11,6 +11,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import { ArrowLeftIcon } from '../components/icons/ArrowLeftIcon';
 import { ArrowRightIcon } from '../components/icons/ArrowRightIcon';
 import { useThemeStore } from '../stores/themeStore';
+import { useInitialData } from '../context/InitialDataContext';
 
 const DEFAULT_SETTINGS = {
   skipAllowed: true,
@@ -22,13 +23,8 @@ const DEFAULT_SETTINGS = {
   onlyAdminAddSongs: false,
 };
 
-import type { SSRInitialData } from '../App';
-
-interface CreateRoomProps {
-  initialData?: Pick<SSRInitialData, 'createRoomName'>;
-}
-
-const CreateRoom: React.FC<CreateRoomProps> = ({ initialData }) => {
+const CreateRoom: React.FC = () => {
+  const initialData = useInitialData();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { setIsWarping } = useThemeStore();

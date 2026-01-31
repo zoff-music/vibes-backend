@@ -3,11 +3,7 @@ import type { AdminRoomSummary } from '@vibez/models';
 import { SoundCloudIcon, SpotifyIcon, YouTubeIcon } from '@vibez/ui';
 import { JSX, useEffect, useMemo, useRef, useState } from 'react';
 
-import type { SSRInitialData } from '../App';
-
-interface AdminProps {
-  initialData?: Pick<SSRInitialData, 'adminRooms' | 'adminAuthorized'>;
-}
+import { useInitialData } from '../context/InitialDataContext';
 
 const sourceIcons: Record<string, JSX.Element> = {
   youtube: <YouTubeIcon className="h-4 w-4 text-red-500" />,
@@ -20,7 +16,8 @@ type AdminSSEMessage = {
   data: unknown;
 };
 
-export default function Admin({ initialData }: AdminProps) {
+export default function Admin() {
+  const initialData = useInitialData();
   const [rooms, setRooms] = useState<AdminRoomSummary[]>(
     initialData?.adminRooms ?? [],
   );
