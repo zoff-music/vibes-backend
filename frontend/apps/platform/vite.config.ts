@@ -86,12 +86,7 @@ export default defineConfig(({ command, ssrBuild }) => {
       preserveSymlinks: true,
     },
     ssr: {
-      noExternal: [
-        '@vibez/api',
-        '@vibez/models',
-        '@vibez/shared',
-        '@vibez/ui',
-      ],
+      noExternal: ['@vibez/api', '@vibez/models', '@vibez/shared', '@vibez/ui'],
     },
     define: {
       'process.env.NODE_ENV': JSON.stringify(nodeEnv),

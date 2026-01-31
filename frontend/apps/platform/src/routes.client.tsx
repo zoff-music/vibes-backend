@@ -1,17 +1,15 @@
 import type { ComponentType } from 'react';
-import { redirect, type RouteObject } from 'react-router';
+import { type RouteObject, redirect } from 'react-router';
 import App, { type SSRInitialData } from './App';
 
 type LazyModule = {
   default: ComponentType;
 };
 
-const lazyRoute =
-  (loader: () => Promise<LazyModule>) =>
-  async () => {
-    const module = await loader();
-    return { Component: module.default };
-  };
+const lazyRoute = (loader: () => Promise<LazyModule>) => async () => {
+  const module = await loader();
+  return { Component: module.default };
+};
 
 export function createClientRoutes(
   initialData?: SSRInitialData,
