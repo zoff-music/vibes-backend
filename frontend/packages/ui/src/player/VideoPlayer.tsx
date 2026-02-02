@@ -1,5 +1,5 @@
 import { useProviderToken } from '@vibez/api';
-import { usePlaybackStore } from '@vibez/shared';
+import { isTruthyFlag, usePlaybackStore } from '@vibez/shared';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import YouTube, { type YouTubeProps } from 'react-youtube';
 import { AuthOverlay } from './AuthOverlay';
@@ -26,7 +26,7 @@ interface YouTubePlayerRef {
 const MAX_AUTOPLAY_RETRIES = 12;
 const AUTOPLAY_RETRY_MS = 500;
 const AUTOPLAY_KICK_COOLDOWN_MS = 800;
-const DEBUG = true;
+const DEBUG = isTruthyFlag(import.meta.env.VITE_DEBUG);
 
 const VideoPlayerComponent = ({
   isVisible = true,

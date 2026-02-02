@@ -1,5 +1,5 @@
 import { useQueue } from '@vibez/api';
-import { type PlaybackState } from '@vibez/models';
+import { type PlaybackState, type Song } from '@vibez/models';
 import { usePlaybackStore } from '@vibez/shared';
 import { QueueList, SoundCloudIcon, SpotifyIcon, YouTubeIcon } from '@vibez/ui';
 import React from 'react';
@@ -15,10 +15,11 @@ interface RoomQueueProps {
   roomId: string;
   isSSR: boolean;
   initialPlayback?: PlaybackState;
+  initialSongs?: Song[];
 }
 
 export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
-  ({ roomId, isSSR, initialPlayback }: RoomQueueProps) => {
+  ({ roomId, isSSR, initialPlayback, initialSongs }: RoomQueueProps) => {
     /* 1. Hooks */
     const { songs, voteSong } = useQueue(roomId);
 
@@ -33,6 +34,12 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
       isPlayingFromStore !== undefined
         ? isPlayingFromStore
         : initialPlayback?.isPlaying || false;
+    const displaySongs =
+      isSSR && initialSongs
+        ? initialSongs
+        : songs.length > 0
+          ? songs
+          : initialSongs || [];
 
     /* 3. Handlers */
     const handleVote = React.useCallback(
@@ -120,10 +127,11 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
           {/* Up Next List */}
           <div>
             <h3 className="mb-4 font-display text-[10px] text-theme-muted tracking-[0.3em]">
-              Up Next ({songs.filter((s) => s.id !== currentSong?.id).length})
+              Up Next (
+              {displaySongs.filter((s) => s.id !== currentSong?.id).length})
             </h3>
             <QueueList
-              songs={songs.filter((s) => s.id !== currentSong?.id)}
+              songs={displaySongs.filter((s) => s.id !== currentSong?.id)}
               roomId={roomId}
               onVote={handleVote}
             />
