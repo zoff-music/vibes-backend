@@ -89,6 +89,7 @@ export const RoomPlayer = React.memo(
     });
     const playbackFetchAttemptedRef = useRef<string | null>(null);
     const autoSkipRef = useRef<string | null>(null);
+    const debugMountRef = useRef(false);
 
     /* 3. Handlers */
     const handleConnectSpotify = useCallback(() => {
@@ -287,6 +288,15 @@ export const RoomPlayer = React.memo(
       };
     }, [needsVideoPlayer, VideoPlayerComponent]);
 
+    useEffect(() => {
+      if (debugMountRef.current) return;
+      debugMountRef.current = true;
+      console.log('[RoomPlayer] mount', { roomId });
+      return () => {
+        console.log('[RoomPlayer] unmount', { roomId });
+      };
+    }, [roomId]);
+
     const isSpotifyTrack = currentSong?.sourceType === 'spotify';
     const isSoundCloudTrack = currentSong?.sourceType === 'soundcloud';
     const isVideoTrack = currentSong
@@ -309,6 +319,15 @@ export const RoomPlayer = React.memo(
       <div className="space-y-6 lg:flex lg:h-full lg:flex-col">
         {/* Player - Reserve height to prevent CLS */}
         <div className="crt-frame relative flex aspect-video min-h-[280px] w-full overflow-hidden rounded-[28px] bg-black sm:min-h-[340px] lg:aspect-auto lg:min-h-0 lg:flex-1">
+          {VideoPlayerComponent && (
+            <div className="absolute inset-0">
+              <VideoPlayerComponent
+                onEnded={displayRoom?.mode === 'host' ? skip : undefined}
+                isVisible={!isConnected && isVideoTrack}
+                fill
+              />
+            </div>
+          )}
           {isConnected && castDeviceName && (
             <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center">
               <div className="panel-surface flex items-center gap-3 rounded-full px-5 py-2 text-sm text-theme shadow-[0_0_22px_rgba(0,0,0,0.28)]">
@@ -348,14 +367,7 @@ export const RoomPlayer = React.memo(
                   isVisible={!isConnected}
                 />
               ) : null
-            ) : (
-              VideoPlayerComponent && (
-                <VideoPlayerComponent
-                  onEnded={displayRoom?.mode === 'host' ? skip : undefined}
-                  isVisible={!isConnected}
-                />
-              )
-            )
+            ) : null
           ) : songs.length > 0 ? (
             <div className="absolute inset-0 flex items-center justify-center bg-black">
               {/* SIGNAL CRT */}

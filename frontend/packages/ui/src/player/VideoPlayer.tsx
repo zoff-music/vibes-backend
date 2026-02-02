@@ -1,6 +1,6 @@
 import { useProviderToken } from '@vibez/api';
 import { usePlaybackStore } from '@vibez/shared';
-import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import YouTube, { type YouTubeProps } from 'react-youtube';
 import { AuthOverlay } from './AuthOverlay';
 
@@ -16,7 +16,16 @@ interface YouTubePlayerRef {
   playVideo: () => void;
   pauseVideo: () => void;
   getPlayerState: () => number;
+  loadVideoById: (videoId: string, startSeconds?: number) => void;
+  mute: () => void;
+  unMute: () => void;
+  isMuted: () => boolean;
 }
+
+const MAX_AUTOPLAY_RETRIES = 12;
+const AUTOPLAY_RETRY_MS = 500;
+const AUTOPLAY_KICK_COOLDOWN_MS = 800;
+const DEBUG = true;
 
 const VideoPlayerComponent = ({
   isVisible = true,
@@ -28,10 +37,56 @@ const VideoPlayerComponent = ({
 
   const { fetchToken } = useProviderToken();
   const playerRef = useRef<YouTubePlayerRef | null>(null);
+  const lastVideoIdRef = useRef<string | null>(null);
+  const lastLoadedVideoIdRef = useRef<string | null>(null);
+  const initialVideoIdRef = useRef<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [isVerifying, setIsVerifying] = useState(false);
+  const autoPlayRetryRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoPlayKickCountRef = useRef(0);
+  const autoPlayKickLastAtRef = useRef(0);
+  const autoPlayKickVideoIdRef = useRef<string | null>(null);
+  const isYouTubeActive = currentSong?.sourceType === 'youtube';
+  const shouldPlay = isYouTubeActive && isPlaying;
+  const videoId =
+    currentSong?.sourceType === 'youtube' ? currentSong.sourceId : null;
+  const debugLastRef = useRef(0);
+  const hasEverPlayedRef = useRef(false);
+  const [needsUserGesture, setNeedsUserGesture] = useState(false);
+  const [isMutedState, setIsMutedState] = useState(false);
+  const origin =
+    typeof window === 'undefined' ? undefined : window.location.origin;
+
+  const debugLog = useCallback(
+    (label: string, extra?: Record<string, unknown>) => {
+      if (!DEBUG) return;
+      const now = Date.now();
+      const isUnmuteLog = label.startsWith('unmute-');
+      if (!isUnmuteLog && now - debugLastRef.current < 250) return;
+      if (!isUnmuteLog) {
+        debugLastRef.current = now;
+      }
+      const visibility =
+        typeof document === 'undefined' ? 'unknown' : document.visibilityState;
+      const playerState = playerRef.current?.getPlayerState?.();
+      const muted = playerRef.current?.isMuted?.();
+      const payload = {
+        videoId,
+        resolvedVideoId: videoId ?? lastVideoIdRef.current,
+        isPlaying,
+        shouldPlay,
+        isReady,
+        visibility,
+        playerState,
+        muted,
+        ...extra,
+      };
+      console.log('[VideoPlayer]', label, JSON.stringify(payload));
+    },
+    [videoId, isPlaying, shouldPlay, isReady],
+  );
 
   const handleAuthorize = () => {
     // Check if running on Chromecast (CrKey)
@@ -91,25 +146,40 @@ const VideoPlayerComponent = ({
   };
 
   useEffect(() => {
-    setIsReady(false);
     setError(null);
-    playerRef.current = null;
-  }, [currentSong?.id]);
+    if (!playerRef.current) {
+      setIsReady(false);
+    }
+    if (isYouTubeActive && !hasEverPlayedRef.current) {
+      setNeedsUserGesture(true);
+    }
+    debugLog('song-change', { currentSongId: currentSong?.id });
+  }, [currentSong?.id, isYouTubeActive]);
 
   useEffect(() => {
-    if (!isReady || !playerRef.current || !isPlaying) return;
+    debugLog('mount');
+    return () => {
+      debugLog('unmount');
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!currentSong && !isPlaying) {
+      lastVideoIdRef.current = null;
+      lastLoadedVideoIdRef.current = null;
+    }
+  }, [currentSong, isPlaying]);
+
+  useEffect(() => {
+    if (!isReady || !playerRef.current || !shouldPlay) return;
 
     const interval = setInterval(() => {
       if (!isReady || !playerRef.current) {
         return;
       }
-      if (
-        typeof document !== 'undefined' &&
-        document.visibilityState === 'hidden'
-      ) {
+      if (typeof document !== 'undefined' && document.hidden) {
         return;
       }
-
       try {
         const player = playerRef.current;
         const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
@@ -125,48 +195,224 @@ const VideoPlayerComponent = ({
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isReady, isPlaying]);
+  }, [isReady, shouldPlay]);
 
   useEffect(() => {
     if (!isReady || !playerRef.current) return;
 
-    try {
-      const player = playerRef.current;
-      const state = player.getPlayerState();
+    const syncPlaybackState = () => {
+      try {
+        const player = playerRef.current;
+        if (!player) return;
 
-      if (isPlaying && state !== 1 && state !== 3) {
+        const state = player.getPlayerState();
+
+        if (shouldPlay) {
+          const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
+          const targetTime = actualPositionMs / 1000;
+          const currentTime = player.getCurrentTime();
+          if (Math.abs(currentTime - targetTime) > 1) {
+            player.seekTo(targetTime, true);
+          }
+          if (state !== 1 && state !== 3) {
+            player.playVideo();
+          }
+        } else if (state === 1) {
+          player.pauseVideo();
+        }
+      } catch (_err) {}
+    };
+
+    syncPlaybackState();
+
+    const handleVisibilityChange = () => {
+      if (typeof document === 'undefined') return;
+      debugLog('visibilitychange', { visibility: document.visibilityState });
+      if (document.visibilityState !== 'visible') return;
+      syncPlaybackState();
+    };
+
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener(
+          'visibilitychange',
+          handleVisibilityChange,
+        );
+      }
+    };
+  }, [isReady, shouldPlay]);
+
+  useEffect(() => {
+    if (isYouTubeActive || !playerRef.current) return;
+    try {
+      playerRef.current.pauseVideo();
+    } catch (_err) {}
+  }, [isYouTubeActive]);
+
+  const kickAutoplay = useCallback(
+    (reason: 'state' | 'hidden' | 'retry') => {
+      if (!videoId || !shouldPlay) return;
+      const player = playerRef.current;
+      if (!player) return;
+
+      if (autoPlayKickVideoIdRef.current !== videoId) {
+        autoPlayKickVideoIdRef.current = videoId;
+        autoPlayKickCountRef.current = 0;
+      }
+
+      const now = Date.now();
+      if (now - autoPlayKickLastAtRef.current < AUTOPLAY_KICK_COOLDOWN_MS) {
+        return;
+      }
+      if (autoPlayKickCountRef.current >= MAX_AUTOPLAY_RETRIES) {
+        return;
+      }
+
+      autoPlayKickLastAtRef.current = now;
+      autoPlayKickCountRef.current += 1;
+
+      try {
         const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
-        const targetTime = actualPositionMs / 1000;
-        const currentTime = player.getCurrentTime();
-        if (Math.abs(currentTime - targetTime) > 1) {
-          player.seekTo(targetTime, true);
+        const startSeconds = actualPositionMs > 0 ? actualPositionMs / 1000 : 0;
+        if (reason !== 'state' || player.getPlayerState() !== 1) {
+          player.loadVideoById(videoId, startSeconds);
         }
         player.playVideo();
-      } else if (!isPlaying && state === 1) {
-        player.pauseVideo();
+        debugLog('kick', { reason, attempts: autoPlayKickCountRef.current });
+      } catch (_err) {}
+    },
+    [videoId, shouldPlay],
+  );
+
+  useEffect(() => {
+    if (!videoId || !shouldPlay) {
+      if (autoPlayRetryRef.current) {
+        clearInterval(autoPlayRetryRef.current);
+        autoPlayRetryRef.current = null;
       }
-    } catch (_err) {}
-  }, [isReady, isPlaying]);
+      autoPlayKickCountRef.current = 0;
+      autoPlayKickVideoIdRef.current = null;
+      return;
+    }
+
+    let attempts = 0;
+    const attemptPlay = () => {
+      const player = playerRef.current;
+      if (!player) return;
+      try {
+        const state = player.getPlayerState();
+        if (state === 1 || state === 3) {
+          return;
+        }
+        kickAutoplay('retry');
+      } catch (_err) {}
+    };
+
+    attemptPlay();
+
+    autoPlayRetryRef.current = setInterval(() => {
+      attempts += 1;
+      attemptPlay();
+      if (attempts >= MAX_AUTOPLAY_RETRIES) {
+        if (autoPlayRetryRef.current) {
+          clearInterval(autoPlayRetryRef.current);
+          autoPlayRetryRef.current = null;
+        }
+      }
+    }, AUTOPLAY_RETRY_MS);
+
+    return () => {
+      if (autoPlayRetryRef.current) {
+        clearInterval(autoPlayRetryRef.current);
+        autoPlayRetryRef.current = null;
+      }
+    };
+  }, [videoId, shouldPlay, kickAutoplay]);
+
+  useEffect(() => {
+    if (!videoId || !shouldPlay) return;
+    if (typeof document === 'undefined') return;
+    if (document.visibilityState !== 'hidden') return;
+
+    let attempts = 0;
+    const kickInterval = setInterval(() => {
+      attempts += 1;
+      try {
+        const state = playerRef.current?.getPlayerState();
+        if (state === 1 || state === 3) {
+          clearInterval(kickInterval);
+          return;
+        }
+        kickAutoplay('hidden');
+      } catch (_err) {}
+
+      if (attempts >= MAX_AUTOPLAY_RETRIES) {
+        clearInterval(kickInterval);
+      }
+    }, AUTOPLAY_RETRY_MS);
+
+    return () => clearInterval(kickInterval);
+  }, [videoId, shouldPlay, kickAutoplay]);
 
   const handleReady = useCallback((event: { target: YouTubePlayerRef }) => {
     playerRef.current = event.target;
     setIsReady(true);
     setError(null);
+    debugLog('ready');
 
     const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
     if (actualPositionMs > 0) {
       const targetTime = actualPositionMs / 1000;
       event.target.seekTo(targetTime, true);
     }
-  }, []);
+    const activeSong = usePlaybackStore.getState().currentSong;
+    if (activeSong?.sourceType === 'youtube') {
+      lastLoadedVideoIdRef.current = activeSong.sourceId;
+    }
 
-  const handleStateChange = useCallback((event: { data: number }) => {
-    const state = event.data;
-
-    if (state === 1 || state === 3) {
-      setIsReady(true);
+    if (usePlaybackStore.getState().isPlaying) {
+      try {
+        if (!hasEverPlayedRef.current) {
+          event.target.mute();
+          setIsMutedState(true);
+        }
+        event.target.playVideo();
+      } catch (_err) {}
     }
   }, []);
+
+  const handleStateChange = useCallback(
+    (event: { data: number }) => {
+      const state = event.data;
+      debugLog('state', { state });
+
+      if (state === 1 || state === 3) {
+        setIsReady(true);
+        const muted = playerRef.current?.isMuted?.() ?? false;
+        setIsMutedState(muted);
+        if (!muted) {
+          hasEverPlayedRef.current = true;
+          setNeedsUserGesture(false);
+        } else {
+          setNeedsUserGesture(true);
+        }
+        return;
+      }
+
+      if (state === 5 || state === -1) {
+        kickAutoplay('state');
+      } else if (state === 2 && shouldPlay) {
+        try {
+          playerRef.current?.playVideo();
+        } catch (_err) {}
+      }
+    },
+    [kickAutoplay, shouldPlay],
+  );
 
   const handleEnd = useCallback(() => {
     onEnded?.();
@@ -187,32 +433,60 @@ const VideoPlayerComponent = ({
     [fetchToken],
   );
 
-  if (!currentSong || !isVisible) {
+  if (videoId) {
+    lastVideoIdRef.current = videoId;
+  }
+
+  const resolvedVideoId = videoId ?? lastVideoIdRef.current;
+  if (!initialVideoIdRef.current && resolvedVideoId) {
+    initialVideoIdRef.current = resolvedVideoId;
+  }
+  const youtubeVideoIdProp = initialVideoIdRef.current ?? resolvedVideoId;
+
+  useEffect(() => {
+    if (!videoId) return;
+    const player = playerRef.current;
+    if (!player) return;
+    if (lastLoadedVideoIdRef.current === videoId) return;
+
+    const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
+    const startSeconds = actualPositionMs > 0 ? actualPositionMs / 1000 : 0;
+    try {
+      player.loadVideoById(videoId, startSeconds);
+      lastLoadedVideoIdRef.current = videoId;
+      debugLog('load-video', { startSeconds });
+    } catch (_err) {}
+  }, [videoId, isReady]);
+
+  if (!resolvedVideoId) {
     return null;
   }
 
-  const videoId =
-    currentSong.sourceType === 'youtube' ? currentSong.sourceId : null;
-
-  if (!videoId) {
-    return null;
-  }
-
-  const opts: YouTubeProps['opts'] = {
-    height: '100%',
-    width: '100%',
-    playerVars: {
-      autoplay: 1,
-      controls: 0,
-      disablekb: 1,
-      fs: 0,
-      modestbranding: 1,
-      rel: 0,
-      playsinline: 1,
-    },
-  };
+  const opts: YouTubeProps['opts'] = useMemo(
+    () => ({
+      height: '100%',
+      width: '100%',
+      playerVars: {
+        autoplay: 1,
+        controls: 0,
+        disablekb: 1,
+        enablejsapi: 1,
+        fs: 0,
+        modestbranding: 1,
+        rel: 0,
+        playsinline: 1,
+        origin,
+      },
+    }),
+    [origin],
+  );
 
   const showOverlay = !!error;
+  const showClickToPlay =
+    isYouTubeActive &&
+    (needsUserGesture || (shouldPlay && isMutedState)) &&
+    !error &&
+    !isVerifying;
 
   const containerClass = fill
     ? 'relative h-full w-full overflow-hidden bg-black/40 backdrop-blur-md [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:scale-[1.65] [&_iframe]:origin-center'
@@ -225,13 +499,15 @@ const VideoPlayerComponent = ({
   // Main render logic always includes the container and CRT layers
   return (
     <div
-      className={`${containerClass} ${!isVisible ? 'hidden' : ''}`}
+      className={`${containerClass} ${
+        !isVisible ? 'pointer-events-none opacity-0' : ''
+      }`}
       style={containerStyle}
     >
       {/* Video Content - Back Layer */}
-      {!isVerifying && videoId && (
+      {!isVerifying && youtubeVideoIdProp && (
         <YouTube
-          videoId={videoId}
+          videoId={youtubeVideoIdProp}
           opts={opts}
           onReady={handleReady}
           onStateChange={handleStateChange}
@@ -247,6 +523,34 @@ const VideoPlayerComponent = ({
           <div className="vhs-scanlines h-full w-full opacity-[0.14] mix-blend-overlay" />
           <div className="crt-overlay !absolute !z-[6] pointer-events-none inset-0 opacity-[0.1]" />
         </div>
+      )}
+
+      {showClickToPlay && (
+        <button
+          type="button"
+          className="absolute inset-0 z-20 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => {
+            const player = playerRef.current;
+            if (!player) return;
+            try {
+              player.unMute();
+              setIsMutedState(false);
+              player.playVideo();
+              hasEverPlayedRef.current = true;
+              setNeedsUserGesture(false);
+              debugLog('user-gesture-play');
+            } catch (_err) {}
+          }}
+        >
+          <div className="text-center">
+            <div className="mx-auto mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full border border-white/30 text-white/80">
+              ▶
+            </div>
+            <p className="font-mono text-[11px] text-white/80 uppercase tracking-widest">
+              Click to play
+            </p>
+          </div>
+        </button>
       )}
 
       {/* Auth/Error Overlay - Top Layer */}

@@ -74,7 +74,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		}
 
 		tracks = append(tracks, vibe.MusicTrack{
-			ID:           res.Permalink,
+			ID:           fmt.Sprintf("%d", res.ID),
 			Source:       vibe.SourceTypeSoundCloud,
 			Title:        res.Title,
 			ChannelTitle: username,

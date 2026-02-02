@@ -19,13 +19,6 @@ export async function loader({
     return redirect('/rooms/create');
   }
 
-  console.log('[rooms.$id loader] start', {
-    roomId,
-    requestUrl: request.url,
-    apiUrl: process?.env?.VITE_API_URL,
-    apiUrlInternal: process?.env?.VITE_API_URL_INTERNAL,
-  });
-
   const serverApi = getServerApi(request);
   const cookieHeader = request.headers.get('cookie') ?? undefined;
   const requestHeaders = cookieHeader ? { Cookie: cookieHeader } : undefined;
@@ -39,14 +32,7 @@ export async function loader({
   const [roomErr, room] = roomRes;
   const [songsErr, songs] = songsRes;
   const [playbackErr, playback] = playbackRes;
-  if (roomErr || songsErr || playbackErr) {
-    console.warn('[rooms.$id loader] api errors', {
-      roomErr,
-      songsErr,
-      playbackErr,
-    });
-  }
-  if (roomErr || !room) {
+  if (roomErr || songsErr || playbackErr || !room) {
     const createUrl = new URL('/rooms/create', request.url);
     createUrl.searchParams.set('name', roomId);
     return redirect(createUrl.toString());

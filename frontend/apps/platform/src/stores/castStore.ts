@@ -9,6 +9,21 @@ import { safeWrap, safeWrapAsync } from '@vibez/shared';
 import { create } from 'zustand';
 import { castManager } from '../services/castManager';
 
+const isHttpUrl = (value: string) =>
+  value.startsWith('http://') || value.startsWith('https://');
+
+const buildSoundCloudContentId = (sourceId: string) => {
+  if (!sourceId) {
+    return '';
+  }
+
+  if (isHttpUrl(sourceId)) {
+    return sourceId;
+  }
+
+  return `https://api.soundcloud.com/tracks/${sourceId}`;
+};
+
 interface CastState {
   // State
   isInitialized: boolean;
@@ -197,7 +212,7 @@ export const useCastStore = create<CastState>((set, get) => ({
         contentId = `spotify:track:${song.sourceId}`;
         break;
       case 'soundcloud':
-        contentId = `https://soundcloud.com/${song.sourceId}`;
+        contentId = buildSoundCloudContentId(song.sourceId);
         break;
       default:
         contentId = song.sourceId || '';
