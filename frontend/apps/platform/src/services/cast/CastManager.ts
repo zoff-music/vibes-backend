@@ -1,171 +1,62 @@
 import type {
   CastDevice,
   CastError,
-  CastManager,
   CastSession,
   CastSessionState,
+  CastManager as ICastManager,
   MediaInfo,
 } from '@vibez/models';
 import { safeWrap, safeWrapAsync, useRoomStore } from '@vibez/shared';
 
-// const CAST_APP_ID = '333649E5'; // Receiver App ID - Custom Zoff Receiver
-// Google Cast Application ID - Custom Zoff Receiver
-// For development, we use the Styled Media Receiver which allows custom content
-// In production, this should be replaced with a registered custom receiver app ID
-const CAST_APPLICATION_ID = import.meta.env.VITE_CAST_APP_ID || '1FAF5D9F'; // Custom Zoff Receiver
+import {
+  CAST_APPLICATION_ID,
+  CUSTOM_RECEIVER_URL,
+  DEVELOPMENT_MODE,
+  LOCAL_EMULATOR_ENABLED,
+} from './constants';
+import { CastEventBus } from './EventBus';
+import { LocalEmulator } from './LocalEmulator';
+import type { LocalCastMessage } from './types';
 
-// Development: Use local custom receiver
-// Production: Use registered custom receiver
-const DEVELOPMENT_MODE = import.meta.env.VITE_DEVELOPMENT_MODE === 'true';
-const CUSTOM_RECEIVER_URL =
-  import.meta.env.VITE_CAST_RECEIVER_URL || '/casting/receiver/';
-const LOCAL_EMULATOR_ENABLED = (() => {
-  const envValue = import.meta.env.VITE_CAST_LOCAL_EMULATOR;
-  if (envValue === 'true' || envValue === '1') return true;
-  if (typeof window === 'undefined') return false;
-  return (
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1'
-  );
-})();
-const LOCAL_EMULATOR_DEVICE_ID = 'local-cast-emulator';
+const CUSTOM_NAMESPACE = 'urn:x-cast:com.vibez.cast';
+const MEDIA_NAMESPACE = 'urn:x-cast:com.google.cast.media';
 
-type LocalCastMessage =
-  | {
-      action: 'receiverReady';
-      timestamp: number;
-    }
-  | {
-      action: 'updatePlayback';
-      currentSong: {
-        id: string;
-        title: string;
-        artist: string;
-        sourceType: string;
-        sourceId: string;
-        thumbnailUrl?: string;
-        duration?: number;
-      };
-      isPlaying: boolean;
-      positionMs: number;
-      queue: Array<{
-        id: string;
-        title: string;
-        artist: string;
-        sourceType: string;
-        sourceId: string;
-        thumbnailUrl?: string;
-        duration?: number;
-      }>;
-      roomInfo: {
-        name: string;
-        participantCount: number;
-      };
-      timestamp: number;
-    }
-  | {
-      action: 'joinRoom';
-      roomId: string;
-      casterId?: string;
-      sessionId?: string;
-      timestamp: number;
-    }
-  | {
-      action: 'updateQueue';
-      queue: Array<{
-        id: string;
-        title: string;
-        artist: string;
-        sourceType: string;
-        sourceId: string;
-        thumbnailUrl?: string;
-        duration?: number;
-      }>;
-      timestamp: number;
-    }
-  | {
-      action: 'updateRoomInfo';
-      roomInfo: {
-        name: string;
-        participantCount: number;
-      };
-      timestamp: number;
-    }
-  | {
-      action: 'syncPlayback';
-      isPlaying: boolean;
-      positionMs: number;
-      currentSong?: {
-        id: string;
-        title: string;
-        artist: string;
-        sourceType: string;
-        sourceId: string;
-        thumbnailUrl?: string;
-        duration?: number;
-      };
-      timestamp: number;
-    };
-
-class GoogleCastManager implements CastManager {
+/**
+ * Google Cast SDK Manager - orchestrates all casting functionality.
+ * Implements the CastManager interface from @vibez/models.
+ */
+class GoogleCastManager implements ICastManager {
   private devices: CastDevice[] = [];
   private currentSession: CastSession | null = null;
-  private actualCastSession: chrome.cast.Session | null = null; // Store the actual Cast SDK session object
-  private localReceiverWindow: Window | null = null;
-  private localReceiverOrigin: string | null = null;
-  private localReceiverFrame: HTMLIFrameElement | null = null;
-  private localMessageQueue: LocalCastMessage[] = [];
-  private localReceiverReady = false;
-  private localReadyTimeout: ReturnType<typeof setTimeout> | null = null;
+  private actualCastSession: chrome.cast.Session | null = null;
+
   private isInitialized = false;
   private initializationPromise: Promise<void> | null = null;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 3;
-  private reconnectDelay = 1000; // Start with 1 second
+  private reconnectDelay = 1000;
 
-  private deviceAvailableCallbacks: Array<(device: CastDevice) => void> = [];
-  private sessionStateCallbacks: Array<(session: CastSession) => void> = [];
-  private errorCallbacks: Array<(error: CastError) => void> = [];
+  private eventBus: CastEventBus;
+  private localEmulator: LocalEmulator;
 
   constructor() {
+    this.eventBus = new CastEventBus();
+    this.localEmulator = new LocalEmulator({
+      notifyDeviceAvailable: this.notifyDeviceAvailable.bind(this),
+      getDevices: () => this.devices,
+      setDevices: (devices) => {
+        this.devices = devices;
+      },
+    });
+
     if (typeof window !== 'undefined') {
       this.initializeCastSDK();
-      window.addEventListener(
-        'message',
-        this.handleLocalReceiverMessage.bind(this),
-      );
     }
   }
 
-  private handleLocalReceiverMessage(event: MessageEvent): void {
-    const data = event.data as LocalCastMessage | null;
-    if (!data || typeof data !== 'object' || !('action' in data)) return;
-    if (data.action !== 'receiverReady') return;
-
-    if (event.origin !== window.location.origin) {
-      const [originErr, originUrl] = safeWrap(() => new URL(event.origin));
-      const receiverOrigin = this.localReceiverOrigin || window.location.origin;
-      const [receiverErr, receiverUrl] = safeWrap(
-        () => new URL(receiverOrigin),
-      );
-
-      if (originErr || receiverErr || !originUrl || !receiverUrl) return;
-
-      const isLocalOrigin =
-        (originUrl.hostname === 'localhost' ||
-          originUrl.hostname === '127.0.0.1') &&
-        (receiverUrl.hostname === 'localhost' ||
-          receiverUrl.hostname === '127.0.0.1');
-      if (!isLocalOrigin) return;
-    }
-
-    this.localReceiverReady = true;
-    if (this.localReadyTimeout) {
-      clearTimeout(this.localReadyTimeout);
-      this.localReadyTimeout = null;
-    }
-    this.flushLocalMessageQueue();
-  }
+  // ============================================================
+  // SDK Initialization
+  // ============================================================
 
   private async initializeCastSDK(): Promise<void> {
     if (typeof window === 'undefined') return;
@@ -233,7 +124,7 @@ class GoogleCastManager implements CastManager {
   private waitForCastAPI(): Promise<void> {
     return new Promise((resolve, reject) => {
       let attempts = 0;
-      const maxAttempts = 100; // 10 seconds with 100ms intervals
+      const maxAttempts = 100;
 
       console.log('[Cast] waiting for Cast API availability...');
       const checkInterval = setInterval(() => {
@@ -249,7 +140,6 @@ class GoogleCastManager implements CastManager {
             message: 'Google Cast API not available after timeout',
             code: 'API_TIMEOUT_INTERNAL',
           };
-          // Don't notify error for timeout, just log warning
           console.warn(
             '[Cast] API timeout - Cast likely not supported or extension missing',
           );
@@ -285,13 +175,10 @@ class GoogleCastManager implements CastManager {
       window.chrome.cast.initialize(
         apiConfig,
         () => {
-          // This success callback is for the `initialize` call itself, not the full SDK init.
-          // The full SDK init success is handled in initializeCastSDK's promise resolution.
           console.log('Google Cast API `initialize` call successful.');
         },
         (error: chrome.cast.Error) => {
           console.error('❌ Google Cast initialization failed:', error);
-
           this.notifyError({
             code: 'INITIALIZATION_FAILED',
             description: 'Failed to initialize Google Cast',
@@ -317,14 +204,14 @@ class GoogleCastManager implements CastManager {
 
   private scheduleReconnect(): void {
     this.reconnectAttempts++;
-    const delay = this.reconnectDelay * 2 ** (this.reconnectAttempts - 1); // Exponential backoff
+    const delay = this.reconnectDelay * 2 ** (this.reconnectAttempts - 1);
 
     console.log(
       `Scheduling Cast SDK reconnect attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts} in ${delay}ms`,
     );
 
     setTimeout(() => {
-      this.initializationPromise = null; // Reset initialization promise
+      this.initializationPromise = null;
       const [err] = safeWrap(() => {
         this.initializeCastSDK();
       });
@@ -332,67 +219,9 @@ class GoogleCastManager implements CastManager {
     }, delay);
   }
 
-  private onMediaMessage(namespace: string, message: string): void {
-    console.log('Media message received:', namespace, message);
-  }
-
-  private onCustomMessage(_namespace: string, message: string): void {
-    const [err] = safeWrap(() => {
-      const data = JSON.parse(message);
-      if (data.action === 'receiverReady') {
-        const roomId = this.getRoomIdFromContext();
-        if (!roomId) {
-          console.warn('[Cast] receiverReady but roomId missing');
-          return;
-        }
-
-        const [joinErr] = safeWrap(() => {
-          void this.joinRoom(roomId);
-        });
-        if (joinErr) {
-          console.error(
-            'Failed to send joinRoom after receiverReady:',
-            joinErr,
-          );
-        }
-        return;
-      }
-
-      if (data.action === 'LOG') {
-        const { level, args } = data;
-        const prefix = '%c[RECEIVER]';
-        const style =
-          'background: #222; color: #bada55; font-weight: bold; padding: 2px 4px; border-radius: 2px;';
-
-        const logArgs = args.map((arg: string) => {
-          try {
-            // Try to parse back objects if possible, otherwise leave as string
-            return JSON.parse(arg);
-          } catch {
-            return arg;
-          }
-        });
-
-        switch (level) {
-          case 'error':
-            console.error(prefix, style, ...logArgs);
-            break;
-          case 'warn':
-            console.warn(prefix, style, ...logArgs);
-            break;
-          case 'debug':
-            console.debug(prefix, style, ...logArgs);
-            break;
-          default:
-            console.log(prefix, style, ...logArgs);
-        }
-      }
-    });
-
-    if (err) {
-      console.error('Failed to process custom cast message', err);
-    }
-  }
+  // ============================================================
+  // Session Listeners
+  // ============================================================
 
   private onSessionListener(session: chrome.cast.Session): void {
     console.log('🎯 Cast session established:', session);
@@ -427,11 +256,11 @@ class GoogleCastManager implements CastManager {
 
       if (session.addMessageListener) {
         session.addMessageListener(
-          'urn:x-cast:com.google.cast.media',
+          MEDIA_NAMESPACE,
           this.onMediaMessage.bind(this),
         );
         session.addMessageListener(
-          'urn:x-cast:com.vibez.cast',
+          CUSTOM_NAMESPACE,
           this.onCustomMessage.bind(this),
         );
       }
@@ -486,7 +315,7 @@ class GoogleCastManager implements CastManager {
       this.currentSession.lastSyncAt = new Date();
       this.notifySessionStateChange(this.currentSession);
       this.currentSession = null;
-      this.actualCastSession = null; // Clear the stored session
+      this.actualCastSession = null;
     }
   }
 
@@ -502,7 +331,7 @@ class GoogleCastManager implements CastManager {
         console.log('No Chromecast devices available');
         this.devices = [];
         if (LOCAL_EMULATOR_ENABLED) {
-          this.ensureLocalEmulatorDevice();
+          this.localEmulator.ensureLocalEmulatorDevice();
         } else {
           console.log('[Cast] cleared device list');
         }
@@ -521,7 +350,7 @@ class GoogleCastManager implements CastManager {
 
       this.devices = [device];
       if (LOCAL_EMULATOR_ENABLED) {
-        this.ensureLocalEmulatorDevice();
+        this.localEmulator.ensureLocalEmulatorDevice();
       }
       console.log('[Cast] device available', device);
       this.notifyDeviceAvailable(device);
@@ -537,10 +366,74 @@ class GoogleCastManager implements CastManager {
     }
   }
 
-  // Public API methods
+  private onMediaMessage(namespace: string, message: string): void {
+    console.log('Media message received:', namespace, message);
+  }
+
+  private onCustomMessage(_namespace: string, message: string): void {
+    const [err] = safeWrap(() => {
+      const data = JSON.parse(message);
+      if (data.action === 'receiverReady') {
+        const roomId = this.localEmulator.getRoomIdFromContext();
+        if (!roomId) {
+          console.warn('[Cast] receiverReady but roomId missing');
+          return;
+        }
+
+        const [joinErr] = safeWrap(() => {
+          void this.joinRoom(roomId);
+        });
+        if (joinErr) {
+          console.error(
+            'Failed to send joinRoom after receiverReady:',
+            joinErr,
+          );
+        }
+        return;
+      }
+
+      if (data.action === 'LOG') {
+        const { level, args } = data;
+        const prefix = '%c[RECEIVER]';
+        const style =
+          'background: #222; color: #bada55; font-weight: bold; padding: 2px 4px; border-radius: 2px;';
+
+        const logArgs = args.map((arg: string) => {
+          try {
+            return JSON.parse(arg);
+          } catch {
+            return arg;
+          }
+        });
+
+        switch (level) {
+          case 'error':
+            console.error(prefix, style, ...logArgs);
+            break;
+          case 'warn':
+            console.warn(prefix, style, ...logArgs);
+            break;
+          case 'debug':
+            console.debug(prefix, style, ...logArgs);
+            break;
+          default:
+            console.log(prefix, style, ...logArgs);
+        }
+      }
+    });
+
+    if (err) {
+      console.error('Failed to process custom cast message', err);
+    }
+  }
+
+  // ============================================================
+  // Public API - Device Discovery
+  // ============================================================
+
   async discoverDevices(): Promise<CastDevice[]> {
     if (LOCAL_EMULATOR_ENABLED) {
-      this.ensureLocalEmulatorDevice();
+      this.localEmulator.ensureLocalEmulatorDevice();
     }
     if (!this.isInitialized) {
       const [initErr] = await safeWrapAsync(this.initializeCastSDK());
@@ -571,9 +464,9 @@ class GoogleCastManager implements CastManager {
 
   getAvailableDevices(): CastDevice[] {
     if (LOCAL_EMULATOR_ENABLED) {
-      this.ensureLocalEmulatorDevice();
+      this.localEmulator.ensureLocalEmulatorDevice();
     }
-    return [...this.devices]; // Return a copy to prevent external modification
+    return [...this.devices];
   }
 
   prepareLocalReceiverWindow(): boolean {
@@ -581,23 +474,27 @@ class GoogleCastManager implements CastManager {
       return false;
     }
 
-    const receiverWindow = this.openLocalReceiver();
-    if (!receiverWindow) {
-      const error = new Error('Local cast receiver window could not be opened');
+    const success = this.localEmulator.prepareLocalReceiverWindow();
+    if (!success) {
       this.notifyError({
         code: 'LOCAL_RECEIVER_BLOCKED',
         description: 'Failed to open local cast receiver window',
-        details: error,
+        details: new Error('Local cast receiver window could not be opened'),
       });
-      return false;
     }
-
-    return true;
+    return success;
   }
 
+  // ============================================================
+  // Public API - Session Management
+  // ============================================================
+
   async connectToDevice(deviceId: string): Promise<CastSession> {
-    if (LOCAL_EMULATOR_ENABLED && deviceId === LOCAL_EMULATOR_DEVICE_ID) {
-      const receiverWindow = this.openLocalReceiver();
+    if (
+      LOCAL_EMULATOR_ENABLED &&
+      this.localEmulator.isLocalEmulator(deviceId)
+    ) {
+      const receiverWindow = this.localEmulator.openLocalReceiver();
       if (!receiverWindow) {
         const error = new Error(
           'Local cast receiver window could not be opened',
@@ -610,17 +507,7 @@ class GoogleCastManager implements CastManager {
         throw error;
       }
 
-      const castSession: CastSession = {
-        id: `local-${Date.now()}`,
-        deviceId: LOCAL_EMULATOR_DEVICE_ID,
-        deviceName: 'Local Cast (Emulator)',
-        deviceType: 'chromecast',
-        state: 'connected',
-        startedAt: new Date(),
-        lastSyncAt: new Date(),
-        mediaSessionId: 'local-session',
-      };
-
+      const castSession = this.localEmulator.createLocalSession();
       this.currentSession = castSession;
       this.actualCastSession = null;
       this.notifySessionStateChange(castSession);
@@ -694,18 +581,8 @@ class GoogleCastManager implements CastManager {
       return;
     }
 
-    if (deviceId === LOCAL_EMULATOR_DEVICE_ID) {
-      if (this.localReceiverWindow && !this.localReceiverWindow.closed) {
-        this.localReceiverWindow.close();
-      }
-      this.localReceiverWindow = null;
-      this.localReceiverOrigin = null;
-      if (this.localReceiverFrame) {
-        this.localReceiverFrame.remove();
-      }
-      this.localReceiverFrame = null;
-      this.localReceiverReady = false;
-      this.localMessageQueue = [];
+    if (this.localEmulator.isLocalEmulator(deviceId)) {
+      this.localEmulator.disconnectLocal();
       this.currentSession.state = 'disconnected';
       this.currentSession.lastSyncAt = new Date();
       this.notifySessionStateChange(this.currentSession);
@@ -755,13 +632,17 @@ class GoogleCastManager implements CastManager {
     });
   }
 
+  // ============================================================
+  // Public API - Media Control
+  // ============================================================
+
   async castMedia(mediaInfo: MediaInfo): Promise<void> {
     if (!this.currentSession) throw new Error('No active cast session');
     if (this.currentSession.state !== 'connected') {
       throw new Error(`Cast session not ready: ${this.currentSession.state}`);
     }
 
-    if (this.currentSession.deviceId === LOCAL_EMULATOR_DEVICE_ID) {
+    if (this.localEmulator.isLocalEmulator(this.currentSession.deviceId)) {
       this.sendLocalPlaybackState(mediaInfo);
       return;
     }
@@ -803,9 +684,6 @@ class GoogleCastManager implements CastManager {
 
         console.log('[Cast] Custom context ready', { receiverUrl });
 
-        // IMPORTANT: We skip loadMedia for the custom receiver to avoid session_error
-        // and instead rely on the receiver connecting via its own SSE.
-        // We just send a message to kickstart the receiver if it was idle.
         setTimeout(() => {
           this.sendMediaToReceiver(mediaInfo, session);
         }, 1000);
@@ -824,8 +702,6 @@ class GoogleCastManager implements CastManager {
   }
 
   private sendMediaToReceiver(mediaInfo: MediaInfo, session: any): void {
-    // Instead of sending individual media, send the current playback state
-    // This includes the current song and queue information
     const [err] = safeWrap(() => {
       const message = {
         action: 'updatePlayback',
@@ -844,7 +720,7 @@ class GoogleCastManager implements CastManager {
         },
         isPlaying: true,
         positionMs: 0,
-        queue: [], // Will be updated separately via updateQueue
+        queue: [],
         roomInfo: {
           name: 'Cast Session',
           participantCount: 1,
@@ -859,7 +735,7 @@ class GoogleCastManager implements CastManager {
       });
 
       session.sendMessage(
-        'urn:x-cast:com.vibez.cast',
+        CUSTOM_NAMESPACE,
         message,
         () => console.log('✅ Playback state sent to receiver'),
         (error: any) =>
@@ -902,7 +778,7 @@ class GoogleCastManager implements CastManager {
         title: message.currentSong.title,
         sourceType: message.currentSong.sourceType,
       });
-      this.sendLocalMessage(message);
+      this.localEmulator.sendLocalMessage(message);
     });
 
     if (err) {
@@ -921,13 +797,12 @@ class GoogleCastManager implements CastManager {
         contentId: mediaInfo.contentId,
         contentType: mediaInfo.contentType,
       });
-      // For non-YouTube content, proceed with normal casting
+
       const castMediaInfo = new window.chrome.cast.media.MediaInfo(
         mediaInfo.contentId,
         mediaInfo.contentType,
       );
 
-      // Set up metadata
       const metadata = new window.chrome.cast.media.GenericMediaMetadata();
       metadata.title = mediaInfo.metadata.title;
       metadata.subtitle = mediaInfo.metadata.artist || '';
@@ -992,44 +867,12 @@ class GoogleCastManager implements CastManager {
     }
   }
 
-  private extractYouTubeVideoId(url: string): string | null {
-    const regex =
-      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
-  }
-
-  private isYouTubeUrl(url: string): boolean {
-    return url.includes('youtube.com') || url.includes('youtu.be');
-  }
-
   async updateQueue(queue: any[]): Promise<void> {
     if (!this.currentSession || this.currentSession.state !== 'connected') {
       return;
     }
 
-    if (this.currentSession.deviceId === LOCAL_EMULATOR_DEVICE_ID) {
-      const message: LocalCastMessage = {
-        action: 'updateQueue',
-        queue: queue.map((song) => ({
-          id: song.id,
-          title: song.title,
-          artist: song.artist,
-          sourceType: song.sourceType,
-          sourceId: song.sourceId,
-          thumbnailUrl: song.thumbnailUrl,
-          duration: song.duration,
-        })),
-        timestamp: Date.now(),
-      };
-      this.sendLocalMessage(message);
-      return;
-    }
-
-    const session = this.actualCastSession;
-    if (!session) return;
-
-    const message = {
+    const queueMessage = {
       action: 'updateQueue',
       queue: queue.map((song) => ({
         id: song.id,
@@ -1043,14 +886,22 @@ class GoogleCastManager implements CastManager {
       timestamp: Date.now(),
     };
 
+    if (this.localEmulator.isLocalEmulator(this.currentSession.deviceId)) {
+      this.localEmulator.sendLocalMessage(queueMessage as LocalCastMessage);
+      return;
+    }
+
+    const session = this.actualCastSession;
+    if (!session) return;
+
     const [err] = safeWrap(() => {
       console.log('[Cast] updateQueue send', {
-        count: message.queue.length,
-        timestamp: message.timestamp,
+        count: queueMessage.queue.length,
+        timestamp: queueMessage.timestamp,
       });
       session.sendMessage(
-        'urn:x-cast:com.vibez.cast',
-        message,
+        CUSTOM_NAMESPACE,
+        queueMessage,
         () => console.log('✅ Queue update sent to receiver'),
         (error: any) => console.error('❌ Failed to update queue:', error),
       );
@@ -1074,29 +925,24 @@ class GoogleCastManager implements CastManager {
       return;
     }
 
-    if (this.currentSession.deviceId === LOCAL_EMULATOR_DEVICE_ID) {
-      const message: LocalCastMessage = {
-        action: 'updateRoomInfo',
-        roomInfo: roomInfo,
-        timestamp: Date.now(),
-      };
-      this.sendLocalMessage(message);
-      return;
-    }
-
-    const session = this.actualCastSession;
-    if (!session) return;
-
     const message = {
       action: 'updateRoomInfo',
       roomInfo: roomInfo,
       timestamp: Date.now(),
     };
 
+    if (this.localEmulator.isLocalEmulator(this.currentSession.deviceId)) {
+      this.localEmulator.sendLocalMessage(message as LocalCastMessage);
+      return;
+    }
+
+    const session = this.actualCastSession;
+    if (!session) return;
+
     const [err] = safeWrap(() => {
       console.log('[Cast] updateRoomInfo send', message);
       session.sendMessage(
-        'urn:x-cast:com.vibez.cast',
+        CUSTOM_NAMESPACE,
         message,
         () => console.log('✅ Room info sent to receiver'),
         (error: any) => console.error('❌ Failed to update room info:', error),
@@ -1118,21 +964,6 @@ class GoogleCastManager implements CastManager {
       return;
     }
 
-    if (this.currentSession.deviceId === LOCAL_EMULATOR_DEVICE_ID) {
-      const message: LocalCastMessage = {
-        action: 'syncPlayback',
-        isPlaying: state.isPlaying,
-        positionMs: state.positionMs,
-        currentSong: state.currentSong,
-        timestamp: Date.now(),
-      };
-      this.sendLocalMessage(message);
-      return;
-    }
-
-    const session = this.actualCastSession;
-    if (!session) return;
-
     const message = {
       action: 'syncPlayback',
       isPlaying: state.isPlaying,
@@ -1140,6 +971,14 @@ class GoogleCastManager implements CastManager {
       currentSong: state.currentSong,
       timestamp: Date.now(),
     };
+
+    if (this.localEmulator.isLocalEmulator(this.currentSession.deviceId)) {
+      this.localEmulator.sendLocalMessage(message as LocalCastMessage);
+      return;
+    }
+
+    const session = this.actualCastSession;
+    if (!session) return;
 
     const [err] = safeWrap(() => {
       console.log('[Cast] syncPlayback send', {
@@ -1149,7 +988,7 @@ class GoogleCastManager implements CastManager {
         timestamp: message.timestamp,
       });
       session.sendMessage(
-        'urn:x-cast:com.vibez.cast',
+        CUSTOM_NAMESPACE,
         message,
         () => console.log('✅ Playback sync sent to receiver'),
         (error: any) => console.error('❌ Failed to sync playback:', error),
@@ -1166,340 +1005,20 @@ class GoogleCastManager implements CastManager {
     }
   }
 
-  // Event handling
-  onDeviceAvailable(callback: (device: CastDevice) => void): void {
-    this.deviceAvailableCallbacks.push(callback);
-  }
-
-  onSessionStateChange(callback: (session: CastSession) => void): void {
-    this.sessionStateCallbacks.push(callback);
-  }
-
-  onCastError(callback: (error: CastError) => void): void {
-    this.errorCallbacks.push(callback);
-  }
-
-  // Private notification methods
-  private notifyDeviceAvailable(device: CastDevice): void {
-    this.deviceAvailableCallbacks.forEach((callback) => {
-      callback(device);
-    });
-  }
-
-  private notifySessionStateChange(session: CastSession): void {
-    this.sessionStateCallbacks.forEach((callback) => {
-      callback(session);
-    });
-  }
-
-  private notifyError(error: CastError): void {
-    this.errorCallbacks.forEach((callback) => {
-      callback(error);
-    });
-  }
-
-  // Utility methods
-  getCurrentSession(): CastSession | null {
-    return this.currentSession ? { ...this.currentSession } : null; // Return copy
-  }
-
-  isConnected(): boolean {
-    return this.currentSession?.state === 'connected';
-  }
-
-  getConnectionState(): CastSessionState | null {
-    return this.currentSession?.state || null;
-  }
-
-  // Clean up resources
-  destroy(): void {
-    const [_, err] = safeWrap(() => {
-      this.deviceAvailableCallbacks = [];
-      this.sessionStateCallbacks = [];
-      this.errorCallbacks = [];
-
-      if (this.currentSession) {
-        safeWrapAsync(this.disconnectFromDevice(this.currentSession.deviceId));
-      }
-
-      this.devices = [];
-      this.currentSession = null;
-      this.actualCastSession = null;
-      if (this.localReceiverWindow && !this.localReceiverWindow.closed) {
-        this.localReceiverWindow.close();
-      }
-      this.localReceiverWindow = null;
-      this.localReceiverOrigin = null;
-      if (this.localReceiverFrame) {
-        this.localReceiverFrame.remove();
-      }
-      this.localReceiverFrame = null;
-      this.localReceiverReady = false;
-      this.localMessageQueue = [];
-      this.isInitialized = false;
-      this.initializationPromise = null;
-      this.reconnectAttempts = 0;
-
-      console.log('Cast manager destroyed');
-    });
-
-    if (err) console.error('Error during cast manager destruction:', err);
-  }
-
-  // Get detailed status for debugging
-  getStatus(): {
-    isInitialized: boolean;
-    deviceCount: number;
-    currentSession: CastSession | null;
-    reconnectAttempts: number;
-  } {
-    return {
-      isInitialized: this.isInitialized,
-      deviceCount: this.devices.length,
-      currentSession: this.getCurrentSession(),
-      reconnectAttempts: this.reconnectAttempts,
-    };
-  }
-
-  // Debug method to help troubleshoot casting issues
-  getDebugInfo(): {
-    sdkLoaded: boolean;
-    sdkAvailable: boolean;
-    apiVersion: string | undefined;
-    receiverAvailability: string | undefined;
-    devices: CastDevice[];
-    currentSession: CastSession | null;
-    isInitialized: boolean;
-  } {
-    return {
-      sdkLoaded: !!window.chrome?.cast,
-      sdkAvailable: !!window.chrome?.cast?.isAvailable,
-      apiVersion: window.chrome?.cast?.VERSION,
-      receiverAvailability: 'unknown', // This would need to be tracked
-      devices: this.devices,
-      currentSession: this.currentSession,
-      isInitialized: this.isInitialized,
-    };
-  }
-
-  private ensureLocalEmulatorDevice(): void {
-    const exists = this.devices.some(
-      (device) => device.id === LOCAL_EMULATOR_DEVICE_ID,
-    );
-    if (exists) return;
-
-    const device: CastDevice = {
-      id: LOCAL_EMULATOR_DEVICE_ID,
-      name: 'Local Cast (Emulator)',
-      type: 'chromecast',
-      capabilities: ['video_out', 'audio_out'],
-      isAvailable: true,
-      lastSeen: new Date(),
-    };
-
-    this.devices = [device, ...this.devices];
-    this.notifyDeviceAvailable(device);
-  }
-
-  private getRoomIdFromContext(): string {
-    const roomState = useRoomStore.getState();
-    const roomIdFromState = roomState.room?.id || '';
-    const roomIdFromSearch =
-      new URLSearchParams(window.location.search).get('roomId') || '';
-    const roomIdFromPath = (() => {
-      const match = window.location.pathname.match(/\/rooms\/([^/]+)/);
-      return match?.[1] || '';
-    })();
-    const roomIdFromHash = (() => {
-      const match = window.location.hash.match(/\/rooms\/([^/]+)/);
-      return match?.[1] || '';
-    })();
-
-    return (
-      roomIdFromState || roomIdFromSearch || roomIdFromPath || roomIdFromHash
-    );
-  }
-
-  private getCasterIdFromContext(): string {
-    const roomState = useRoomStore.getState();
-    if (roomState.userId) return roomState.userId;
-
-    const params = new URLSearchParams(window.location.search);
-    return params.get('casterId') || params.get('sessionId') || '';
-  }
-
-  private getLocalReceiverUrl(): string {
-    const receiverPath = (() => {
-      if (
-        CUSTOM_RECEIVER_URL.startsWith('http://') ||
-        CUSTOM_RECEIVER_URL.startsWith('https://')
-      ) {
-        const [parseErr, parsedUrl] = safeWrap(
-          () => new URL(CUSTOM_RECEIVER_URL),
-        );
-        if (parseErr || !parsedUrl) {
-          console.error(
-            'Invalid custom receiver URL; falling back to path:',
-            CUSTOM_RECEIVER_URL,
-          );
-          return '/casting/receiver/';
-        }
-
-        const pathname = parsedUrl.pathname || '/';
-        return `${pathname}${parsedUrl.search || ''}`;
-      }
-
-      if (!CUSTOM_RECEIVER_URL.startsWith('/')) {
-        return `/${CUSTOM_RECEIVER_URL}`;
-      }
-
-      return CUSTOM_RECEIVER_URL;
-    })();
-
-    return this.getReceiverUrlWithParams(window.location.origin, receiverPath);
-  }
-
-  private getReceiverUrlWithParams(
-    originOverride?: string,
-    pathOverride?: string,
-  ): string {
-    const baseOrigin = originOverride || window.location.origin;
-    const basePath = pathOverride || CUSTOM_RECEIVER_URL;
-    const baseUrl =
-      basePath.startsWith('http://') || basePath.startsWith('https://')
-        ? basePath
-        : `${baseOrigin}${basePath.startsWith('/') ? basePath : `/${basePath}`}`;
-
-    const params = new URLSearchParams();
-    params.set('castReceiver', '1');
-
-    const roomId = this.getRoomIdFromContext();
-    if (roomId) {
-      params.set('roomId', roomId);
-    }
-
-    const casterId = this.getCasterIdFromContext();
-    if (casterId) {
-      params.set('casterId', casterId);
-      params.set('sessionId', casterId);
-    }
-
-    // Only pass debug flag to receiver when VITE_DEBUG is enabled in sender app
-    if (import.meta.env.VITE_DEBUG === 'true') {
-      params.set('debug', 'true');
-    }
-
-    const separator = baseUrl.includes('?') ? '&' : '?';
-    return `${baseUrl}${separator}${params.toString()}`;
-  }
-
-  private openLocalReceiver(): Window | null {
-    if (typeof window === 'undefined' || typeof document === 'undefined') {
-      return null;
-    }
-
-    this.localReceiverReady = false;
-    if (this.localReadyTimeout) {
-      clearTimeout(this.localReadyTimeout);
-      this.localReadyTimeout = null;
-    }
-
-    const receiverUrl = this.getLocalReceiverUrl();
-    const [urlErr, parsedUrl] = safeWrap(() => new URL(receiverUrl));
-    if (urlErr || !parsedUrl) {
-      console.error('Invalid local receiver URL:', receiverUrl);
-      return null;
-    }
-
-    this.localReceiverOrigin = parsedUrl.origin;
-
-    const existingWindow =
-      this.localReceiverWindow && !this.localReceiverWindow.closed
-        ? this.localReceiverWindow
-        : null;
-    const popup =
-      existingWindow ||
-      (() => {
-        const width = 480;
-        const height = 270;
-        const left = Math.max(0, window.screen.width / 2 - width / 2);
-        const top = Math.max(0, window.screen.height / 2 - height / 2);
-        const features = [
-          `width=${width}`,
-          `height=${height}`,
-          `left=${left}`,
-          `top=${top}`,
-          'resizable=yes',
-          'scrollbars=no',
-        ].join(',');
-        return window.open(receiverUrl, 'vibez-cast-receiver', features);
-      })();
-
-    if (existingWindow && popup) {
-      const [navErr] = safeWrap(() => {
-        popup.location.href = receiverUrl;
-      });
-      if (navErr) {
-        console.error('Failed to update local receiver URL:', navErr);
-      }
-    }
-
-    if (!popup) {
-      console.error('Local cast receiver window was blocked or failed to open');
-      return null;
-    }
-
-    this.localReceiverFrame = null;
-    this.localReceiverWindow = popup;
-    this.localReadyTimeout = setTimeout(() => {
-      if (!this.localReceiverReady) {
-        this.localReceiverReady = true;
-        this.flushLocalMessageQueue();
-      }
-      this.localReadyTimeout = null;
-    }, 1500);
-    this.flushLocalMessageQueue();
-    return popup;
-  }
-
-  private sendLocalMessage(message: LocalCastMessage): void {
-    if (!this.localReceiverWindow || this.localReceiverWindow.closed) {
-      console.warn('[Local Cast] receiver window not available');
-      return;
-    }
-
-    this.localMessageQueue.push(message);
-    this.flushLocalMessageQueue();
-  }
-
-  private flushLocalMessageQueue(): void {
-    if (!this.localReceiverWindow || !this.localReceiverReady) return;
-
-    const origin = this.localReceiverOrigin || window.location.origin;
-    while (this.localMessageQueue.length > 0) {
-      const nextMessage = this.localMessageQueue.shift();
-      if (!nextMessage) break;
-      const [err] = safeWrap(() => {
-        this.localReceiverWindow?.postMessage(nextMessage, origin);
-      });
-      if (err) {
-        console.error('Failed to post local cast message:', err);
-        break;
-      }
-    }
-  }
-
   async joinRoom(roomId: string): Promise<void> {
     if (!this.currentSession) return;
-    if (this.currentSession.deviceId === LOCAL_EMULATOR_DEVICE_ID) {
-      const casterId = this.getCasterIdFromContext() || undefined;
-      this.sendLocalMessage({
-        action: 'joinRoom',
-        roomId,
-        casterId,
-        sessionId: casterId,
-        timestamp: Date.now(),
-      });
+
+    const casterId = this.localEmulator.getCasterIdFromContext() || undefined;
+    const message = {
+      action: 'joinRoom',
+      roomId,
+      casterId,
+      sessionId: casterId,
+      timestamp: Date.now(),
+    };
+
+    if (this.localEmulator.isLocalEmulator(this.currentSession.deviceId)) {
+      this.localEmulator.sendLocalMessage(message as LocalCastMessage);
       return;
     }
 
@@ -1507,20 +1026,11 @@ class GoogleCastManager implements CastManager {
     if (!session) return;
 
     return new Promise((resolve, reject) => {
-      const casterId = this.getCasterIdFromContext() || undefined;
-      const message = {
-        action: 'joinRoom',
-        roomId,
-        casterId,
-        sessionId: casterId,
-        timestamp: Date.now(),
-      };
-
       console.log('[Cast] sending joinRoom message', message);
 
       const [err] = safeWrap(() => {
         session.sendMessage(
-          'urn:x-cast:com.vibez.cast',
+          CUSTOM_NAMESPACE,
           message,
           () => {
             console.log('✅ joinRoom message sent');
@@ -1537,7 +1047,95 @@ class GoogleCastManager implements CastManager {
     });
   }
 
-  // Force refresh device discovery
+  // ============================================================
+  // Event Handling
+  // ============================================================
+
+  onDeviceAvailable(callback: (device: CastDevice) => void): void {
+    this.eventBus.onDeviceAvailable(callback);
+  }
+
+  onSessionStateChange(callback: (session: CastSession) => void): void {
+    this.eventBus.onSessionStateChange(callback);
+  }
+
+  onCastError(callback: (error: CastError) => void): void {
+    this.eventBus.onCastError(callback);
+  }
+
+  private notifyDeviceAvailable(device: CastDevice): void {
+    this.eventBus.notifyDeviceAvailable(device);
+  }
+
+  private notifySessionStateChange(session: CastSession): void {
+    this.eventBus.notifySessionStateChange(session);
+  }
+
+  private notifyError(error: CastError): void {
+    this.eventBus.notifyError(error);
+  }
+
+  // ============================================================
+  // Utility Methods
+  // ============================================================
+
+  getCurrentSession(): CastSession | null {
+    return this.currentSession;
+  }
+
+  isConnected(): boolean {
+    return this.currentSession?.state === 'connected';
+  }
+
+  getConnectionState(): CastSessionState | null {
+    return this.currentSession?.state || null;
+  }
+
+  private extractYouTubeVideoId(url: string): string | null {
+    const regex =
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([^&\n?#]+)/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+  }
+
+  private isYouTubeUrl(url: string): boolean {
+    return url.includes('youtube.com') || url.includes('youtu.be');
+  }
+
+  getStatus(): {
+    isInitialized: boolean;
+    deviceCount: number;
+    currentSession: CastSession | null;
+    reconnectAttempts: number;
+  } {
+    return {
+      isInitialized: this.isInitialized,
+      deviceCount: this.devices.length,
+      currentSession: this.currentSession,
+      reconnectAttempts: this.reconnectAttempts,
+    };
+  }
+
+  getDebugInfo(): {
+    sdkLoaded: boolean;
+    sdkAvailable: boolean;
+    apiVersion: string | undefined;
+    receiverAvailability: string | undefined;
+    devices: CastDevice[];
+    currentSession: CastSession | null;
+    isInitialized: boolean;
+  } {
+    return {
+      sdkLoaded: !!window.chrome?.cast,
+      sdkAvailable: !!window.chrome?.cast?.isAvailable,
+      apiVersion: window.chrome?.cast?.VERSION,
+      receiverAvailability: undefined,
+      devices: this.devices,
+      currentSession: this.currentSession,
+      isInitialized: this.isInitialized,
+    };
+  }
+
   async forceDiscovery(): Promise<void> {
     console.log('🔍 Forcing device discovery...');
     const [err] = await safeWrapAsync(this.initializeCastSDK());
@@ -1547,12 +1145,32 @@ class GoogleCastManager implements CastManager {
     }
 
     if (LOCAL_EMULATOR_ENABLED) {
-      this.ensureLocalEmulatorDevice();
+      this.localEmulator.ensureLocalEmulatorDevice();
     }
 
-    // The Cast SDK doesn't provide a direct way to force discovery
-    // Device availability is handled automatically by the SDK
     console.log('Current devices:', this.devices);
+  }
+
+  destroy(): void {
+    this.localEmulator.destroy();
+    this.eventBus.removeAllListeners();
+
+    if (this.currentSession && this.actualCastSession) {
+      const [err] = safeWrap(() => {
+        this.actualCastSession?.stop(
+          () => console.log('Session stopped during destroy'),
+          (err: chrome.cast.Error) =>
+            console.error('Error stopping session:', err),
+        );
+      });
+      if (err) console.error('Error during session cleanup:', err);
+    }
+
+    this.currentSession = null;
+    this.actualCastSession = null;
+    this.devices = [];
+    this.isInitialized = false;
+    this.initializationPromise = null;
   }
 }
 

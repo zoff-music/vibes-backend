@@ -7,7 +7,7 @@ import type {
 } from '@vibez/models';
 import { safeWrap, safeWrapAsync } from '@vibez/shared';
 import { create } from 'zustand';
-import { castManager } from '../services/castManager';
+import { castManager } from '../services/cast';
 
 const isHttpUrl = (value: string) =>
   value.startsWith('http://') || value.startsWith('https://');

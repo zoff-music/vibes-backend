@@ -121,26 +121,29 @@ export const QueueItem: React.FC<Props> = ({
     );
   }
 
-  // Client: Render with motion.div - using motion.button for semantic consistency
+  // Client: Render with motion.div wrapper for height animation
   return (
-    <motion.button
-      type="button"
+    <motion.div
       layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+      initial={{ opacity: 0, height: 0, y: 50 }}
+      animate={{ opacity: 1, height: 'auto', y: 0 }}
+      exit={{ opacity: 0, height: 0, y: -50, transition: { duration: 0.2 } }}
       transition={{
         type: 'spring',
         stiffness: 500,
-        damping: 30,
-        mass: 1,
-        opacity: { duration: 0.2 },
+        damping: 35,
+        opacity: { duration: 0.15 },
       }}
-      onClick={() => onVote?.(song.id)}
-      className="group w-full cursor-pointer rounded-2xl border border-theme bg-theme-surface p-4 transition-shadow hover:shadow-[0_0_20px_rgba(255,46,151,0.2)] focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:ring-offset-2 focus:ring-offset-transparent"
-      aria-label={`Vote for ${song.title} by ${song.artist || 'Unknown Artist'}`}
+      style={{ overflow: 'hidden' }}
     >
-      {content}
-    </motion.button>
+      <button
+        type="button"
+        onClick={() => onVote?.(song.id)}
+        className="group w-full cursor-pointer rounded-2xl border border-theme bg-theme-surface p-4 transition-shadow hover:shadow-[0_0_20px_rgba(255,46,151,0.2)] focus:outline-none focus:ring-2 focus:ring-secondary/40 focus:ring-offset-2 focus:ring-offset-transparent"
+        aria-label={`Vote for ${song.title} by ${song.artist || 'Unknown Artist'}`}
+      >
+        {content}
+      </button>
+    </motion.div>
   );
 };

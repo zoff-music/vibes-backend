@@ -1,7 +1,7 @@
 import type { CastDevice, Song } from '@vibez/models';
 import { safeWrapAsync, usePlaybackStore } from '@vibez/shared';
 import React, { useEffect, useState } from 'react';
-import { castManager } from '../../services/castManager';
+import { castManager } from '../../services/cast';
 import { useCastStore } from '../../stores/castStore';
 import { CastDeviceIcon } from '../icons/CastDeviceIcon';
 import { CheckCircleIcon } from '../icons/CheckCircleIcon';
@@ -120,7 +120,7 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
 
   const handleRefresh = async () => {
     console.log('🔄 Refreshing devices...');
-    const { castManager } = await import('../../services/castManager');
+    const { castManager } = await import('../../services/cast');
 
     console.log('Cast Debug Info:', castManager.getDebugInfo());
     await safeWrapAsync(castManager.forceDiscovery());

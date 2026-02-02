@@ -11,7 +11,7 @@ vi.mock('react-youtube', () => ({
 }));
 
 // Mock castManager to avoid Google Cast SDK loading in tests
-vi.mock('./services/castManager', () => ({
+vi.mock('./services/cast', () => ({
   castManager: {
     discoverDevices: vi.fn().mockResolvedValue([]),
     getAvailableDevices: vi.fn().mockReturnValue([]),

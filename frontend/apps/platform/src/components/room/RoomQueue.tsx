@@ -2,6 +2,7 @@ import { useQueue } from '@vibez/api';
 import { type PlaybackState, type Song } from '@vibez/models';
 import { usePlaybackStore } from '@vibez/shared';
 import { QueueList, SoundCloudIcon, SpotifyIcon, YouTubeIcon } from '@vibez/ui';
+import { AnimatePresence, motion } from 'framer-motion';
 import React from 'react';
 import { PlaybackProgress } from './PlaybackProgress';
 
@@ -58,7 +59,7 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
 
     return (
       <div className="mt-8 space-y-8 lg:mt-0 lg:h-full lg:overflow-y-auto lg:pr-2">
-        <div className="lg:pb-6">
+        <div className="relative lg:pb-6">
           {/* Now Playing (Integrated into list style) */}
           {currentSong && (
             <div className="mb-8">
@@ -75,45 +76,68 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
                 </span>
               </div>
 
-              <div className="group/card panel-surface no-box relative flex items-center gap-4 overflow-hidden rounded-2xl p-4">
-                <div className="vhs-scanlines pointer-events-none absolute inset-0" />
+              <AnimatePresence initial={false} mode="popLayout">
+                <motion.div
+                  key={currentSong.id}
+                  layout
+                  initial={{ opacity: 0, y: 50 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{
+                    opacity: 0,
+                    y: -50,
+                    position: 'absolute',
+                    width: '100%',
+                    transition: { duration: 0.2 },
+                  }}
+                  transition={{
+                    type: 'spring',
+                    stiffness: 500,
+                    damping: 35,
+                    opacity: { duration: 0.15 },
+                  }}
+                  style={{ overflow: 'hidden' }}
+                >
+                  <div className="group/card panel-surface no-box relative flex items-center gap-4 overflow-hidden rounded-2xl p-4">
+                    <div className="vhs-scanlines pointer-events-none absolute inset-0" />
 
-                {/* Thumbnail */}
-                <div className="relative z-10 shrink-0">
-                  <img
-                    src={resolveThumbnail(currentSong.thumbnailUrl)}
-                    alt=""
-                    className="h-16 w-16 rounded-xl border border-theme object-cover shadow-xs transition-transform group-hover/card:scale-105"
-                  />
-                </div>
+                    {/* Thumbnail */}
+                    <div className="relative z-10 shrink-0">
+                      <img
+                        src={resolveThumbnail(currentSong.thumbnailUrl)}
+                        alt=""
+                        className="h-16 w-16 rounded-xl border border-theme object-cover shadow-xs transition-transform group-hover/card:scale-105"
+                      />
+                    </div>
 
-                {/* Song info */}
-                <div className="relative z-10 min-w-0 flex-1">
-                  <h3 className="mb-1 truncate font-display text-theme text-xs">
-                    {currentSong.title}
-                  </h3>
-                  <div className="flex items-center gap-2 text-theme-muted text-xs">
-                    <span className="truncate">
-                      {currentSong.artist || 'Unknown Artist'}
-                    </span>
-                    <span className="text-theme-subtle">•</span>
-                    <span className="shrink-0 font-mono text-theme-subtle text-xs">
-                      {formatTime(currentSong.duration * 1000)}
-                    </span>
+                    {/* Song info */}
+                    <div className="relative z-10 min-w-0 flex-1">
+                      <h3 className="mb-1 truncate font-display text-theme text-xs">
+                        {currentSong.title}
+                      </h3>
+                      <div className="flex items-center gap-2 text-theme-muted text-xs">
+                        <span className="truncate">
+                          {currentSong.artist || 'Unknown Artist'}
+                        </span>
+                        <span className="text-theme-subtle">•</span>
+                        <span className="shrink-0 font-mono text-theme-subtle text-xs">
+                          {formatTime(currentSong.duration * 1000)}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Source Icon */}
+                    <div className="relative z-10 flex shrink-0 items-center justify-center opacity-70">
+                      {currentSong.sourceType === 'spotify' ? (
+                        <SpotifyIcon className="h-5 w-5" />
+                      ) : currentSong.sourceType === 'soundcloud' ? (
+                        <SoundCloudIcon className="h-5 w-5" />
+                      ) : (
+                        <YouTubeIcon className="h-5 w-5" />
+                      )}
+                    </div>
                   </div>
-                </div>
-
-                {/* Source Icon */}
-                <div className="relative z-10 flex shrink-0 items-center justify-center opacity-70">
-                  {currentSong.sourceType === 'spotify' ? (
-                    <SpotifyIcon className="h-5 w-5" />
-                  ) : currentSong.sourceType === 'soundcloud' ? (
-                    <SoundCloudIcon className="h-5 w-5" />
-                  ) : (
-                    <YouTubeIcon className="h-5 w-5" />
-                  )}
-                </div>
-              </div>
+                </motion.div>
+              </AnimatePresence>
 
               <PlaybackProgress
                 durationMs={currentSong.duration * 1000}

@@ -396,7 +396,7 @@ export default function Room() {
           />
         ) : (
           <div className="flex-1 overflow-visible lg:overflow-hidden">
-            <div className="mx-auto max-w-7xl items-start gap-8 px-4 py-8 lg:grid lg:h-[calc(100vh-var(--room-header-height))] lg:grid-cols-[1.3fr_0.7fr] lg:py-6">
+            <div className="mx-auto max-w-7xl items-start gap-8 px-4 py-8 lg:grid lg:h-[calc(100vh-var(--room-header-height,73px))] lg:grid-cols-[1.3fr_0.7fr] lg:py-6">
               {/* Player Section */}
               <RoomPlayer
                 roomId={id || ''}

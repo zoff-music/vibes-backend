@@ -321,7 +321,7 @@ export const RoomPlayer = React.memo(
     return (
       <div className="space-y-6 lg:flex lg:h-full lg:flex-col">
         {/* Player - Reserve height to prevent CLS */}
-        <div className="crt-frame relative flex aspect-video min-h-[280px] w-full overflow-hidden rounded-[28px] bg-black sm:min-h-[340px] lg:aspect-auto lg:min-h-0 lg:flex-1">
+        <div className="crt-frame relative flex aspect-video min-h-[280px] w-full overflow-hidden rounded-[28px] bg-black sm:min-h-[340px] lg:aspect-auto lg:min-h-0 lg:min-h-[400px] lg:flex-1">
           {VideoPlayerComponent && (
             <div className="absolute inset-0">
               <VideoPlayerComponent
