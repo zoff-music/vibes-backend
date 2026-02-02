@@ -73,6 +73,7 @@ type videoItem struct {
 type videoSnippet struct {
 	Title        string           `json:"title"`
 	ChannelTitle string           `json:"channelTitle"`
+	CategoryID   string           `json:"categoryId"`
 	Thumbnails   searchThumbnails `json:"thumbnails"`
 }
 

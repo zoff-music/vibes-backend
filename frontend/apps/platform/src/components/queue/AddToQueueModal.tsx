@@ -343,18 +343,34 @@ export const AddToQueueModal: React.FC<Props> = ({
 
         {/* Spotify Disclaimer */}
         {selectedProvider === 'spotify' && !hasSpotifySongs && (
-          <div className="mb-6 animate-slide-down rounded-2xl border border-secondary/30 bg-secondary/10 p-4 transition-all">
+          <div className="mb-6 animate-slide-down rounded-2xl border border-orange-400/30 bg-orange-400/10 p-4 transition-all">
             <div className="flex gap-3">
-              <div className="mt-0.5 text-secondary">
+              <div className="mt-0.5 text-orange-400">
                 <InfoIcon className="h-5 w-5" />
               </div>
               <p className="text-sm text-theme-muted leading-relaxed">
-                <span className="text-[10px] text-secondary">Note:</span> By
+                <span className="text-[10px] text-orange-400">Note:</span> By
                 adding Spotify, viewers are required to have{' '}
                 <span className="font-semibold text-theme">
                   Spotify Premium
                 </span>{' '}
                 to view content.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* SoundCloud Disclaimer */}
+        {selectedProvider === 'soundcloud' && (
+          <div className="mb-6 animate-slide-down rounded-2xl border border-orange-400/30 bg-orange-400/10 p-4 transition-all">
+            <div className="flex gap-3">
+              <div className="mt-0.5 text-orange-400">
+                <InfoIcon className="h-5 w-5" />
+              </div>
+              <p className="text-sm text-theme-muted leading-relaxed">
+                <span className="text-[10px] text-orange-400">Note:</span> Some
+                SoundCloud searches may return empty results due to rights or
+                copyright restrictions on certain tracks.
               </p>
             </div>
           </div>

@@ -82,6 +82,7 @@ export const RoomPlayer = React.memo(
       useState<PlayerComponent | null>(null);
     const [VideoPlayerComponent, setVideoPlayerComponent] =
       useState<PlayerComponent | null>(null);
+    const [isPlaybackBlocked, setIsPlaybackBlocked] = useState(false);
     const [playerLoadErrors, setPlayerLoadErrors] = useState<PlayerLoadErrors>({
       spotify: null,
       soundcloud: null,
@@ -325,6 +326,7 @@ export const RoomPlayer = React.memo(
                 onEnded={displayRoom?.mode === 'host' ? skip : undefined}
                 isVisible={!isConnected && isVideoTrack}
                 fill
+                onNeedsUserGestureChange={setIsPlaybackBlocked}
               />
             </div>
           )}
@@ -406,7 +408,7 @@ export const RoomPlayer = React.memo(
 
         {/* Controls (always below video) */}
         <PlayerControls
-          isPlaying={isPlaying}
+          isPlaying={isPlaying && !isPlaybackBlocked}
           canPlay={Boolean(currentSong || songs.length > 0)}
           canSkip={Boolean(currentSong)}
           onPlay={play}
