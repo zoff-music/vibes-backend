@@ -618,6 +618,7 @@
     --sunset-core: rgba(255, 208, 120, 0.95);
     --sunset-mid: rgba(255, 148, 188, 0.85);
     --sunset-glow: rgba(255, 80, 200, 0.3);
+    --room-header-height: 73px;
   }
 
   /* Auto Dark Mode (baseline when no class is present and system is dark) */
