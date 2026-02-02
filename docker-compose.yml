@@ -68,7 +68,8 @@ services:
       - "${FRONTEND_PLATFORM_PORT_MAPPING:-3000:3000}"
     environment:
       - PORT=3000
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8080}
+      - VITE_API_URL=http://localhost:42069
+      - VITE_API_URL_INTERNAL=http://backend:8080
       - DEBUG=${DEBUG:-}
       - VITE_DEBUG=${VITE_DEBUG:-}
       - NODE_ENV=${NODE_ENV:-development}

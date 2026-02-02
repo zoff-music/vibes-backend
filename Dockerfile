@@ -75,6 +75,7 @@ WORKDIR /app
 COPY frontend/. .
 
 ENV NODE_ENV=development
+ENV VITE_API_URL_INTERNAL=http://backend:8080
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates curl \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
@@ -142,6 +143,7 @@ RUN mkdir -p /app/apps/platform/dist
 COPY --from=platform-builder /app/apps/platform/dist /app/apps/platform/dist
 
 ENV NODE_ENV=production
+ENV VITE_API_URL_INTERNAL=http://backend:8080
 RUN rm -rf /app/node_modules /app/packages/*/node_modules \
     && bun install --frozen-lockfile
 
