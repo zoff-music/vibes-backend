@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '@vibez/api';
 import type { Song } from '@vibez/shared';
-import { usePlaybackStore } from '@vibez/shared';
+import { safeWrap, usePlaybackStore } from '@vibez/shared';
 import React, {
   createContext,
   useCallback,
@@ -25,6 +25,7 @@ interface CastContextType {
   updateActualPosition: () => void;
   debugMode: boolean;
   roomId: string | null;
+  casterId: string | null;
   error: string | null;
   apiUrl: string;
 }
@@ -39,7 +40,6 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
   const [statusText, setStatusText] = useState('Ready for Casting');
   const [roomMode, setRoomMode] = useState<string | null>(null);
   const [debugMode, setDebugModeState] = useState(() => {
-    if (import.meta.env.VITE_CAST_DEBUG_MODE !== 'true') return false;
     const params = new URLSearchParams(window.location.search);
     return params.get('debug') === 'true';
   });
@@ -47,6 +47,14 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
   // Room ID State
   const [roomId, setRoomId] = useState<string | null>(() => {
     return new URLSearchParams(window.location.search).get('roomId');
+  });
+  const [casterId, setCasterId] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (
+      params.get('casterId') ||
+      params.get('casterUserId') ||
+      params.get('sessionId')
+    );
   });
 
   const debugModeRef = useRef(debugMode);
@@ -67,6 +75,7 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
 
   const handleCastMessage = useCastMessageHandler({
     setRoomId,
+    setCasterId,
     setRoomInfo,
     setQueue,
     setStatusText,
@@ -84,6 +93,7 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
 
   useRoomSync({
     roomId,
+    casterId,
     setQueue,
     setRoomInfo,
     setStatusText,
@@ -107,7 +117,17 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
   // Local window message listener (emulator/dev)
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin) return;
+      if (event.origin !== window.location.origin) {
+        const [parseErr, originUrl] = safeWrap(() => new URL(event.origin));
+        if (parseErr || !originUrl) return;
+        const receiverUrl = new URL(window.location.origin);
+        const isLocalOrigin =
+          (originUrl.hostname === 'localhost' ||
+            originUrl.hostname === '127.0.0.1') &&
+          (receiverUrl.hostname === 'localhost' ||
+            receiverUrl.hostname === '127.0.0.1');
+        if (!isLocalOrigin) return;
+      }
       const data = event.data as LocalCastMessage | null;
       if (!data || typeof data !== 'object') return;
       if (!('action' in data)) return;
@@ -121,6 +141,22 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
     };
   }, [handleCastMessage]);
 
+  useEffect(() => {
+    const opener = window.opener;
+    if (!opener) return;
+
+    const [err, referrerUrl] = safeWrap(() => new URL(document.referrer));
+    const targetOrigin = !err && referrerUrl ? referrerUrl.origin : '*';
+
+    opener.postMessage(
+      {
+        action: 'receiverReady',
+        timestamp: Date.now(),
+      },
+      targetOrigin,
+    );
+  }, []);
+
   return (
     <CastContext.Provider
       value={{
@@ -133,6 +169,7 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
         updateActualPosition,
         debugMode,
         roomId: roomId || null,
+        casterId: casterId || null,
         error,
         apiUrl: API_BASE_URL,
       }}

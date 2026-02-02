@@ -98,7 +98,8 @@ export const useRoom = (roomId: string, callbacks?: USE_SSE_CALLBACKS) => {
       }
 
       if (data) {
-        setSession(data.userId, data.isAdmin, data.nickname || undefined);
+        const sessionId = data.sessionId || data.userId;
+        setSession(sessionId, data.isAdmin, data.nickname || undefined);
         setRoom(data.room);
         return data;
       }

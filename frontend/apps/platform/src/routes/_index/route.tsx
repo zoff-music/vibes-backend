@@ -3,9 +3,8 @@ import { usePageVisibility } from '@vibez/shared';
 import { CircleHalfIcon, MoonIcon, SunIcon } from '@vibez/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useNavigationType } from 'react-router';
-
-import { useThemeStore } from '../../stores/themeStore';
 import { useThemeDisplay } from '../../hooks/useThemeDisplay';
+import { useThemeStore } from '../../stores/themeStore';
 import { getPreviousPath } from '../../utils/navigationHistory';
 import { loader } from './loader';
 

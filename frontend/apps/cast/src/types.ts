@@ -9,6 +9,10 @@ export type QueueItem = Song;
 
 export type LocalCastMessage =
   | {
+      action: 'receiverReady';
+      timestamp: number;
+    }
+  | {
       action: 'updatePlayback';
       currentSong?: QueueItem;
       isPlaying?: boolean;
@@ -33,4 +37,6 @@ export type LocalCastMessage =
   | {
       action: 'joinRoom';
       roomId: string;
+      casterId?: string;
+      sessionId?: string;
     };

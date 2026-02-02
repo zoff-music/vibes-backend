@@ -32,6 +32,10 @@ const LOCAL_EMULATOR_DEVICE_ID = 'local-cast-emulator';
 
 type LocalCastMessage =
   | {
+      action: 'receiverReady';
+      timestamp: number;
+    }
+  | {
       action: 'updatePlayback';
       currentSong: {
         id: string;
@@ -57,6 +61,13 @@ type LocalCastMessage =
         name: string;
         participantCount: number;
       };
+      timestamp: number;
+    }
+  | {
+      action: 'joinRoom';
+      roomId: string;
+      casterId?: string;
+      sessionId?: string;
       timestamp: number;
     }
   | {
@@ -105,6 +116,7 @@ class GoogleCastManager implements CastManager {
   private localReceiverFrame: HTMLIFrameElement | null = null;
   private localMessageQueue: LocalCastMessage[] = [];
   private localReceiverReady = false;
+  private localReadyTimeout: ReturnType<typeof setTimeout> | null = null;
   private isInitialized = false;
   private initializationPromise: Promise<void> | null = null;
   private reconnectAttempts = 0;
@@ -118,7 +130,41 @@ class GoogleCastManager implements CastManager {
   constructor() {
     if (typeof window !== 'undefined') {
       this.initializeCastSDK();
+      window.addEventListener(
+        'message',
+        this.handleLocalReceiverMessage.bind(this),
+      );
     }
+  }
+
+  private handleLocalReceiverMessage(event: MessageEvent): void {
+    const data = event.data as LocalCastMessage | null;
+    if (!data || typeof data !== 'object' || !('action' in data)) return;
+    if (data.action !== 'receiverReady') return;
+
+    if (event.origin !== window.location.origin) {
+      const [originErr, originUrl] = safeWrap(() => new URL(event.origin));
+      const receiverOrigin = this.localReceiverOrigin || window.location.origin;
+      const [receiverErr, receiverUrl] = safeWrap(
+        () => new URL(receiverOrigin),
+      );
+
+      if (originErr || receiverErr || !originUrl || !receiverUrl) return;
+
+      const isLocalOrigin =
+        (originUrl.hostname === 'localhost' ||
+          originUrl.hostname === '127.0.0.1') &&
+        (receiverUrl.hostname === 'localhost' ||
+          receiverUrl.hostname === '127.0.0.1');
+      if (!isLocalOrigin) return;
+    }
+
+    this.localReceiverReady = true;
+    if (this.localReadyTimeout) {
+      clearTimeout(this.localReadyTimeout);
+      this.localReadyTimeout = null;
+    }
+    this.flushLocalMessageQueue();
   }
 
   private async initializeCastSDK(): Promise<void> {
@@ -293,6 +339,25 @@ class GoogleCastManager implements CastManager {
   private onCustomMessage(_namespace: string, message: string): void {
     const [err] = safeWrap(() => {
       const data = JSON.parse(message);
+      if (data.action === 'receiverReady') {
+        const roomId = this.getRoomIdFromContext();
+        if (!roomId) {
+          console.warn('[Cast] receiverReady but roomId missing');
+          return;
+        }
+
+        const [joinErr] = safeWrap(() => {
+          void this.joinRoom(roomId);
+        });
+        if (joinErr) {
+          console.error(
+            'Failed to send joinRoom after receiverReady:',
+            joinErr,
+          );
+        }
+        return;
+      }
+
       if (data.action === 'LOG') {
         const { level, args } = data;
         const prefix = '%c[RECEIVER]';
@@ -532,10 +597,7 @@ class GoogleCastManager implements CastManager {
 
   async connectToDevice(deviceId: string): Promise<CastSession> {
     if (LOCAL_EMULATOR_ENABLED && deviceId === LOCAL_EMULATOR_DEVICE_ID) {
-      const receiverWindow =
-        this.localReceiverWindow && !this.localReceiverWindow.closed
-          ? this.localReceiverWindow
-          : null;
+      const receiverWindow = this.openLocalReceiver();
       if (!receiverWindow) {
         const error = new Error(
           'Local cast receiver window could not be opened',
@@ -722,6 +784,8 @@ class GoogleCastManager implements CastManager {
       const roomState = useRoomStore.getState();
       const roomId = roomState.room?.id || '';
       const userId = roomState.userId || '';
+
+      console.log({ roomId, userId });
 
       if (DEVELOPMENT_MODE || this.isYouTubeUrl(mediaInfo.contentId)) {
         console.log('🎵 Preparing custom Zoff receiver session');
@@ -1237,35 +1301,91 @@ class GoogleCastManager implements CastManager {
     this.notifyDeviceAvailable(device);
   }
 
-  private getLocalReceiverUrl(): string {
-    return this.getReceiverUrlWithParams();
+  private getRoomIdFromContext(): string {
+    const roomState = useRoomStore.getState();
+    const roomIdFromState = roomState.room?.id || '';
+    const roomIdFromSearch =
+      new URLSearchParams(window.location.search).get('roomId') || '';
+    const roomIdFromPath = (() => {
+      const match = window.location.pathname.match(/\/rooms\/([^/]+)/);
+      return match?.[1] || '';
+    })();
+    const roomIdFromHash = (() => {
+      const match = window.location.hash.match(/\/rooms\/([^/]+)/);
+      return match?.[1] || '';
+    })();
+
+    return (
+      roomIdFromState || roomIdFromSearch || roomIdFromPath || roomIdFromHash
+    );
   }
 
-  private getReceiverUrlWithParams(): string {
+  private getCasterIdFromContext(): string {
+    const roomState = useRoomStore.getState();
+    if (roomState.userId) return roomState.userId;
+
+    const params = new URLSearchParams(window.location.search);
+    return params.get('casterId') || params.get('sessionId') || '';
+  }
+
+  private getLocalReceiverUrl(): string {
+    const receiverPath = (() => {
+      if (
+        CUSTOM_RECEIVER_URL.startsWith('http://') ||
+        CUSTOM_RECEIVER_URL.startsWith('https://')
+      ) {
+        const [parseErr, parsedUrl] = safeWrap(
+          () => new URL(CUSTOM_RECEIVER_URL),
+        );
+        if (parseErr || !parsedUrl) {
+          console.error(
+            'Invalid custom receiver URL; falling back to path:',
+            CUSTOM_RECEIVER_URL,
+          );
+          return '/casting/receiver/';
+        }
+
+        const pathname = parsedUrl.pathname || '/';
+        return `${pathname}${parsedUrl.search || ''}`;
+      }
+
+      if (!CUSTOM_RECEIVER_URL.startsWith('/')) {
+        return `/${CUSTOM_RECEIVER_URL}`;
+      }
+
+      return CUSTOM_RECEIVER_URL;
+    })();
+
+    return this.getReceiverUrlWithParams(window.location.origin, receiverPath);
+  }
+
+  private getReceiverUrlWithParams(
+    originOverride?: string,
+    pathOverride?: string,
+  ): string {
+    const baseOrigin = originOverride || window.location.origin;
+    const basePath = pathOverride || CUSTOM_RECEIVER_URL;
     const baseUrl =
-      CUSTOM_RECEIVER_URL.startsWith('http://') ||
-      CUSTOM_RECEIVER_URL.startsWith('https://')
-        ? CUSTOM_RECEIVER_URL
-        : `${window.location.origin}${
-            CUSTOM_RECEIVER_URL.startsWith('/')
-              ? CUSTOM_RECEIVER_URL
-              : `/${CUSTOM_RECEIVER_URL}`
-          }`;
+      basePath.startsWith('http://') || basePath.startsWith('https://')
+        ? basePath
+        : `${baseOrigin}${basePath.startsWith('/') ? basePath : `/${basePath}`}`;
 
     const params = new URLSearchParams();
     params.set('castReceiver', '1');
 
-    const roomState = useRoomStore.getState();
-    if (roomState.userId) {
-      params.set('casterId', roomState.userId);
-    }
-    if (roomState.room?.id) {
-      params.set('roomId', roomState.room.id);
+    const roomId = this.getRoomIdFromContext();
+    if (roomId) {
+      params.set('roomId', roomId);
     }
 
-    // Check for debug flag in current window URL and pass it to receiver
-    const currentParams = new URLSearchParams(window.location.search);
-    if (currentParams.get('debug') === 'true') {
+    const casterId = this.getCasterIdFromContext();
+    if (casterId) {
+      params.set('casterId', casterId);
+      params.set('sessionId', casterId);
+    }
+
+    // Only pass debug flag to receiver when VITE_DEBUG is enabled in sender app
+    if (import.meta.env.VITE_DEBUG === 'true') {
       params.set('debug', 'true');
     }
 
@@ -1278,6 +1398,12 @@ class GoogleCastManager implements CastManager {
       return null;
     }
 
+    this.localReceiverReady = false;
+    if (this.localReadyTimeout) {
+      clearTimeout(this.localReadyTimeout);
+      this.localReadyTimeout = null;
+    }
+
     const receiverUrl = this.getLocalReceiverUrl();
     const [urlErr, parsedUrl] = safeWrap(() => new URL(receiverUrl));
     if (urlErr || !parsedUrl) {
@@ -1287,24 +1413,36 @@ class GoogleCastManager implements CastManager {
 
     this.localReceiverOrigin = parsedUrl.origin;
 
-    const popup =
+    const existingWindow =
       this.localReceiverWindow && !this.localReceiverWindow.closed
         ? this.localReceiverWindow
-        : (() => {
-            const width = 480;
-            const height = 270;
-            const left = Math.max(0, window.screen.width / 2 - width / 2);
-            const top = Math.max(0, window.screen.height / 2 - height / 2);
-            const features = [
-              `width=${width}`,
-              `height=${height}`,
-              `left=${left}`,
-              `top=${top}`,
-              'resizable=yes',
-              'scrollbars=no',
-            ].join(',');
-            return window.open(receiverUrl, 'vibez-cast-receiver', features);
-          })();
+        : null;
+    const popup =
+      existingWindow ||
+      (() => {
+        const width = 480;
+        const height = 270;
+        const left = Math.max(0, window.screen.width / 2 - width / 2);
+        const top = Math.max(0, window.screen.height / 2 - height / 2);
+        const features = [
+          `width=${width}`,
+          `height=${height}`,
+          `left=${left}`,
+          `top=${top}`,
+          'resizable=yes',
+          'scrollbars=no',
+        ].join(',');
+        return window.open(receiverUrl, 'vibez-cast-receiver', features);
+      })();
+
+    if (existingWindow && popup) {
+      const [navErr] = safeWrap(() => {
+        popup.location.href = receiverUrl;
+      });
+      if (navErr) {
+        console.error('Failed to update local receiver URL:', navErr);
+      }
+    }
 
     if (!popup) {
       console.error('Local cast receiver window was blocked or failed to open');
@@ -1313,7 +1451,13 @@ class GoogleCastManager implements CastManager {
 
     this.localReceiverFrame = null;
     this.localReceiverWindow = popup;
-    this.localReceiverReady = true;
+    this.localReadyTimeout = setTimeout(() => {
+      if (!this.localReceiverReady) {
+        this.localReceiverReady = true;
+        this.flushLocalMessageQueue();
+      }
+      this.localReadyTimeout = null;
+    }, 1500);
     this.flushLocalMessageQueue();
     return popup;
   }
@@ -1348,9 +1492,14 @@ class GoogleCastManager implements CastManager {
   async joinRoom(roomId: string): Promise<void> {
     if (!this.currentSession) return;
     if (this.currentSession.deviceId === LOCAL_EMULATOR_DEVICE_ID) {
-      // For local emulator, we actually might want to send it too,
-      // but currently it's handled via URL params usually.
-      // But let's support it for consistency if needed.
+      const casterId = this.getCasterIdFromContext() || undefined;
+      this.sendLocalMessage({
+        action: 'joinRoom',
+        roomId,
+        casterId,
+        sessionId: casterId,
+        timestamp: Date.now(),
+      });
       return;
     }
 
@@ -1358,9 +1507,12 @@ class GoogleCastManager implements CastManager {
     if (!session) return;
 
     return new Promise((resolve, reject) => {
+      const casterId = this.getCasterIdFromContext() || undefined;
       const message = {
         action: 'joinRoom',
         roomId,
+        casterId,
+        sessionId: casterId,
         timestamp: Date.now(),
       };
 

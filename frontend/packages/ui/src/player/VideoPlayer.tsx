@@ -9,6 +9,7 @@ interface Props {
   onEnded?: () => void;
   fill?: boolean;
   onNeedsUserGestureChange?: (needsGesture: boolean) => void;
+  appContext?: 'platform' | 'cast';
 }
 
 interface YouTubePlayerRef {
@@ -33,6 +34,7 @@ const VideoPlayerComponent = ({
   onEnded,
   fill = false,
   onNeedsUserGestureChange,
+  appContext = 'platform',
 }: Props) => {
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
@@ -61,6 +63,7 @@ const VideoPlayerComponent = ({
   const [isMutedState, setIsMutedState] = useState(false);
   const origin =
     typeof window === 'undefined' ? undefined : window.location.origin;
+  const isCastReceiver = appContext === 'cast';
 
   const debugLog = useCallback(
     (label: string, extra?: Record<string, unknown>) => {
@@ -153,11 +156,11 @@ const VideoPlayerComponent = ({
     if (!playerRef.current) {
       setIsReady(false);
     }
-    if (isYouTubeActive && !hasEverPlayedRef.current) {
+    if (isYouTubeActive && !hasEverPlayedRef.current && !isCastReceiver) {
       setNeedsUserGesture(true);
     }
     debugLog('song-change', { currentSongId: currentSong?.id });
-  }, [currentSong?.id, isYouTubeActive]);
+  }, [currentSong?.id, isYouTubeActive, isCastReceiver, debugLog]);
 
   useEffect(() => {
     debugLog('mount');
@@ -372,32 +375,62 @@ const VideoPlayerComponent = ({
     return () => clearInterval(kickInterval);
   }, [videoId, shouldPlay, kickAutoplay]);
 
-  const handleReady = useCallback((event: { target: YouTubePlayerRef }) => {
-    playerRef.current = event.target;
-    setIsReady(true);
-    setError(null);
-    debugLog('ready');
+  const forceAutoplay = useCallback(
+    (label: string) => {
+      if (!isCastReceiver) return;
+      const player = playerRef.current;
+      if (!player) return;
 
-    const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
-    if (actualPositionMs > 0) {
-      const targetTime = actualPositionMs / 1000;
-      event.target.seekTo(targetTime, true);
-    }
-    const activeSong = usePlaybackStore.getState().currentSong;
-    if (activeSong?.sourceType === 'youtube') {
-      lastLoadedVideoIdRef.current = activeSong.sourceId;
-    }
-
-    if (usePlaybackStore.getState().isPlaying) {
       try {
-        if (!hasEverPlayedRef.current) {
-          event.target.mute();
-          setIsMutedState(true);
-        }
-        event.target.playVideo();
+        player.unMute();
+        setIsMutedState(false);
       } catch (_err) {}
-    }
-  }, []);
+
+      try {
+        player.playVideo();
+      } catch (_err) {}
+
+      hasEverPlayedRef.current = true;
+      setNeedsUserGesture(false);
+      debugLog('force-autoplay', { label });
+    },
+    [debugLog, isCastReceiver],
+  );
+
+  const handleReady = useCallback(
+    (event: { target: YouTubePlayerRef }) => {
+      playerRef.current = event.target;
+      setIsReady(true);
+      setError(null);
+      debugLog('ready');
+
+      const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
+      if (actualPositionMs > 0) {
+        const targetTime = actualPositionMs / 1000;
+        event.target.seekTo(targetTime, true);
+      }
+      const activeSong = usePlaybackStore.getState().currentSong;
+      if (activeSong?.sourceType === 'youtube') {
+        lastLoadedVideoIdRef.current = activeSong.sourceId;
+      }
+
+      if (isCastReceiver) {
+        forceAutoplay('ready');
+        return;
+      }
+
+      if (usePlaybackStore.getState().isPlaying) {
+        try {
+          if (!hasEverPlayedRef.current) {
+            event.target.mute();
+            setIsMutedState(true);
+          }
+          event.target.playVideo();
+        } catch (_err) {}
+      }
+    },
+    [debugLog, forceAutoplay, isCastReceiver],
+  );
 
   const handleStateChange = useCallback(
     (event: { data: number }) => {
@@ -407,12 +440,18 @@ const VideoPlayerComponent = ({
       if (state === 1 || state === 3) {
         setIsReady(true);
         const muted = playerRef.current?.isMuted?.() ?? false;
-        setIsMutedState(muted);
-        if (!muted) {
+        if (isCastReceiver && muted) {
+          playerRef.current?.unMute?.();
+        }
+        const resolvedMuted = isCastReceiver
+          ? (playerRef.current?.isMuted?.() ?? false)
+          : muted;
+        setIsMutedState(resolvedMuted);
+        if (!resolvedMuted) {
           hasEverPlayedRef.current = true;
           setNeedsUserGesture(false);
         } else {
-          setNeedsUserGesture(true);
+          setNeedsUserGesture(!isCastReceiver);
         }
         return;
       }
@@ -470,12 +509,12 @@ const VideoPlayerComponent = ({
       lastLoadedVideoIdRef.current = videoId;
       debugLog('load-video', { startSeconds });
     } catch (_err) {}
-  }, [videoId, isReady]);
+    if (isCastReceiver) {
+      forceAutoplay('load-video');
+    }
+  }, [videoId, isReady, debugLog, forceAutoplay, isCastReceiver]);
 
-  if (!resolvedVideoId) {
-    return null;
-  }
-
+  // All hooks must be called unconditionally, so define these before early return
   const opts: YouTubeProps['opts'] = useMemo(
     () => ({
       height: '100%',
@@ -498,6 +537,7 @@ const VideoPlayerComponent = ({
   const showOverlay = !!error;
   const showClickToPlay =
     isYouTubeActive &&
+    !isCastReceiver &&
     (needsUserGesture || (shouldPlay && isMutedState)) &&
     !error &&
     !isVerifying;
@@ -513,6 +553,11 @@ const VideoPlayerComponent = ({
   const containerStyle = fill
     ? { height: '100%', width: '100%' }
     : { aspectRatio: '16/9', minHeight: '200px' };
+
+  // Early return after all hooks have been called
+  if (!resolvedVideoId) {
+    return null;
+  }
 
   // Main render logic always includes the container and CRT layers
   return (

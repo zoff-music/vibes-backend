@@ -12,6 +12,7 @@ export type RoomUser = yup.InferType<typeof roomUserSchema>;
 
 export const sessionResponseSchema = yup.object({
   userId: yup.string().required(),
+  sessionId: yup.string().required(),
   nickname: yup.string().nullable().optional(),
   isAdmin: yup.boolean().required(),
   room: roomSchema.required(),

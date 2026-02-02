@@ -7,7 +7,11 @@ export const PlayerLayer: React.FC = () => {
 
   return (
     <div className="absolute inset-0 h-full w-full">
-      <VideoPlayer isVisible={currentSong?.sourceType === 'youtube'} fill />
+      <VideoPlayer
+        isVisible={currentSong?.sourceType === 'youtube'}
+        fill
+        appContext="cast"
+      />
       <SpotifyPlayer isVisible={currentSong?.sourceType === 'spotify'} fill />
       <SoundCloudPlayer
         isVisible={currentSong?.sourceType === 'soundcloud'}

@@ -1,6 +1,6 @@
 import { useRouteLoaderData } from 'react-router';
 import type { RootLoaderData } from '../root';
-import { useThemeStore, themes } from '../stores/themeStore';
+import { themes, useThemeStore } from '../stores/themeStore';
 import { useHydrated } from './useHydrated';
 
 export function useThemeDisplay() {

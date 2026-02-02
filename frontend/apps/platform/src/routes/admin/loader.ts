@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs } from 'react-router';
 import type { AdminRoomSummary } from '@vibez/models';
+import type { LoaderFunctionArgs } from 'react-router';
 import { getServerApi } from '../../http.server';
 
 export interface AdminLoaderData {
@@ -14,11 +14,9 @@ export async function loader({
   const cookieHeader = request.headers.get('cookie') ?? undefined;
   const requestHeaders = cookieHeader ? { Cookie: cookieHeader } : undefined;
 
-  const [roomsErr, rooms] = await serverApi.get(
-    '/admin/rooms',
-    null,
-    { headers: requestHeaders },
-  );
+  const [roomsErr, rooms] = await serverApi.get('/admin/rooms', null, {
+    headers: requestHeaders,
+  });
 
   return {
     adminRooms: roomsErr ? [] : rooms || [],

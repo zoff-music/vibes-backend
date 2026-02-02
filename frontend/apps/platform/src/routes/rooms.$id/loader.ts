@@ -1,7 +1,7 @@
+import type { Room as RoomModel, Song } from '@vibez/models';
 import type { PlaybackState } from '@vibez/shared';
 import type { LoaderFunctionArgs } from 'react-router';
 import { redirect } from 'react-router';
-import type { Room as RoomModel, Song } from '@vibez/models';
 import { getServerApi } from '../../http.server';
 
 export interface RoomLoaderData {
@@ -25,8 +25,16 @@ export async function loader({
 
   const [roomRes, songsRes, playbackRes] = await Promise.all([
     serverApi.get('/rooms/{id}', { id: roomId }, { headers: requestHeaders }),
-    serverApi.get('/rooms/{id}/songs', { id: roomId }, { headers: requestHeaders }),
-    serverApi.get('/rooms/{id}/states', { id: roomId }, { headers: requestHeaders }),
+    serverApi.get(
+      '/rooms/{id}/songs',
+      { id: roomId },
+      { headers: requestHeaders },
+    ),
+    serverApi.get(
+      '/rooms/{id}/states',
+      { id: roomId },
+      { headers: requestHeaders },
+    ),
   ]);
 
   const [roomErr, room] = roomRes;

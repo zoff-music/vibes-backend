@@ -7,6 +7,7 @@ import { normalizeSong } from '../utils/songUtils';
 
 interface UseRoomSyncProps {
   roomId: string | null;
+  casterId: string | null;
   setQueue: (queue: QueueItem[]) => void;
   setRoomInfo: React.Dispatch<React.SetStateAction<RoomInfo | null>>;
   setStatusText: (text: string) => void;
@@ -25,6 +26,7 @@ type SSEMessage =
 
 export function useRoomSync({
   roomId,
+  casterId,
   setQueue,
   setRoomInfo,
   setStatusText,
@@ -39,7 +41,19 @@ export function useRoomSync({
     const params = new URLSearchParams(window.location.search);
     if (!roomId) return;
 
-    const casterId = params.get('casterId') || params.get('casterUserId') || '';
+    const effectiveCasterId =
+      casterId ||
+      params.get('casterId') ||
+      params.get('casterUserId') ||
+      params.get('sessionId') ||
+      '';
+
+    const castHeaders: Record<string, string> = {
+      'X-Cast-Receiver': '1',
+    };
+    if (effectiveCasterId) {
+      castHeaders['X-Cast-Caster-Id'] = effectiveCasterId;
+    }
 
     let isMounted = true;
     let unsubscribe: (() => void) | null = null;
@@ -49,8 +63,8 @@ export function useRoomSync({
 
       // Fetch initial state
       Promise.all([
-        api.get('/rooms/{id}/songs', { id: roomId }),
-        api.get('/rooms/{id}/states', { id: roomId }),
+        api.get('/rooms/{id}/songs', { id: roomId }, { headers: castHeaders }),
+        api.get('/rooms/{id}/states', { id: roomId }, { headers: castHeaders }),
       ])
         .then(([queueRes, playbackRes]) => {
           if (!isMounted) return;
@@ -92,7 +106,7 @@ export function useRoomSync({
         {
           $search: {
             castReceiver: '1',
-            casterId: casterId || undefined,
+            casterId: effectiveCasterId || undefined,
           },
           id: roomId,
         },
@@ -157,7 +171,9 @@ export function useRoomSync({
         {
           headers: {
             'X-Cast-Receiver': '1',
-            ...(casterId ? { 'X-Cast-Caster-Id': casterId } : {}),
+            ...(effectiveCasterId
+              ? { 'X-Cast-Caster-Id': effectiveCasterId }
+              : {}),
           },
         },
       );
@@ -190,5 +206,6 @@ export function useRoomSync({
     updateMediaMetadata,
     setPlaybackState,
     setIsPlaying,
+    casterId,
   ]);
 }

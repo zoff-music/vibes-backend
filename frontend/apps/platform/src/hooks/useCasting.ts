@@ -27,9 +27,13 @@ export const useCasting = (_roomId: string) => {
 
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
+  const setLocalPlayingState = usePlaybackStore(
+    (state) => state.setLocalPlayingState,
+  );
   const queueSongs = useQueueStore((state) => state.songs);
   const room = useRoomStore((state) => state.room);
   const usersCount = useRoomStore((state) => state.usersCount);
+  const roomMode = useRoomStore((state) => state.room?.mode || null);
 
   const isLocalEmulatorEnabled = (() => {
     if (isTruthyFlag(import.meta.env.VITE_CAST_LOCAL_EMULATOR)) {
@@ -74,6 +78,14 @@ export const useCasting = (_roomId: string) => {
       });
     }
   }, [isConnected, currentSong, currentSession, stableCastCurrentSong]);
+
+  // Stop local playback when casting from this device
+  useEffect(() => {
+    if (!isConnected || !currentSession) return;
+    if (!isPlaying) return;
+
+    setLocalPlayingState(false, roomMode || 'host');
+  }, [isConnected, currentSession, isPlaying, roomMode, setLocalPlayingState]);
 
   // Send Join Room message when connected
   useEffect(() => {
