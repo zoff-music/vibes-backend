@@ -36,6 +36,7 @@ export default function Room() {
   const playbackAttemptedRef = useRef<string | null>(null);
   const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
   const settingsMenuRef = useRef<HTMLDivElement | null>(null);
+  const originalTitleRef = useRef<string | null>(null);
 
   /* 2. Hooks */
   const { id } = useParams<{ id: string }>();
@@ -181,6 +182,28 @@ export default function Room() {
       window.removeEventListener('resize', updateHeaderHeight);
     };
   }, []);
+
+  // Document title (now playing) and restore on leave
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (!originalTitleRef.current) {
+      originalTitleRef.current = document.title;
+    }
+
+    const baseTitle = originalTitleRef.current;
+    if (currentSongFromStore?.title) {
+      const roomName = displayRoom?.name ? ` · ${displayRoom.name}` : '';
+      document.title = `${currentSongFromStore.title}${roomName}`;
+    } else if (baseTitle) {
+      document.title = baseTitle;
+    }
+
+    return () => {
+      if (originalTitleRef.current) {
+        document.title = originalTitleRef.current;
+      }
+    };
+  }, [currentSongFromStore?.title, displayRoom?.name]);
 
   // SSR Initialization
   useEffect(() => {

@@ -5,7 +5,7 @@ export const searchResultSchema = yup.object({
   source: yup.string().required(),
   title: yup.string().required(),
   channelTitle: yup.string().optional(),
-  thumbnailUrl: yup.string().required(),
+  thumbnailUrl: yup.string().optional(),
   duration: yup.string().optional(),
 });
 export type SearchResult = yup.InferType<typeof searchResultSchema>;

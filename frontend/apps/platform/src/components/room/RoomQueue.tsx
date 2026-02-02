@@ -5,6 +5,12 @@ import { QueueList, SoundCloudIcon, SpotifyIcon, YouTubeIcon } from '@vibez/ui';
 import React from 'react';
 import { PlaybackProgress } from './PlaybackProgress';
 
+const vinylPlaceholder =
+  "data:image/svg+xml;utf8,%3Csvg%20xmlns%3D%27http%3A//www.w3.org/2000/svg%27%20width%3D%27200%27%20height%3D%27200%27%20viewBox%3D%270%200%20200%20200%27%3E%3Crect%20width%3D%27200%27%20height%3D%27200%27%20rx%3D%2724%27%20fill%3D%27%2316161c%27/%3E%3Ccircle%20cx%3D%27100%27%20cy%3D%27100%27%20r%3D%2772%27%20fill%3D%27%231f1f27%27/%3E%3Ccircle%20cx%3D%27100%27%20cy%3D%27100%27%20r%3D%2752%27%20fill%3D%27%232a2a34%27/%3E%3Ccircle%20cx%3D%27100%27%20cy%3D%27100%27%20r%3D%2718%27%20fill%3D%27%23141418%27/%3E%3Ccircle%20cx%3D%27100%27%20cy%3D%27100%27%20r%3D%276%27%20fill%3D%27%23c7c7d1%27/%3E%3Cpath%20d%3D%27M100%2028a72%2072%200%200%201%2072%2072%27%20stroke%3D%27%233a3a46%27%20stroke-width%3D%276%27%20fill%3D%27none%27%20stroke-linecap%3D%27round%27/%3E%3C/svg%3E";
+
+const resolveThumbnail = (value?: string) =>
+  value && value.trim().length > 0 ? value : vinylPlaceholder;
+
 interface RoomQueueProps {
   roomId: string;
   isSSR: boolean;
@@ -66,15 +72,13 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
                 <div className="vhs-scanlines pointer-events-none absolute inset-0" />
 
                 {/* Thumbnail */}
-                {currentSong.thumbnailUrl && (
-                  <div className="relative z-10 shrink-0">
-                    <img
-                      src={currentSong.thumbnailUrl}
-                      alt=""
-                      className="h-16 w-16 rounded-xl border border-theme object-cover shadow-xs transition-transform group-hover/card:scale-105"
-                    />
-                  </div>
-                )}
+                <div className="relative z-10 shrink-0">
+                  <img
+                    src={resolveThumbnail(currentSong.thumbnailUrl)}
+                    alt=""
+                    className="h-16 w-16 rounded-xl border border-theme object-cover shadow-xs transition-transform group-hover/card:scale-105"
+                  />
+                </div>
 
                 {/* Song info */}
                 <div className="relative z-10 min-w-0 flex-1">
