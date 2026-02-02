@@ -422,9 +422,10 @@ func CreateSession(
 		}
 
 		resp := vibe.SessionResponse{
-			UserID:  session.UserID,
-			IsAdmin: true,
-			Room:    room,
+			UserID:    session.UserID,
+			SessionID: session.UserID,
+			IsAdmin:   true,
+			Room:      room,
 		}
 
 		body, _ := json.Marshal(resp)

@@ -3,7 +3,10 @@ import { createApiClient } from '@vibez/api';
 function getCastHeaders() {
   if (typeof window === 'undefined') return {};
   const params = new URLSearchParams(window.location.search);
-  const casterId = params.get('casterId') || params.get('casterUserId');
+  const casterId =
+    params.get('casterId') ||
+    params.get('casterUserId') ||
+    params.get('sessionId');
   const headers: Record<string, string> = {};
 
   if (params.has('roomId')) {

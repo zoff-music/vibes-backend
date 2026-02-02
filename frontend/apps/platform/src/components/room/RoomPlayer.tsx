@@ -25,6 +25,8 @@ interface PlayerProps {
   isVisible?: boolean;
   onEnded?: () => void;
   fill?: boolean;
+  onNeedsUserGestureChange?: (needsGesture: boolean) => void;
+  appContext?: 'platform' | 'cast';
 }
 
 type PlayerComponent = ComponentType<PlayerProps>;
@@ -327,6 +329,7 @@ export const RoomPlayer = React.memo(
                 isVisible={!isConnected && isVideoTrack}
                 fill
                 onNeedsUserGestureChange={setIsPlaybackBlocked}
+                appContext="platform"
               />
             </div>
           )}

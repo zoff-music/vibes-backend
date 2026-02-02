@@ -20,13 +20,34 @@ interface CustomLoadData {
   positionMs?: number;
 }
 
-function isCustomLoadData(data: any): data is CustomLoadData {
-  return data && typeof data === 'object';
+function isCustomLoadData(data: unknown): data is CustomLoadData {
+  return data !== null && typeof data === 'object';
 }
 
-function isLocalCastMessage(msg: any): msg is LocalCastMessage {
-  return msg && typeof msg === 'object' && 'type' in msg;
+function isLocalCastMessage(msg: unknown): msg is LocalCastMessage {
+  return !!msg && typeof msg === 'object' && 'action' in msg;
 }
+
+interface CastSender {
+  id: string;
+}
+
+type CastReceiverContextWithSenders = framework.CastReceiverContext & {
+  getSenders: () => CastSender[];
+  sendCustomMessage: (
+    namespace: string,
+    senderId: string,
+    message: string,
+  ) => void;
+};
+
+interface CastReceiverContextEventTypes {
+  SENDER_CONNECTED: string;
+}
+
+type CastFrameworkWithEvents = typeof cast.framework & {
+  CastReceiverContextEventType?: CastReceiverContextEventTypes;
+};
 
 interface UseCastReceiverProps {
   debugMode: boolean;
@@ -93,8 +114,7 @@ export const useCastReceiver = ({
               }
             }
 
-            if (data.debug && import.meta.env.VITE_CAST_DEBUG_MODE === 'true')
-              setDebugMode(true);
+            if (data.debug) setDebugMode(true);
 
             if (data.currentSong) {
               const normalizedSong = normalizeSong(data.currentSong);
@@ -135,6 +155,52 @@ export const useCastReceiver = ({
         context.start(options);
         isCastReceiverInitialized = true;
       });
+
+      const contextWithSenders = context as CastReceiverContextWithSenders;
+
+      const sendReceiverReady = () => {
+        const [senderErr, senders] = safeWrap(() =>
+          contextWithSenders.getSenders(),
+        );
+        if (senderErr) {
+          console.error('Failed to get cast senders:', senderErr);
+          return;
+        }
+
+        const message = JSON.stringify({
+          action: 'receiverReady',
+          timestamp: Date.now(),
+        });
+
+        senders?.forEach((sender) => {
+          const [sendErr] = safeWrap(() => {
+            contextWithSenders.sendCustomMessage(
+              'urn:x-cast:com.vibez.cast',
+              sender.id,
+              message,
+            );
+          });
+          if (sendErr) {
+            console.error('Failed to send receiverReady message:', sendErr);
+          }
+        });
+      };
+
+      sendReceiverReady();
+
+      const frameworkEvents = cast.framework as CastFrameworkWithEvents;
+      const senderConnectedEvent =
+        frameworkEvents.CastReceiverContextEventType?.SENDER_CONNECTED;
+      if (senderConnectedEvent) {
+        // Cast to any to work around Cast SDK type limitations
+        (
+          contextWithSenders as unknown as {
+            addEventListener: (type: unknown, handler: () => void) => void;
+          }
+        ).addEventListener(senderConnectedEvent, () => {
+          sendReceiverReady();
+        });
+      }
     };
 
     if (window.cast?.framework) {

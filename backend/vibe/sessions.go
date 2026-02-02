@@ -10,10 +10,11 @@ type CreateSessionRequest struct {
 
 // SessionResponse is returned when creating a session
 type SessionResponse struct {
-	UserID   string  `json:"userId"`
-	Nickname *string `json:"nickname,omitempty"`
-	IsAdmin  bool    `json:"isAdmin"`
-	Room     *Room   `json:"room"`
+	UserID    string  `json:"userId"`
+	SessionID string  `json:"sessionId"`
+	Nickname  *string `json:"nickname,omitempty"`
+	IsAdmin   bool    `json:"isAdmin"`
+	Room      *Room   `json:"room"`
 }
 
 // SessionCreator creates sessions for rooms.

@@ -94,5 +94,4 @@ The new Vite system provides:
 ## Configuration Files
 
 - `vite.config.ts`: Vite configuration
-- `index.html`: Development HTML template
-- `client.tsx`: Updated entry point with HMR support
+- `src/entry.client.tsx`: Client entry point with HMR support

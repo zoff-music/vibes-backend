@@ -15,9 +15,7 @@ const CastAppContent = () => {
           {currentSong ? <ActiveView /> : <IdleView />}
         </div>
       </div>
-      {import.meta.env.VITE_CAST_DEBUG_MODE === 'true' && (
-        <DebugConsole enabled={debugMode} />
-      )}
+      {debugMode && <DebugConsole enabled />}
     </>
   );
 };

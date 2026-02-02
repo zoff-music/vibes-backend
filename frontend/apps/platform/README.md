@@ -85,7 +85,6 @@ The platform app includes comprehensive SSR support via `server.tsx`:
 - `/src/pages`: Route components with SSR data requirements
 - `/src/api`: Auto-generated and custom API clients with Yup validation
 - `/server.tsx`: SSR server with intelligent data prefetching
-- `/client.tsx`: Client-side hydration entry point
 
 ## 🔧 Environment Configuration
 

@@ -7,7 +7,12 @@ import {
   YouTubeIcon,
 } from '@vibez/ui';
 import React, { useEffect, useState } from 'react';
-import { Link, useLoaderData, useNavigate, useSearchParams } from 'react-router';
+import {
+  Link,
+  useLoaderData,
+  useNavigate,
+  useSearchParams,
+} from 'react-router';
 import { ArrowLeftIcon } from '../../components/icons/ArrowLeftIcon';
 import { ArrowRightIcon } from '../../components/icons/ArrowRightIcon';
 import { useThemeStore } from '../../stores/themeStore';

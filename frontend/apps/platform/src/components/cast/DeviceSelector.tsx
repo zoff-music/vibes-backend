@@ -74,6 +74,13 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
     const [err] = await safeWrapAsync(connectToDevice(device.id));
     if (err) console.error('Failed to connect to device:', err);
 
+    if (!err && currentSong) {
+      const [castErr] = await safeWrapAsync(castCurrentSong(currentSong));
+      if (castErr) {
+        console.error('Failed to auto-cast current song:', castErr);
+      }
+    }
+
     setIsConnecting(null);
   };
 

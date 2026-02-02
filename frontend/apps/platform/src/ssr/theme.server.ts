@@ -33,10 +33,7 @@ export function getThemeFromCookies(
     return 'auto';
   }
 
-  if (
-    preferencesEncoded.startsWith('"') &&
-    preferencesEncoded.endsWith('"')
-  ) {
+  if (preferencesEncoded.startsWith('"') && preferencesEncoded.endsWith('"')) {
     preferencesEncoded = preferencesEncoded.slice(1, -1);
   }
 
@@ -51,10 +48,7 @@ export function getThemeFromCookies(
 
   if (preferencesErr || !preferences) {
     if (preferencesErr) {
-      console.error(
-        '[SSR] Error parsing theme preferences:',
-        preferencesErr,
-      );
+      console.error('[SSR] Error parsing theme preferences:', preferencesErr);
     }
     return 'auto';
   }
