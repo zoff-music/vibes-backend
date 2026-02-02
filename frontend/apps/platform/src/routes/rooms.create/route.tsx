@@ -7,11 +7,13 @@ import {
   YouTubeIcon,
 } from '@vibez/ui';
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
-import { ArrowLeftIcon } from '../components/icons/ArrowLeftIcon';
-import { ArrowRightIcon } from '../components/icons/ArrowRightIcon';
-import { useInitialData } from '../context/InitialDataContext';
-import { useThemeStore } from '../stores/themeStore';
+import { Link, useLoaderData, useNavigate, useSearchParams } from 'react-router';
+import { ArrowLeftIcon } from '../../components/icons/ArrowLeftIcon';
+import { ArrowRightIcon } from '../../components/icons/ArrowRightIcon';
+import { useThemeStore } from '../../stores/themeStore';
+import type { RoomsCreateLoaderData } from './loader';
+
+export { loader } from './loader';
 
 const DEFAULT_SETTINGS = {
   skipAllowed: true,
@@ -24,7 +26,7 @@ const DEFAULT_SETTINGS = {
 };
 
 const CreateRoom: React.FC = () => {
-  const initialData = useInitialData();
+  const loaderData = useLoaderData() as RoomsCreateLoaderData;
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const { setIsWarping } = useThemeStore();
@@ -32,8 +34,8 @@ const CreateRoom: React.FC = () => {
   // Initialize name - prioritize SSR data, then URL params
   const [name, setName] = useState(() => {
     // During SSR, use the initial data if available
-    if (initialData?.createRoomName) {
-      return initialData.createRoomName;
+    if (loaderData.createRoomName) {
+      return loaderData.createRoomName;
     }
 
     // During client-side, try URL params (but only if we're not in SSR)
@@ -77,13 +79,13 @@ const CreateRoom: React.FC = () => {
     setIsHydrated(true);
 
     // Fix hydration mismatch: ensure client state matches server state
-    if (initialData?.createRoomName && name !== initialData.createRoomName) {
-      setName(initialData.createRoomName);
+    if (loaderData.createRoomName && name !== loaderData.createRoomName) {
+      setName(loaderData.createRoomName);
       return; // Don't check URL params if we have SSR data
     }
 
     // After hydration, check if we need to update from URL params (only if no SSR data)
-    if (!initialData?.createRoomName) {
+    if (!loaderData.createRoomName) {
       const urlParams = new URLSearchParams(window.location.search);
       const urlName = urlParams.get('name');
 
@@ -98,7 +100,7 @@ const CreateRoom: React.FC = () => {
     if (!isHydrated) return; // Wait for hydration
 
     // Only update from URL if we don't have SSR data
-    if (initialData?.createRoomName) {
+    if (loaderData.createRoomName) {
       return;
     }
 
@@ -108,7 +110,7 @@ const CreateRoom: React.FC = () => {
     if (urlName && urlName !== name) {
       setName(urlName);
     }
-  }, [searchParams, isHydrated, initialData?.createRoomName, name]);
+  }, [searchParams, isHydrated, loaderData.createRoomName, name]);
 
   const handleCreate = async () => {
     if (!name.trim() || isLoading) return;

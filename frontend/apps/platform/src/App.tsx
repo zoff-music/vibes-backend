@@ -1,32 +1,11 @@
-import type {
-  AdminRoomSummary,
-  PlaybackState,
-  Room as RoomModel,
-  Song,
-} from '@vibez/models';
 import { isTruthyFlag, safeWrapAsync } from '@vibez/shared';
 import { type ComponentType, useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router';
-import { InitialDataProvider } from './context/InitialDataContext';
-
-export interface SSRInitialData {
-  createRoomName?: string;
-  room?: RoomModel;
-  songs?: Song[];
-  playback?: PlaybackState;
-  theme?: 'dark' | 'light' | 'auto';
-  adminRooms?: AdminRoomSummary[];
-  adminAuthorized?: boolean;
-}
-
-interface AppProps {
-  initialData?: SSRInitialData;
-}
 
 import { Background } from './components/layout/Background';
 import { updateNavigationHistory } from './utils/navigationHistory';
 
-const debugEnabled = isTruthyFlag(import.meta.env?.VITE_DEBUG);
+const debugEnabled = isTruthyFlag(import.meta.env.VITE_DEBUG);
 
 type DebugConsoleComponent = ComponentType;
 
@@ -62,7 +41,7 @@ function DebugConsoleLoader() {
   return <DebugConsole />;
 }
 
-export default function App({ initialData }: AppProps) {
+export default function App() {
   const location = useLocation();
 
   useEffect(() => {
@@ -70,10 +49,10 @@ export default function App({ initialData }: AppProps) {
   }, [location.pathname]);
 
   return (
-    <InitialDataProvider initialData={initialData}>
+    <>
       <DebugConsoleLoader />
       <Background />
       <Outlet />
-    </InitialDataProvider>
+    </>
   );
 }
