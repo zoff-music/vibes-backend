@@ -1,5 +1,8 @@
 import { useEffect } from 'react';
 import { useSearchParams } from 'react-router';
+import { loader } from './loader';
+
+export { loader };
 
 export default function Callback() {
   const [searchParams] = useSearchParams();

@@ -1,6 +1,6 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { safeWrapAsync } from '@vibez/shared';
+import { safeWrap, safeWrapAsync } from '@vibez/shared';
 
 const isWatch = process.argv.includes('--watch');
 const isProd = process.env.NODE_ENV === 'production';
@@ -59,13 +59,60 @@ console.log(
 );
 
 async function runBuild() {
+  const platformRoot = join(import.meta.dir, '..');
+  const projectRoot = join(platformRoot, '..', '..');
+  const clientEntrypoint = join(platformRoot, 'client.tsx');
+  const distAssetsDir = join(platformRoot, 'dist/assets/platform');
+  const manifestPath = join(platformRoot, 'dist/manifest.json');
+  const reactResolvePlugin = {
+    name: 'resolve-react-deps',
+    setup(build) {
+      const resolveFromClient = (path: string) => {
+        const [resolveErr, resolved] = safeWrap(() =>
+          Bun.resolveSync(path, clientEntrypoint),
+        );
+        if (resolveErr || !resolved) {
+          if (resolveErr) {
+            console.error(`[Build] Failed to resolve ${path}`, resolveErr);
+          }
+          return null;
+        }
+        return { path: resolved };
+      };
+
+      build.onResolve({ filter: /^react(\/.*)?$/ }, (args) => {
+        return resolveFromClient(args.path);
+      });
+      build.onResolve({ filter: /^react-dom(\/.*)?$/ }, (args) => {
+        return resolveFromClient(args.path);
+      });
+      build.onResolve({ filter: /^zustand(\/.*)?$/ }, (args) => {
+        return resolveFromClient(args.path);
+      });
+    },
+  } satisfies Bun.BunPlugin;
+
   const result = await Bun.build({
-    entrypoints: ['./client.tsx'],
-    outdir: './dist/assets/platform',
+    entrypoints: [clientEntrypoint],
+    outdir: distAssetsDir,
     minify: isProd,
     define: defines,
-    naming: isProd ? '[name]-[hash].[ext]' : '[name].[ext]', // Simplified naming to match cast app
-    splitting: false, // Disable code splitting to avoid duplicate exports
+    format: 'esm',
+    publicPath: '/assets/platform/',
+    root: projectRoot,
+    plugins: [reactResolvePlugin],
+    naming: isProd
+      ? {
+          entry: '[name]-[hash].js',
+          chunk: 'chunk-[hash].js',
+          asset: '[name]-[hash].[ext]',
+        }
+      : {
+          entry: '[name].js',
+          chunk: 'chunk-[hash].js',
+          asset: '[name].[ext]',
+        },
+    splitting: true,
   });
 
   if (!result.success) {
@@ -78,11 +125,11 @@ async function runBuild() {
     console.log(`[Build] Success! ${new Date().toLocaleTimeString()}`);
 
     // Copy public files to platform assets directory
-    const publicDir = join(import.meta.dir, '../public');
+    const publicDir = join(platformRoot, 'public');
     if (existsSync(publicDir)) {
       const [copyErr, _] = await safeWrapAsync(
         Bun.spawn(['cp', '-r', 'public/.', 'dist/assets/platform/'], {
-          cwd: join(import.meta.dir, '..'),
+          cwd: platformRoot,
         }).exited,
       );
       if (copyErr) {
@@ -93,20 +140,19 @@ async function runBuild() {
     // Write build manifest for SSR to know the hashed filenames
     const manifest: Record<string, string> = {};
 
-    // Find the built files and map them
+    // Find the built entrypoint for the client bundle
     for (const output of result.outputs) {
+      if (output.kind !== 'entry-point' || !output.path.endsWith('.js')) {
+        continue;
+      }
       const filename = output.path.split('/').pop() || '';
       const fullPath = output.path;
 
-      console.log(`[Build] Processing output: ${fullPath} -> ${filename}`);
-
-      if (filename.includes('client') && filename.endsWith('.js')) {
-        manifest['main.js'] = filename;
-      }
+      console.log(`[Build] Processing entrypoint: ${fullPath} -> ${filename}`);
+      manifest['main.js'] = filename;
     }
 
     // Check for CSS files - prioritize tailwind.css produced by our build:css script
-    const distAssetsDir = './dist/assets/platform';
     const cssFiles = await Array.fromAsync(
       new Bun.Glob('*.css').scan({ cwd: distAssetsDir }),
     );
@@ -175,7 +221,7 @@ async function runBuild() {
     manifest.timestamp = Date.now().toString();
 
     console.log(`[Build] Writing manifest:`, manifest);
-    await Bun.write('./dist/manifest.json', JSON.stringify(manifest, null, 2));
+    await Bun.write(manifestPath, JSON.stringify(manifest, null, 2));
   }
 }
 

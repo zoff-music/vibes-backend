@@ -4,8 +4,12 @@ import { CircleHalfIcon, MoonIcon, SunIcon } from '@vibez/ui';
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useNavigate, useNavigationType } from 'react-router';
 
-import { useThemeStore } from '../stores/themeStore';
-import { getPreviousPath } from '../utils/navigationHistory';
+import { useThemeStore } from '../../stores/themeStore';
+import { useThemeDisplay } from '../../hooks/useThemeDisplay';
+import { getPreviousPath } from '../../utils/navigationHistory';
+import { loader } from './loader';
+
+export { loader };
 
 const ANIMATED_WORDS = [
   'electro',
@@ -56,8 +60,8 @@ export default function Home() {
   const isTabVisible = usePageVisibility();
   const navigate = useNavigate();
   const navigationType = useNavigationType();
-  const { toggleDarkMode, themeId, currentTheme, setIsWarping } =
-    useThemeStore();
+  const { toggleDarkMode } = useThemeStore();
+  const { themeId, currentTheme } = useThemeDisplay();
   const previousPath = getPreviousPath();
   const shouldFadeIn =
     navigationType === 'POP' &&
@@ -116,15 +120,12 @@ export default function Home() {
 
     const slug = roomCode.trim().toLowerCase().replace(/\s+/g, '-');
     setIsValidating(true);
-    setIsWarping(true);
 
     // Check if room exists before navigating
     const [err] = await api.get('/rooms/{id}', { id: slug });
 
-    // We don't setIsWarping(false) here because we want it to stay until the next page takes over
-    setIsValidating(false);
-
     if (err) {
+      setIsValidating(false);
       // Room doesn't exist, redirect to create room page with the name pre-filled
       navigate(`/rooms/create?name=${encodeURIComponent(roomCode.trim())}`);
     } else {
@@ -137,7 +138,7 @@ export default function Home() {
     <div
       className={`relative flex min-h-screen w-full flex-col items-center justify-start overflow-x-hidden ${shouldFadeIn ? 'animate-fade-in' : ''}`}
     >
-      <div className="relative z-10 mx-auto mt-[min(35vh_,_285px)] flex w-full max-w-5xl flex-col items-center px-6">
+      <div className="relative z-10 mx-auto mt-0 flex w-full max-w-5xl flex-col items-center px-6 sm:mt-[min(35vh_,_285px)]">
         <div className="crt-frame relative w-full max-w-3xl rounded-[36px] p-6 sm:p-10">
           <div className="absolute top-6 right-6 z-20 sm:top-10 sm:right-10">
             <button

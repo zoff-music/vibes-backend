@@ -66,10 +66,6 @@ services:
       target: ${FRONTEND_PLATFORM_TARGET:-frontend-dev}
     ports:
       - "${FRONTEND_PLATFORM_PORT_MAPPING:-3000:3000}"
-    volumes:
-      - ${FRONTEND_MOUNT_SRC:-./frontend}:${FRONTEND_MOUNT_DEST:-/app}
-      - frontend_node_modules:/app/node_modules
-    command: ${FRONTEND_PLATFORM_CMD_OVERRIDE:-sh -c "bun install && bun --filter @vibez/platform ${FRONTEND_CMD:-dev}"}
     environment:
       - PORT=3000
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8080}
@@ -90,12 +86,6 @@ services:
       target: ${FRONTEND_CAST_TARGET:-frontend-dev}
     ports:
       - "${FRONTEND_CAST_PORT_MAPPING:-3001:3001}"
-    volumes:
-      - ${FRONTEND_MOUNT_SRC:-./frontend}:${FRONTEND_MOUNT_DEST:-/app}
-      - frontend_node_modules:/app/node_modules
-      - cast_static_blue:/app/static_blue
-      - cast_static_green:/app/static_green
-    command: ${FRONTEND_CAST_CMD_OVERRIDE:-sh -c "bun install && bun --filter @vibez/cast ${FRONTEND_CMD:-dev}"}
     environment:
       - PORT=${FRONTEND_CAST_INTERNAL_PORT:-3001}
       - DEBUG=${DEBUG:-}
@@ -108,7 +98,6 @@ services:
     restart: unless-stopped
 
 volumes:
-  frontend_node_modules:
   caddy_data:
   caddy_config:
   db_data:

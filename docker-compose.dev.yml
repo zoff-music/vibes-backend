@@ -1,0 +1,5 @@
+services:
+  frontend-platform:
+    command: sh -c "bun install && bun --filter @vibez/platform ${FRONTEND_CMD:-dev}"
+  frontend-cast:
+    command: sh -c "bun install && bun --filter @vibez/cast ${FRONTEND_CMD:-dev}"
