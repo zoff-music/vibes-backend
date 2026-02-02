@@ -144,8 +144,10 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
 
     if (typeof document !== 'undefined' && !visibilityListenerAttached) {
       const handleVisibilityChange = () => {
-        const { isPlaying: currentlyPlaying } = get();
-        if (document.visibilityState === 'hidden') {
+        const { isPlaying: currentlyPlaying, roomMode } = get();
+        const shouldThrottle = document.visibilityState === 'hidden';
+
+        if (shouldThrottle && roomMode !== 'host') {
           get().stopAutoUpdate();
           return;
         }
@@ -158,11 +160,11 @@ export const usePlaybackStore = create<PlaybackStoreState>((set, get) => ({
       visibilityListenerAttached = true;
     }
 
-    if (
-      typeof document !== 'undefined' &&
-      document.visibilityState === 'hidden'
-    ) {
-      return;
+    if (typeof document !== 'undefined') {
+      const { roomMode } = get();
+      if (document.visibilityState === 'hidden' && roomMode !== 'host') {
+        return;
+      }
     }
 
     const interval = setInterval(() => {

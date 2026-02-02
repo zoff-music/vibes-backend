@@ -1,4 +1,9 @@
-import { usePlaybackStore, useQueueStore, useRoomStore } from '@vibez/shared';
+import {
+  isTruthyFlag,
+  usePlaybackStore,
+  useQueueStore,
+  useRoomStore,
+} from '@vibez/shared';
 import { useCallback, useEffect } from 'react';
 import { useCastStore } from '../stores/castStore';
 
@@ -27,8 +32,9 @@ export const useCasting = (_roomId: string) => {
   const usersCount = useRoomStore((state) => state.usersCount);
 
   const isLocalEmulatorEnabled = (() => {
-    const envValue = import.meta?.env?.VITE_CAST_LOCAL_EMULATOR;
-    if (envValue === 'true' || envValue === '1') return true;
+    if (isTruthyFlag(import.meta.env.VITE_CAST_LOCAL_EMULATOR)) {
+      return true;
+    }
     return (
       typeof window !== 'undefined' &&
       (window.location.hostname === 'localhost' ||

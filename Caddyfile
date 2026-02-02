@@ -10,10 +10,6 @@ http://localhost {
 }
 
 localhost, 127.0.0.1 {
-	# Handle Platform app Vite HMR WebSocket
-	handle /vite-hmr* {
-		reverse_proxy localhost:3002
-	}
 
 	# Handle Cast app HMR WebSocket (when accessed via /casting/receiver/)
 	handle /casting/receiver/__hmr {
@@ -25,6 +21,23 @@ localhost, 127.0.0.1 {
 		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3001} {
 			header_up Host {host}
 		}
+	}
+
+	# Vite dev server module paths
+	handle /@vite/* {
+		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3001}
+	}
+	handle /@id/* {
+		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3001}
+	}
+	handle /@fs/* {
+		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3001}
+	}
+	handle /node_modules/.vite/* {
+		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3001}
+	}
+	handle /src/* {
+		reverse_proxy {$PLATFORM_UPSTREAM:localhost:3001}
 	}
 
 	handle /api/v1/rooms/*/events {

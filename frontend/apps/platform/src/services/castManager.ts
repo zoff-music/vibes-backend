@@ -12,15 +12,15 @@ import { safeWrap, safeWrapAsync, useRoomStore } from '@vibez/shared';
 // Google Cast Application ID - Custom Zoff Receiver
 // For development, we use the Styled Media Receiver which allows custom content
 // In production, this should be replaced with a registered custom receiver app ID
-const CAST_APPLICATION_ID = import.meta?.env?.VITE_CAST_APP_ID || '1FAF5D9F'; // Custom Zoff Receiver
+const CAST_APPLICATION_ID = import.meta.env.VITE_CAST_APP_ID || '1FAF5D9F'; // Custom Zoff Receiver
 
 // Development: Use local custom receiver
 // Production: Use registered custom receiver
 const DEVELOPMENT_MODE = import.meta.env.VITE_DEVELOPMENT_MODE === 'true';
 const CUSTOM_RECEIVER_URL =
-  import.meta?.env?.VITE_CAST_RECEIVER_URL || '/casting/receiver/';
+  import.meta.env.VITE_CAST_RECEIVER_URL || '/casting/receiver/';
 const LOCAL_EMULATOR_ENABLED = (() => {
-  const envValue = import.meta?.env?.VITE_CAST_LOCAL_EMULATOR;
+  const envValue = import.meta.env.VITE_CAST_LOCAL_EMULATOR;
   if (envValue === 'true' || envValue === '1') return true;
   if (typeof window === 'undefined') return false;
   return (

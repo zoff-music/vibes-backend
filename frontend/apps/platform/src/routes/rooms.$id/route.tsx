@@ -7,37 +7,40 @@ import {
 } from '@vibez/shared';
 import { Toast } from '@vibez/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import type { SSRInitialData } from '../App';
-import { DeviceSelector } from '../components/cast/DeviceSelector';
-import { AddToQueueModal } from '../components/queue/AddToQueueModal';
-import { RoomErrorView } from '../components/room/RoomErrorView';
-import { RoomHeader } from '../components/room/RoomHeader';
-import { RoomPlayer } from '../components/room/RoomPlayer';
-import { RoomQueue } from '../components/room/RoomQueue';
-import { useThemeStore } from '../stores/themeStore';
+import { useLoaderData, useNavigate, useParams } from 'react-router';
+import { DeviceSelector } from '../../components/cast/DeviceSelector';
+import { AddToQueueModal } from '../../components/queue/AddToQueueModal';
+import { RoomErrorView } from '../../components/room/RoomErrorView';
+import { RoomHeader } from '../../components/room/RoomHeader';
+import { RoomPlayer } from '../../components/room/RoomPlayer';
+import { RoomQueue } from '../../components/room/RoomQueue';
+import { useThemeDisplay } from '../../hooks/useThemeDisplay';
+import { useThemeStore } from '../../stores/themeStore';
+import type { RoomLoaderData } from './loader';
+import { loader } from './loader';
 
-interface RoomProps {
-  initialData?: SSRInitialData;
-}
+export { loader };
 
 interface ToastEventDetail {
   message: string;
   type: 'success' | 'error' | 'info';
 }
 
-export default function Room({ initialData }: RoomProps) {
+export default function Room() {
+  const loaderData = useLoaderData() as RoomLoaderData;
   /* 1. Refs */
   const headerRef = useRef<HTMLDivElement | null>(null);
   const fetchAttemptedRef = useRef<string | null>(null);
   const joinAttemptedRef = useRef<string | null>(null);
+  const primeAttemptedRef = useRef<string | null>(null);
+  const playbackAttemptedRef = useRef<string | null>(null);
   const settingsButtonRef = useRef<HTMLButtonElement | null>(null);
   const settingsMenuRef = useRef<HTMLDivElement | null>(null);
 
   /* 2. Hooks */
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toggleDarkMode, setIsWarping } = useThemeStore();
+  const { toggleDarkMode } = useThemeStore();
   const { room, fetchRoom, isLoading, error, joinRoom, userId } = useRoom(
     id || '',
   );
@@ -45,28 +48,24 @@ export default function Room({ initialData }: RoomProps) {
 
   // Set warping state based on loading
   useEffect(() => {
-    if (isLoading && !room && !initialData?.room) {
-      setIsWarping(true);
-    } else {
-      setIsWarping(false);
-    }
-
-    return () => setIsWarping(false);
-  }, [isLoading, room, initialData?.room, setIsWarping]);
+    // Keep room loading state local to the page; no background warp.
+  }, []);
 
   const { fetchQueue } = useQueue(id || '');
   const primeQueue = useCallback(async () => {
     if (!id) return;
-    if (!initialData || initialData.room?.id !== id || !initialData.playback) {
+    if (!loaderData || loaderData.room?.id !== id || !loaderData.playback) {
       await fetchPlayback();
     }
     fetchQueue();
-  }, [id, initialData, fetchPlayback, fetchQueue]);
+  }, [id, loaderData, fetchPlayback, fetchQueue]);
 
   // Granular store setters (subscription-free/minimized re-renders)
   const setRoom = useRoomStore((state) => state.setRoom);
   const setSongs = useQueueStore((state) => state.setSongs);
+  const songsFromStore = useQueueStore((state) => state.songs);
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
+  const currentSongFromStore = usePlaybackStore((state) => state.currentSong);
 
   // Granular store query (only re-render if isAdmin changes)
   // storeIsAdmin removed as it was unused
@@ -74,7 +73,7 @@ export default function Room({ initialData }: RoomProps) {
   /* 3. State */
   const [initialized, setInitialized] = useState(false);
   const [isSSR, setIsSSR] = useState(true);
-  const { themeId, currentTheme } = useThemeStore();
+  const { themeId, currentTheme } = useThemeDisplay();
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -89,8 +88,8 @@ export default function Room({ initialData }: RoomProps) {
   /* 4. Computed / Derived */
   const shareUrl = typeof window === 'undefined' ? '' : window.location.href;
   const displayRoom = useMemo(
-    () => room || initialData?.room || null,
-    [room, initialData?.room],
+    () => room || loaderData?.room || null,
+    [room, loaderData?.room],
   );
 
   /* 5. Handlers (Arrow Functions) */
@@ -185,23 +184,23 @@ export default function Room({ initialData }: RoomProps) {
 
   // SSR Initialization
   useEffect(() => {
-    if (initialData && !initialized) {
+    if (loaderData && !initialized) {
       console.log(
         '[SSR] Initializing room with server-provided data',
-        initialData,
+        loaderData,
       );
-      if (initialData.room) {
-        setRoom(initialData.room);
+      if (loaderData.room) {
+        setRoom(loaderData.room);
       }
-      if (initialData.songs) {
-        setSongs(initialData.songs);
+      if (loaderData.songs) {
+        setSongs(loaderData.songs);
       }
-      if (initialData.playback) {
-        setPlaybackState(initialData.playback);
+      if (loaderData.playback) {
+        setPlaybackState(loaderData.playback);
       }
       setInitialized(true);
     }
-  }, [initialData, initialized, setRoom, setSongs, setPlaybackState]);
+  }, [loaderData, initialized, setRoom, setSongs, setPlaybackState]);
 
   // Initial fetch and session join
   useEffect(() => {
@@ -209,8 +208,16 @@ export default function Room({ initialData }: RoomProps) {
 
     if (fetchAttemptedRef.current !== id) {
       fetchAttemptedRef.current = id;
-      if (!initialData || initialData.room?.id !== id) {
+      const shouldFetchRoom = !loaderData || loaderData.room?.id !== id;
+      const shouldPrimeQueue =
+        shouldFetchRoom || !loaderData?.playback || !loaderData?.songs;
+
+      if (shouldFetchRoom) {
         fetchRoom();
+      }
+
+      if (shouldPrimeQueue && primeAttemptedRef.current !== id) {
+        primeAttemptedRef.current = id;
         void primeQueue();
       }
     }
@@ -218,9 +225,24 @@ export default function Room({ initialData }: RoomProps) {
     if (!userId && joinAttemptedRef.current !== id) {
       joinAttemptedRef.current = id;
       fetchRoom();
-      void primeQueue();
+      if (primeAttemptedRef.current !== id) {
+        primeAttemptedRef.current = id;
+        void primeQueue();
+      }
     }
-  }, [id, userId, fetchRoom, initialData, primeQueue]);
+  }, [id, userId, fetchRoom, loaderData, primeQueue]);
+
+  // If queue is present but playback is missing, retry fetching playback once per queue size.
+  useEffect(() => {
+    if (!id) return;
+    if (currentSongFromStore || songsFromStore.length === 0) return;
+
+    const attemptKey = `${id}:${songsFromStore.length}`;
+    if (playbackAttemptedRef.current === attemptKey) return;
+    playbackAttemptedRef.current = attemptKey;
+
+    void fetchPlayback();
+  }, [id, currentSongFromStore, songsFromStore.length, fetchPlayback]);
 
   // Global events (Toast, Song Added)
   useEffect(() => {
@@ -331,7 +353,7 @@ export default function Room({ initialData }: RoomProps) {
 
         {/* Main content */}
         {/* Main content - Conditionally rendered */}
-        {isLoading && !room && !initialData?.room ? (
+        {isLoading && !room && !loaderData?.room ? (
           <div className="flex flex-1 items-center justify-center">
             <div className="animate-fade-in text-center">
               <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border border-theme bg-theme-surface shadow-[0_0_20px_rgba(255,46,151,0.25)]">
@@ -358,14 +380,14 @@ export default function Room({ initialData }: RoomProps) {
                 displayRoom={displayRoom}
                 onAddSong={handleAddSong}
                 onOpenCast={() => setShowDeviceSelector(true)}
-                initialPlayback={initialData?.playback}
+                initialPlayback={loaderData?.playback}
               />
 
               {/* Queue & Now Playing Section */}
               <RoomQueue
                 roomId={id || ''}
                 isSSR={isSSR}
-                initialPlayback={initialData?.playback}
+                initialPlayback={loaderData?.playback}
               />
             </div>
           </div>

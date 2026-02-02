@@ -69,14 +69,17 @@ COPY . .
 RUN make test \
  && make build
 
-FROM oven/bun:1.2.0 AS frontend-dev
+FROM oven/bun:1.2.6 AS frontend-dev
 
 WORKDIR /app
+COPY frontend/. .
 
-COPY frontend/package.json frontend/bun.lock ./
-COPY frontend/apps ./apps
-COPY frontend/packages ./packages
-
+ENV NODE_ENV=development
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
 RUN bun install
 
 COPY frontend/. .
@@ -85,11 +88,15 @@ EXPOSE 19006
 CMD ["bun", "run", "dev:web", "--", "--host", "localhost", "--port", "19006"]
 
 # Frontend builder stage
-FROM oven/bun:1.2.0 AS frontend-builder
+FROM oven/bun:1.2.6 AS frontend-builder
 WORKDIR /app
-COPY frontend/package.json frontend/bun.lock ./
-COPY frontend/apps ./apps
-COPY frontend/packages ./packages
+COPY frontend/. .
+ENV NODE_ENV=development
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl \
+    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
 RUN bun install --frozen-lockfile
 
 # Platform build
@@ -99,7 +106,6 @@ ARG VITE_CAST_RECEIVER_URL
 ARG VITE_APP_TITLE
 ARG VITE_DEBUG
 WORKDIR /app/apps/platform
-COPY frontend/apps/platform .
 # Build CSS, client, and server bundles
 RUN NODE_ENV=production \
     VITE_CAST_APP_ID=$VITE_CAST_APP_ID \
@@ -116,7 +122,6 @@ ARG VITE_API_URL
 ARG VITE_APP_TITLE
 ARG VITE_DEBUG
 WORKDIR /app/apps/cast
-COPY frontend/apps/cast .
 RUN NODE_ENV=production \
     VITE_CAST_APP_ID=$VITE_CAST_APP_ID \
     VITE_CAST_RECEIVER_URL=$VITE_CAST_RECEIVER_URL \
@@ -126,21 +131,19 @@ RUN NODE_ENV=production \
     bun run build
 
 # Platform production image
-FROM oven/bun:1.2.0-slim AS frontend-platform-prod
+FROM oven/bun:1.2.6-slim AS frontend-platform-prod
 WORKDIR /app
 
-# Copy workspace structure
-COPY --from=frontend-builder /app/package.json .
-COPY --from=frontend-builder /app/bun.lock .
+# Copy everything from the frontend builder to preserve workspace layout + installs
+COPY --from=frontend-builder /app /app
 
-# Copy workspace packages with their node_modules
-COPY --from=frontend-builder /app/packages ./packages
+RUN mkdir -p /app/apps/platform/dist
+# Copy built platform assets (server/client bundles)
+COPY --from=platform-builder /app/apps/platform/dist /app/apps/platform/dist
 
-# Copy the built platform app
-COPY --from=platform-builder /app/apps/platform ./apps/platform
-
-# Copy node_modules from builder (already has all dependencies)
-COPY --from=frontend-builder /app/node_modules ./node_modules
+ENV NODE_ENV=production
+RUN rm -rf /app/node_modules /app/packages/*/node_modules \
+    && bun install --frozen-lockfile
 
 # Set working directory to platform app
 WORKDIR /app/apps/platform
