@@ -37,6 +37,47 @@ interface PlayerLoadErrors {
   video: string | null;
 }
 
+const AutoSkipHandler = ({
+  currentSong,
+  isPlaying,
+  skip,
+  mode,
+}: {
+  currentSong: any;
+  isPlaying: boolean;
+  skip: () => void;
+  mode: string | undefined;
+}) => {
+  const actualPositionMs = usePlaybackPosition();
+  const autoSkipRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (!currentSong?.id) {
+      autoSkipRef.current = null;
+      return;
+    }
+    if (mode !== 'host') return;
+    if (!isPlaying || !currentSong.duration) return;
+
+    const durationMs = currentSong.duration * 1000;
+    const shouldAutoSkip = actualPositionMs >= durationMs - 750;
+
+    if (shouldAutoSkip && autoSkipRef.current !== currentSong.id) {
+      autoSkipRef.current = currentSong.id;
+      skip();
+    }
+  }, [
+    actualPositionMs,
+    currentSong?.id,
+    currentSong?.duration,
+    mode,
+    isPlaying,
+    skip,
+  ]);
+
+  return null;
+};
+
 export const RoomPlayer = React.memo(
   ({
     roomId,
@@ -53,17 +94,12 @@ export const RoomPlayer = React.memo(
       useProviderToken();
 
     // Granular store subscriptions
+    const isPlaying = usePlaybackStore((state) => state.isPlaying);
     const currentSongFromStore = usePlaybackStore((state) => state.currentSong);
-    const isPlayingFromStore = usePlaybackStore((state) => state.isPlaying);
-    const actualPositionMs = usePlaybackPosition();
 
     /* 2. State & Computed */
     const currentSong =
       currentSongFromStore || initialPlayback?.currentSong || null;
-    const isPlaying =
-      isPlayingFromStore !== undefined
-        ? isPlayingFromStore
-        : initialPlayback?.isPlaying || false;
 
     const hasSpotifySongs = useMemo(
       () => songs.some((s) => s.sourceType === 'spotify'),
@@ -91,7 +127,6 @@ export const RoomPlayer = React.memo(
       video: null,
     });
     const playbackFetchAttemptedRef = useRef<string | null>(null);
-    const autoSkipRef = useRef<string | null>(null);
     const debugMountRef = useRef(false);
 
     /* 3. Handlers */
@@ -138,8 +173,8 @@ export const RoomPlayer = React.memo(
           currentSong?.sourceType === 'soundcloud' ? null : prev.soundcloud,
         video:
           currentSong &&
-          currentSong.sourceType !== 'spotify' &&
-          currentSong.sourceType !== 'soundcloud'
+            currentSong.sourceType !== 'spotify' &&
+            currentSong.sourceType !== 'soundcloud'
             ? null
             : prev.video,
       }));
@@ -162,39 +197,15 @@ export const RoomPlayer = React.memo(
       void fetchPlayback();
     }, [roomId, songs.length, currentSong, fetchPlayback]);
 
-    useEffect(() => {
-      if (!currentSong?.id) {
-        autoSkipRef.current = null;
-        return;
-      }
-      if (displayRoom?.mode !== 'host') return;
-      if (!isPlaying || !currentSong.duration) return;
-
-      const durationMs = currentSong.duration * 1000;
-      const shouldAutoSkip = actualPositionMs >= durationMs - 750;
-
-      if (shouldAutoSkip && autoSkipRef.current !== currentSong.id) {
-        autoSkipRef.current = currentSong.id;
-        skip();
-      }
-    }, [
-      actualPositionMs,
-      currentSong?.id,
-      currentSong?.duration,
-      displayRoom?.mode,
-      isPlaying,
-      skip,
-    ]);
+    /* 5. Render */
 
     useEffect(() => {
       if (!needsSpotifyPlayer || SpotifyPlayerComponent) return;
 
       let isMounted = true;
       const loadSpotifyPlayer = async () => {
-        const [loadErr, module] = await safeWrapAsync(
-          import('../../players/SpotifyPlayer'),
-        );
-        const resolvedComponent = module?.SpotifyPlayer ?? module?.default;
+        const [loadErr, module] = await safeWrapAsync(import('@vibez/ui'));
+        const resolvedComponent = module?.SpotifyPlayer;
         if (!isMounted || loadErr || !resolvedComponent) {
           if (loadErr) {
             console.error('[RoomPlayer] Spotify player load failed', loadErr);
@@ -225,10 +236,8 @@ export const RoomPlayer = React.memo(
 
       let isMounted = true;
       const loadSoundCloudPlayer = async () => {
-        const [loadErr, module] = await safeWrapAsync(
-          import('../../players/SoundCloudPlayer'),
-        );
-        const resolvedComponent = module?.SoundCloudPlayer ?? module?.default;
+        const [loadErr, module] = await safeWrapAsync(import('@vibez/ui'));
+        const resolvedComponent = module?.SoundCloudPlayer;
         if (!isMounted || loadErr || !resolvedComponent) {
           if (loadErr) {
             console.error(
@@ -262,10 +271,8 @@ export const RoomPlayer = React.memo(
 
       let isMounted = true;
       const loadVideoPlayer = async () => {
-        const [loadErr, module] = await safeWrapAsync(
-          import('../../players/VideoPlayer'),
-        );
-        const resolvedComponent = module?.VideoPlayer ?? module?.default;
+        const [loadErr, module] = await safeWrapAsync(import('@vibez/ui'));
+        const resolvedComponent = module?.VideoPlayer;
         if (!isMounted || loadErr || !resolvedComponent) {
           if (loadErr) {
             console.error('[RoomPlayer] Video player load failed', loadErr);
@@ -304,7 +311,7 @@ export const RoomPlayer = React.memo(
     const isSoundCloudTrack = currentSong?.sourceType === 'soundcloud';
     const isVideoTrack = currentSong
       ? currentSong.sourceType !== 'spotify' &&
-        currentSong.sourceType !== 'soundcloud'
+      currentSong.sourceType !== 'soundcloud'
       : false;
     const isPlayerMissing =
       (isSpotifyTrack && !SpotifyPlayerComponent) ||
@@ -320,14 +327,19 @@ export const RoomPlayer = React.memo(
 
     return (
       <div className="space-y-6 lg:flex lg:h-full lg:flex-col">
+        <AutoSkipHandler
+          currentSong={currentSong}
+          isPlaying={isPlaying}
+          skip={skip}
+          mode={displayRoom?.mode}
+        />
         {/* Player - Reserve height to prevent CLS */}
-        <div className="crt-frame relative flex aspect-video min-h-[280px] w-full overflow-hidden rounded-[28px] bg-black sm:min-h-[340px] lg:aspect-auto lg:min-h-0 lg:min-h-[400px] lg:flex-1">
+        <div className="crt-frame relative flex min-h-[315px] w-full overflow-hidden rounded-[28px] bg-black sm:min-h-[340px] lg:aspect-auto lg:min-h-0 lg:min-h-[400px] lg:flex-1">
           {VideoPlayerComponent && (
-            <div className="absolute inset-0">
+            <div className="absolute inset-0 flex items-center justify-center bg-black">
               <VideoPlayerComponent
                 onEnded={displayRoom?.mode === 'host' ? skip : undefined}
                 isVisible={!isConnected && isVideoTrack}
-                fill
                 onNeedsUserGestureChange={setIsPlaybackBlocked}
                 appContext="platform"
               />
@@ -343,19 +355,21 @@ export const RoomPlayer = React.memo(
           )}
           {currentSong ? (
             isPlayerMissing ? (
-              <div className="absolute inset-0 flex items-center justify-center bg-black">
-                {/* SIGNAL CRT */}
-                <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
-                  <div className="vhs-scanlines h-full w-full opacity-[0.2] mix-blend-overlay" />
-                  <div className="crt-overlay !absolute !z-[2] pointer-events-none inset-0 opacity-[0.1]" />
-                </div>
-                <div className="relative z-10 text-center">
-                  <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full border border-theme bg-theme-surface">
-                    <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              <div className="min-h-[315px]">
+                <div className="absolute inset-0 flex items-center justify-center bg-black">
+                  {/* SIGNAL CRT */}
+                  <div className="pointer-events-none absolute inset-0 z-[1] overflow-hidden">
+                    <div className="vhs-scanlines h-full w-full opacity-[0.2] mix-blend-overlay" />
+                    <div className="crt-overlay !absolute !z-[2] pointer-events-none inset-0 opacity-[0.1]" />
                   </div>
-                  <p className="text-sm text-theme-muted">
-                    {currentPlayerError ?? 'Loading player...'}
-                  </p>
+                  <div className="relative z-10 text-center">
+                    <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full border border-theme bg-theme-surface">
+                      <div className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                    </div>
+                    <p className="text-sm text-theme-muted">
+                      {currentPlayerError ?? 'Loading player...'}
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : isSpotifyTrack ? (

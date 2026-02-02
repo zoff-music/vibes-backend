@@ -135,7 +135,7 @@ export default function Home() {
 
   return (
     <div
-      className={`relative flex min-h-screen w-full flex-col items-center justify-start overflow-x-hidden ${shouldFadeIn ? 'animate-fade-in' : ''}`}
+      className={`relative flex min-h-screen w-full flex-col items-center justify-center overflow-x-hidden sm:justify-start ${shouldFadeIn ? 'animate-fade-in' : ''}`}
     >
       <div className="relative z-10 mx-auto mt-0 flex w-full max-w-5xl flex-col items-center px-6 sm:mt-[min(35vh_,_285px)]">
         <div className="crt-frame relative w-full max-w-3xl rounded-[36px] p-6 sm:p-10">
