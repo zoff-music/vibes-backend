@@ -124,15 +124,15 @@ export const QueueItem: React.FC<Props> = ({
   // Client: Render with motion.div wrapper for height animation
   return (
     <motion.div
-      layout
-      initial={{ opacity: 0, height: 0, y: 50 }}
-      animate={{ opacity: 1, height: 'auto', y: 0 }}
-      exit={{ opacity: 0, height: 0, y: -50, transition: { duration: 0.2 } }}
+      layout="position"
+      initial={{ opacity: 0, scale: 0.95, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.95, y: -20, transition: { duration: 0.15 } }}
       transition={{
         type: 'spring',
-        stiffness: 500,
-        damping: 35,
-        opacity: { duration: 0.15 },
+        stiffness: 400,
+        damping: 30,
+        opacity: { duration: 0.1 },
       }}
       style={{ overflow: 'hidden' }}
     >

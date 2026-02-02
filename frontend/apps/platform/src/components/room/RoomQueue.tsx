@@ -25,12 +25,9 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
     const { songs, voteSong } = useQueue(roomId);
 
     // Granular store subscriptions
-    const currentSongFromStore = usePlaybackStore((state) => state.currentSong);
     const isPlayingFromStore = usePlaybackStore((state) => state.isPlaying);
 
     /* 2. State & Computed */
-    const currentSong =
-      currentSongFromStore || initialPlayback?.currentSong || null;
     const isPlaying =
       isPlayingFromStore !== undefined
         ? isPlayingFromStore
@@ -41,6 +38,11 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
         : songs.length > 0
           ? songs
           : initialSongs || [];
+
+    // Actually we need the full current song for the card
+    const currentSongData =
+      usePlaybackStore((state) => state.currentSong) ||
+      initialPlayback?.currentSong;
 
     /* 3. Handlers */
     const handleVote = React.useCallback(
@@ -61,7 +63,7 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
       <div className="mt-8 space-y-8 lg:mt-0 lg:h-full lg:overflow-y-auto lg:pr-2">
         <div className="relative lg:pb-6">
           {/* Now Playing (Integrated into list style) */}
-          {currentSong && (
+          {currentSongData && (
             <div className="mb-8">
               <div className="mb-3 flex items-center gap-2">
                 <div
@@ -78,22 +80,23 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
 
               <AnimatePresence initial={false} mode="popLayout">
                 <motion.div
-                  key={currentSong.id}
-                  layout
+                  key={currentSongData.id}
+                  layout="position"
                   initial={{ opacity: 0, y: 50 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{
                     opacity: 0,
-                    y: -50,
+                    scale: 0.95,
+                    y: -20,
                     position: 'absolute',
                     width: '100%',
-                    transition: { duration: 0.2 },
+                    transition: { duration: 0.15 },
                   }}
                   transition={{
                     type: 'spring',
-                    stiffness: 500,
-                    damping: 35,
-                    opacity: { duration: 0.15 },
+                    stiffness: 400,
+                    damping: 30,
+                    opacity: { duration: 0.1 },
                   }}
                   style={{ overflow: 'hidden' }}
                 >
@@ -103,7 +106,7 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
                     {/* Thumbnail */}
                     <div className="relative z-10 shrink-0">
                       <img
-                        src={resolveThumbnail(currentSong.thumbnailUrl)}
+                        src={resolveThumbnail(currentSongData.thumbnailUrl)}
                         alt=""
                         className="h-16 w-16 rounded-xl border border-theme object-cover shadow-xs transition-transform group-hover/card:scale-105"
                       />
@@ -112,24 +115,24 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
                     {/* Song info */}
                     <div className="relative z-10 min-w-0 flex-1">
                       <h3 className="mb-1 truncate font-display text-theme text-xs">
-                        {currentSong.title}
+                        {currentSongData.title}
                       </h3>
                       <div className="flex items-center gap-2 text-theme-muted text-xs">
                         <span className="truncate">
-                          {currentSong.artist || 'Unknown Artist'}
+                          {currentSongData.artist || 'Unknown Artist'}
                         </span>
                         <span className="text-theme-subtle">•</span>
                         <span className="shrink-0 font-mono text-theme-subtle text-xs">
-                          {formatTime(currentSong.duration * 1000)}
+                          {formatTime(currentSongData.duration * 1000)}
                         </span>
                       </div>
                     </div>
 
                     {/* Source Icon */}
                     <div className="relative z-10 flex shrink-0 items-center justify-center opacity-70">
-                      {currentSong.sourceType === 'spotify' ? (
+                      {currentSongData.sourceType === 'spotify' ? (
                         <SpotifyIcon className="h-5 w-5" />
-                      ) : currentSong.sourceType === 'soundcloud' ? (
+                      ) : currentSongData.sourceType === 'soundcloud' ? (
                         <SoundCloudIcon className="h-5 w-5" />
                       ) : (
                         <YouTubeIcon className="h-5 w-5" />
@@ -140,7 +143,7 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
               </AnimatePresence>
 
               <PlaybackProgress
-                durationMs={currentSong.duration * 1000}
+                durationMs={currentSongData.duration * 1000}
                 isSSR={isSSR}
               />
 
@@ -152,10 +155,10 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
           <div>
             <h3 className="mb-4 font-display text-[10px] text-theme-muted tracking-[0.3em]">
               Up Next (
-              {displaySongs.filter((s) => s.id !== currentSong?.id).length})
+              {displaySongs.filter((s) => s.id !== currentSongData?.id).length})
             </h3>
             <QueueList
-              songs={displaySongs.filter((s) => s.id !== currentSong?.id)}
+              songs={displaySongs.filter((s) => s.id !== currentSongData?.id)}
               roomId={roomId}
               onVote={handleVote}
             />

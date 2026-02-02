@@ -64,12 +64,10 @@ export default function Room() {
   // Granular store setters (subscription-free/minimized re-renders)
   const setRoom = useRoomStore((state) => state.setRoom);
   const setSongs = useQueueStore((state) => state.setSongs);
-  const songsFromStore = useQueueStore((state) => state.songs);
+  const songsCount = useQueueStore((state) => state.songs.length);
   const setPlaybackState = usePlaybackStore((state) => state.setPlaybackState);
-  const currentSongFromStore = usePlaybackStore((state) => state.currentSong);
-
-  // Granular store query (only re-render if isAdmin changes)
-  // storeIsAdmin removed as it was unused
+  const currentSongId = usePlaybackStore((state) => state.currentSong?.id);
+  const hasCurrentSong = !!currentSongId;
 
   /* 3. State */
   const [initialized, setInitialized] = useState(false);
@@ -191,9 +189,13 @@ export default function Room() {
     }
 
     const baseTitle = originalTitleRef.current;
-    if (currentSongFromStore?.title) {
+
+    // Use store state directly to avoid re-subscription overhead here
+    const currentSong = usePlaybackStore.getState().currentSong;
+
+    if (currentSong?.title) {
       const roomName = displayRoom?.name ? ` · ${displayRoom.name}` : '';
-      document.title = `${currentSongFromStore.title}${roomName}`;
+      document.title = `${currentSong.title}${roomName}`;
     } else if (baseTitle) {
       document.title = baseTitle;
     }
@@ -203,7 +205,7 @@ export default function Room() {
         document.title = originalTitleRef.current;
       }
     };
-  }, [currentSongFromStore?.title, displayRoom?.name]);
+  }, [displayRoom?.name, currentSongId]); // currentSongId triggers title update when song metadata arrives
 
   // SSR Initialization
   useEffect(() => {
@@ -258,14 +260,14 @@ export default function Room() {
   // If queue is present but playback is missing, retry fetching playback once per queue size.
   useEffect(() => {
     if (!id) return;
-    if (currentSongFromStore || songsFromStore.length === 0) return;
+    if (hasCurrentSong || songsCount === 0) return;
 
-    const attemptKey = `${id}:${songsFromStore.length}`;
+    const attemptKey = `${id}:${songsCount}`;
     if (playbackAttemptedRef.current === attemptKey) return;
     playbackAttemptedRef.current = attemptKey;
 
     void fetchPlayback();
-  }, [id, currentSongFromStore, songsFromStore.length, fetchPlayback]);
+  }, [id, hasCurrentSong, songsCount, fetchPlayback]);
 
   // Global events (Toast, Song Added)
   useEffect(() => {

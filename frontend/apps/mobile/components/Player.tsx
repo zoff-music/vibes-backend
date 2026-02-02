@@ -34,7 +34,7 @@ export function Player({
   }
 
   return (
-    <View className="aspect-video w-full overflow-hidden rounded-lg bg-black">
+    <View className="w-full overflow-hidden rounded-lg bg-black">
       <YoutubePlayer
         key={videoId}
         height={220}
