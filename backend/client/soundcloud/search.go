@@ -36,7 +36,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 
 	params := url.Values{}
 	params.Set("q", query)
-	params.Set("limit", "10")
+	params.Set("limit", "25")
 	params.Set("access", "playable,preview")
 
 	reqData := client.HTTPRequestData{

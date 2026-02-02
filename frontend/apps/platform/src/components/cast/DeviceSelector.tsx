@@ -1,6 +1,6 @@
 import type { CastDevice, Song } from '@vibez/models';
 import { safeWrapAsync, usePlaybackStore } from '@vibez/shared';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { castManager } from '../../services/castManager';
 import { useCastStore } from '../../stores/castStore';
 import { CastDeviceIcon } from '../icons/CastDeviceIcon';
@@ -36,6 +36,25 @@ export const DeviceSelector: React.FC<DeviceSelectorProps> = ({
 
   const [isConnecting, setIsConnecting] = useState<string | null>(null);
   const [isCasting, setIsCasting] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const refreshOnOpen = async () => {
+      console.log('[Cast] refreshing devices on open');
+      const [forceErr] = await safeWrapAsync(castManager.forceDiscovery());
+      if (forceErr) {
+        console.error('Failed to force cast discovery:', forceErr);
+      }
+
+      const [discoverErr] = await safeWrapAsync(discoverDevices());
+      if (discoverErr) {
+        console.error('Failed to discover cast devices:', discoverErr);
+      }
+    };
+
+    refreshOnOpen();
+  }, [isOpen, discoverDevices]);
 
   const handleDeviceSelect = async (device: CastDevice) => {
     setIsConnecting(device.id);

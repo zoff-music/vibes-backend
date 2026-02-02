@@ -8,6 +8,7 @@ interface Props {
   isVisible?: boolean;
   onEnded?: () => void;
   fill?: boolean;
+  onNeedsUserGestureChange?: (needsGesture: boolean) => void;
 }
 
 interface YouTubePlayerRef {
@@ -31,6 +32,7 @@ const VideoPlayerComponent = ({
   isVisible = true,
   onEnded,
   fill = false,
+  onNeedsUserGestureChange,
 }: Props) => {
   const currentSong = usePlaybackStore((state) => state.currentSong);
   const isPlaying = usePlaybackStore((state) => state.isPlaying);
@@ -48,6 +50,7 @@ const VideoPlayerComponent = ({
   const autoPlayKickCountRef = useRef(0);
   const autoPlayKickLastAtRef = useRef(0);
   const autoPlayKickVideoIdRef = useRef<string | null>(null);
+  const suppressLoadUntilRef = useRef(0);
   const isYouTubeActive = currentSong?.sourceType === 'youtube';
   const shouldPlay = isYouTubeActive && isPlaying;
   const videoId =
@@ -278,8 +281,15 @@ const VideoPlayerComponent = ({
       try {
         const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
         const startSeconds = actualPositionMs > 0 ? actualPositionMs / 1000 : 0;
-        if (reason !== 'state' || player.getPlayerState() !== 1) {
+        const shouldSuppressLoad = now < suppressLoadUntilRef.current;
+        const alreadyLoaded = lastLoadedVideoIdRef.current === videoId;
+        if (
+          !shouldSuppressLoad &&
+          !alreadyLoaded &&
+          (reason !== 'state' || player.getPlayerState() !== 1)
+        ) {
           player.loadVideoById(videoId, startSeconds);
+          lastLoadedVideoIdRef.current = videoId;
         }
         player.playVideo();
         debugLog('kick', { reason, attempts: autoPlayKickCountRef.current });
@@ -306,6 +316,10 @@ const VideoPlayerComponent = ({
       try {
         const state = player.getPlayerState();
         if (state === 1 || state === 3) {
+          return;
+        }
+        if (state === 2) {
+          player.playVideo();
           return;
         }
         kickAutoplay('retry');
@@ -488,6 +502,10 @@ const VideoPlayerComponent = ({
     !error &&
     !isVerifying;
 
+  useEffect(() => {
+    onNeedsUserGestureChange?.(showClickToPlay);
+  }, [showClickToPlay, onNeedsUserGestureChange]);
+
   const containerClass = fill
     ? 'relative h-full w-full overflow-hidden bg-black/40 backdrop-blur-md [&_iframe]:h-full [&_iframe]:w-full [&_iframe]:scale-[1.65] [&_iframe]:origin-center'
     : 'relative w-full overflow-hidden rounded-xl bg-black/40 backdrop-blur-md';
@@ -535,6 +553,10 @@ const VideoPlayerComponent = ({
             try {
               player.unMute();
               setIsMutedState(false);
+              suppressLoadUntilRef.current = Date.now() + 2000;
+              if (videoId) {
+                lastLoadedVideoIdRef.current = videoId;
+              }
               player.playVideo();
               hasEverPlayedRef.current = true;
               setNeedsUserGesture(false);

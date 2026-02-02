@@ -23,113 +23,145 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		return nil, fmt.Errorf("YouTube API key not configured")
 	}
 
-	params := url.Values{}
-	params.Set("part", "snippet")
-	params.Set("q", query)
-	params.Set("type", "video")
-	params.Set("maxResults", "10")
-	params.Set("key", c.apiKey)
+	const targetResults = 15
 
-	reqData := client.HTTPRequestData{
-		Method:  http.MethodGet,
-		URL:     fmt.Sprintf("%s/search", c.Endpoint),
-		Payload: &params,
+	fetchSearch := func(maxResults int, categoryID string) (searchResponse, error) {
+		params := url.Values{}
+		params.Set("part", "snippet")
+		params.Set("q", query)
+		params.Set("type", "video")
+		params.Set("maxResults", fmt.Sprintf("%d", maxResults))
+		params.Set("key", c.apiKey)
+		if categoryID != "" {
+			params.Set("videoCategoryId", categoryID)
+		}
+
+		reqData := client.HTTPRequestData{
+			Method:  http.MethodGet,
+			URL:     fmt.Sprintf("%s/search", c.Endpoint),
+			Payload: &params,
+		}
+
+		resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
+		if err != nil {
+			return searchResponse{}, err
+		}
+
+		var result searchResponse
+		if err := json.Unmarshal(resp, &result); err != nil {
+			return searchResponse{}, err
+		}
+		return result, nil
 	}
 
-	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
+	fetchTracksWithDetails := func(items []searchItem) ([]vibe.MusicTrack, error) {
+		if len(items) == 0 {
+			return []vibe.MusicTrack{}, nil
+		}
+
+		ids := ""
+		for i, item := range items {
+			if i > 0 {
+				ids += ","
+			}
+			ids += item.ID.VideoID
+		}
+
+		vparams := url.Values{}
+		vparams.Set("part", "contentDetails,snippet")
+		vparams.Set("id", ids)
+		vparams.Set("key", c.apiKey)
+
+		vreqData := client.HTTPRequestData{
+			Method:  http.MethodGet,
+			URL:     fmt.Sprintf("%s/videos", c.Endpoint),
+			Payload: &vparams,
+		}
+
+		vresp, err := c.HTTPClient.RequestBytes(ctx, vreqData)
+		if err != nil {
+			return nil, err
+		}
+
+		var vresult videoResponse
+		if err := json.Unmarshal(vresp, &vresult); err != nil {
+			return nil, err
+		}
+
+		durations := make(map[string]string)
+		for _, vitem := range vresult.Items {
+			durations[vitem.ID] = vitem.ContentDetails.Duration
+		}
+
+		tracks := make([]vibe.MusicTrack, 0, len(items))
+		for _, item := range items {
+			if item.ID.VideoID == "" {
+				continue
+			}
+
+			thmb := item.Snippet.Thumbnails.High.URL
+			if thmb == "" {
+				thmb = item.Snippet.Thumbnails.Medium.URL
+			}
+			if thmb == "" {
+				thmb = item.Snippet.Thumbnails.Default.URL
+			}
+
+			tracks = append(tracks, vibe.MusicTrack{
+				ID:           item.ID.VideoID,
+				Source:       vibe.SourceTypeYouTube,
+				Title:        html.UnescapeString(item.Snippet.Title),
+				ChannelTitle: html.UnescapeString(item.Snippet.ChannelTitle),
+				ThumbnailURL: thmb,
+				Duration:     durations[item.ID.VideoID],
+			})
+		}
+
+		return tracks, nil
+	}
+
+	// First: hard filter to music category (id 10)
+	musicResult, err := fetchSearch(targetResults, "10")
 	if err != nil {
 		return nil, fmt.Errorf("error request failed: %w", err)
 	}
 
-	var result searchResponse
-	err = json.Unmarshal(resp, &result)
+	musicTracks, err := fetchTracksWithDetails(musicResult.Items)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding response: %w", err)
+		return nil, fmt.Errorf("error request failed: %w", err)
 	}
 
-	tracks := make([]vibe.MusicTrack, 0, len(result.Items))
-	if len(result.Items) == 0 {
-		return tracks, nil
+	if len(musicTracks) >= targetResults {
+		return musicTracks[:targetResults], nil
 	}
 
-	// Fetch durations for all videos in one call
-	ids := ""
-	for i, item := range result.Items {
-		if i > 0 {
-			ids += ","
+	// Second: normal search, fill remaining slots, dedupe
+	remaining := targetResults - len(musicTracks)
+	mixedResult, err := fetchSearch(remaining, "")
+	if err != nil {
+		return nil, fmt.Errorf("error request failed: %w", err)
+	}
+
+	mixedTracks, err := fetchTracksWithDetails(mixedResult.Items)
+	if err != nil {
+		return nil, fmt.Errorf("error request failed: %w", err)
+	}
+
+	seen := make(map[string]struct{}, len(musicTracks))
+	for _, track := range musicTracks {
+		seen[track.ID] = struct{}{}
+	}
+
+	tracks := make([]vibe.MusicTrack, 0, targetResults)
+	tracks = append(tracks, musicTracks...)
+	for _, track := range mixedTracks {
+		if len(tracks) >= targetResults {
+			break
 		}
-		ids += item.ID.VideoID
-	}
-
-	vparams := url.Values{}
-	vparams.Set("part", "contentDetails")
-	vparams.Set("id", ids)
-	vparams.Set("key", c.apiKey)
-
-	vreqData := client.HTTPRequestData{
-		Method:  http.MethodGet,
-		URL:     fmt.Sprintf("%s/videos", c.Endpoint),
-		Payload: &vparams,
-	}
-
-	vresp, err := c.HTTPClient.RequestBytes(ctx, vreqData)
-	if err == nil {
-		var vresult videoResponse
-		err := json.Unmarshal(vresp, &vresult)
-		if err == nil {
-			durations := make(map[string]string)
-			for _, vitem := range vresult.Items {
-				durations[vitem.ID] = vitem.ContentDetails.Duration
-			}
-
-			// Map durations back to search items
-			for _, item := range result.Items {
-				if item.ID.VideoID == "" {
-					continue
-				}
-
-				thmb := item.Snippet.Thumbnails.High.URL
-				if thmb == "" {
-					thmb = item.Snippet.Thumbnails.Medium.URL
-				}
-				if thmb == "" {
-					thmb = item.Snippet.Thumbnails.Default.URL
-				}
-
-				tracks = append(tracks, vibe.MusicTrack{
-					ID:           item.ID.VideoID,
-					Source:       vibe.SourceTypeYouTube,
-					Title:        html.UnescapeString(item.Snippet.Title),
-					ChannelTitle: html.UnescapeString(item.Snippet.ChannelTitle),
-					ThumbnailURL: thmb,
-					Duration:     durations[item.ID.VideoID],
-				})
-			}
-			return tracks, nil
-		}
-	}
-
-	// Fallback if video details fetch fails
-	for _, item := range result.Items {
-		if item.ID.VideoID == "" {
+		if _, exists := seen[track.ID]; exists {
 			continue
 		}
-
-		thmb := item.Snippet.Thumbnails.High.URL
-		if thmb == "" {
-			thmb = item.Snippet.Thumbnails.Medium.URL
-		}
-		if thmb == "" {
-			thmb = item.Snippet.Thumbnails.Default.URL
-		}
-
-		tracks = append(tracks, vibe.MusicTrack{
-			ID:           item.ID.VideoID,
-			Source:       vibe.SourceTypeYouTube,
-			Title:        html.UnescapeString(item.Snippet.Title),
-			ChannelTitle: html.UnescapeString(item.Snippet.ChannelTitle),
-			ThumbnailURL: thmb,
-		})
+		tracks = append(tracks, track)
 	}
 
 	return tracks, nil
