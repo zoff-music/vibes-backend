@@ -411,6 +411,7 @@ export default function Room() {
                 roomId={id || ''}
                 isSSR={isSSR}
                 initialPlayback={loaderData?.playback}
+                initialSongs={loaderData?.songs}
               />
             </div>
           </div>
