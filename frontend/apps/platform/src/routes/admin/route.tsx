@@ -2,8 +2,11 @@ import { api } from '@vibez/api';
 import type { AdminRoomSummary } from '@vibez/models';
 import { SoundCloudIcon, SpotifyIcon, YouTubeIcon } from '@vibez/ui';
 import { JSX, useEffect, useMemo, useRef, useState } from 'react';
+import { useLoaderData } from 'react-router';
+import type { AdminLoaderData } from './loader';
+import { loader } from './loader';
 
-import { useInitialData } from '../context/InitialDataContext';
+export { loader };
 
 const sourceIcons: Record<string, JSX.Element> = {
   youtube: <YouTubeIcon className="h-4 w-4 text-red-500" />,
@@ -17,15 +20,15 @@ type AdminSSEMessage = {
 };
 
 export default function Admin() {
-  const initialData = useInitialData();
+  const loaderData = useLoaderData() as AdminLoaderData;
   const [rooms, setRooms] = useState<AdminRoomSummary[]>(
-    initialData?.adminRooms ?? [],
+    loaderData.adminRooms ?? [],
   );
   const [isAuthorized, setIsAuthorized] = useState<boolean>(
-    initialData?.adminAuthorized ?? false,
+    loaderData.adminAuthorized ?? false,
   );
   const [isCheckingAuth, setIsCheckingAuth] = useState<boolean>(
-    !initialData?.adminAuthorized,
+    !loaderData.adminAuthorized,
   );
   const [password, setPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -100,7 +103,7 @@ export default function Admin() {
   useEffect(() => {
     let isMounted = true;
 
-    if (initialData?.adminAuthorized) {
+    if (loaderData.adminAuthorized) {
       setIsCheckingAuth(false);
       return;
     }
@@ -122,7 +125,7 @@ export default function Admin() {
     return () => {
       isMounted = false;
     };
-  }, [initialData?.adminAuthorized]);
+  }, [loaderData.adminAuthorized]);
 
   const handleLogin = async () => {
     if (!password.trim() || isLoading) {

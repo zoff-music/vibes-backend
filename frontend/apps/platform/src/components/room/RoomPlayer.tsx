@@ -1,4 +1,4 @@
-import { usePlayback, useQueue } from '@vibez/api';
+import { usePlayback, usePlaybackPosition, useQueue } from '@vibez/api';
 import { type PlaybackState, type Room } from '@vibez/models';
 import { safeWrapAsync, usePlaybackStore } from '@vibez/shared';
 import { PlayerControls } from '@vibez/ui';
@@ -53,6 +53,7 @@ export const RoomPlayer = React.memo(
     // Granular store subscriptions
     const currentSongFromStore = usePlaybackStore((state) => state.currentSong);
     const isPlayingFromStore = usePlaybackStore((state) => state.isPlaying);
+    const actualPositionMs = usePlaybackPosition();
 
     /* 2. State & Computed */
     const currentSong =
@@ -87,6 +88,7 @@ export const RoomPlayer = React.memo(
       video: null,
     });
     const playbackFetchAttemptedRef = useRef<string | null>(null);
+    const autoSkipRef = useRef<string | null>(null);
 
     /* 3. Handlers */
     const handleConnectSpotify = useCallback(() => {
@@ -155,6 +157,30 @@ export const RoomPlayer = React.memo(
 
       void fetchPlayback();
     }, [roomId, songs.length, currentSong, fetchPlayback]);
+
+    useEffect(() => {
+      if (!currentSong?.id) {
+        autoSkipRef.current = null;
+        return;
+      }
+      if (displayRoom?.mode !== 'host') return;
+      if (!isPlaying || !currentSong.duration) return;
+
+      const durationMs = currentSong.duration * 1000;
+      const shouldAutoSkip = actualPositionMs >= durationMs - 750;
+
+      if (shouldAutoSkip && autoSkipRef.current !== currentSong.id) {
+        autoSkipRef.current = currentSong.id;
+        skip();
+      }
+    }, [
+      actualPositionMs,
+      currentSong?.id,
+      currentSong?.duration,
+      displayRoom?.mode,
+      isPlaying,
+      skip,
+    ]);
 
     useEffect(() => {
       if (!needsSpotifyPlayer || SpotifyPlayerComponent) return;

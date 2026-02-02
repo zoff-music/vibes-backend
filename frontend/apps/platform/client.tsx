@@ -12,7 +12,7 @@ import {
   type RouteObject,
   RouterProvider,
 } from 'react-router';
-import type { SSRInitialData } from './src/App';
+import type { RootLoaderData } from './src/root';
 import { createClientRoutes } from './src/routes.client';
 import './src/index.css';
 
@@ -25,7 +25,7 @@ const isSSR =
   typeof window !== 'undefined' && document.getElementById('ssr-data');
 
 // Read initial data from script tag if present (SSR mode)
-let initialData: SSRInitialData | undefined;
+let initialData: RootLoaderData | undefined;
 if (isSSR) {
   const dataElement = document.getElementById('ssr-data');
   const [parseErr, data] = safeWrap(() =>
@@ -35,7 +35,7 @@ if (isSSR) {
   if (parseErr) {
     console.error('Failed to parse initial data:', parseErr);
   } else {
-    initialData = data as SSRInitialData;
+    initialData = data as RootLoaderData;
   }
 }
 

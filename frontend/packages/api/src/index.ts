@@ -249,10 +249,21 @@ const endpoints = {
   },
 } as const satisfies RequestDefinitions;
 
-export function createApiClient(customHeaders: Record<string, string> = {}) {
+function resolveApiBaseUrl(baseUrl: string) {
+  const normalized = baseUrl.endsWith(API_BASE_PATH)
+    ? baseUrl
+    : `${baseUrl}${API_BASE_PATH}`;
+  return normalized.replace(/([^:]\/)\/+/g, '$1');
+}
+
+export function createApiClientWithBaseUrl(
+  baseUrl: string,
+  customHeaders: Record<string, string> = {},
+) {
+  const resolvedBaseUrl = resolveApiBaseUrl(baseUrl);
   return new RequestClient({
-    hostname: API_BASE_URL,
-    baseUrl: API_BASE_URL,
+    hostname: resolvedBaseUrl,
+    baseUrl: resolvedBaseUrl,
     endpoints,
     validation: true,
     fetchOpts: {
@@ -260,6 +271,10 @@ export function createApiClient(customHeaders: Record<string, string> = {}) {
       headers: { ...customHeaders },
     },
   });
+}
+
+export function createApiClient(customHeaders: Record<string, string> = {}) {
+  return createApiClientWithBaseUrl(API_URL, customHeaders);
 }
 
 export const api = createApiClient();

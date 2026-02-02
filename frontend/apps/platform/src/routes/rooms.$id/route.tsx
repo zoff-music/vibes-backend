@@ -7,15 +7,19 @@ import {
 } from '@vibez/shared';
 import { Toast } from '@vibez/ui';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useParams } from 'react-router';
-import { DeviceSelector } from '../components/cast/DeviceSelector';
-import { AddToQueueModal } from '../components/queue/AddToQueueModal';
-import { RoomErrorView } from '../components/room/RoomErrorView';
-import { RoomHeader } from '../components/room/RoomHeader';
-import { RoomPlayer } from '../components/room/RoomPlayer';
-import { RoomQueue } from '../components/room/RoomQueue';
-import { useInitialData } from '../context/InitialDataContext';
-import { useThemeStore } from '../stores/themeStore';
+import { useLoaderData, useNavigate, useParams } from 'react-router';
+import { DeviceSelector } from '../../components/cast/DeviceSelector';
+import { AddToQueueModal } from '../../components/queue/AddToQueueModal';
+import { RoomErrorView } from '../../components/room/RoomErrorView';
+import { RoomHeader } from '../../components/room/RoomHeader';
+import { RoomPlayer } from '../../components/room/RoomPlayer';
+import { RoomQueue } from '../../components/room/RoomQueue';
+import { useThemeDisplay } from '../../hooks/useThemeDisplay';
+import { useThemeStore } from '../../stores/themeStore';
+import type { RoomLoaderData } from './loader';
+import { loader } from './loader';
+
+export { loader };
 
 interface ToastEventDetail {
   message: string;
@@ -23,7 +27,7 @@ interface ToastEventDetail {
 }
 
 export default function Room() {
-  const initialData = useInitialData();
+  const loaderData = useLoaderData() as RoomLoaderData;
   /* 1. Refs */
   const headerRef = useRef<HTMLDivElement | null>(null);
   const fetchAttemptedRef = useRef<string | null>(null);
@@ -36,7 +40,7 @@ export default function Room() {
   /* 2. Hooks */
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { toggleDarkMode, setIsWarping } = useThemeStore();
+  const { toggleDarkMode } = useThemeStore();
   const { room, fetchRoom, isLoading, error, joinRoom, userId } = useRoom(
     id || '',
   );
@@ -44,23 +48,17 @@ export default function Room() {
 
   // Set warping state based on loading
   useEffect(() => {
-    if (isLoading && !room && !initialData?.room) {
-      setIsWarping(true);
-    } else {
-      setIsWarping(false);
-    }
-
-    return () => setIsWarping(false);
-  }, [isLoading, room, initialData?.room, setIsWarping]);
+    // Keep room loading state local to the page; no background warp.
+  }, []);
 
   const { fetchQueue } = useQueue(id || '');
   const primeQueue = useCallback(async () => {
     if (!id) return;
-    if (!initialData || initialData.room?.id !== id || !initialData.playback) {
+    if (!loaderData || loaderData.room?.id !== id || !loaderData.playback) {
       await fetchPlayback();
     }
     fetchQueue();
-  }, [id, initialData, fetchPlayback, fetchQueue]);
+  }, [id, loaderData, fetchPlayback, fetchQueue]);
 
   // Granular store setters (subscription-free/minimized re-renders)
   const setRoom = useRoomStore((state) => state.setRoom);
@@ -75,7 +73,7 @@ export default function Room() {
   /* 3. State */
   const [initialized, setInitialized] = useState(false);
   const [isSSR, setIsSSR] = useState(true);
-  const { themeId, currentTheme } = useThemeStore();
+  const { themeId, currentTheme } = useThemeDisplay();
   const [isAddModalVisible, setIsAddModalVisible] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -90,8 +88,8 @@ export default function Room() {
   /* 4. Computed / Derived */
   const shareUrl = typeof window === 'undefined' ? '' : window.location.href;
   const displayRoom = useMemo(
-    () => room || initialData?.room || null,
-    [room, initialData?.room],
+    () => room || loaderData?.room || null,
+    [room, loaderData?.room],
   );
 
   /* 5. Handlers (Arrow Functions) */
@@ -186,23 +184,23 @@ export default function Room() {
 
   // SSR Initialization
   useEffect(() => {
-    if (initialData && !initialized) {
+    if (loaderData && !initialized) {
       console.log(
         '[SSR] Initializing room with server-provided data',
-        initialData,
+        loaderData,
       );
-      if (initialData.room) {
-        setRoom(initialData.room);
+      if (loaderData.room) {
+        setRoom(loaderData.room);
       }
-      if (initialData.songs) {
-        setSongs(initialData.songs);
+      if (loaderData.songs) {
+        setSongs(loaderData.songs);
       }
-      if (initialData.playback) {
-        setPlaybackState(initialData.playback);
+      if (loaderData.playback) {
+        setPlaybackState(loaderData.playback);
       }
       setInitialized(true);
     }
-  }, [initialData, initialized, setRoom, setSongs, setPlaybackState]);
+  }, [loaderData, initialized, setRoom, setSongs, setPlaybackState]);
 
   // Initial fetch and session join
   useEffect(() => {
@@ -210,9 +208,9 @@ export default function Room() {
 
     if (fetchAttemptedRef.current !== id) {
       fetchAttemptedRef.current = id;
-      const shouldFetchRoom = !initialData || initialData.room?.id !== id;
+      const shouldFetchRoom = !loaderData || loaderData.room?.id !== id;
       const shouldPrimeQueue =
-        shouldFetchRoom || !initialData?.playback || !initialData?.songs;
+        shouldFetchRoom || !loaderData?.playback || !loaderData?.songs;
 
       if (shouldFetchRoom) {
         fetchRoom();
@@ -232,7 +230,7 @@ export default function Room() {
         void primeQueue();
       }
     }
-  }, [id, userId, fetchRoom, initialData, primeQueue]);
+  }, [id, userId, fetchRoom, loaderData, primeQueue]);
 
   // If queue is present but playback is missing, retry fetching playback once per queue size.
   useEffect(() => {
@@ -355,7 +353,7 @@ export default function Room() {
 
         {/* Main content */}
         {/* Main content - Conditionally rendered */}
-        {isLoading && !room && !initialData?.room ? (
+        {isLoading && !room && !loaderData?.room ? (
           <div className="flex flex-1 items-center justify-center">
             <div className="animate-fade-in text-center">
               <div className="mb-5 inline-flex h-20 w-20 items-center justify-center rounded-2xl border border-theme bg-theme-surface shadow-[0_0_20px_rgba(255,46,151,0.25)]">
@@ -382,14 +380,14 @@ export default function Room() {
                 displayRoom={displayRoom}
                 onAddSong={handleAddSong}
                 onOpenCast={() => setShowDeviceSelector(true)}
-                initialPlayback={initialData?.playback}
+                initialPlayback={loaderData?.playback}
               />
 
               {/* Queue & Now Playing Section */}
               <RoomQueue
                 roomId={id || ''}
                 isSSR={isSSR}
-                initialPlayback={initialData?.playback}
+                initialPlayback={loaderData?.playback}
               />
             </div>
           </div>

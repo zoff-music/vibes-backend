@@ -74,7 +74,12 @@ function setCookie(name: string, value: string, days: number = 365) {
 }
 
 function savePreferences(preferences: Preferences) {
-  const encoded = btoa(JSON.stringify(preferences));
+  const json = JSON.stringify(preferences);
+  const base64 = btoa(json);
+  const encoded = base64
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/, '');
   setCookie(COOKIE_NAME, encoded);
 }
 
