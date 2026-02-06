@@ -133,6 +133,8 @@ const VideoPlayerComponent = ({
     };
 
     const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (!popup || event.source !== popup) return;
       if (
         event.data?.type === 'oauth-success' &&
         event.data?.provider === 'youtube'
@@ -197,7 +199,7 @@ const VideoPlayerComponent = ({
         if (drift > 2) {
           player.seekTo(targetTime, true);
         }
-      } catch (_err) { }
+      } catch (_err) {}
     }, 1000);
 
     return () => clearInterval(interval);
@@ -226,7 +228,7 @@ const VideoPlayerComponent = ({
         } else if (state === 1) {
           player.pauseVideo();
         }
-      } catch (_err) { }
+      } catch (_err) {}
     };
 
     syncPlaybackState();
@@ -256,7 +258,7 @@ const VideoPlayerComponent = ({
     if (isYouTubeActive || !playerRef.current) return;
     try {
       playerRef.current.pauseVideo();
-    } catch (_err) { }
+    } catch (_err) {}
   }, [isYouTubeActive]);
 
   const kickAutoplay = useCallback(
@@ -296,7 +298,7 @@ const VideoPlayerComponent = ({
         }
         player.playVideo();
         debugLog('kick', { reason, attempts: autoPlayKickCountRef.current });
-      } catch (_err) { }
+      } catch (_err) {}
     },
     [videoId, shouldPlay],
   );
@@ -326,7 +328,7 @@ const VideoPlayerComponent = ({
           return;
         }
         kickAutoplay('retry');
-      } catch (_err) { }
+      } catch (_err) {}
     };
 
     attemptPlay();
@@ -365,7 +367,7 @@ const VideoPlayerComponent = ({
           return;
         }
         kickAutoplay('hidden');
-      } catch (_err) { }
+      } catch (_err) {}
 
       if (attempts >= MAX_AUTOPLAY_RETRIES) {
         clearInterval(kickInterval);
@@ -384,11 +386,11 @@ const VideoPlayerComponent = ({
       try {
         player.unMute();
         setIsMutedState(false);
-      } catch (_err) { }
+      } catch (_err) {}
 
       try {
         player.playVideo();
-      } catch (_err) { }
+      } catch (_err) {}
 
       hasEverPlayedRef.current = true;
       setNeedsUserGesture(false);
@@ -426,7 +428,7 @@ const VideoPlayerComponent = ({
             setIsMutedState(true);
           }
           event.target.playVideo();
-        } catch (_err) { }
+        } catch (_err) {}
       }
     },
     [debugLog, forceAutoplay, isCastReceiver],
@@ -461,7 +463,7 @@ const VideoPlayerComponent = ({
       } else if (state === 2 && shouldPlay) {
         try {
           playerRef.current?.playVideo();
-        } catch (_err) { }
+        } catch (_err) {}
       }
     },
     [kickAutoplay, shouldPlay],
@@ -508,7 +510,7 @@ const VideoPlayerComponent = ({
       player.loadVideoById(videoId, startSeconds);
       lastLoadedVideoIdRef.current = videoId;
       debugLog('load-video', { startSeconds });
-    } catch (_err) { }
+    } catch (_err) {}
     if (isCastReceiver) {
       forceAutoplay('load-video');
     }
@@ -546,7 +548,9 @@ const VideoPlayerComponent = ({
     onNeedsUserGestureChange?.(showClickToPlay);
   }, [showClickToPlay, onNeedsUserGestureChange]);
 
-  const containerClass = 'relative h-full w-full overflow-hidden bg-black min-h-[315px]';
+  const containerClass = fill
+    ? 'relative h-full w-full overflow-hidden bg-black'
+    : 'relative h-full w-full overflow-hidden bg-black min-h-[315px]';
 
   const containerStyle = { height: '100%', width: '100%' };
 
@@ -558,8 +562,9 @@ const VideoPlayerComponent = ({
   // Main render logic always includes the container and CRT layers
   return (
     <div
-      className={`${containerClass} ${!isVisible ? 'pointer-events-none opacity-0' : ''
-        }`}
+      className={`${containerClass} ${
+        !isVisible ? 'pointer-events-none opacity-0' : ''
+      }`}
       style={containerStyle}
     >
       {/* Video Content - Back Layer */}
@@ -571,7 +576,7 @@ const VideoPlayerComponent = ({
           onStateChange={handleStateChange}
           onEnd={handleEnd}
           onError={handleError}
-          className="absolute inset-0 flex items-center justify-center [&_iframe]:aspect-video [&_iframe]:max-h-full [&_iframe]:max-w-full [&_iframe]:w-full min-h-[200px]"
+          className="absolute inset-0 flex min-h-[200px] items-center justify-center [&_iframe]:aspect-video [&_iframe]:max-h-full [&_iframe]:w-full [&_iframe]:max-w-full"
         />
       )}
 
@@ -601,7 +606,7 @@ const VideoPlayerComponent = ({
               hasEverPlayedRef.current = true;
               setNeedsUserGesture(false);
               debugLog('user-gesture-play');
-            } catch (_err) { }
+            } catch (_err) {}
           }}
         >
           <div className="text-center">

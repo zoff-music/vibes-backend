@@ -99,6 +99,16 @@ func AddSong(
 			return
 		}
 
+		if room.Settings.OnlyAdminAddSongs && !room.IsAdmin {
+			handleError(
+				w,
+				fmt.Errorf("only admins can add songs in this room"),
+				http.StatusForbidden,
+				false,
+			)
+			return
+		}
+
 		// Validate source type
 		sourceEnabled := false
 		for _, source := range room.Settings.EnabledSources {
@@ -246,7 +256,27 @@ func RemoveSong(
 		roomID := vars["id"]
 		songID := vars["songId"]
 
-		err := db.RemoveSong(ctx, roomID, songID)
+		session, ok := helper.GetSessionFromContext(ctx)
+		if !ok || session.UserID == "" {
+			handleError(w, fmt.Errorf("unauthorized"), http.StatusUnauthorized, false)
+			return
+		}
+
+		room, err := db.GetRoom(ctx, roomID, session.UserID)
+		if err != nil {
+			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+		if room.IsEmpty() {
+			handleError(w, fmt.Errorf("room not found"), http.StatusNotFound, false)
+			return
+		}
+		if !room.IsAdmin {
+			handleError(w, fmt.Errorf("forbidden"), http.StatusForbidden, false)
+			return
+		}
+
+		err = db.RemoveSong(ctx, roomID, songID)
 		if err != nil {
 			handleError(
 				w,

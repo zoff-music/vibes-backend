@@ -26,6 +26,7 @@ interface CastContextType {
   debugMode: boolean;
   roomId: string | null;
   casterId: string | null;
+  castToken: string | null;
   error: string | null;
   apiUrl: string;
 }
@@ -56,6 +57,10 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
       params.get('sessionId')
     );
   });
+  const [castToken, setCastToken] = useState<string | null>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('castToken');
+  });
 
   const debugModeRef = useRef(debugMode);
   const setDebugMode = useCallback((value: boolean) => {
@@ -76,6 +81,7 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
   const handleCastMessage = useCastMessageHandler({
     setRoomId,
     setCasterId,
+    setCastToken,
     setRoomInfo,
     setQueue,
     setStatusText,
@@ -94,6 +100,7 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
   useRoomSync({
     roomId,
     casterId,
+    castToken,
     setQueue,
     setRoomInfo,
     setStatusText,
@@ -170,6 +177,7 @@ export function CastProvider({ children }: { children: React.ReactNode }) {
         debugMode,
         roomId: roomId || null,
         casterId: casterId || null,
+        castToken: castToken || null,
         error,
         apiUrl: API_BASE_URL,
       }}

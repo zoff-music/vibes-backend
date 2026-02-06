@@ -1,4 +1,3 @@
-import { setCachedToken } from '@vibez/api';
 import type { Song } from '@vibez/shared';
 import { safeWrap, usePlaybackStore } from '@vibez/shared';
 import type { framework } from 'chromecast-caf-receiver';
@@ -8,13 +7,9 @@ import { normalizeSong } from '../utils/songUtils';
 
 let isCastReceiverInitialized = false;
 
-interface TokenData {
-  token: string;
-  expiresAt?: string;
-}
-
 interface CustomLoadData {
-  tokens?: Record<string, TokenData>;
+  roomId?: string;
+  castToken?: string;
   debug?: boolean;
   currentSong?: Song;
   positionMs?: number;
@@ -101,20 +96,15 @@ export const useCastReceiver = ({
           const media = loadRequestData.media;
           if (media?.customData && isCustomLoadData(media.customData)) {
             const data = media.customData;
-            if (data.tokens) {
-              for (const [provider, tokenData] of Object.entries(data.tokens)) {
-                if (tokenData?.token) {
-                  setCachedToken(
-                    provider,
-                    tokenData.token,
-                    tokenData.expiresAt ||
-                      new Date(Date.now() + 3600000).toISOString(),
-                  );
-                }
-              }
-            }
-
             if (data.debug) setDebugMode(true);
+
+            if (data.roomId) {
+              handleCastMessage({
+                action: 'joinRoom',
+                roomId: data.roomId,
+                castToken: data.castToken,
+              });
+            }
 
             if (data.currentSong) {
               const normalizedSong = normalizeSong(data.currentSong);
