@@ -10,6 +10,16 @@ http://localhost {
 }
 
 localhost, 127.0.0.1 {
+	# Baseline security headers (dev docker).
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		X-Permitted-Cross-Domain-Policies "none"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), serial=(), hid=(), xr-spatial-tracking=()"
+		-Via
+	}
+
 	handle /api/v1/rooms/*/events {
 		reverse_proxy backend:8080 {
 			flush_interval -1

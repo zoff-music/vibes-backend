@@ -3,21 +3,11 @@ import { createApiClient } from '@vibez/api';
 function getCastHeaders() {
   if (typeof window === 'undefined') return {};
   const params = new URLSearchParams(window.location.search);
-  const casterId =
-    params.get('casterId') ||
-    params.get('casterUserId') ||
-    params.get('sessionId');
+  const castToken = params.get('castToken');
   const headers: Record<string, string> = {};
-
-  if (params.has('roomId')) {
-    // roomId is a strong indicator we are in a receiver environment
-    headers['X-Cast-Receiver'] = '1';
+  if (castToken) {
+    headers.Authorization = `Bearer ${castToken}`;
   }
-
-  if (casterId) {
-    headers['X-Cast-Caster-Id'] = casterId;
-  }
-
   return headers;
 }
 

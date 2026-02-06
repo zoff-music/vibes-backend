@@ -183,3 +183,4 @@ Caddyfile.prod
 .agents/skills/create_api_handler
 .agents/skills/add_database_query
 .agents/skills/create_client
+.agent
