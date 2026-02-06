@@ -104,8 +104,11 @@ func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
 }
 
 func (s *Server) addCORSMiddleware(routers ...*mux.Router) {
+	cm := &middleware.CORSMiddleware{
+		AllowedOriginsCSV: s.Config.CORSAllowedOrigins,
+	}
 	for _, r := range routers {
-		r.Use(middleware.CORSMiddleware)
+		r.Use(cm.Middleware)
 	}
 }
 

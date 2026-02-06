@@ -1,4 +1,5 @@
 import { createApiClientWithBaseUrl } from '@vibez/api';
+import { safeWrap } from '@vibez/shared';
 
 const FALLBACK_API_BASE_URL = 'http://localhost:8080';
 
@@ -12,8 +13,8 @@ function resolveServerApiBaseUrl(request?: Request) {
   }
 
   if (request) {
-    try {
-      const originUrl = new URL(request.url);
+    const [urlErr, originUrl] = safeWrap(() => new URL(request.url));
+    if (!urlErr && originUrl) {
       if (
         (originUrl.hostname === 'localhost' ||
           originUrl.hostname === '127.0.0.1') &&
@@ -22,8 +23,6 @@ function resolveServerApiBaseUrl(request?: Request) {
         return 'http://localhost:8080';
       }
       return originUrl.origin;
-    } catch {
-      // Fall through to fallback.
     }
   }
 

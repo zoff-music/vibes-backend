@@ -1,4 +1,4 @@
-import { usePlaybackStore } from '@vibez/shared';
+import { safeWrap, usePlaybackStore } from '@vibez/shared';
 import { memo, useEffect, useRef, useState } from 'react';
 
 // Declare SC global on window
@@ -46,37 +46,40 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
   const initializeWidget = () => {
     if (!iframeRef.current || !window.SC) return;
 
-    try {
-      const widget = window.SC.Widget(iframeRef.current);
-      widgetRef.current = widget;
-
-      widget.bind(window.SC.Widget.Events.READY, () => {
-        setIsReady(true);
-        // Sync initial state
-        if (isPlaying) {
-          widget.play();
-        }
-      });
-
-      widget.bind(window.SC.Widget.Events.FINISH, () => {
-        onEnded?.();
-      });
-
-      widget.bind(window.SC.Widget.Events.SEEK, () => {
-        const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
-        console.log(
-          '[SoundCloud Widget] User sought, enforcing position:',
-          actualPositionMs,
-        );
-        widget.seekTo(actualPositionMs);
-      });
-
-      widget.bind(window.SC.Widget.Events.ERROR, (e: any) => {
-        console.error('[SoundCloud Widget] Error:', e);
-      });
-    } catch (err) {
-      console.error('[SoundCloud Widget] Initialization error:', err);
+    const [widgetErr, widget] = safeWrap(() =>
+      window.SC.Widget(iframeRef.current),
+    );
+    if (widgetErr || !widget) {
+      console.error('[SoundCloud Widget] Initialization error:', widgetErr);
+      return;
     }
+
+    widgetRef.current = widget;
+
+    widget.bind(window.SC.Widget.Events.READY, () => {
+      setIsReady(true);
+      // Sync initial state
+      if (isPlaying) {
+        widget.play();
+      }
+    });
+
+    widget.bind(window.SC.Widget.Events.FINISH, () => {
+      onEnded?.();
+    });
+
+    widget.bind(window.SC.Widget.Events.SEEK, () => {
+      const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
+      console.log(
+        '[SoundCloud Widget] User sought, enforcing position:',
+        actualPositionMs,
+      );
+      widget.seekTo(actualPositionMs);
+    });
+
+    widget.bind(window.SC.Widget.Events.ERROR, (e: any) => {
+      console.error('[SoundCloud Widget] Error:', e);
+    });
   };
 
   // Re-initialize when song changes (iframe src changes)
