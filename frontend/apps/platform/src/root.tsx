@@ -54,6 +54,18 @@ export function Layout({ children }: { children: ReactNode }) {
         <link rel="manifest" href="/site.webmanifest" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>ゾフ - Shared Music Queue</title>
+        <script
+          defer
+          data-domain="zoff.me"
+          src="https://analytics.zoff.me/js/script.outbound-links.tagged-events.js"
+        />
+        <script
+          // biome-ignore lint/security/noDangerouslySetInnerHtml: inline plausible bootstrap (first-party analytics domain)
+          dangerouslySetInnerHTML={{
+            __html:
+              'window.plausible = window.plausible || ((...args) => { window.plausible.q = window.plausible.q || []; window.plausible.q.push(args); });',
+          }}
+        />
         <Meta />
         <Links />
       </head>
