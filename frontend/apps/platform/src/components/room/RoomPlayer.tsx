@@ -143,6 +143,8 @@ export const RoomPlayer = React.memo(
       );
 
       const handleMessage = (event: MessageEvent) => {
+        if (event.origin !== window.location.origin) return;
+        if (!popup || event.source !== popup) return;
         if (
           event.data?.type === 'oauth-success' &&
           event.data?.provider === 'spotify'
@@ -173,8 +175,8 @@ export const RoomPlayer = React.memo(
           currentSong?.sourceType === 'soundcloud' ? null : prev.soundcloud,
         video:
           currentSong &&
-            currentSong.sourceType !== 'spotify' &&
-            currentSong.sourceType !== 'soundcloud'
+          currentSong.sourceType !== 'spotify' &&
+          currentSong.sourceType !== 'soundcloud'
             ? null
             : prev.video,
       }));
@@ -311,7 +313,7 @@ export const RoomPlayer = React.memo(
     const isSoundCloudTrack = currentSong?.sourceType === 'soundcloud';
     const isVideoTrack = currentSong
       ? currentSong.sourceType !== 'spotify' &&
-      currentSong.sourceType !== 'soundcloud'
+        currentSong.sourceType !== 'soundcloud'
       : false;
     const isPlayerMissing =
       (isSpotifyTrack && !SpotifyPlayerComponent) ||

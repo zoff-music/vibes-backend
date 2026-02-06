@@ -7,6 +7,7 @@ import { normalizeSong } from '../utils/songUtils';
 interface UseCastMessageHandlerProps {
   setRoomId: (id: string) => void;
   setCasterId: (id: string | null) => void;
+  setCastToken: (token: string | null) => void;
   setRoomInfo: (info: RoomInfo | null) => void;
   setQueue: (queue: QueueItem[]) => void;
   setStatusText: (text: string) => void;
@@ -17,6 +18,7 @@ interface UseCastMessageHandlerProps {
 export const useCastMessageHandler = ({
   setRoomId,
   setCasterId,
+  setCastToken,
   setRoomInfo,
   setQueue,
   setStatusText,
@@ -39,6 +41,9 @@ export const useCastMessageHandler = ({
         case 'joinRoom': {
           if (message.roomId) {
             setRoomId(message.roomId);
+          }
+          if ('castToken' in message) {
+            setCastToken(message.castToken || null);
           }
           const casterId = message.casterId || message.sessionId || undefined;
           if (casterId !== undefined) {
@@ -112,6 +117,7 @@ export const useCastMessageHandler = ({
       updateMediaMetadata,
       setRoomId,
       setCasterId,
+      setCastToken,
       setRoomInfo,
       setQueue,
       setStatusText,

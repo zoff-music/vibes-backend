@@ -1,3 +1,5 @@
+import { safeWrap } from '@vibez/shared';
+
 const port = process.env.PORT || 3000;
 const _isDev = true;
 
@@ -97,10 +99,9 @@ Bun.serve({
   const clients = (globalThis as any).hmrClients;
   if (clients) {
     for (const client of clients) {
-      try {
-        client.send('reload');
-      } catch (err) {
-        console.log('[HMR] Failed to send reload signal:', err);
+      const [sendErr] = safeWrap(() => client.send('reload'));
+      if (sendErr) {
+        console.log('[HMR] Failed to send reload signal:', sendErr);
       }
     }
   }

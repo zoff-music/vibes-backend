@@ -1,13 +1,14 @@
+import { createApiClient } from '@vibez/api';
 import type { Song } from '@vibez/shared';
 import { usePlaybackStore } from '@vibez/shared';
 import { useEffect } from 'react';
-import { api } from '../lib/api';
 import type { QueueItem, RoomInfo } from '../types';
 import { normalizeSong } from '../utils/songUtils';
 
 interface UseRoomSyncProps {
   roomId: string | null;
   casterId: string | null;
+  castToken: string | null;
   setQueue: (queue: QueueItem[]) => void;
   setRoomInfo: React.Dispatch<React.SetStateAction<RoomInfo | null>>;
   setStatusText: (text: string) => void;
@@ -27,6 +28,7 @@ type SSEMessage =
 export function useRoomSync({
   roomId,
   casterId,
+  castToken,
   setQueue,
   setRoomInfo,
   setStatusText,
@@ -38,22 +40,13 @@ export function useRoomSync({
   const setIsPlaying = usePlaybackStore((state) => state.setIsPlaying);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    if (!roomId) return;
+    if (!roomId || !castToken) return;
 
-    const effectiveCasterId =
-      casterId ||
-      params.get('casterId') ||
-      params.get('casterUserId') ||
-      params.get('sessionId') ||
-      '';
-
-    const castHeaders: Record<string, string> = {
-      'X-Cast-Receiver': '1',
+    const authHeaders: Record<string, string> = {
+      Authorization: `Bearer ${castToken}`,
     };
-    if (effectiveCasterId) {
-      castHeaders['X-Cast-Caster-Id'] = effectiveCasterId;
-    }
+
+    const api = createApiClient(authHeaders);
 
     let isMounted = true;
     let unsubscribe: (() => void) | null = null;
@@ -63,8 +56,8 @@ export function useRoomSync({
 
       // Fetch initial state
       Promise.all([
-        api.get('/rooms/{id}/songs', { id: roomId }, { headers: castHeaders }),
-        api.get('/rooms/{id}/states', { id: roomId }, { headers: castHeaders }),
+        api.get('/rooms/{id}/songs', { id: roomId }, { headers: authHeaders }),
+        api.get('/rooms/{id}/states', { id: roomId }, { headers: authHeaders }),
       ])
         .then(([queueRes, playbackRes]) => {
           if (!isMounted) return;
@@ -103,13 +96,7 @@ export function useRoomSync({
 
       const [err, stop] = await api.sse(
         '/rooms/{id}/events',
-        {
-          $search: {
-            castReceiver: '1',
-            casterId: effectiveCasterId || undefined,
-          },
-          id: roomId,
-        },
+        { id: roomId, $search: undefined },
         (result: [Error | null, unknown]) => {
           const [eventError, message] = result;
           if (eventError) {
@@ -170,10 +157,7 @@ export function useRoomSync({
         },
         {
           headers: {
-            'X-Cast-Receiver': '1',
-            ...(effectiveCasterId
-              ? { 'X-Cast-Caster-Id': effectiveCasterId }
-              : {}),
+            ...authHeaders,
           },
         },
       );
@@ -207,5 +191,6 @@ export function useRoomSync({
     setPlaybackState,
     setIsPlaying,
     casterId,
+    castToken,
   ]);
 }

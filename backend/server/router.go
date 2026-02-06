@@ -63,22 +63,30 @@ func (s *Server) setupRoutes() {
 	// Config routes
 	api.HandleFunc("/providers", handler.GetProviders(s.Config)).Methods(http.MethodGet, http.MethodOptions).Name("GetProviders")
 
-	// Admin routes
-	api.HandleFunc("/admin/sessions", handler.AdminLogin(&s.Config.AdminPassword, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
-	api.HandleFunc("/admin/sessions", handler.AdminLogout()).Methods(http.MethodDelete, http.MethodOptions).Name("AdminLogout")
-	api.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
-	api.HandleFunc("/admin/events", handler.AdminEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
+	// Cast token endpoint (cookie-auth only)
+	api.HandleFunc("/casting/tokens", handler.CreateCastingToken(s.DB, s.Config.CastTokenSecret)).Methods(http.MethodPost, http.MethodOptions).Name("CreateCastingToken")
+
+	// Admin routes (disabled when ADMIN_PASSWORD is not configured)
+	if s.Config.AdminPassword != "" {
+		api.HandleFunc("/admin/sessions", handler.AdminLogin(&s.Config.AdminPassword, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
+		api.HandleFunc("/admin/sessions", handler.AdminLogout()).Methods(http.MethodDelete, http.MethodOptions).Name("AdminLogout")
+		api.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
+		api.HandleFunc("/admin/events", handler.AdminEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
+	}
 
 	s.addSessionMiddleware(api)
 	s.addPermissionMiddleware(api)
-	s.addAdminMiddleware(api)
+	if s.Config.AdminPassword != "" {
+		s.addAdminMiddleware(api)
+	}
 	s.addTracingAndMetrics(api)
 	s.addCORSMiddleware(s.Router)
 }
 
 func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 	sm := middleware.SessionMiddleware{
-		Secret: s.Config.CookieSecret,
+		Secret:          s.Config.CookieSecret,
+		CastTokenSecret: s.Config.CastTokenSecret,
 	}
 	for _, r := range routers {
 		r.Use(sm.Middleware)
@@ -96,8 +104,11 @@ func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
 }
 
 func (s *Server) addCORSMiddleware(routers ...*mux.Router) {
+	cm := &middleware.CORSMiddleware{
+		AllowedOriginsCSV: s.Config.CORSAllowedOrigins,
+	}
 	for _, r := range routers {
-		r.Use(middleware.CORSMiddleware)
+		r.Use(cm.Middleware)
 	}
 }
 
@@ -119,8 +130,8 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 		AdminPassword: &s.Config.AdminPassword,
 		CookieSecret:  s.Config.CookieSecret,
 		ProtectedRoutes: map[string]bool{
-			"AdminRooms":         true,
-			"AdminEvents":        true,
+			"AdminRooms":  true,
+			"AdminEvents": true,
 		},
 	}
 

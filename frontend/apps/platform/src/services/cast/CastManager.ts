@@ -1,3 +1,4 @@
+import { createCastingToken } from '@vibez/api';
 import type {
   CastDevice,
   CastError,
@@ -399,11 +400,8 @@ class GoogleCastManager implements ICastManager {
           'background: #222; color: #bada55; font-weight: bold; padding: 2px 4px; border-radius: 2px;';
 
         const logArgs = args.map((arg: string) => {
-          try {
-            return JSON.parse(arg);
-          } catch {
-            return arg;
-          }
+          const [parseErr, parsed] = safeWrap(() => JSON.parse(arg));
+          return parseErr ? arg : parsed;
         });
 
         switch (level) {
@@ -664,16 +662,12 @@ class GoogleCastManager implements ICastManager {
     return new Promise((resolve, reject) => {
       const roomState = useRoomStore.getState();
       const roomId = roomState.room?.id || '';
-      const userId = roomState.userId || '';
-
-      console.log({ roomId, userId });
 
       if (DEVELOPMENT_MODE || this.isYouTubeUrl(mediaInfo.contentId)) {
         console.log('🎵 Preparing custom Zoff receiver session');
 
         const url = new URL(CUSTOM_RECEIVER_URL, window.location.origin);
         if (roomId) url.searchParams.set('roomId', roomId);
-        if (userId) url.searchParams.set('casterId', userId);
         if (
           new URLSearchParams(window.location.search).get('debug') === 'true'
         ) {
@@ -1008,10 +1002,17 @@ class GoogleCastManager implements ICastManager {
   async joinRoom(roomId: string): Promise<void> {
     if (!this.currentSession) return;
 
+    const [tokenErr, tokenResp] = await createCastingToken(roomId);
+    if (tokenErr || !tokenResp?.token) {
+      console.error('[Cast] failed to mint cast token', tokenErr);
+      throw tokenErr || new Error('Failed to mint cast token');
+    }
+
     const casterId = this.localEmulator.getCasterIdFromContext() || undefined;
     const message = {
       action: 'joinRoom',
       roomId,
+      castToken: tokenResp.token,
       casterId,
       sessionId: casterId,
       timestamp: Date.now(),

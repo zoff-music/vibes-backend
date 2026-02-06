@@ -64,6 +64,22 @@ export const castErrorSchema = yup.object({
   details: yup.mixed().optional(),
 });
 
+export const createCastingTokenRequestSchema = yup.object({
+  roomId: yup.string().required(),
+});
+export type CreateCastingTokenRequest = yup.InferType<
+  typeof createCastingTokenRequestSchema
+>;
+
+export const castingTokenResponseSchema = yup.object({
+  token: yup.string().required(),
+  expiresAt: yup.string().required(),
+  roomId: yup.string().required(),
+});
+export type CastingTokenResponse = yup.InferType<
+  typeof castingTokenResponseSchema
+>;
+
 export const sseQuerySchema = yup.object({
   castReceiver: yup.string().optional(),
   casterId: yup.string().optional(),

@@ -36,6 +36,7 @@ export type LocalCastMessage =
   | {
       action: 'joinRoom';
       roomId: string;
+      castToken?: string;
       casterId?: string;
       sessionId?: string;
       timestamp: number;

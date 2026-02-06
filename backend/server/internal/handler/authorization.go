@@ -44,8 +44,6 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 			return
 		}
 
-		fmt.Printf("DEBUG: Authorize - UserID: %s, State: %s\n", session.UserID, state)
-
 		redirectURL := oa.GetOAuthURL(state)
 		http.Redirect(
 			w,
