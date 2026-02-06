@@ -15,14 +15,21 @@ const resolveThumbnail = (value?: string) =>
 interface RoomQueueProps {
   roomId: string;
   isSSR: boolean;
+  isAdmin?: boolean;
   initialPlayback?: PlaybackState;
   initialSongs?: Song[];
 }
 
 export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
-  ({ roomId, isSSR, initialPlayback, initialSongs }: RoomQueueProps) => {
+  ({
+    roomId,
+    isSSR,
+    isAdmin,
+    initialPlayback,
+    initialSongs,
+  }: RoomQueueProps) => {
     /* 1. Hooks */
-    const { songs, voteSong } = useQueue(roomId);
+    const { songs, voteSong, removeFromQueue } = useQueue(roomId);
 
     // Granular store subscriptions
     const isPlayingFromStore = usePlaybackStore((state) => state.isPlaying);
@@ -50,6 +57,13 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
         await voteSong(songId);
       },
       [voteSong],
+    );
+
+    const handleRemove = React.useCallback(
+      async (songId: string) => {
+        await removeFromQueue(songId);
+      },
+      [removeFromQueue],
     );
 
     const formatTime = (ms: number) => {
@@ -161,6 +175,8 @@ export const RoomQueue: React.FC<RoomQueueProps> = React.memo(
               songs={displaySongs.filter((s) => s.id !== currentSongData?.id)}
               roomId={roomId}
               onVote={handleVote}
+              onRemove={handleRemove}
+              isAdmin={isAdmin}
             />
           </div>
         </div>
