@@ -109,7 +109,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 
 	// Ensure the directory exists
 	dir := filepath.Dir(cfg.DatabasePath)
-	err := os.MkdirAll(dir, 0o755)
+	// DB directory contains secrets (OAuth tokens); keep permissions tight.
+	err := os.MkdirAll(dir, 0o750)
 	if err != nil {
 		return fmt.Errorf("error in db: create data directory: %w", err)
 	}
