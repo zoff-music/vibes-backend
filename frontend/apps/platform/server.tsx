@@ -34,6 +34,66 @@ function buildCspHeader(nonce: string) {
   ].join('; ');
 }
 
+function createNonceInjectTransform(nonce: string) {
+  // Streaming-safe nonce injection: keep a small carry buffer so we can detect
+  // `<script ...>` tags that might be split across chunks.
+  let carry = '';
+  const maxCarry = 8 * 1024;
+
+  return new TransformStream<string, string>({
+    transform(chunk, controller) {
+      carry += chunk;
+
+      while (true) {
+        const idx = carry.search(/<script\b/i);
+        if (idx === -1) {
+          // Flush most of the buffer, keep a tail in case we split `<script`.
+          if (carry.length > maxCarry) {
+            controller.enqueue(carry.slice(0, carry.length - maxCarry));
+            carry = carry.slice(carry.length - maxCarry);
+          }
+          return;
+        }
+
+        // Need the full open tag to decide whether to inject.
+        const gt = carry.indexOf('>', idx);
+        if (gt === -1) {
+          // Emit everything before the start of the open tag, keep the rest.
+          if (idx > 0) {
+            controller.enqueue(carry.slice(0, idx));
+            carry = carry.slice(idx);
+          }
+          if (carry.length > maxCarry) {
+            // Defensive: avoid unbounded growth if markup is malformed.
+            controller.enqueue(carry.slice(0, carry.length - maxCarry));
+            carry = carry.slice(carry.length - maxCarry);
+          }
+          return;
+        }
+
+        const before = carry.slice(0, idx);
+        if (before) controller.enqueue(before);
+
+        const openTag = carry.slice(idx, gt + 1);
+        const alreadyNonced = /\bnonce\s*=/.test(openTag);
+        const isJsonScript = /\btype\s*=\s*["']application\/json["']/i.test(openTag);
+
+        if (!alreadyNonced && !isJsonScript) {
+          controller.enqueue(openTag.replace(/<script\b/i, `<script nonce="${nonce}"`));
+        } else {
+          controller.enqueue(openTag);
+        }
+
+        carry = carry.slice(gt + 1);
+      }
+    },
+    flush(controller) {
+      if (carry) controller.enqueue(carry);
+      carry = '';
+    },
+  });
+}
+
 const loadBuild = async () => {
   const mod = isDev
     ? await import('virtual:react-router/server-build')
@@ -90,8 +150,17 @@ Bun.serve({
 
     const headers = new Headers(response.headers);
     headers.set('Content-Security-Policy', buildCspHeader(cspNonce));
+    // Body length changes when we inject nonces; don't lie.
+    headers.delete('content-length');
 
-    return new Response(response.body, {
+    // React Router streaming SSR can emit inline <script> tags outside of the <Scripts />
+    // component (e.g. stream chunk enqueues). Inject the nonce while streaming.
+    const patchedBody = response.body
+      ?.pipeThrough(new TextDecoderStream())
+      .pipeThrough(createNonceInjectTransform(cspNonce))
+      .pipeThrough(new TextEncoderStream());
+
+    return new Response(patchedBody, {
       status: response.status,
       statusText: response.statusText,
       headers,
