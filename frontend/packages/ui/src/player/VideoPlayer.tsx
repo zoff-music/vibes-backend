@@ -1,5 +1,5 @@
 import { useProviderToken } from '@vibez/api';
-import { isTruthyFlag, usePlaybackStore } from '@vibez/shared';
+import { isTruthyFlag, safeWrap, usePlaybackStore } from '@vibez/shared';
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import YouTube, { type YouTubeProps } from 'react-youtube';
 import { AuthOverlay } from './AuthOverlay';
@@ -133,6 +133,8 @@ const VideoPlayerComponent = ({
     };
 
     const handleMessage = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      if (!popup || event.source !== popup) return;
       if (
         event.data?.type === 'oauth-success' &&
         event.data?.provider === 'youtube'
@@ -186,8 +188,9 @@ const VideoPlayerComponent = ({
       if (typeof document !== 'undefined' && document.hidden) {
         return;
       }
-      try {
-        const player = playerRef.current;
+      const player = playerRef.current;
+      if (!player) return;
+      const [err] = safeWrap(() => {
         const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
         const targetTime = actualPositionMs / 1000;
 
@@ -197,7 +200,10 @@ const VideoPlayerComponent = ({
         if (drift > 2) {
           player.seekTo(targetTime, true);
         }
-      } catch (_err) { }
+      });
+      if (err && DEBUG) {
+        debugLog('sync-drift-error', { error: err.message });
+      }
     }, 1000);
 
     return () => clearInterval(interval);
@@ -207,7 +213,7 @@ const VideoPlayerComponent = ({
     if (!isReady || !playerRef.current) return;
 
     const syncPlaybackState = () => {
-      try {
+      const [err] = safeWrap(() => {
         const player = playerRef.current;
         if (!player) return;
 
@@ -226,7 +232,10 @@ const VideoPlayerComponent = ({
         } else if (state === 1) {
           player.pauseVideo();
         }
-      } catch (_err) { }
+      });
+      if (err && DEBUG) {
+        debugLog('sync-playback-error', { error: err.message });
+      }
     };
 
     syncPlaybackState();
@@ -254,9 +263,10 @@ const VideoPlayerComponent = ({
 
   useEffect(() => {
     if (isYouTubeActive || !playerRef.current) return;
-    try {
-      playerRef.current.pauseVideo();
-    } catch (_err) { }
+    const [err] = safeWrap(() => playerRef.current?.pauseVideo());
+    if (err && DEBUG) {
+      debugLog('pause-error', { error: err.message });
+    }
   }, [isYouTubeActive]);
 
   const kickAutoplay = useCallback(
@@ -281,7 +291,7 @@ const VideoPlayerComponent = ({
       autoPlayKickLastAtRef.current = now;
       autoPlayKickCountRef.current += 1;
 
-      try {
+      const [err] = safeWrap(() => {
         const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
         const startSeconds = actualPositionMs > 0 ? actualPositionMs / 1000 : 0;
         const shouldSuppressLoad = now < suppressLoadUntilRef.current;
@@ -296,7 +306,10 @@ const VideoPlayerComponent = ({
         }
         player.playVideo();
         debugLog('kick', { reason, attempts: autoPlayKickCountRef.current });
-      } catch (_err) { }
+      });
+      if (err && DEBUG) {
+        debugLog('kick-error', { reason, error: err.message });
+      }
     },
     [videoId, shouldPlay],
   );
@@ -316,7 +329,7 @@ const VideoPlayerComponent = ({
     const attemptPlay = () => {
       const player = playerRef.current;
       if (!player) return;
-      try {
+      const [err] = safeWrap(() => {
         const state = player.getPlayerState();
         if (state === 1 || state === 3) {
           return;
@@ -326,7 +339,10 @@ const VideoPlayerComponent = ({
           return;
         }
         kickAutoplay('retry');
-      } catch (_err) { }
+      });
+      if (err && DEBUG) {
+        debugLog('autoplay-retry-error', { error: err.message });
+      }
     };
 
     attemptPlay();
@@ -358,14 +374,17 @@ const VideoPlayerComponent = ({
     let attempts = 0;
     const kickInterval = setInterval(() => {
       attempts += 1;
-      try {
+      const [err] = safeWrap(() => {
         const state = playerRef.current?.getPlayerState();
         if (state === 1 || state === 3) {
           clearInterval(kickInterval);
           return;
         }
         kickAutoplay('hidden');
-      } catch (_err) { }
+      });
+      if (err && DEBUG) {
+        debugLog('autoplay-hidden-error', { error: err.message });
+      }
 
       if (attempts >= MAX_AUTOPLAY_RETRIES) {
         clearInterval(kickInterval);
@@ -381,14 +400,18 @@ const VideoPlayerComponent = ({
       const player = playerRef.current;
       if (!player) return;
 
-      try {
+      const [unmuteErr] = safeWrap(() => {
         player.unMute();
         setIsMutedState(false);
-      } catch (_err) { }
+      });
+      if (unmuteErr && DEBUG) {
+        debugLog('force-autoplay-unmute-error', { error: unmuteErr.message });
+      }
 
-      try {
-        player.playVideo();
-      } catch (_err) { }
+      const [playErr] = safeWrap(() => player.playVideo());
+      if (playErr && DEBUG) {
+        debugLog('force-autoplay-play-error', { error: playErr.message });
+      }
 
       hasEverPlayedRef.current = true;
       setNeedsUserGesture(false);
@@ -420,13 +443,16 @@ const VideoPlayerComponent = ({
       }
 
       if (usePlaybackStore.getState().isPlaying) {
-        try {
+        const [err] = safeWrap(() => {
           if (!hasEverPlayedRef.current) {
             event.target.mute();
             setIsMutedState(true);
           }
           event.target.playVideo();
-        } catch (_err) { }
+        });
+        if (err && DEBUG) {
+          debugLog('ready-autoplay-error', { error: err.message });
+        }
       }
     },
     [debugLog, forceAutoplay, isCastReceiver],
@@ -459,9 +485,10 @@ const VideoPlayerComponent = ({
       if (state === 5 || state === -1) {
         kickAutoplay('state');
       } else if (state === 2 && shouldPlay) {
-        try {
-          playerRef.current?.playVideo();
-        } catch (_err) { }
+        const [err] = safeWrap(() => playerRef.current?.playVideo());
+        if (err && DEBUG) {
+          debugLog('state-autoplay-error', { error: err.message });
+        }
       }
     },
     [kickAutoplay, shouldPlay],
@@ -504,11 +531,14 @@ const VideoPlayerComponent = ({
 
     const actualPositionMs = usePlaybackStore.getState().actualPositionMs;
     const startSeconds = actualPositionMs > 0 ? actualPositionMs / 1000 : 0;
-    try {
+    const [err] = safeWrap(() => {
       player.loadVideoById(videoId, startSeconds);
       lastLoadedVideoIdRef.current = videoId;
       debugLog('load-video', { startSeconds });
-    } catch (_err) { }
+    });
+    if (err && DEBUG) {
+      debugLog('load-video-error', { error: err.message });
+    }
     if (isCastReceiver) {
       forceAutoplay('load-video');
     }
@@ -546,7 +576,9 @@ const VideoPlayerComponent = ({
     onNeedsUserGestureChange?.(showClickToPlay);
   }, [showClickToPlay, onNeedsUserGestureChange]);
 
-  const containerClass = 'relative h-full w-full overflow-hidden bg-black min-h-[315px]';
+  const containerClass = fill
+    ? 'relative h-full w-full overflow-hidden bg-black'
+    : 'relative h-full w-full overflow-hidden bg-black min-h-[315px]';
 
   const containerStyle = { height: '100%', width: '100%' };
 
@@ -558,8 +590,9 @@ const VideoPlayerComponent = ({
   // Main render logic always includes the container and CRT layers
   return (
     <div
-      className={`${containerClass} ${!isVisible ? 'pointer-events-none opacity-0' : ''
-        }`}
+      className={`${containerClass} ${
+        !isVisible ? 'pointer-events-none opacity-0' : ''
+      }`}
       style={containerStyle}
     >
       {/* Video Content - Back Layer */}
@@ -571,7 +604,7 @@ const VideoPlayerComponent = ({
           onStateChange={handleStateChange}
           onEnd={handleEnd}
           onError={handleError}
-          className="absolute inset-0 flex items-center justify-center [&_iframe]:aspect-video [&_iframe]:max-h-full [&_iframe]:max-w-full [&_iframe]:w-full min-h-[200px]"
+          className="absolute inset-0 flex min-h-[200px] items-center justify-center [&_iframe]:aspect-video [&_iframe]:max-h-full [&_iframe]:w-full [&_iframe]:max-w-full"
         />
       )}
 
@@ -590,7 +623,7 @@ const VideoPlayerComponent = ({
           onClick={() => {
             const player = playerRef.current;
             if (!player) return;
-            try {
+            const [err] = safeWrap(() => {
               player.unMute();
               setIsMutedState(false);
               suppressLoadUntilRef.current = Date.now() + 2000;
@@ -601,7 +634,10 @@ const VideoPlayerComponent = ({
               hasEverPlayedRef.current = true;
               setNeedsUserGesture(false);
               debugLog('user-gesture-play');
-            } catch (_err) { }
+            });
+            if (err && DEBUG) {
+              debugLog('user-gesture-error', { error: err.message });
+            }
           }}
         >
           <div className="text-center">

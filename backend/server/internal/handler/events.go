@@ -22,28 +22,25 @@ func RoomEvents(
 		ctx := r.Context()
 		vars := mux.Vars(r)
 		roomID := vars["id"]
-		casterID := r.URL.Query().Get("casterId")
-		isCastReceiver := r.URL.Query().Get("castReceiver") == "1" ||
-			r.Header.Get("X-Cast-Receiver") == "1"
 
-		// Get UserID from session/context. SSE usually auth via cookie or query param?
-		// Vibes uses cookie session middleware?
-		// Check action.go: middleware.SessionKey.
+		// Get UserID from session/context.
 		userID := ""
+		isCastReceiver := false
+		castOwnerID := ""
 		session, ok := helper.GetSessionFromContext(ctx)
 		if ok {
 			userID = session.UserID
+			isCastReceiver = session.AuthType == "cast"
+			if isCastReceiver {
+				castOwnerID = session.UserID
+			}
 		}
 
 		if isCastReceiver {
-			if casterID == "" {
-				casterID = r.Header.Get("X-Cast-Caster-Id")
-			}
-			if casterID == "" && userID != "" {
-				casterID = userID
-			}
-			if casterID != "" {
-				userID = fmt.Sprintf("cast:%s:%s", roomID, casterID)
+			// Use a per-connection ID to avoid colliding with the real user session.
+			// The underlying user identity is castOwnerID.
+			if castOwnerID != "" {
+				userID = fmt.Sprintf("cast:%s:%s", roomID, castOwnerID)
 			}
 		}
 
@@ -111,7 +108,7 @@ func RoomEvents(
 
 		// Update presence on connect and cleanup on disconnect
 		if userID != "" {
-			_ = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, casterID)
+			_ = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
 			notifyUsers(ctx)
 			defer notifyUsers(context.Background())
 		}
@@ -157,7 +154,7 @@ func RoomEvents(
 			case <-ticker.C:
 				// Keep-alive heartbeat AND update participant status
 				if userID != "" {
-					_ = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, casterID)
+					_ = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
 				}
 
 				fmt.Fprintf(w, ": heartbeat\n\n")
@@ -175,7 +172,12 @@ func RoomEvents(
 				}
 
 				// Filter out events triggered by the same user (e.g., password setup)
-				if event.UserID != "" && event.UserID == userID {
+				// For cast connections, compare against the underlying user id (castOwnerID).
+				filterID := userID
+				if isCastReceiver && castOwnerID != "" {
+					filterID = castOwnerID
+				}
+				if event.UserID != "" && event.UserID == filterID {
 					continue // Skip sending this event to the user who triggered it
 				}
 

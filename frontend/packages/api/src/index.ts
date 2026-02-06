@@ -11,7 +11,9 @@ import {
   adminLoginRequestSchema,
   adminRoomsSchema,
   adminSessionResponseSchema,
+  castingTokenResponseSchema,
   connectedSchema,
+  createCastingTokenRequestSchema,
   createRoomRequestSchema,
   createSessionRequestSchema,
   emptyObjectSchema,
@@ -213,6 +215,12 @@ const endpoints = {
       response: providersSchema,
     },
   },
+  '/casting/tokens': {
+    post: {
+      request: createCastingTokenRequestSchema,
+      response: castingTokenResponseSchema,
+    },
+  },
   '/admin/sessions': {
     post: {
       request: adminLoginRequestSchema,
@@ -279,6 +287,8 @@ export function createApiClient(customHeaders: Record<string, string> = {}) {
 
 export const api = createApiClient();
 
+// Endpoint helpers (mirrors backend handler filenames)
+export * from './casting';
 // Hooks
 export * from './hooks/usePlayback';
 export * from './hooks/useProviderToken';

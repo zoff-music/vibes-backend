@@ -10,6 +10,15 @@ http://localhost {
 }
 
 localhost, 127.0.0.1 {
+	# Baseline security headers (dev).
+	header {
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		X-Frame-Options "DENY"
+		X-Permitted-Cross-Domain-Policies "none"
+		Permissions-Policy "camera=(), microphone=(), geolocation=(), payment=(), usb=(), bluetooth=(), serial=(), hid=(), xr-spatial-tracking=()"
+		-Via
+	}
 
 	# Handle Cast app HMR WebSocket (when accessed via /casting/receiver/)
 	handle /casting/receiver/__hmr {

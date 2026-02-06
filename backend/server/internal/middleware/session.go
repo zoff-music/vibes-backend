@@ -9,30 +9,63 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes/server/internal/helper"
 )
 
 type SessionMiddleware struct {
-	Secret string
+	Secret          string
+	CastTokenSecret string
 }
 
 // Middleware extracts the session from the "session" cookie or creates a new one
 func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// 1) If caller provides a Bearer token, it must be valid (no silent fallback).
+		authz := r.Header.Get("Authorization")
+		if authz != "" {
+			if !strings.HasPrefix(authz, "Bearer ") {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			token := strings.TrimSpace(strings.TrimPrefix(authz, "Bearer "))
+			if token == "" {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			castPayload, err := helper.VerifyCastToken(m.CastTokenSecret, token, time.Now())
+			if err != nil {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			payload := helper.SessionPayload{
+				UserID:     castPayload.UserID,
+				AuthType:   "cast",
+				CastRoomID: castPayload.RoomID,
+			}
+
+			// Prevent a cast token for room A from being used against room B endpoints.
+			if vars := mux.Vars(r); vars != nil {
+				if roomID, ok := vars["id"]; ok && roomID != "" && roomID != payload.CastRoomID {
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+			}
+
+			ctx := context.WithValue(r.Context(), helper.SessionKey, payload)
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
+
+		// 2) Otherwise, use the signed cookie session (or create a new one).
 		payload, ok := m.extractSession(r)
 		if !ok {
-			// Check if this is a Cast Receiver request
-			isCast := r.Header.Get("X-Cast-Receiver") == "1"
-			casterID := r.Header.Get("X-Cast-Caster-Id")
-
-			if isCast && casterID != "" {
-				payload = helper.SessionPayload{UserID: casterID}
-				ok = true
-			} else {
-				payload = m.createNewSession(w, r)
-			}
+			payload = m.createNewSession(w, r)
 		}
 
 		ctx := context.WithValue(r.Context(), helper.SessionKey, payload)
@@ -69,12 +102,17 @@ func (m *SessionMiddleware) extractSession(r *http.Request) (helper.SessionPaylo
 		return helper.SessionPayload{}, false
 	}
 
+	// Backwards compatibility: old cookies may not have AuthType.
+	if payload.AuthType == "" {
+		payload.AuthType = "cookie"
+	}
+
 	return payload, true
 }
 
 func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, _ *http.Request) helper.SessionPayload {
 	userID := uuid.New().String()
-	payload := helper.SessionPayload{UserID: userID}
+	payload := helper.SessionPayload{UserID: userID, AuthType: "cookie"}
 
 	sessionJSON, _ := json.Marshal(payload)
 	sessionEncoded := base64.StdEncoding.EncodeToString(sessionJSON)

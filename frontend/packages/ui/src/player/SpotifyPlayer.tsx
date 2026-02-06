@@ -160,7 +160,8 @@ const SpotifyPlayerComponent: React.FC<Props> = ({
     };
 
     const handleMessage = (event: MessageEvent) => {
-      console.log('[SpotifyPlayer] Received message:', event.data);
+      if (event.origin !== window.location.origin) return;
+      if (!popup || event.source !== popup) return;
       if (
         event.data?.type === 'oauth-success' &&
         event.data?.provider === 'spotify'
