@@ -31,7 +31,14 @@ const [err] = safeWrap(() => {
 
     if (renderErr) {
       console.error('Failed to render app', renderErr);
-      document.body.innerHTML = `<div style="color:red; font-size: 24px; padding: 20px;">Failed to render: ${renderErr}</div>`;
+      const errDiv = document.createElement('div');
+      errDiv.style.color = 'red';
+      errDiv.style.fontSize = '24px';
+      errDiv.style.padding = '20px';
+      errDiv.textContent = `Failed to render: ${
+        renderErr instanceof Error ? renderErr.message : String(renderErr)
+      }`;
+      document.body.replaceChildren(errDiv);
     }
   }
 });
