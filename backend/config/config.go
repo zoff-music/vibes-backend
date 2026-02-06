@@ -48,6 +48,9 @@ type Config struct {
 
 	// Cast auth
 	CastTokenSecret string `envconfig:"CAST_TOKEN_SECRET" default:""`
+
+	// CORS
+	CORSAllowedOrigins string `envconfig:"CORS_ALLOWED_ORIGINS" default:""`
 }
 
 // LoadConfig reads environment variables and populates Config.

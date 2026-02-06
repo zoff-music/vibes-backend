@@ -2,42 +2,44 @@ package middleware
 
 import (
 	"net/http"
-	"os"
 	"strings"
 	"sync"
 )
 
-var (
-	corsOnce           sync.Once
-	corsAllowedOrigins map[string]struct{}
-)
+type CORSMiddleware struct {
+	AllowedOriginsCSV string
 
-func loadCORSAllowedOrigins() {
-	corsAllowedOrigins = map[string]struct{}{}
-	raw := os.Getenv("CORS_ALLOWED_ORIGINS")
-	for _, part := range strings.Split(raw, ",") {
+	allowedOrigins map[string]struct{}
+	initOnce       sync.Once
+}
+
+func (m *CORSMiddleware) init() {
+	m.allowedOrigins = map[string]struct{}{}
+	for _, part := range strings.Split(m.AllowedOriginsCSV, ",") {
 		o := strings.TrimSpace(part)
 		if o == "" {
 			continue
 		}
-		corsAllowedOrigins[o] = struct{}{}
+		m.allowedOrigins[o] = struct{}{}
 	}
 }
 
-func originAllowed(origin string) bool {
-	corsOnce.Do(loadCORSAllowedOrigins)
+func (m *CORSMiddleware) originAllowed(origin string) bool {
 	if origin == "" {
 		return false
 	}
-	_, ok := corsAllowedOrigins[origin]
+	m.initOnce.Do(m.init)
+	_, ok := m.allowedOrigins[origin]
 	return ok
 }
 
-// CORSMiddleware handles Cross-Origin Resource Sharing (CORS) headers.
+// Middleware handles Cross-Origin Resource Sharing (CORS) headers.
 // This middleware only allows credentialed CORS requests from an explicit
 // allowlist (CORS_ALLOWED_ORIGINS).
-func CORSMiddleware(next http.Handler) http.Handler {
+func (m *CORSMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		m.initOnce.Do(m.init)
+
 		origin := r.Header.Get("Origin")
 
 		// Always set these for consistency.
@@ -48,18 +50,15 @@ func CORSMiddleware(next http.Handler) http.Handler {
 
 		// If the request is a browser CORS request (Origin present), enforce allowlist.
 		if origin != "" {
-			if originAllowed(origin) {
+			if m.originAllowed(origin) {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Add("Vary", "Origin")
-			} else {
-				// Disallowed origin.
-				if r.Method == http.MethodOptions {
-					http.Error(w, "forbidden", http.StatusForbidden)
-					return
-				}
-				// For non-preflight requests, omit CORS headers and continue.
+			} else if r.Method == http.MethodOptions {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
 			}
+			// For non-preflight requests, omit CORS headers and continue.
 		}
 
 		if r.Method == http.MethodOptions {

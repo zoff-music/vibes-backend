@@ -400,11 +400,8 @@ class GoogleCastManager implements ICastManager {
           'background: #222; color: #bada55; font-weight: bold; padding: 2px 4px; border-radius: 2px;';
 
         const logArgs = args.map((arg: string) => {
-          try {
-            return JSON.parse(arg);
-          } catch {
-            return arg;
-          }
+          const [parseErr, parsed] = safeWrap(() => JSON.parse(arg));
+          return parseErr ? arg : parsed;
         });
 
         switch (level) {
