@@ -42,9 +42,8 @@ export default function Room() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { toggleDarkMode } = useThemeStore();
-  const { room, fetchRoom, isLoading, error, joinRoom, userId } = useRoom(
-    id || '',
-  );
+  const { room, fetchRoom, isLoading, error, joinRoom, userId, isAdmin } =
+    useRoom(id || '');
   const { fetchPlayback } = usePlayback(id || '');
 
   // Set warping state based on loading
@@ -412,6 +411,7 @@ export default function Room() {
               <RoomQueue
                 roomId={id || ''}
                 isSSR={isSSR}
+                isAdmin={isAdmin}
                 initialPlayback={loaderData?.playback}
                 initialSongs={loaderData?.songs}
               />
