@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useState } from 'react';
 import type { LinksFunction, LoaderFunctionArgs } from 'react-router';
 import {
   Links,
@@ -17,12 +17,14 @@ export const links: LinksFunction = () => [
 
 export interface RootLoaderData {
   theme: 'light' | 'dark' | 'auto';
+  cspNonce?: string;
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request, context }: LoaderFunctionArgs) {
   const cookieHeader = request.headers.get('cookie') ?? null;
   const theme = getThemeFromCookies(cookieHeader);
-  return { theme } satisfies RootLoaderData;
+  const cspNonce = (context as { cspNonce?: string } | undefined)?.cspNonce;
+  return { theme, cspNonce } satisfies RootLoaderData;
 }
 
 export function Layout({ children }: { children: ReactNode }) {
@@ -30,6 +32,8 @@ export function Layout({ children }: { children: ReactNode }) {
     | RootLoaderData
     | undefined;
   const themeId = loaderData?.theme ?? 'auto';
+  // Nonce is only relevant for the initial document; keep it stable across client navigations.
+  const [cspNonce] = useState(() => loaderData?.cspNonce);
   const themeClass =
     themeId === 'dark' ? 'dark' : themeId === 'light' ? 'theme-light' : '';
   const initialDataJson = JSON.stringify(loaderData ?? {});
@@ -54,17 +58,11 @@ export function Layout({ children }: { children: ReactNode }) {
         <link rel="manifest" href="/site.webmanifest" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
         <title>ゾフ - Shared Music Queue</title>
+        <script defer src="/plausible-init.js" />
         <script
           defer
           data-domain="zoff.me"
           src="https://analytics.zoff.me/js/script.outbound-links.tagged-events.js"
-        />
-        <script
-          // biome-ignore lint/security/noDangerouslySetInnerHtml: inline plausible bootstrap (first-party analytics domain)
-          dangerouslySetInnerHTML={{
-            __html:
-              'window.plausible = window.plausible || ((...args) => { window.plausible.q = window.plausible.q || []; window.plausible.q.push(args); });',
-          }}
         />
         <Meta />
         <Links />
@@ -77,8 +75,8 @@ export function Layout({ children }: { children: ReactNode }) {
           // biome-ignore lint/security/noDangerouslySetInnerHtml: SSR hydration data
           dangerouslySetInnerHTML={{ __html: initialDataJson }}
         />
-        <ScrollRestoration />
-        <Scripts />
+        <ScrollRestoration nonce={cspNonce} />
+        <Scripts nonce={cspNonce} />
       </body>
     </html>
   );

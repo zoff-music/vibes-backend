@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	opentracing "github.com/zoff-music/vibes/monitoring/opentracing"
@@ -91,7 +92,15 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 
 		message := string(resp)
 		span.SetTag("error", true)
-		span.LogKV("message", fmt.Errorf("error making request to %s, body: %s. Got error: %s", reqData.URL, string(reqData.Body), message))
+		span.LogKV(
+			"message",
+			fmt.Errorf(
+				"error making request to %s, body: %s. Got error: %s",
+				reqData.URL,
+				redactBodyForLog(reqData.Headers, reqData.Body),
+				message,
+			),
+		)
 
 		httpStatusCodeError := HTTPStatusCodeError{
 			URL:        reqData.URL,
@@ -152,11 +161,69 @@ func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) 
 	resp, err := client.Do(req)
 	if err != nil {
 		if reqData.Method == http.MethodPost {
-			return resp, fmt.Errorf("error making request: %w. Body: %s", err, reqData.Body)
+			return resp, fmt.Errorf("error making request: %w. Body: %s", err, redactBodyForLog(reqData.Headers, reqData.Body))
 		}
 
 		return resp, fmt.Errorf("error making request: %w. Query: %v", err, req.URL.RawQuery)
 	}
 
 	return resp, nil
+}
+
+// redactBodyForLog returns a redacted representation of a request body suitable for logs/traces.
+// It tries to parse JSON and form bodies and redact common secret/token fields; otherwise it
+// returns a size-only placeholder.
+func redactBodyForLog(headers map[string]string, body []byte) string {
+	if len(body) == 0 {
+		return ""
+	}
+
+	contentType := ""
+	for k, v := range headers {
+		if strings.EqualFold(k, "Content-Type") {
+			contentType = v
+			break
+		}
+	}
+
+	redactKey := func(k string) bool {
+		switch strings.ToLower(k) {
+		case "access_token", "refresh_token", "id_token", "token",
+			"client_secret", "clientsecret", "secret", "password",
+			"authorization", "code", "api_key", "apikey":
+			return true
+		default:
+			return false
+		}
+	}
+
+	if strings.Contains(contentType, "application/json") {
+		var obj map[string]any
+		if err := json.Unmarshal(body, &obj); err == nil {
+			for k := range obj {
+				if redactKey(k) {
+					obj[k] = "[REDACTED]"
+				}
+			}
+			if b, err := json.Marshal(obj); err == nil {
+				return string(b)
+			}
+		}
+		return fmt.Sprintf("[unparseable json body: %d bytes]", len(body))
+	}
+
+	if strings.Contains(contentType, "application/x-www-form-urlencoded") {
+		values, err := url.ParseQuery(string(body))
+		if err == nil {
+			for k := range values {
+				if redactKey(k) {
+					values.Set(k, "[REDACTED]")
+				}
+			}
+			return values.Encode()
+		}
+		return fmt.Sprintf("[unparseable form body: %d bytes]", len(body))
+	}
+
+	return fmt.Sprintf("[body omitted: %d bytes]", len(body))
 }
