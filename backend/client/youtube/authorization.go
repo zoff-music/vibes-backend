@@ -14,7 +14,7 @@ import (
 )
 
 // GetOAuthURL returns the URL to redirect the user to for YouTube (Google) authentication
-func (c *Client) GetOAuthURL(state string) string {
+func (c *Client) GetOAuthURL(state, codeVerifier string) string {
 	u, _ := url.Parse("https://accounts.google.com/o/oauth2/v2/auth")
 	q := u.Query()
 	q.Set("response_type", "code")
@@ -30,7 +30,7 @@ func (c *Client) GetOAuthURL(state string) string {
 }
 
 // ExchangeCode exchanges an authorization code for an access token
-func (c *Client) ExchangeCode(ctx context.Context, code string) (*vibe.TokenResponse, error) {
+func (c *Client) ExchangeCode(ctx context.Context, code, codeVerifier string) (*vibe.TokenResponse, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ExchangeCode")
 	defer span.Finish()
 

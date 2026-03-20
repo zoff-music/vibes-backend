@@ -1,4 +1,4 @@
-FROM golang:1.25.7 AS backend-dev
+FROM golang:1.26.1 AS backend-dev
 
 WORKDIR /go/src/github.com/zoff-music/vibes
 
@@ -11,7 +11,7 @@ WORKDIR /go/src/github.com/zoff-music/vibes/backend
 EXPOSE 8080
 CMD ["go", "run", "cmd/server/main.go"]
 
-FROM golang:1.25.7 AS migrator-dev
+FROM golang:1.26.1 AS migrator-dev
 
 WORKDIR /go/src/github.com/zoff-music/vibes
 
@@ -24,7 +24,7 @@ WORKDIR /go/src/github.com/zoff-music/vibes/migrator
 ENV CGO_ENABLED=1
 CMD ["go", "run", "main.go", "-db", "/data/db/vibes.db"]
 
-FROM golang:1.25.7 AS migrator-builder
+FROM golang:1.26.1 AS migrator-builder
 RUN apt-get update && apt-get install -y build-essential
 WORKDIR /go/src/github.com/zoff-music/vibes/migrator
 COPY migrator/go.mod migrator/go.sum ./
@@ -32,7 +32,7 @@ RUN go mod download
 COPY migrator .
 RUN CGO_ENABLED=1 go build -a -ldflags '-w -s' -o migrator-bin main.go
 
-FROM golang:1.25.7 AS backend-builder
+FROM golang:1.26.1 AS backend-builder
 
 # Install cross-compilation tools for CGO
 RUN apt-get update && apt-get install -y build-essential

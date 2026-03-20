@@ -256,9 +256,10 @@ func (c *Client) DeleteExpiredAccessTokens(ctx context.Context) (int64, error) {
 
 func (c *Client) prepareSavePendingOAuthStateStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO pending_oauth_state (user_id, state, expires_at)
-		VALUES (?1, ?2, ?3)
+		INSERT INTO pending_oauth_state (user_id, state, code_verifier, expires_at)
+		VALUES (?1, ?2, ?3, ?4)
 		ON CONFLICT(user_id, state) DO UPDATE SET
+			code_verifier = excluded.code_verifier,
 			expires_at = excluded.expires_at
 	`)
 	if err != nil {
@@ -269,7 +270,7 @@ func (c *Client) prepareSavePendingOAuthStateStmt() error {
 }
 
 // SavePendingOAuthState stores a pending OAuth state for a user.
-func (c *Client) SavePendingOAuthState(ctx context.Context, userID, state string) error {
+func (c *Client) SavePendingOAuthState(ctx context.Context, userID, state, codeVerifier string) error {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SavePendingOAuthState")
 	defer span.Finish()
 
@@ -277,7 +278,7 @@ func (c *Client) SavePendingOAuthState(ctx context.Context, userID, state string
 	defer cancel()
 
 	expiresAt := time.Now().Add(10 * time.Minute)
-	_, err := c.SavePendingOAuthStateStatement.ExecContext(cctx, userID, state, expiresAt)
+	_, err := c.SavePendingOAuthStateStatement.ExecContext(cctx, userID, state, codeVerifier, expiresAt)
 	if err != nil {
 		return fmt.Errorf("error in db: save pending oauth state: %w", err)
 	}
@@ -286,7 +287,7 @@ func (c *Client) SavePendingOAuthState(ctx context.Context, userID, state string
 
 func (c *Client) prepareValidatePendingOAuthStateStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT user_id FROM pending_oauth_state 
+		SELECT user_id, COALESCE(code_verifier, '') FROM pending_oauth_state 
 		WHERE state = ?1 AND expires_at > CURRENT_TIMESTAMP
 	`)
 	if err != nil {
@@ -296,7 +297,7 @@ func (c *Client) prepareValidatePendingOAuthStateStmt() error {
 	return nil
 }
 
-func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (string, error) {
+func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (string, string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "validatePendingOAuthState")
 	defer span.Finish()
 
@@ -306,16 +307,17 @@ func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (s
 	r := c.ValidatePendingOAuthStateStatement.QueryRowContext(cctx, state)
 
 	var userID sql.NullString
-	err := r.Scan(&userID)
+	var codeVerifier sql.NullString
+	err := r.Scan(&userID, &codeVerifier)
 	if err != nil {
 		if err == sql.ErrNoRows {
-			return "", nil
+			return "", "", nil
 		}
 
-		return "", fmt.Errorf("error in db: validate pending oauth state: %w", err)
+		return "", "", fmt.Errorf("error in db: validate pending oauth state: %w", err)
 	}
 
-	return userID.String, nil
+	return userID.String, codeVerifier.String, nil
 }
 
 func (c *Client) prepareDeletePendingOAuthStateStmt() error {
@@ -344,21 +346,23 @@ func (c *Client) deletePendingOAuthState(ctx context.Context, userID, state stri
 }
 
 // ValidateAndDeletePendingOAuthState checks if the state exists and is valid, then deletes it.
-func (c *Client) ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (string, error) {
+func (c *Client) ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (string, string, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ValidateAndDeletePendingOAuthState")
 	defer span.Finish()
 
-	userID, err := c.validatePendingOAuthState(ctx, state)
+	userID, codeVerifier, err := c.validatePendingOAuthState(ctx, state)
 	if err != nil {
-		return "", fmt.Errorf("error in db: validate pending oauth state: %w", err)
+		return "", "", fmt.Errorf("error in db: validate pending oauth state: %w", err)
 	}
 
-	err = c.deletePendingOAuthState(ctx, userID, state)
-	if err != nil {
-		return "", fmt.Errorf("error in db: delete pending oauth state: %w", err)
+	if userID != "" {
+		err = c.deletePendingOAuthState(ctx, userID, state)
+		if err != nil {
+			return "", "", fmt.Errorf("error in db: delete pending oauth state: %w", err)
+		}
 	}
 
-	return userID, nil
+	return userID, codeVerifier, nil
 }
 
 func (c *Client) prepareDeleteExpiredPendingOAuthStatesStmt() error {

@@ -27,7 +27,7 @@ function buildCspHeader(nonce: string) {
     "img-src 'self' data: https:",
     "media-src 'self' https: blob:",
     "connect-src 'self' https: wss: https://analytics.zoff.me",
-    `script-src 'self' 'nonce-${nonce}' https://analytics.zoff.me https://www.gstatic.com https://www.youtube.com https://www.youtube-nocookie.com https://sdk.scdn.co https://connect.soundcloud.com`,
+    `script-src 'self' 'nonce-${nonce}' https://analytics.zoff.me https://www.gstatic.com https://www.youtube.com https://www.youtube-nocookie.com https://sdk.scdn.co https://connect.soundcloud.com https://w.soundcloud.com`,
     "style-src 'self' 'unsafe-inline' https: https://fonts.googleapis.com",
     "font-src 'self' data: https://fonts.gstatic.com",
     "frame-src https://www.youtube.com https://www.youtube-nocookie.com https://open.spotify.com https://w.soundcloud.com",

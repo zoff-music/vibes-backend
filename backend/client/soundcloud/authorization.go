@@ -2,6 +2,8 @@ package soundcloud
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -14,20 +16,30 @@ import (
 )
 
 // GetOAuthURL returns the URL to redirect the user to for SoundCloud authentication
-func (c *Client) GetOAuthURL(state string) string {
+func (c *Client) GetOAuthURL(state, codeVerifier string) string {
 	u, _ := url.Parse("https://soundcloud.com/connect")
 	q := u.Query()
 	q.Set("client_id", c.clientID)
 	q.Set("response_type", "code")
 	q.Set("redirect_uri", c.redirectURI)
 	q.Set("state", state)
+
+	// PKCE
+	if codeVerifier != "" {
+		h := sha256.New()
+		h.Write([]byte(codeVerifier))
+		codeChallenge := base64.RawURLEncoding.EncodeToString(h.Sum(nil))
+		q.Set("code_challenge", codeChallenge)
+		q.Set("code_challenge_method", "S256")
+	}
+
 	u.RawQuery = q.Encode()
 
 	return u.String()
 }
 
 // ExchangeCode exchanges an authorization code for an access token
-func (c *Client) ExchangeCode(ctx context.Context, code string) (*vibe.TokenResponse, error) {
+func (c *Client) ExchangeCode(ctx context.Context, code, codeVerifier string) (*vibe.TokenResponse, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ExchangeCode")
 	defer span.Finish()
 
@@ -37,10 +49,13 @@ func (c *Client) ExchangeCode(ctx context.Context, code string) (*vibe.TokenResp
 	params.Set("client_secret", c.clientSecret)
 	params.Set("redirect_uri", c.redirectURI)
 	params.Set("code", code)
+	if codeVerifier != "" {
+		params.Set("code_verifier", codeVerifier)
+	}
 
 	reqData := client.HTTPRequestData{
 		Method: http.MethodPost,
-		URL:    "https://api.soundcloud.com/oauth2/token",
+		URL:    "https://secure.soundcloud.com/oauth/token",
 		Headers: map[string]string{
 			"Content-Type": "application/x-www-form-urlencoded",
 		},
@@ -74,7 +89,7 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*vibe.T
 
 	reqData := client.HTTPRequestData{
 		Method: http.MethodPost,
-		URL:    "https://api.soundcloud.com/oauth2/token",
+		URL:    "https://secure.soundcloud.com/oauth/token",
 		Headers: map[string]string{
 			"Content-Type": "application/x-www-form-urlencoded",
 		},
