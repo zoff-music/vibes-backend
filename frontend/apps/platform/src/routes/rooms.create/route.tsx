@@ -185,7 +185,7 @@ const CreateRoom: React.FC = () => {
               CREATE A SESSION
             </h1>
             <p className="mt-3 font-pixel text-sm text-theme-muted">
-              Build a neon listening room in seconds.
+              Build a listening room in seconds.
             </p>
             <p className="jp-art mt-2 text-theme-subtle text-xs">
               セッションを作成
