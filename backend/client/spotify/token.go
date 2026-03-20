@@ -66,7 +66,7 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 	return c.accessToken, nil
 }
 
-func (c *Client) ExchangeCode(ctx context.Context, code string) (*vibe.TokenResponse, error) {
+func (c *Client) ExchangeCode(ctx context.Context, code, codeVerifier string) (*vibe.TokenResponse, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "ExchangeCode")
 	defer span.Finish()
 

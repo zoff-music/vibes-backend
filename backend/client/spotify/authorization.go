@@ -5,7 +5,7 @@ import (
 )
 
 // GetOAuthURL returns the URL to redirect the user to for Spotify authentication
-func (c *Client) GetOAuthURL(state string) string {
+func (c *Client) GetOAuthURL(state, codeVerifier string) string {
 	u, _ := url.Parse("https://accounts.spotify.com/authorize")
 	q := u.Query()
 	q.Set("response_type", "code")

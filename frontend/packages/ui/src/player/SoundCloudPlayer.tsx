@@ -192,7 +192,7 @@ const SoundCloudPlayerComponent: React.FC<Props> = ({
         height="100%"
         scrolling="no"
         frameBorder="0"
-        allow="autoplay"
+        allow="autoplay; encrypted-media"
         className={`h-full w-full ${isReady ? 'opacity-100' : 'opacity-0'} transition-opacity duration-700`}
         title={currentSong.title}
       />

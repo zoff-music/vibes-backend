@@ -7,7 +7,7 @@ import (
 
 // OAuthAuthorizer handles OAuth authorization URL generation.
 type OAuthAuthorizer interface {
-	GetOAuthURL(state string) string
+	GetOAuthURL(state, codeVerifier string) string
 }
 
 // AccessTokenUpserterGetter handles storing and retrieving access token data.
@@ -43,19 +43,19 @@ type AccessToken struct {
 
 // PendingOAuthStateSaver handles saving pending OAuth state
 type PendingOAuthStateSaver interface {
-	SavePendingOAuthState(ctx context.Context, userID, state string) error
+	SavePendingOAuthState(ctx context.Context, userID, state, codeVerifier string) error
 }
 
 // CodeValidatorUpserter handles database operations for OAuth callbacks
 type CodeValidatorUpserter interface {
-	ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (string, error)
+	ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (string, string, error)
 	UpsertAuthToken(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error
 	UpsertAccessToken(ctx context.Context, userID, provider, accessToken, refreshToken string, expiresAt, refreshExpiresAt time.Time) error
 }
 
 // OAuthExchanger handles exchanging auth codes for tokens
 type OAuthExchanger interface {
-	ExchangeCode(ctx context.Context, code string) (*TokenResponse, error)
+	ExchangeCode(ctx context.Context, code, codeVerifier string) (*TokenResponse, error)
 }
 
 // ExpiredTokenClaimUpdater claims and returns an expired token for refresh

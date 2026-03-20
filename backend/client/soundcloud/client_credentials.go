@@ -51,7 +51,7 @@ func (c *Client) GetClientCredentialsToken(ctx context.Context) (*vibe.TokenResp
 
 	reqData := client.HTTPRequestData{
 		Method: http.MethodPost,
-		URL:    "https://api.soundcloud.com/oauth2/token",
+		URL:    "https://secure.soundcloud.com/oauth/token",
 		Headers: map[string]string{
 			"Content-Type": "application/x-www-form-urlencoded",
 		},

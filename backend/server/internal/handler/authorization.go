@@ -32,8 +32,10 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 			return
 		}
 
+		codeVerifier := generateRandomString(43) // length between 43 and 128 for PKCE
+
 		// Store state in database
-		err := db.SavePendingOAuthState(ctx, session.UserID, state)
+		err := db.SavePendingOAuthState(ctx, session.UserID, state, codeVerifier)
 		if err != nil {
 			handleError(
 				w,
@@ -44,7 +46,7 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 			return
 		}
 
-		redirectURL := oa.GetOAuthURL(state)
+		redirectURL := oa.GetOAuthURL(state, codeVerifier)
 		http.Redirect(
 			w,
 			r,
@@ -63,7 +65,7 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 		state := query.Get("state")
 
 		// Validate state from database (stateless check to handle cross-domain cookies)
-		userID, err := db.ValidateAndDeletePendingOAuthState(ctx, state)
+		userID, codeVerifier, err := db.ValidateAndDeletePendingOAuthState(ctx, state)
 		if err != nil {
 			handleError(
 				w,
@@ -85,7 +87,7 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 		}
 
 		// Exchange code for tokens
-		tokenResp, err := oa.ExchangeCode(ctx, code)
+		tokenResp, err := oa.ExchangeCode(ctx, code, codeVerifier)
 		if err != nil {
 			handleError(
 				w,
