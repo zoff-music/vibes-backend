@@ -1,15 +1,13 @@
-// Package database contains a SQLite client for Vibes.
+// Package database contains a Postgres client for Vibes.
 package database
 
 import (
 	"context"
 	"database/sql"
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/zoff-music/vibes/config"
 	"github.com/zoff-music/vibes/monitoring/opentracing"
 )
@@ -107,43 +105,14 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.maxQueueLength = 200
 	}
 
-	// Ensure the directory exists
-	dir := filepath.Dir(cfg.DatabasePath)
-	// DB directory contains secrets (OAuth tokens); keep permissions tight.
-	err := os.MkdirAll(dir, 0o750)
+	db, err := sql.Open("pgx", cfg.DatabaseURL)
 	if err != nil {
-		return fmt.Errorf("error in db: create data directory: %w", err)
-	}
-
-	db, err := sql.Open("sqlite3", cfg.DatabasePath)
-	if err != nil {
-		return fmt.Errorf("error in db: open sqlite: %w", err)
+		return fmt.Errorf("error in db: open postgres: %w", err)
 	}
 
 	db.SetConnMaxLifetime(30 * time.Minute)
-	db.SetMaxOpenConns(1)
-	db.SetMaxIdleConns(1)
-
-	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	_, err = db.ExecContext(cctx, "PRAGMA journal_mode = WAL;")
-	if err != nil {
-		return fmt.Errorf("error in db: set journal_mode: %w", err)
-	}
-
-	cctx, cancel = context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	_, err = db.ExecContext(cctx, "PRAGMA synchronous = NORMAL;")
-	if err != nil {
-		return fmt.Errorf("error in db: set synchronous: %w", err)
-	}
-
-	cctx, cancel = context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	_, err = db.ExecContext(cctx, "PRAGMA foreign_keys = ON;")
-	if err != nil {
-		return fmt.Errorf("error in db: enable foreign keys: %w", err)
-	}
+	db.SetMaxOpenConns(cfg.DatabaseMaxConns)
+	db.SetMaxIdleConns(cfg.DatabaseMaxIdleConns)
 
 	c.DB = db
 

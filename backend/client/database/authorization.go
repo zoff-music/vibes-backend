@@ -15,7 +15,7 @@ import (
 func (c *Client) prepareUpsertAuthTokenStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO auth_tokens (user_id, provider, code, state, expires_at, updated_at)
-		VALUES (?1, ?2, ?3, ?4, ?5, CURRENT_TIMESTAMP)
+		VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
 		ON CONFLICT(user_id, provider) DO UPDATE SET
 			code = EXCLUDED.code,
 			state = EXCLUDED.state,
@@ -47,7 +47,7 @@ func (c *Client) UpsertAuthToken(ctx context.Context, userID, provider, code, st
 
 func (c *Client) prepareGetAuthProvidersStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT provider FROM access_tokens WHERE user_id = ?1 AND refresh_expires_at > CURRENT_TIMESTAMP
+		SELECT provider FROM access_tokens WHERE user_id = $1 AND refresh_expires_at > CURRENT_TIMESTAMP
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetAuthProvidersStatement: %w", err)
@@ -92,7 +92,7 @@ func (c *Client) GetAuthProviders(ctx context.Context, userID string) ([]string,
 func (c *Client) prepareUpsertAccessTokenStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO access_tokens (user_id, provider, access_token, refresh_token, expires_at, refresh_expires_at, updated_at)
-		VALUES (?1, ?2, ?3, ?4, ?5, ?6, CURRENT_TIMESTAMP)
+		VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
 		ON CONFLICT(user_id, provider) DO UPDATE SET
 			access_token = EXCLUDED.access_token,
 			refresh_token = EXCLUDED.refresh_token,
@@ -127,7 +127,7 @@ func (c *Client) prepareGetAccessTokenStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT user_id, provider, access_token, refresh_token, expires_at, refresh_expires_at
 		FROM access_tokens
-		WHERE user_id = ?1 AND provider = ?2
+		WHERE user_id = $1 AND provider = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetAccessTokenStatement: %w", err)
@@ -257,7 +257,7 @@ func (c *Client) DeleteExpiredAccessTokens(ctx context.Context) (int64, error) {
 func (c *Client) prepareSavePendingOAuthStateStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO pending_oauth_state (user_id, state, code_verifier, expires_at)
-		VALUES (?1, ?2, ?3, ?4)
+		VALUES ($1, $2, $3, $4)
 		ON CONFLICT(user_id, state) DO UPDATE SET
 			code_verifier = excluded.code_verifier,
 			expires_at = excluded.expires_at
@@ -288,7 +288,7 @@ func (c *Client) SavePendingOAuthState(ctx context.Context, userID, state, codeV
 func (c *Client) prepareValidatePendingOAuthStateStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT user_id, COALESCE(code_verifier, '') FROM pending_oauth_state 
-		WHERE state = ?1 AND expires_at > CURRENT_TIMESTAMP
+		WHERE state = $1 AND expires_at > CURRENT_TIMESTAMP
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ValidatePendingOAuthStateStatement (Select): %w", err)
@@ -322,7 +322,7 @@ func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (s
 
 func (c *Client) prepareDeletePendingOAuthStateStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM pending_oauth_state WHERE user_id = ?1 AND state = ?2
+		DELETE FROM pending_oauth_state WHERE user_id = $1 AND state = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing DeletePendingOAuthStateStatement: %w", err)
@@ -402,10 +402,10 @@ func (c *Client) prepareClaimAndGetExpiredTokenForRefreshStmt() error {
 		WITH claimed_token AS (
 			SELECT user_id, provider, access_token, refresh_token, expires_at, refresh_expires_at
 			FROM access_tokens
-			WHERE provider = ?1
+			WHERE provider = $1
 			AND expires_at <= CURRENT_TIMESTAMP
 			AND refresh_expires_at > CURRENT_TIMESTAMP
-			AND (last_checked IS NULL OR last_checked <= datetime('now', '-2 minutes'))
+			AND (last_checked IS NULL OR last_checked <= NOW() - INTERVAL '2 minutes')
 			ORDER BY last_checked ASC
 			LIMIT 1
 		)

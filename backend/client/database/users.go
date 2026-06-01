@@ -18,7 +18,7 @@ func (c *Client) prepareGetUserStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id, room_id, is_admin, joined_at, last_seen_at
 		FROM room_users
-		WHERE room_id = ?1 AND id = ?2
+		WHERE room_id = $1 AND id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetUserStatement: %w", err)
@@ -89,7 +89,7 @@ func (r *userRow) toUser() (*vibe.User, error) {
 func (c *Client) prepareCreateUserStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO room_users (id, room_id, is_admin, is_active_listener, joined_at, last_seen_at)
-		VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT(id, room_id) DO UPDATE SET
 		is_admin = EXCLUDED.is_admin,
 		is_active_listener = EXCLUDED.is_active_listener,

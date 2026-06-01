@@ -44,9 +44,9 @@ type SubscriberPublisher interface {
 
 // RoomEvent represents an SSE event for a room
 type RoomEvent struct {
-	Type     string `json:"type"`
-	Payload  []byte `json:"payload"`
-	UserID   string `json:"userId,omitempty"` // ID of user who triggered this event
+	Type    string `json:"type"`
+	Payload []byte `json:"payload"`
+	UserID  string `json:"userId,omitempty"` // ID of user who triggered this event
 }
 
 // RoomEventNotifier broadcasts events to room subscribers
