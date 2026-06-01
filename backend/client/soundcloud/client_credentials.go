@@ -15,6 +15,9 @@ import (
 
 // EnsureToken checks if the current token is valid and refreshes it if necessary
 func (c *Client) EnsureToken(ctx context.Context) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "EnsureToken")
+	defer span.Finish()
+
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
