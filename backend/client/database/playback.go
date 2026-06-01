@@ -18,7 +18,7 @@ func (c *Client) prepareGetPlaybackStateStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT room_id, current_song_id, is_playing, position_ms, updated_at
 		FROM playback_state
-		WHERE room_id = ?1
+		WHERE room_id = $1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetPlaybackStateStatement: %w", err)
@@ -40,7 +40,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 		ON a.room_id = c.id
 		WHERE a.is_playing = 1
 		AND (c.mode = 'server' OR c.mode = 'host')
-		AND ((UNIXEPOCH('now') - UNIXEPOCH(a.updated_at)) * 1000 + a.position_ms) >= (b.duration * 1000 - 500)
+		AND ((EXTRACT(EPOCH FROM (NOW() - a.updated_at)) * 1000) + a.position_ms) >= (b.duration * 1000 - 500)
 		LIMIT 1
 	`)
 	if err != nil {
@@ -231,7 +231,7 @@ func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
 func (c *Client) prepareUpsertPlaybackStateStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO playback_state (room_id, current_song_id, is_playing, position_ms, updated_at)
-		VALUES (?1, ?2, ?3, ?4, CURRENT_TIMESTAMP)
+		VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
 		ON CONFLICT(room_id) DO UPDATE SET
 			current_song_id = EXCLUDED.current_song_id,
 			is_playing = EXCLUDED.is_playing,
@@ -421,10 +421,10 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE playback_state
-		SET current_song_id = ?1,
+		SET current_song_id = $1,
 		is_playing = 1,
 		updated_at = CURRENT_TIMESTAMP
-		WHERE room_id = ?2
+		WHERE room_id = $2
 		AND current_song_id IS NULL
 	`)
 	if err != nil {

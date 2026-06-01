@@ -16,25 +16,25 @@ import (
 // prepareGetSongsStmt prepares the GetSongsStatement.
 func (c *Client) prepareGetSongsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT 
-			a.id, 
-			a.room_id, 
-			a.source_type, 
-			a.source_id, 
-			a.title, 
-			a.artist, 
-			a.thumbnail_url, 
-			a.duration, 
-			a.added_by, 
-			a.added_by_nickname, 
-			a.added_at, 
+		SELECT
+			a.id,
+			a.room_id,
+			a.source_type,
+			a.source_id,
+			a.title,
+			a.artist,
+			a.thumbnail_url,
+			a.duration,
+			a.added_by,
+			a.added_by_nickname,
+			a.added_at,
 			COUNT(b.user_id) as vote_count
 		FROM songs a
-		LEFT JOIN song_votes b 
-		ON a.id = b.song_id 
+		LEFT JOIN song_votes b
+		ON a.id = b.song_id
 		AND a.room_id = b.room_id
-		WHERE a.room_id = ?1
-		GROUP BY a.id
+		WHERE a.room_id = $1
+		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 		ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 	`)
 	if err != nil {
@@ -144,26 +144,26 @@ func (r *songRow) toSong() vibe.Song {
 // prepareGetSongStmt prepares the GetSongStatement.
 func (c *Client) prepareGetSongStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT 
-			a.id, 
-			a.room_id, 
-			a.source_type, 
-			a.source_id, 
-			a.title, 
-			a.artist, 
-			a.thumbnail_url, 
-			a.duration, 
-			a.added_by, 
-			a.added_by_nickname, 
-			a.added_at, 
+		SELECT
+			a.id,
+			a.room_id,
+			a.source_type,
+			a.source_id,
+			a.title,
+			a.artist,
+			a.thumbnail_url,
+			a.duration,
+			a.added_by,
+			a.added_by_nickname,
+			a.added_at,
 			COUNT(b.user_id) as vote_count
 		FROM songs a
-		LEFT JOIN song_votes b 
-		ON a.id = b.song_id 
+		LEFT JOIN song_votes b
+		ON a.id = b.song_id
 		AND a.room_id = b.room_id
-		WHERE a.room_id = ?1 
-		AND a.id = ?2
-		GROUP BY a.id
+		WHERE a.room_id = $1
+		AND a.id = $2
+		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSongStatement: %w", err)
@@ -201,7 +201,7 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 func (c *Client) prepareInsertSongVoteStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO song_votes (room_id, song_id, user_id)
-		VALUES (?1, ?2, ?3)
+		VALUES ($1, $2, $3)
 		ON CONFLICT(room_id, song_id, user_id) DO NOTHING
 	`)
 	if err != nil {
@@ -218,7 +218,7 @@ func (c *Client) prepareAddSongStmt() error {
 			room_id, source_type, source_id, title, artist, thumbnail_url,
 			duration, added_by, added_by_nickname, added_at
 		)
-		VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, STRFTIME('%Y-%m-%d %H:%M:%f', 'now'))
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
 		RETURNING id
 	`)
 	if err != nil {
@@ -235,9 +235,9 @@ func (c *Client) prepareCheckSongExistsStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id
 		FROM songs
-		WHERE room_id = ?1
-		AND source_type = ?2
-		AND source_id = ?3
+		WHERE room_id = $1
+		AND source_type = $2
+		AND source_id = $3
 		LIMIT 1
 	`)
 	if err != nil {
@@ -341,7 +341,7 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 func (c *Client) prepareRemoveSongStmt() error {
 	stmt, err := c.DB.Prepare(`
 		DELETE FROM songs
-		WHERE room_id = ?1 AND id = ?2
+		WHERE room_id = $1 AND id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing RemoveSongStatement: %w", err)
@@ -373,7 +373,7 @@ func (c *Client) RemoveSong(ctx context.Context, roomID, songID string) error {
 func (c *Client) prepareVoteSongStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO song_votes (room_id, song_id, user_id)
-		VALUES (?1, ?2, ?3)
+		VALUES ($1, $2, $3)
 		ON CONFLICT(room_id, song_id, user_id) DO NOTHING
 	`)
 	if err != nil {
@@ -414,7 +414,7 @@ func (c *Client) VoteSong(ctx context.Context, roomID, songID, userID string) er
 
 func (c *Client) prepareClearVotesSongStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM song_votes WHERE room_id = ?1 AND song_id = ?2
+		DELETE FROM song_votes WHERE room_id = $1 AND song_id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ClearVotesSongStatement: %w", err)
@@ -428,8 +428,8 @@ func (c *Client) prepareClearVotesSongStmt() error {
 func (c *Client) prepareUpdateSongAddedAtStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE songs
-		SET added_at = STRFTIME('%Y-%m-%d %H:%M:%f', 'now')
-		WHERE room_id = ?1 AND id = ?2
+		SET added_at = NOW()
+		WHERE room_id = $1 AND id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateSongAddedAtStatement: %w", err)
@@ -495,7 +495,7 @@ func (c *Client) updateSongAddedAt(ctx context.Context, roomID, songID string) e
 // prepareGetNextSongStmt prepares the GetNextSongStatement.
 func (c *Client) prepareGetNextSongStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT 
+		SELECT
 			a.id,
 			a.room_id,
 			a.source_type,
@@ -509,11 +509,11 @@ func (c *Client) prepareGetNextSongStmt() error {
 			a.added_at,
 			COUNT(b.user_id) as vote_count
 		FROM songs a
-		LEFT JOIN song_votes b 
-		ON a.id = b.song_id 
+		LEFT JOIN song_votes b
+		ON a.id = b.song_id
 		AND a.room_id = b.room_id
-		WHERE a.room_id = ?1
-		GROUP BY a.id
+		WHERE a.room_id = $1
+		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 		ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 		LIMIT 1
 	`)
@@ -529,7 +529,7 @@ func (c *Client) prepareGetNextSongStmt() error {
 // prepareGetNextSongExcludingStmt prepares the GetNextSongExcludingStatement.
 func (c *Client) prepareGetNextSongExcludingStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT 
+		SELECT
 			a.id,
 			a.room_id,
 			a.source_type,
@@ -543,11 +543,11 @@ func (c *Client) prepareGetNextSongExcludingStmt() error {
 			a.added_at,
 			COUNT(b.user_id) as vote_count
 		FROM songs a
-		LEFT JOIN song_votes b 
-		ON a.id = b.song_id 
+		LEFT JOIN song_votes b
+		ON a.id = b.song_id
 		AND a.room_id = b.room_id
-		WHERE a.room_id = ?1 AND a.id != ?2
-		GROUP BY a.id
+		WHERE a.room_id = $1 AND a.id != $2
+		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 		ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 		LIMIT 1
 	`)

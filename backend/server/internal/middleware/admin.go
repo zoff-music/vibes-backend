@@ -10,8 +10,8 @@ import (
 
 // AdminMiddleware enforces admin session access based on the global admin password.
 type AdminMiddleware struct {
-	AdminPassword  *string
-	CookieSecret   string
+	AdminPassword   *string
+	CookieSecret    string
 	ProtectedRoutes map[string]bool
 }
 

@@ -20,12 +20,12 @@ func (c *Client) prepareUpdateParticipantStmt() error {
 			is_cast_receiver,
 			cast_owner_id
 		)
-		VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT(id, room_id) DO UPDATE SET
-			last_seen_at = ?3,
-			is_active_listener = ?4,
-			is_cast_receiver = ?5,
-			cast_owner_id = ?6
+			last_seen_at = $3,
+			is_active_listener = $4,
+			is_cast_receiver = $5,
+			cast_owner_id = $6
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateParticipantStatement: %w", err)
@@ -69,7 +69,7 @@ func (c *Client) prepareGetActiveParticipantsStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT room_id, id, last_seen_at, is_active_listener, is_cast_receiver, cast_owner_id
 		FROM room_users
-		WHERE room_id = ?1 AND last_seen_at > ?2
+		WHERE room_id = $1 AND last_seen_at > $2
 		ORDER BY last_seen_at DESC
 	`)
 	if err != nil {
@@ -85,7 +85,7 @@ func (c *Client) prepareGetActiveListenerCountsStmt() error {
 			COALESCE(SUM(CASE WHEN is_active_listener = 1 AND is_cast_receiver = 0 THEN 1 ELSE 0 END), 0) as active_listeners,
 			COALESCE(SUM(CASE WHEN is_cast_receiver = 1 THEN 1 ELSE 0 END), 0) as active_cast
 		FROM room_users
-		WHERE room_id = ?1 AND last_seen_at > ?2
+		WHERE room_id = $1 AND last_seen_at > $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetActiveListenerCountsStatement: %w", err)
@@ -170,9 +170,9 @@ func (p *participantRow) scan(rows *sql.Rows) error {
 
 func (p *participantRow) toParticipant() vibe.Participant {
 	return vibe.Participant{
-		RoomID:     p.RoomID,
-		UserID:     p.UserID,
-		LastSeenAt: p.LastSeenAt,
+		RoomID:           p.RoomID,
+		UserID:           p.UserID,
+		LastSeenAt:       p.LastSeenAt,
 		IsActiveListener: p.IsActive.Int64 == 1,
 		IsCastReceiver:   p.IsCast.Int64 == 1,
 		CastOwnerID:      p.CastOwner.String,
@@ -181,9 +181,9 @@ func (p *participantRow) toParticipant() vibe.Participant {
 
 func (c *Client) prepareSetRoomHostStmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE rooms 
-		SET host_id = ?1 
-		WHERE id = ?2
+		UPDATE rooms
+		SET host_id = $1
+		WHERE id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing SetRoomHostStatement: %w", err)
@@ -215,7 +215,7 @@ func (c *Client) SetRoomHost(ctx context.Context, roomID, userID string) error {
 
 func (c *Client) prepareRemoveParticipantStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM room_users WHERE room_id = ?1 AND id = ?2
+		DELETE FROM room_users WHERE room_id = $1 AND id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing RemoveParticipantStatement: %w", err)
@@ -242,7 +242,7 @@ func (c *Client) RemoveParticipant(ctx context.Context, roomID, userID string) e
 
 func (c *Client) prepareDeleteInactiveParticipantsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM room_users WHERE last_seen_at < ?1
+		DELETE FROM room_users WHERE last_seen_at < $1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing DeleteInactiveParticipantsStatement: %w", err)

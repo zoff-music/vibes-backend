@@ -168,7 +168,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrator-bin /app/migrator-bin
-COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrations /app/migrations
+COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/postgres /app/postgres
 
 RUN chmod +x /app/migrator-bin
 RUN mkdir -p /data/db
@@ -184,9 +184,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /app
 COPY --from=backend-builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
+COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrator-bin /app/migrator-bin
+COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/postgres /app/postgres
 
 RUN chmod +x /app/main
+RUN chmod +x /app/migrator-bin
 RUN mkdir -p /data/db
 
 EXPOSE 8080
-ENTRYPOINT ["/bin/sh", "-c", "/app/main"]
+ENTRYPOINT ["/bin/sh", "-c", "/app/migrator-bin && /app/main"]

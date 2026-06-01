@@ -17,7 +17,7 @@ func (c *Client) prepareGetSkipVotesStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT song_id, user_id
 		FROM skip_votes
-		WHERE room_id = ?1 AND song_id = ?2
+		WHERE room_id = $1 AND song_id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSkipVotesStatement: %w", err)
@@ -79,7 +79,7 @@ func (r *skipVoteRow) toSkipVote() vibe.SkipVote {
 func (c *Client) prepareHasUserVotedStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT COUNT(*) FROM skip_votes
-		WHERE room_id = ?1 AND song_id = ?2 AND user_id = ?3
+		WHERE room_id = $1 AND song_id = $2 AND user_id = $3
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing HasUserVotedStatement: %w", err)
@@ -124,8 +124,9 @@ func (r *skipVoteCountRow) toHasUserVoted() bool {
 // prepareAddSkipVoteStmt prepares the AddSkipVoteStatement.
 func (c *Client) prepareAddSkipVoteStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT OR IGNORE INTO skip_votes (room_id, song_id, user_id)
-		VALUES (?1, ?2, ?3)
+		INSERT INTO skip_votes (room_id, song_id, user_id)
+		VALUES ($1, $2, $3)
+		ON CONFLICT(room_id, song_id, user_id) DO NOTHING
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing AddSkipVoteStatement: %w", err)
@@ -155,7 +156,7 @@ func (c *Client) AddSkipVote(ctx context.Context, roomID, songID, userID string)
 // prepareClearSkipVotesStmt prepares the ClearSkipVotesStatement.
 func (c *Client) prepareClearSkipVotesStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM skip_votes WHERE room_id = ?1 AND song_id = ?2
+		DELETE FROM skip_votes WHERE room_id = $1 AND song_id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ClearSkipVotesStatement: %w", err)

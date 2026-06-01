@@ -22,7 +22,7 @@ func (c *Client) prepareProcessNextAbandonedHostStmt() error {
 		LEFT JOIN room_users ru ON r.host_id = ru.id
 		WHERE r.mode = 'host'
 		AND r.host_id IS NOT NULL AND r.host_id != ''
-		AND (ru.last_seen_at IS NULL OR ru.last_seen_at < datetime('now', '-15 seconds'))
+		AND (ru.last_seen_at IS NULL OR ru.last_seen_at < NOW() - INTERVAL '15 seconds')
 		LIMIT 1
 	`)
 	if err != nil {
@@ -80,9 +80,9 @@ func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostIn
 
 func (c *Client) prepareElectNewHostStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT id FROM room_users 
-		WHERE room_id = ?1 
-		AND last_seen_at >= DATETIME('now', '-15 seconds')
+		SELECT id FROM room_users
+		WHERE room_id = $1
+		AND last_seen_at >= NOW() - INTERVAL '15 seconds'
 		AND is_active_listener = 1
 		AND is_cast_receiver = 0
 		ORDER BY joined_at ASC
@@ -118,10 +118,10 @@ func (c *Client) prepareGetRoomStmt() error {
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
-		LEFT JOIN room_users c 
-		ON c.room_id = a.id 
-		AND c.id = ?2
-		WHERE a.id = ?1
+		LEFT JOIN room_users c
+		ON c.room_id = a.id
+		AND c.id = $2
+		WHERE a.id = $1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetRoomStatement: %w", err)
@@ -155,10 +155,10 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
-		LEFT JOIN room_users c 
-		ON c.room_id = a.id 
-		AND c.id = ?2
-		WHERE a.name = ?1
+		LEFT JOIN room_users c
+		ON c.room_id = a.id
+		AND c.id = $2
+		WHERE a.name = $1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetRoomByNameStatement: %w", err)
@@ -215,7 +215,7 @@ func (c *Client) GetRoomByName(ctx context.Context, name string, userID string) 
 
 func (c *Client) prepareGetActiveSourcesStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT DISTINCT source_type FROM songs WHERE room_id = ?1
+		SELECT DISTINCT source_type FROM songs WHERE room_id = $1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetActiveSourcesStatement: %w", err)
@@ -229,9 +229,9 @@ func (c *Client) prepareGetAdminRoomsStmt() error {
 		SELECT
 			r.id,
 			r.name,
-			(SELECT COUNT(*) FROM room_users ru WHERE ru.room_id = r.id AND ru.is_active_listener = 1 AND ru.last_seen_at >= ?1) as user_count,
+			(SELECT COUNT(*) FROM room_users ru WHERE ru.room_id = r.id AND ru.is_active_listener = 1 AND ru.last_seen_at >= $1) as user_count,
 			(SELECT COUNT(*) FROM songs s WHERE s.room_id = r.id) as song_count,
-			(SELECT GROUP_CONCAT(DISTINCT s.source_type) FROM songs s WHERE s.room_id = r.id) as active_sources
+			(SELECT STRING_AGG(DISTINCT s.source_type, ',') FROM songs s WHERE s.room_id = r.id) as active_sources
 		FROM rooms r
 		ORDER BY user_count DESC, song_count DESC
 	`)
@@ -464,24 +464,26 @@ func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
 // prepareCreateRoomStmt prepares the CreateRoomStatement.
 func (c *Client) prepareCreateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO rooms_view (
-			id,
-			name,
-			mode,
-			host_id,
-			admin_password_hash,
-			created_at,
-			skip_allowed,
-			democratic_skip,
-			skip_vote_threshold,
-			max_continuous_adds,
-			remove_on_play,
-			loop_queue,
-			allow_duplicates,
-			enabled_sources,
-			only_admin_add_songs
-		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)
-		RETURNING id
+		WITH created_room AS (
+			INSERT INTO rooms (id, name, mode, host_id, admin_password_hash, created_at)
+			VALUES ($1, $2, $3, $4, $5, $6)
+			RETURNING id
+		), created_settings AS (
+			INSERT INTO room_settings (
+				room_id,
+				skip_allowed,
+				democratic_skip,
+				skip_vote_threshold,
+				max_continuous_adds,
+				remove_on_play,
+				loop_queue,
+				allow_duplicates,
+				enabled_sources,
+				only_admin_add_songs
+			)
+			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15 FROM created_room
+		)
+		SELECT id FROM created_room
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRoomStatement: %w", err)
@@ -539,22 +541,26 @@ func (r *createRoomRow) scan(row *sql.Row) error {
 // prepareUpdateRoomStmt prepares the UpdateRoomStatement.
 func (c *Client) prepareUpdateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE rooms_view
-		SET
-			name = ?1,
-			mode = ?10,
-			host_id = ?11,
-			admin_password_hash = ?12,
-			skip_allowed = ?3,
-			democratic_skip = ?4,
-			skip_vote_threshold = ?5,
-			max_continuous_adds = ?6,
-			remove_on_play = ?7,
-			loop_queue = ?8,
-			allow_duplicates = ?9,
-			enabled_sources = ?13,
-			only_admin_add_songs = ?14
-		WHERE id = ?2
+		WITH updated_room AS (
+			UPDATE rooms
+			SET name = $1,
+				mode = $10,
+				host_id = $11,
+				admin_password_hash = $12
+			WHERE id = $2
+			RETURNING id
+		)
+		UPDATE room_settings
+		SET skip_allowed = $3,
+			democratic_skip = $4,
+			skip_vote_threshold = $5,
+			max_continuous_adds = $6,
+			remove_on_play = $7,
+			loop_queue = $8,
+			allow_duplicates = $9,
+			enabled_sources = $13,
+			only_admin_add_songs = $14
+		WHERE room_id = (SELECT id FROM updated_room)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateRoomStatement: %w", err)
