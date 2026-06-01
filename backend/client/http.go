@@ -126,6 +126,9 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 }
 
 func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) (*http.Response, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "request")
+	defer span.Finish()
+
 	req, err := http.NewRequest(reqData.Method, reqData.URL, bytes.NewBuffer(reqData.Body))
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
@@ -135,11 +138,11 @@ func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) 
 		req.URL.RawQuery = reqData.Payload.Encode()
 	}
 
-	span := opentracing.SpanFromContext(ctx)
+	parentSpan := opentracing.SpanFromContext(ctx)
 
-	if span != nil {
+	if parentSpan != nil {
 		err := opentracing.GlobalTracer().Inject(
-			span.Context(),
+			parentSpan.Context(),
 			opentracing.HTTPHeaders,
 			opentracing.HTTPHeadersCarrier(req.Header),
 		)

@@ -485,6 +485,9 @@ func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.
 }
 
 func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string) error {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "checkHostPermissions")
+	defer span.Finish()
+
 	if userID == "" {
 		return nil
 	}
