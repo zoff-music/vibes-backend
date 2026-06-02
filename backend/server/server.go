@@ -31,12 +31,14 @@ import (
 type Server struct {
 	Config         *config.Config
 	HTTP           *http.Server
+	InternalHTTP   *http.Server
 	DB             *database.Client
 	InternalPubSub *internalpubsub.Client
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
 	Spotify        *spotify.Client
 	Router         *mux.Router
+	InternalRouter *mux.Router
 }
 
 // Create sets up the HTTP server, router and all clients.
@@ -81,13 +83,20 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.SoundCloud = &soundcloudClient
 	s.Spotify = &spotifyClient
 	s.Router = mux.NewRouter()
+	s.InternalRouter = mux.NewRouter()
 	s.HTTP = &http.Server{
 		Addr:              fmt.Sprintf(":%s", s.Config.Port),
 		Handler:           s.Router,
 		ReadHeaderTimeout: 2 * time.Second, // prevent slowloris attacks
 	}
+	s.InternalHTTP = &http.Server{
+		Addr:              fmt.Sprintf(":%s", s.Config.InternalPort),
+		Handler:           s.InternalRouter,
+		ReadHeaderTimeout: 2 * time.Second,
+	}
 
 	s.setupRoutes()
+	s.setupInternalRoutes()
 
 	return nil
 }
@@ -107,6 +116,7 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 	defer closer.Close()
 
 	go s.serveHTTP(ctx, errc)
+	go s.serveInternalHTTP(ctx, errc)
 	go s.subscribeAndListen(ctx, errc)
 
 	log.Println("Ready")
@@ -121,6 +131,34 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 	cancel() // Stop background jobs
 
 	s.shutdown(ctx)
+}
+
+func (s *Server) serveInternalHTTP(ctx context.Context, errc chan<- error) {
+	go func(ctx context.Context, httpServ *http.Server) {
+		stop := make(chan os.Signal, 1)
+		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+
+		// Block until we receive sigterm or interrupt
+		<-stop
+
+		log.Println("Internal HTTP server has received a shutdown signal")
+
+		err := httpServ.Shutdown(ctx)
+		if err != nil {
+			log.Println(err.Error())
+		}
+	}(ctx, s.InternalHTTP)
+
+	log.Printf("Internal ready at: %s", s.Config.InternalPort)
+
+	// Block until httpServ.Shutdown is called
+	err := s.InternalHTTP.ListenAndServe()
+	if err != http.ErrServerClosed {
+		errc <- fmt.Errorf("unexpected internal server error: %w", err)
+		return
+	}
+
+	log.Println("Internal HTTP server closed")
 }
 
 func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
