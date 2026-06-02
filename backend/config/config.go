@@ -12,6 +12,7 @@ import (
 // Config contains environment variables.
 type Config struct {
 	Port                string        `envconfig:"PORT" default:"8080"`
+	InternalPort        string        `envconfig:"INTERNAL_PORT" default:"8081"`
 	OtelEndpoint        string        `envconfig:"OTEL_ENDPOINT" default:"alloy.monitoring.svc.cluster.local:4317"`
 	OtelSamplerParam    float64       `envconfig:"OTEL_SAMPLER_PARAM" default:"1"`
 	OtelExporterTimeout time.Duration `envconfig:"OTEL_EXPORTER_TIMEOUT" default:"1s"`

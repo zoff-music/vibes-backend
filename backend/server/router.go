@@ -13,9 +13,6 @@ const v1API string = "/api/v1"
 
 // setupRoutes - the root route function.
 func (s *Server) setupRoutes() {
-	s.Router.Handle("/metrics", promhttp.Handler()).Name("Metrics")
-	s.Router.HandleFunc("/_healthz", handler.Healthz).Methods(http.MethodGet).Name("Health")
-
 	api := s.Router.PathPrefix(v1API).Subrouter()
 
 	// Room routes
@@ -81,6 +78,11 @@ func (s *Server) setupRoutes() {
 	}
 	s.addTracingAndMetrics(api)
 	s.addCORSMiddleware(s.Router)
+}
+
+func (s *Server) setupInternalRoutes() {
+	s.InternalRouter.HandleFunc("/_healthz", handler.Healthz).Methods(http.MethodGet).Name("Health")
+	s.InternalRouter.Handle("/metrics", promhttp.Handler()).Name("Metrics")
 }
 
 func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
