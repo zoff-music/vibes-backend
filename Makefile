@@ -1,4 +1,4 @@
-.PHONY: build backend migrator dev install update test help gosec govulncheck docker deploy
+.PHONY: build backend migrator dev install update test help gosec govulncheck docker
 
 PROJECT_NAME=$(shell basename $(CURDIR))
 BACKEND_PORT ?= 8080
@@ -54,7 +54,3 @@ govulncheck:
 ## docker: builds the production backend image
 docker:
 	docker build --target backend-prod -t $(PROJECT_NAME)-backend .
-
-## deploy: deploys production manifests to k3s
-deploy:
-	.build/scripts/deploy-vibes.sh
