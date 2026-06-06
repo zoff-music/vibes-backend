@@ -1,4 +1,4 @@
-module github.com/zoff-music/vibes
+module github.com/zoff-music/vibes-backend
 
 go 1.26.4
 

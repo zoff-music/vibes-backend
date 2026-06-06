@@ -8,8 +8,8 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/zoff-music/vibes/config"
-	"github.com/zoff-music/vibes/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/config"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
 )
 
 // Client holds the database client and prepared statements.

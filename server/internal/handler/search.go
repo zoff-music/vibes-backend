@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // SearchMusic handles GET /api/v1/youtube/search

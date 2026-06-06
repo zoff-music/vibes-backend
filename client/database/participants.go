@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/zoff-music/vibes/monitoring/opentracing"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 func (c *Client) prepareUpdateParticipantStmt() error {

@@ -8,9 +8,9 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/zoff-music/vibes/client"
-	"github.com/zoff-music/vibes/monitoring/opentracing"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // EnsureToken checks if the current token is valid and refreshes it if necessary

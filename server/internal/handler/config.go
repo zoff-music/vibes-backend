@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/zoff-music/vibes/config"
+	"github.com/zoff-music/vibes-backend/config"
 )
 
 // GetProviders handles GET /api/v1/providers

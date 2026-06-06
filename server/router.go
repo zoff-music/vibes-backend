@@ -5,8 +5,8 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/zoff-music/vibes/server/internal/handler"
-	"github.com/zoff-music/vibes/server/internal/middleware"
+	"github.com/zoff-music/vibes-backend/server/internal/handler"
+	"github.com/zoff-music/vibes-backend/server/internal/middleware"
 )
 
 const v1API string = "/api/v1"

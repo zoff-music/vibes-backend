@@ -5,8 +5,8 @@ import (
 	"log"
 	"os"
 
-	"github.com/zoff-music/vibes/config"
-	"github.com/zoff-music/vibes/server"
+	"github.com/zoff-music/vibes-backend/config"
+	"github.com/zoff-music/vibes-backend/server"
 )
 
 func main() {

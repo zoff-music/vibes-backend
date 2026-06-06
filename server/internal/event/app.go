@@ -7,9 +7,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zoff-music/vibes/internalerror"
-	"github.com/zoff-music/vibes/monitoring/metrics"
-	"github.com/zoff-music/vibes/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/internalerror"
+	"github.com/zoff-music/vibes-backend/monitoring/metrics"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
 )
 
 // AppEvents contains a slice of AppEvent.

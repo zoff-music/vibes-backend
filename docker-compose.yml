@@ -1,30 +1,4 @@
 services:
-  caddy:
-    image: caddy:2.9.1
-    ports:
-      - "${CADDY_PORT:-42069}:42069"
-      - "2020:2020"
-    volumes:
-      - ./${CADDYFILE:-Caddyfile}:/etc/caddy/Caddyfile:ro
-      # Add volume for caddy data to persist certs if needed
-      - caddy_data:/data
-      - caddy_config:/config
-    environment:
-      - BACKEND_UPSTREAM=backend:8080
-      - PLATFORM_UPSTREAM=frontend-platform:3000
-      - CAST_UPSTREAM=frontend-cast:${FRONTEND_CAST_INTERNAL_PORT:-3001}
-      - CAST_DEV_MODE=${CAST_DEV_MODE:-true}
-    depends_on:
-      - backend
-      - frontend-platform
-      - frontend-cast
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:2020/config/"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-    restart: unless-stopped
-
   backend:
     build:
       context: .
@@ -38,37 +12,7 @@ services:
     command: ${BACKEND_CMD_OVERRIDE:-}
     restart: unless-stopped
 
-  frontend-platform:
-    build:
-      context: .
-      target: ${FRONTEND_PLATFORM_TARGET:-frontend-platform-prod}
-    ports:
-      - "${FRONTEND_PLATFORM_PORT_MAPPING:-3000:3000}"
-    environment:
-      - PORT=3000
-      - VITE_API_URL=http://localhost:42069
-      - VITE_API_URL_INTERNAL=http://backend:8080
-      - DEBUG=${DEBUG:-}
-      - VITE_DEBUG=${VITE_DEBUG:-}
-      - NODE_ENV=${NODE_ENV:-development}
-      - FORCE_MANIFEST=${FORCE_MANIFEST:-false}
-    restart: unless-stopped
-
-  frontend-cast:
-    build:
-      context: .
-      target: ${FRONTEND_CAST_TARGET:-frontend-cast-prod}
-    ports:
-      - "${FRONTEND_CAST_PORT_MAPPING:-3001:3001}"
-    environment:
-      - PORT=${FRONTEND_CAST_INTERNAL_PORT:-3001}
-      - DEBUG=${DEBUG:-}
-      - VITE_DEBUG=${VITE_DEBUG:-}
-    restart: unless-stopped
-
 volumes:
-  caddy_data:
-  caddy_config:
   db_data:
     name: vibes_db_shared
     external: true

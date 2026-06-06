@@ -8,9 +8,9 @@ import (
 	"log"
 	"time"
 
-	"github.com/zoff-music/vibes/internalerror"
-	"github.com/zoff-music/vibes/monitoring/opentracing"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/internalerror"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // prepareGetPlaybackStateStmt prepares the GetPlaybackStateStatement.

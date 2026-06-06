@@ -6,7 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // GetMusicTrack handles GET /api/v1/youtube/videos/{id}

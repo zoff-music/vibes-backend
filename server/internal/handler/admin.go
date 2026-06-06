@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/vibes/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
 	"log"
 	"net/http"
 	"time"
 
-	"github.com/zoff-music/vibes/server/internal/helper"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/server/internal/helper"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 const adminSessionDuration = 24 * time.Hour

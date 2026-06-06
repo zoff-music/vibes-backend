@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/zoff-music/vibes/client"
+	"github.com/zoff-music/vibes-backend/client"
 )
 
 func handleError(

@@ -4,7 +4,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/zoff-music/vibes/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
 )
 
 // InjectIntoCarrier returns a textMapCarrier, basically a map[string]string,

@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zoff-music/vibes/server/internal/helper"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/server/internal/helper"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 const castTokenTTL = 6 * time.Hour
