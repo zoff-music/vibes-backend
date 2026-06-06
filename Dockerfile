@@ -2,19 +2,6 @@ ARG GO_BASE_IMAGE=golang:1.26.4-bookworm
 ARG NODE_VERSION=26
 ARG PNPM_VERSION=11.5.2
 
-FROM node:${NODE_VERSION}-bookworm-slim AS frontend-builder
-
-WORKDIR /src
-
-COPY client/frontend/render/package.json client/frontend/render/pnpm-lock.yaml client/frontend/render/pnpm-workspace.yaml client/frontend/render/biome.json ./client/frontend/render/
-COPY client/frontend/render/apps ./client/frontend/render/apps
-COPY client/frontend/render/packages ./client/frontend/render/packages
-
-RUN npm install -g pnpm@${PNPM_VERSION} \
-	&& pnpm --dir client/frontend/render install --frozen-lockfile \
-	&& pnpm --dir client/frontend/render --filter @vibez/platform build \
-	&& pnpm --dir client/frontend/render --filter @vibez/cast build
-
 FROM ${GO_BASE_IMAGE} AS backend-builder
 
 WORKDIR /src
@@ -58,6 +45,19 @@ ENV PORT=8080
 EXPOSE 8080
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
+
+FROM node:${NODE_VERSION}-bookworm-slim AS frontend-builder
+
+WORKDIR /src
+
+COPY client/frontend/render/package.json client/frontend/render/pnpm-lock.yaml client/frontend/render/pnpm-workspace.yaml client/frontend/render/biome.json ./client/frontend/render/
+COPY client/frontend/render/apps ./client/frontend/render/apps
+COPY client/frontend/render/packages ./client/frontend/render/packages
+
+RUN npm install -g pnpm@${PNPM_VERSION} \
+	&& pnpm --dir client/frontend/render install --frozen-lockfile \
+	&& pnpm --dir client/frontend/render --filter @vibez/platform build \
+	&& pnpm --dir client/frontend/render --filter @vibez/cast build
 
 FROM node:${NODE_VERSION}-bookworm-slim AS frontend-platform-prod
 
