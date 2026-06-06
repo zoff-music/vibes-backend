@@ -1,195 +1,94 @@
-FROM golang:1.26.1 AS backend-dev
+ARG GO_BASE_IMAGE=golang:1.26.4-bookworm
+ARG NODE_VERSION=26
+ARG PNPM_VERSION=11.5.2
 
-WORKDIR /go/src/github.com/zoff-music/vibes
+FROM node:${NODE_VERSION}-bookworm-slim AS frontend-builder
 
-COPY backend/go.mod backend/go.sum ./backend/
-RUN cd backend && go mod download
+WORKDIR /src
 
-COPY . .
+COPY client/frontend/render/package.json client/frontend/render/pnpm-lock.yaml client/frontend/render/pnpm-workspace.yaml client/frontend/render/biome.json ./client/frontend/render/
+COPY client/frontend/render/apps ./client/frontend/render/apps
+COPY client/frontend/render/packages ./client/frontend/render/packages
 
-WORKDIR /go/src/github.com/zoff-music/vibes/backend
-EXPOSE 8080
-CMD ["go", "run", "cmd/server/main.go"]
+RUN npm install -g pnpm@${PNPM_VERSION} \
+	&& pnpm --dir client/frontend/render install --frozen-lockfile \
+	&& pnpm --dir client/frontend/render --filter @vibez/platform build \
+	&& pnpm --dir client/frontend/render --filter @vibez/cast build
 
-FROM golang:1.26.1 AS migrator-dev
+FROM ${GO_BASE_IMAGE} AS backend-builder
 
-WORKDIR /go/src/github.com/zoff-music/vibes
+WORKDIR /src
 
-COPY migrator/go.mod migrator/go.sum ./migrator/
-RUN cd migrator && go mod download
+RUN apt-get update \
+	&& apt-get install -y --no-install-recommends ca-certificates build-essential \
+	&& rm -rf /var/lib/apt/lists/*
 
-COPY . .
-
-WORKDIR /go/src/github.com/zoff-music/vibes/migrator
-ENV CGO_ENABLED=1
-CMD ["go", "run", "main.go", "-db", "/data/db/vibes.db"]
-
-FROM golang:1.26.1 AS migrator-builder
-RUN apt-get update && apt-get install -y build-essential
-WORKDIR /go/src/github.com/zoff-music/vibes/migrator
-COPY migrator/go.mod migrator/go.sum ./
+COPY go.mod go.sum ./
 RUN go mod download
-COPY migrator .
-RUN CGO_ENABLED=1 go build -a -ldflags '-w -s' -o migrator-bin main.go
-
-FROM golang:1.26.1 AS backend-builder
-
-# Install cross-compilation tools for CGO
-RUN apt-get update && apt-get install -y build-essential
-
-# See https://stackoverflow.com/a/55757473/12429735
-# Create an app-user with no shell, no login, no home directory,
-# a fixed UID (10001), and a fixed GUID (10001), then get ca-certificates.crt
-ENV USER=appuser
-ENV UID=10001
-
-RUN adduser \
-    --disabled-password \
-    --gecos "" \
-    --home "/nonexistent" \
-    --shell "/sbin/nologin" \
-    --no-create-home \
-    --uid "${UID}" \
-    "${USER}" \
-    && apt-get install -y ca-certificates --no-install-recommends
-
-# Install govulncheck and gosec
-# Tags:
-# - https://pkg.go.dev/golang.org/x/vuln/cmd/govulncheck?tab=versions
-# - https://github.com/securego/gosec/tags
-RUN go install "golang.org/x/vuln/cmd/govulncheck@latest"
-ENV GOSEC_VERSION="v2.22.10"
-RUN curl -sfL https://raw.githubusercontent.com/securego/gosec/master/install.sh | sh -s -- -b $(go env GOPATH)/bin "${GOSEC_VERSION}"
-
-WORKDIR /go/src/github.com/zoff-music/vibes
 
 COPY . .
 
-# Run tests, then build the application
-RUN make test \
- && make build
+RUN CGO_ENABLED=1 go build -ldflags '-w -s' -o /out/main cmd/server/main.go \
+	&& CGO_ENABLED=0 go build -ldflags '-w -s' -o /out/migrator-main cmd/migrator/main.go
 
-FROM oven/bun:1.2.6 AS frontend-dev
+FROM debian:bookworm-slim AS backend-prod
 
-WORKDIR /app
-COPY frontend/. .
-
-ENV NODE_ENV=development
-ENV VITE_API_URL_INTERNAL=http://backend:8080
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/*
-RUN bun install
+	&& apt-get install -y --no-install-recommends ca-certificates \
+	&& rm -rf /var/lib/apt/lists/* \
+	&& groupadd --system appuser \
+	&& useradd --system --gid appuser --home-dir /app appuser
 
-COPY frontend/. .
-
-EXPOSE 19006
-CMD ["bun", "run", "dev:web", "--", "--host", "localhost", "--port", "19006"]
-
-# Frontend builder stage
-FROM oven/bun:1.2.6 AS frontend-builder
-WORKDIR /app
-COPY frontend/. .
-ENV NODE_ENV=development
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/*
-RUN bun install --frozen-lockfile
-
-# Platform build
-FROM frontend-builder AS platform-builder
-ARG VITE_CAST_APP_ID
-ARG VITE_CAST_RECEIVER_URL
-ARG VITE_APP_TITLE
-ARG VITE_DEBUG
-WORKDIR /app/apps/platform
-# Build CSS, client, and server bundles
-RUN NODE_ENV=production \
-    VITE_CAST_APP_ID=$VITE_CAST_APP_ID \
-    VITE_CAST_RECEIVER_URL=$VITE_CAST_RECEIVER_URL \
-    VITE_APP_TITLE=$VITE_APP_TITLE \
-    VITE_DEBUG=$VITE_DEBUG \
-    bun run build
-
-# Cast build
-FROM frontend-builder AS cast-builder
-ARG VITE_CAST_APP_ID
-ARG VITE_CAST_RECEIVER_URL
-ARG VITE_API_URL
-ARG VITE_APP_TITLE
-ARG VITE_DEBUG
-WORKDIR /app/apps/cast
-RUN NODE_ENV=production \
-    VITE_CAST_APP_ID=$VITE_CAST_APP_ID \
-    VITE_CAST_RECEIVER_URL=$VITE_CAST_RECEIVER_URL \
-    VITE_API_URL=$VITE_API_URL \
-    VITE_APP_TITLE=$VITE_APP_TITLE \
-    VITE_DEBUG=$VITE_DEBUG \
-    bun run build
-
-# Platform production image
-FROM oven/bun:1.2.6-slim AS frontend-platform-prod
 WORKDIR /app
 
-# Copy everything from the frontend builder to preserve workspace layout + installs
-COPY --from=frontend-builder /app /app
+COPY --from=backend-builder /out/main /app/main
+COPY --from=backend-builder /out/migrator-main /app/migrator-main
+COPY migrator/migrations /app/migrator/migrations
+COPY migrator/postgres /app/migrator/postgres
+COPY docker-entrypoint.sh /app/docker-entrypoint.sh
 
-RUN mkdir -p /app/apps/platform/dist
-# Copy built platform assets (server/client bundles)
-COPY --from=platform-builder /app/apps/platform/dist /app/apps/platform/dist
+RUN chmod +x /app/docker-entrypoint.sh \
+	&& mkdir -p /app/data \
+	&& chown -R appuser:appuser /app
+
+USER appuser:appuser
+
+ENV PORT=8080
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app/docker-entrypoint.sh"]
+
+FROM node:${NODE_VERSION}-bookworm-slim AS frontend-platform-prod
+
+WORKDIR /app
+
+COPY --from=frontend-builder /src/client/frontend/render/package.json ./package.json
+COPY --from=frontend-builder /src/client/frontend/render/node_modules ./node_modules
+COPY --from=frontend-builder /src/client/frontend/render/apps/platform/package.json ./apps/platform/package.json
+COPY --from=frontend-builder /src/client/frontend/render/apps/platform/node_modules ./apps/platform/node_modules
+COPY --from=frontend-builder /src/client/frontend/render/apps/platform/dist ./apps/platform/dist
+COPY --from=frontend-builder /src/client/frontend/render/packages ./packages
 
 ENV NODE_ENV=production
 ENV VITE_API_URL_INTERNAL=http://backend:8080
-RUN rm -rf /app/node_modules /app/packages/*/node_modules \
-    && bun install --frozen-lockfile
-
-# Set working directory to platform app
-WORKDIR /app/apps/platform
 
 EXPOSE 3000
-CMD ["bun", "run", "start"]
 
-# Cast production image - just provides static files
-FROM debian:bookworm-slim AS frontend-cast-prod
-WORKDIR /app
-COPY --from=cast-builder /app/apps/cast/dist ./static
-# Keep container running so assets can be accessed via volumes
-CMD ["tail", "-f", "/dev/null"]
+CMD ["./apps/platform/node_modules/.bin/react-router-serve", "./apps/platform/dist/server/index.js"]
 
-# Production image for migrator
-FROM debian:bookworm-slim AS migrator-prod
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+FROM node:${NODE_VERSION}-bookworm-slim AS frontend-cast-prod
 
 WORKDIR /app
-COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrator-bin /app/migrator-bin
-COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/postgres /app/postgres
 
-RUN chmod +x /app/migrator-bin
-RUN mkdir -p /data/db
+COPY --from=frontend-builder /src/client/frontend/render/package.json ./package.json
+COPY --from=frontend-builder /src/client/frontend/render/node_modules ./node_modules
+COPY --from=frontend-builder /src/client/frontend/render/apps/cast/package.json ./apps/cast/package.json
+COPY --from=frontend-builder /src/client/frontend/render/apps/cast/node_modules ./apps/cast/node_modules
+COPY --from=frontend-builder /src/client/frontend/render/apps/cast/dist ./apps/cast/dist
 
-ENTRYPOINT ["/app/migrator-bin"]
+ENV NODE_ENV=production
 
-# Production image for backend application
-FROM debian:bookworm-slim AS backend-prod
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+EXPOSE 3001
 
-WORKDIR /app
-COPY --from=backend-builder /go/src/github.com/zoff-music/vibes/backend/main /app/main
-COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/migrator-bin /app/migrator-bin
-COPY --from=migrator-builder /go/src/github.com/zoff-music/vibes/migrator/postgres /app/postgres
-
-RUN chmod +x /app/main
-RUN chmod +x /app/migrator-bin
-RUN mkdir -p /data/db
-
-EXPOSE 8080
-ENTRYPOINT ["/bin/sh", "-c", "/app/migrator-bin && /app/main"]
+CMD ["./apps/cast/node_modules/.bin/vite", "preview", "--host", "0.0.0.0", "--port", "3001", "--outDir", "./apps/cast/dist"]

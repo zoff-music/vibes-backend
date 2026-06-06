@@ -1,0 +1,42 @@
+{
+  "name": "vibez",
+  "private": true,
+  "packageManager": "pnpm@11.5.2",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "pnpm --filter @vibez/platform dev",
+    "mobile": "pnpm --filter @vibez/mobile start",
+    "mobile:ios": "pnpm --filter @vibez/mobile ios",
+    "mobile:android": "pnpm --filter @vibez/mobile android",
+    "mobile:tunnel": "pnpm --filter @vibez/mobile start --tunnel",
+    "build": "pnpm --filter @vibez/platform build && pnpm --filter @vibez/cast build",
+    "typecheck": "pnpm --recursive typecheck",
+    "lint": "pnpm --recursive lint",
+    "test": "pnpm --recursive test",
+    "fix": "biome check --write --unsafe ."
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.16",
+    "@types/react": "19.2.16",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "^6.0.2",
+    "dotenv": "^17.4.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16"
+  },
+  "resolutions": {
+    "@types/react": "19.2.16",
+    "@types/react-dom": "19.2.3"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "wiretyped": "^0.3.9"
+  }
+}

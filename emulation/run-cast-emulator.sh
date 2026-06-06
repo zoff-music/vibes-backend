@@ -2,12 +2,10 @@
 set -e
 
 if [ -z "${CAST_EMULATOR_CMD+x}" ]; then
-  if command -v bunx >/dev/null 2>&1; then
-    CAST_EMULATOR_CMD="bunx --yes chromecast-device-emulator"
-  elif command -v npx >/dev/null 2>&1; then
+  if command -v npx >/dev/null 2>&1; then
     CAST_EMULATOR_CMD="npx --yes chromecast-device-emulator"
   else
-    echo "Cast emulator: missing bunx/npx in PATH" >&2
+    echo "Cast emulator: missing npx in PATH" >&2
     exit 1
   fi
 fi
