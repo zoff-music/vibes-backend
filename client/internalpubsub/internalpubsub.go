@@ -7,8 +7,8 @@ import (
 	"log"
 	"sync"
 
-	"github.com/zoff-music/vibes/monitoring/opentracing"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/vibe"
 
 	"github.com/google/uuid"
 )

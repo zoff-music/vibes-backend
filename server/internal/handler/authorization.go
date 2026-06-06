@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zoff-music/vibes/internalerror"
-	"github.com/zoff-music/vibes/server/internal/helper"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/internalerror"
+	"github.com/zoff-music/vibes-backend/server/internal/helper"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // Authorize redirects the user to the provider for authentication

@@ -8,10 +8,10 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/zoff-music/vibes/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
 
-	"github.com/zoff-music/vibes/client"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // GetTrack fetches details for a specific video ID

@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	opentracing "github.com/zoff-music/vibes/monitoring/opentracing"
+	opentracing "github.com/zoff-music/vibes-backend/monitoring/opentracing"
 )
 
 // Parameters provides the parameters used when creating a new HTTP client.

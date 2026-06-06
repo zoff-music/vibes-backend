@@ -7,11 +7,11 @@ import (
 	"context"
 	"time"
 
-	"github.com/zoff-music/vibes/client/database"
-	"github.com/zoff-music/vibes/client/internalpubsub"
-	"github.com/zoff-music/vibes/client/spotify"
-	"github.com/zoff-music/vibes/client/youtube"
-	"github.com/zoff-music/vibes/server/internal/handler"
+	"github.com/zoff-music/vibes-backend/client/database"
+	"github.com/zoff-music/vibes-backend/client/internalpubsub"
+	"github.com/zoff-music/vibes-backend/client/spotify"
+	"github.com/zoff-music/vibes-backend/client/youtube"
+	"github.com/zoff-music/vibes-backend/server/internal/handler"
 )
 
 // Handler is an interface that all event handles must implement.

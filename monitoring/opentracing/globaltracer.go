@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/zoff-music/vibes/config"
-	"github.com/zoff-music/vibes/monitoring/telemetry"
+	"github.com/zoff-music/vibes-backend/config"
+	"github.com/zoff-music/vibes-backend/monitoring/telemetry"
 	"go.opentelemetry.io/otel"
 	"go.opentelemetry.io/otel/propagation"
 	tracesdk "go.opentelemetry.io/otel/sdk/trace"

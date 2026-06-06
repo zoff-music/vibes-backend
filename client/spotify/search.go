@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/vibes/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
 	"net/http"
 	"net/url"
 	"strings"
 
-	"github.com/zoff-music/vibes/client"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // Search searches for tracks on Spotify

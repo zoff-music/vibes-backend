@@ -8,8 +8,8 @@ import (
 	"log"
 	"time"
 
-	"github.com/zoff-music/vibes/monitoring/opentracing"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/vibe"
 	"golang.org/x/crypto/bcrypt"
 )
 

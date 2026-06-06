@@ -16,15 +16,15 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes/client/database"
-	"github.com/zoff-music/vibes/client/internalpubsub"
-	"github.com/zoff-music/vibes/client/soundcloud"
-	"github.com/zoff-music/vibes/client/spotify"
-	"github.com/zoff-music/vibes/client/youtube"
-	"github.com/zoff-music/vibes/config"
-	"github.com/zoff-music/vibes/monitoring/metrics"
-	"github.com/zoff-music/vibes/monitoring/trace"
-	"github.com/zoff-music/vibes/server/internal/event"
+	"github.com/zoff-music/vibes-backend/client/database"
+	"github.com/zoff-music/vibes-backend/client/internalpubsub"
+	"github.com/zoff-music/vibes-backend/client/soundcloud"
+	"github.com/zoff-music/vibes-backend/client/spotify"
+	"github.com/zoff-music/vibes-backend/client/youtube"
+	"github.com/zoff-music/vibes-backend/config"
+	"github.com/zoff-music/vibes-backend/monitoring/metrics"
+	"github.com/zoff-music/vibes-backend/monitoring/trace"
+	"github.com/zoff-music/vibes-backend/server/internal/event"
 )
 
 // Server holds the HTTP server, router, config and all clients.

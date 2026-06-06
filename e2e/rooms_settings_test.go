@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"testing"
 
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 func TestCreateRoomWithSettings(t *testing.T) {

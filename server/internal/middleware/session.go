@@ -13,7 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes/server/internal/helper"
+	"github.com/zoff-music/vibes-backend/server/internal/helper"
 )
 
 type SessionMiddleware struct {

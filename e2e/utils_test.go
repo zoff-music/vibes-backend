@@ -18,8 +18,8 @@ import (
 	"time"
 
 	_ "github.com/mattn/go-sqlite3"
-	"github.com/zoff-music/vibes/config"
-	"github.com/zoff-music/vibes/server"
+	"github.com/zoff-music/vibes-backend/config"
+	"github.com/zoff-music/vibes-backend/server"
 )
 
 func getFreePort() (int, error) {

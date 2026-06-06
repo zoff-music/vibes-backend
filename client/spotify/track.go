@@ -4,12 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/vibes/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
 	"net/http"
 	"strings"
 
-	"github.com/zoff-music/vibes/client"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // GetTrack fetches details for a specific track ID

@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes/internalerror"
-	"github.com/zoff-music/vibes/server/internal/helper"
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/internalerror"
+	"github.com/zoff-music/vibes-backend/server/internal/helper"
+	"github.com/zoff-music/vibes-backend/vibe"
 	"golang.org/x/crypto/bcrypt"
 )
 

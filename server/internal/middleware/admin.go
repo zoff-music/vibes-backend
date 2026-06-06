@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes/server/internal/helper"
+	"github.com/zoff-music/vibes-backend/server/internal/helper"
 )
 
 // AdminMiddleware enforces admin session access based on the global admin password.

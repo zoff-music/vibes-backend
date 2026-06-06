@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes/monitoring/metrics"
+	"github.com/zoff-music/vibes-backend/monitoring/metrics"
 
-	"github.com/zoff-music/vibes/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
 )
 
 // TraceMetrics is the configuration for trace and metrics middleware.

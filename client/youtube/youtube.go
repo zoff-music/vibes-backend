@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/zoff-music/vibes/client"
-	"github.com/zoff-music/vibes/config"
+	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/config"
 )
 
 // Client implements vibe.MusicSearcher

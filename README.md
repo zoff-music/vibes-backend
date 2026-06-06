@@ -1,6 +1,6 @@
-# Vibez
+# Vibes Backend
 
-Collaborative music queue with a Go backend and React frontend.
+Go API backend for the Vibes collaborative music queue.
 
 ## Features
 
@@ -15,7 +15,6 @@ Collaborative music queue with a Go backend and React frontend.
 
 ### Prerequisites
 - Go 1.26.4+
-- pnpm
 - Environment variables configured (see `.env.sample`)
 
 ### Development
@@ -25,7 +24,7 @@ Collaborative music queue with a Go backend and React frontend.
 go run cmd/migrator/main.go
 go run cmd/server/main.go
 
-# Or use the Makefile for full stack
+# Or use the Makefile
 make dev
 ```
 
@@ -45,7 +44,6 @@ cp .env.sample .env
 - **`cmd/server`**: Application entrypoint and dependency injection
 - **`cmd/migrator`**: Migration entrypoint
 - **`client/`**: External integrations (Database, YouTube, Spotify, SoundCloud, PubSub)
-- **`client/frontend/render`**: Frontend pnpm workspace
 - **`server/`**: HTTP router, middleware, and handlers
 - **`server/internal/handler`**: Domain-specific HTTP handlers
 - **`vibe/`**: Core domain types and interfaces (pure Go, no dependencies)

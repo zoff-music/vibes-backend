@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/zoff-music/vibes/vibe"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 func TestAutoPlayOnJoin(t *testing.T) {
