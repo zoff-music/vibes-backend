@@ -6,4 +6,5 @@ export default [
   route('rooms/:id', './routes/rooms.$id/route.tsx'),
   route('callback', './routes/callback/route.tsx'),
   route('admin', './routes/admin/route.tsx'),
+  route(':id', './routes/rooms.alias/route.tsx'),
 ];
