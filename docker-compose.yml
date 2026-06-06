@@ -9,14 +9,11 @@ services:
       # Add volume for caddy data to persist certs if needed
       - caddy_data:/data
       - caddy_config:/config
-      - cast_static_blue:/srv/cast/blue:ro
-      - cast_static_green:/srv/cast/green:ro
     environment:
       - BACKEND_UPSTREAM=backend:8080
       - PLATFORM_UPSTREAM=frontend-platform:3000
       - CAST_UPSTREAM=frontend-cast:${FRONTEND_CAST_INTERNAL_PORT:-3001}
       - CAST_DEV_MODE=${CAST_DEV_MODE:-true}
-      - CAST_ROOT=${CAST_ROOT:-/srv/cast/blue}
     depends_on:
       - backend
       - frontend-platform
@@ -31,39 +28,20 @@ services:
   backend:
     build:
       context: .
-      target: ${BACKEND_BUILD_TARGET:-backend-dev}
+      target: ${BACKEND_BUILD_TARGET:-backend-prod}
     ports:
       - "${BACKEND_PORT_MAPPING:-42070:8080}"
     env_file:
       - ${ENV_FILE:-.env}
-    environment:
-      - DATABASE_PATH=/data/db/vibes.db
     volumes:
-      - ${BACKEND_MOUNT_SRC:-.}:${BACKEND_MOUNT_DEST:-/go/src/github.com/zoff-music/vibes}:ro
       - db_data:/data/db
     command: ${BACKEND_CMD_OVERRIDE:-}
-    depends_on:
-      migrator:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/_healthz"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
     restart: unless-stopped
-
-  migrator:
-    build:
-      context: .
-      target: migrator-prod
-    command: ["-db", "/data/db/vibes.db"]
-    volumes:
-      - db_data:/data/db
 
   frontend-platform:
     build:
       context: .
-      target: ${FRONTEND_PLATFORM_TARGET:-frontend-dev}
+      target: ${FRONTEND_PLATFORM_TARGET:-frontend-platform-prod}
     ports:
       - "${FRONTEND_PLATFORM_PORT_MAPPING:-3000:3000}"
     environment:
@@ -74,28 +52,18 @@ services:
       - VITE_DEBUG=${VITE_DEBUG:-}
       - NODE_ENV=${NODE_ENV:-development}
       - FORCE_MANIFEST=${FORCE_MANIFEST:-false}
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
     restart: unless-stopped
 
   frontend-cast:
     build:
       context: .
-      target: ${FRONTEND_CAST_TARGET:-frontend-dev}
+      target: ${FRONTEND_CAST_TARGET:-frontend-cast-prod}
     ports:
       - "${FRONTEND_CAST_PORT_MAPPING:-3001:3001}"
     environment:
       - PORT=${FRONTEND_CAST_INTERNAL_PORT:-3001}
       - DEBUG=${DEBUG:-}
       - VITE_DEBUG=${VITE_DEBUG:-}
-    healthcheck:
-      test: ["CMD", "sh", "-c", "${FRONTEND_CAST_HEALTHCHECK_CMD:-curl -f http://localhost:3001}"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
     restart: unless-stopped
 
 volumes:
@@ -104,7 +72,3 @@ volumes:
   db_data:
     name: vibes_db_shared
     external: true
-  cast_static_blue:
-    name: vibes_cast_static_blue
-  cast_static_green:
-    name: vibes_cast_static_green

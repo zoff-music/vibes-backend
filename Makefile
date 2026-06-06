@@ -1,45 +1,69 @@
-.PHONY: build install server test help docker dev dev-down frontend local-dev gosec govulncheck ci-lint deploy deploy-dry-run deploy-rollback
+.PHONY: build frontend-build frontend-check backend frontend migrator dev install update test help gosec govulncheck docker deploy
 
 PROJECT_NAME=$(shell basename $(CURDIR))
-BACKEND_DIR=backend
+BACKEND_PORT ?= 8080
+DEV_BACKEND_PORT ?= 8080
+FRONTEND_PORT ?= 3001
+FRONTEND_DIR := client/frontend/render
+PNPM_VERSION := 11.5.2
+PNPM := npx --yes pnpm@$(PNPM_VERSION)
 
-## build: build the application
-build:
-	cd $(BACKEND_DIR) && \
+## build: builds the frontend and Go binaries
+build: frontend-build
 	go mod download; \
-	go mod vendor; \
-	CGO_ENABLED=1 \
-	go build -ldflags '-w -s' -o main cmd/server/main.go
+	CGO_ENABLED=1 go build -ldflags '-w -s' -o main cmd/server/main.go; \
+	CGO_ENABLED=0 go build -ldflags '-w -s' -o migrator-main cmd/migrator/main.go
 
-## build-migrator: builds the migrator
-build-migrator:
-	cd migrator && go build -a -ldflags '-w -s' -o migrator-bin main.go
+## frontend-build: builds the frontend
+frontend-build:
+	$(PNPM) --dir $(FRONTEND_DIR) install
+	$(PNPM) --dir $(FRONTEND_DIR) build
 
-## migrate-up: Runs all up migrations
-migrate-up:
-	mkdir -p data/db
-	cd migrator && go run main.go -db ../data/db/vibes.db
+## frontend-check: type checks and lints the frontend
+frontend-check:
+	$(PNPM) --dir $(FRONTEND_DIR) install
+	$(PNPM) --dir $(FRONTEND_DIR) fix
+	$(PNPM) --dir $(FRONTEND_DIR) typecheck
 
-## migrate-down: Runs one down migration step by default (use STEPS=N for more)
-migrate-down:
-	mkdir -p data/db
-	cd migrator && go run main.go -db ../data/db/vibes.db -down -steps $(if $(STEPS),$(STEPS),1)
+## backend: runs the backend server only
+backend:
+	PORT=$(BACKEND_PORT) go run -race cmd/server/main.go
 
+## frontend: runs the frontend dev server
+frontend:
+	$(PNPM) --dir $(FRONTEND_DIR) install
+	$(PNPM) --dir $(FRONTEND_DIR) --filter @vibez/platform dev --host 127.0.0.1 --port $(FRONTEND_PORT)
 
-## install: fetches go modules
+## migrator: runs all up migrations
+migrator:
+	go run -race cmd/migrator/main.go
+
+## dev: runs migrator, backend, and frontend
+dev: migrator
+	@set -e; \
+	PORT=$(DEV_BACKEND_PORT) go run -race cmd/server/main.go & \
+	BACKEND_PID=$$!; \
+	trap 'kill $$BACKEND_PID 2>/dev/null || true' EXIT INT TERM; \
+	$(PNPM) --dir $(FRONTEND_DIR) install; \
+	VITE_API_URL=http://127.0.0.1:$(DEV_BACKEND_PORT) $(PNPM) --dir $(FRONTEND_DIR) --filter @vibez/platform dev --host 127.0.0.1 --port $(FRONTEND_PORT)
+
+## install: fetches Go and frontend modules
 install:
-	cd $(BACKEND_DIR) && \
 	go mod tidy; \
-	go mod download
+	go mod download; \
+	$(PNPM) --dir $(FRONTEND_DIR) install
 
-## server: runs the server with -race
-server:
-	cd $(BACKEND_DIR) && \
-	go run -race cmd/server/main.go
+## update: updates Go and frontend dependencies
+update:
+	go get -u ./...; \
+	go mod vendor; \
+	go mod download; \
+	go mod tidy; \
+	$(PNPM) --dir $(FRONTEND_DIR) install; \
+	$(PNPM) --dir $(FRONTEND_DIR) update --latest
 
-## test: runs tests
+## test: runs backend tests
 test:
-	cd $(BACKEND_DIR) && \
 	go test -race ./...
 
 ## help: prints help message
@@ -47,112 +71,19 @@ help:
 	@echo "Usage:"
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
 
-## docker: Builds and runs backend + frontend via docker compose.
-docker:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-
-## dev: Runs backend + frontend via docker compose
-dev:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
-
-## dev-down: Stops docker compose services
-dev-down:
-	docker compose down
-
-## cast-dev: Runs backend + platform + cast receiver + emulator via docker compose
-cast-dev:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml -f emulation/docker-compose.cast.yml up --build
-
-## cast-dev-down: Stops casting docker compose services
-cast-dev-down:
-	docker compose -f docker-compose.yml -f docker-compose.dev.yml -f emulation/docker-compose.cast.yml down
-
-## frontend: Runs frontend dev server locally
-frontend:
-	cd frontend/apps/platform && bun run dev
-
-## dev-platform: Runs platform app with backend for optimal HMR (no proxy)
-dev-platform:
-	@echo "🚀 Starting Platform Development (Optimal HMR)"
-	@echo "Stopping any existing processes..."
-	@-lsof -ti :3001,8080 | xargs kill -9 2>/dev/null || true
-	@echo "Ensuring database directory exists..."
-	@mkdir -p data/db
-	@echo "Starting backend and platform..."
-	@echo ""
-	@echo "🌐 Access URLs:"
-	@echo "  📍 Platform (with HMR): http://localhost:3001"
-	@echo "  📍 Backend API: http://localhost:8080"
-	@echo ""
-	@echo "💡 This setup provides the best HMR experience!"
-	@echo ""
-	@sh -c 'trap "kill 0" INT TERM EXIT; \
-	PORT=8080 sh -c "cd migrator && go run main.go -db ../data/db/vibes.db && cd ../backend && DATABASE_PATH=../data/db/vibes.db exec go run cmd/server/main.go" & \
-	sh -c "cd frontend/apps/platform && FORCE_COLOR=1 exec bun run dev" & \
-	wait'
-
-## setup-caddy: Installs Caddy and trusts local CA (MacOS only)
-setup-caddy:
-	@command -v caddy >/dev/null 2>&1 || (echo "Caddy not found. Installing via Homebrew..." && brew install caddy)
-	@echo "Ensuring local Caddy CA is trusted (may require password)..."
-	@echo "Validating Caddyfile..."
-	@caddy validate --config Caddyfile || (echo "Caddyfile validation failed" && exit 1)
-	@echo "Starting Caddy temporarily to fetch CA info..."
-	@caddy start --config Caddyfile >/dev/null 2>&1 || true
-	@sleep 2
-	@sudo caddy trust || echo "Failed to trust CA, continuing anyway..."
-	@caddy stop >/dev/null 2>&1 || true
-
-
-## local-dev: Runs backend + frontend locally with env ports set and Caddy for SSL
-local-dev: setup-caddy
-	@echo "🚀 Starting Vibez Development Environment with HMR"
-	@echo "Stopping any existing dev processes..."
-	@-lsof -ti :3000,3001,3002,3003,8080 | xargs kill -9 2>/dev/null || true
-	@echo "Ensuring dependencies are up to date..."
-	@cd frontend && bun install
-	@cd frontend/apps/platform && bun install
-	@cd frontend/apps/cast && bun install
-	@echo "Ensuring database directory exists..."
-	@mkdir -p data/db
-	@echo "Starting local development services..."
-	@echo ""
-	@echo "🌐 Access URLs:"
-	@echo "  📍 Platform (HTTPS with HMR): https://localhost"
-	@echo "  📍 Platform (Direct): http://localhost:3001"
-	@echo "  📍 Cast App (Dev): http://localhost:3003"
-	@echo "  📍 Cast Receiver (HTTPS): https://localhost/casting/receiver/"
-	@echo "  📍 Backend API: http://localhost:8080"
-	@echo ""
-	@echo "🔥 Hot Module Replacement enabled on https://localhost!"
-	@echo "💡 Changes will update instantly without page refresh"
-	@echo ""
-	@sh -c 'trap "kill 0" INT TERM EXIT; \
-	PORT=8080 sh -c "cd migrator && go run main.go -db ../data/db/vibes.db && cd ../backend && DATABASE_PATH=../data/db/vibes.db exec go run cmd/server/main.go" & \
-	sh -c "cd frontend/apps/platform && VITE_API_URL=https://localhost VITE_CAST_LOCAL_EMULATOR=true FORCE_COLOR=1 exec bun run dev" & \
-	sh -c "cd frontend/apps/cast && VITE_API_URL=https://localhost FORCE_COLOR=1 exec bun run dev" & \
-	sh emulation/run-cast-emulator.sh & \
-	CAST_DEV_MODE=true exec caddy run --config Caddyfile & \
-	wait'
-
-
-
 ## gosec: Runs gosec
 gosec:
-	@echo "Running gosec:" && cd $(BACKEND_DIR) && gosec -conf ../gosec-config.json ./...
+	@echo "Running gosec:" && gosec -conf gosec-config.json ./...
 
 ## govulncheck: Runs govulncheck
 govulncheck:
-	@echo "Running govulncheck:" && cd $(BACKEND_DIR) && govulncheck ./...
+	@echo "Running govulncheck:" && govulncheck ./...
 
-## deploy: Run blue-green deployment to production
+## docker: builds the production backend and frontend images
+docker:
+	docker build --target backend-prod -t $(PROJECT_NAME)-backend .
+	docker build --target frontend-platform-prod -t $(PROJECT_NAME)-frontend-platform .
+
+## deploy: deploys production manifests to k3s
 deploy:
-	.github/deploy/deploy.sh
-
-## deploy-dry-run: Preview deployment without executing
-deploy-dry-run:
-	.github/deploy/deploy.sh --dry-run
-
-## deploy-rollback: Rollback to previous deployment
-deploy-rollback:
-	.github/deploy/deploy.sh --rollback
+	.build/scripts/deploy-vibes.sh

@@ -1,5 +1,5 @@
 services:
   frontend-platform:
-    command: sh -c "bun install && bun --filter @vibez/platform ${FRONTEND_CMD:-dev}"
+    command: sh -c "corepack enable && corepack prepare pnpm@10.20.0 --activate && pnpm install && pnpm --filter @vibez/platform ${FRONTEND_CMD:-dev}"
   frontend-cast:
-    command: sh -c "bun install && bun --filter @vibez/cast ${FRONTEND_CMD:-dev}"
+    command: sh -c "corepack enable && corepack prepare pnpm@10.20.0 --activate && pnpm install && pnpm --filter @vibez/cast ${FRONTEND_CMD:-dev}"

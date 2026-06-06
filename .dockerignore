@@ -1,0 +1,13 @@
+.git
+.github
+.build
+data
+tmp
+docs
+node_modules
+client/frontend/render/node_modules
+client/frontend/render/apps/*/dist
+client/frontend/render/apps/*/build
+main
+migrator-main
+vendor

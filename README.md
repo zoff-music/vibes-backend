@@ -1,75 +1,66 @@
-# Vibez 🎵
+# Vibez
 
-Collaborative music queue with perfectly synchronized playback across devices. Support for YouTube, Spotify, and SoundCloud.
+Collaborative music queue with a Go backend and React frontend.
 
-## ✨ Features
+## Features
 
-- **Collaborative Rooms**: Create rooms, invite friends, and manage a shared queue
-- **Synchronized Playback**: Low-latency sync using Server-Sent Events (SSE)
-- **Multi-Provider**: Search and play from YouTube, Spotify (Premium), and SoundCloud
-- **Cast Support**: Dedicated Chromecast receiver application for big-screen vibes
-- **Mobile Support**: Native iOS and Android apps for on-the-go room management
-- **Server-Side Rendering**: SSR-enabled React apps for better performance and SEO
-- **HTTPS Development**: Local development with automatic SSL certificates via Caddy
-- **Dark Mode Support**: System preference detection with manual toggle
-- **Advanced Permissions**: Toggleable "Only Admin Add Songs" and source restrictions
+- **Real-time Sync**: Server-Sent Events (SSE) for low-latency state distribution
+- **Provider Aggregator**: Unified API for YouTube, Spotify, and SoundCloud
+- **PostgreSQL Storage**: Atomic database operations through prepared statements
+- **OAuth2 Flow**: Centralized authorization management for music providers
+- **OpenTelemetry**: Comprehensive monitoring with metrics and tracing
+- **Automatic Migrations**: Database schema management via migrator tool
 
-## 🚀 Quick Start
+## Getting Started
 
-The fastest way to get started is using the provided `Makefile`:
+### Prerequisites
+- Go 1.26.4+
+- pnpm
+- Environment variables configured (see `.env.sample`)
+
+### Development
 
 ```bash
-# Start the entire local development stack with HTTPS (Recommended)
-make local-dev
-```
+# Run with automatic database migration in another shell
+go run cmd/migrator/main.go
+go run cmd/server/main.go
 
-This starts:
-- **Backend**: Go server with database migrations
-- **Platform App**: Main React application (SSR)
-- **Cast Receiver**: Chromecast receiver app (SSR)
-- **Caddy Proxy**: HTTPS reverse proxy with automatic SSL
-
-Access at: **https://localhost**
-
-### Alternative: Docker Development
-```bash
-# Full stack via Docker Compose
+# Or use the Makefile for full stack
 make dev
 ```
 
-### Manual Development
-```bash
-# Backend only
-cd backend && go run cmd/server/main.go
+### Environment Configuration
 
-# Frontend only (both apps)
-cd frontend && bun dev
-```
-
-## 📚 Documentation
-
-- **Project Overview**: [CLAUDE.md](./CLAUDE.md)
-- **API Reference**: [docs/API.md](./docs/API.md)
-- **SSR Architecture**: [docs/SSR_ARCHITECTURE.md](./docs/SSR_ARCHITECTURE.md)
-- **Music Providers**: [docs/MUSIC-PROVIDERS.md](./docs/MUSIC-PROVIDERS.md)
-- **Cast Development**: [CAST_DEVELOPMENT_GUIDE.md](./CAST_DEVELOPMENT_GUIDE.md)
-- **Deployment Guide**: [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md)
-- **Troubleshooting**: [docs/TROUBLESHOOTING.md](./docs/TROUBLESHOOTING.md)
-- **Frontend Rules**: [frontend/AGENTS.md](./frontend/AGENTS.md)
-- **Backend Rules**: [backend/AGENTS.md](./backend/AGENTS.md)
-
-## ⚖️ Database Transactions
-Vibes generally avoids database transactions to keep logic simple and high-performance. However, the `AddSong` method is a documented exception to this rule to ensure consistent duplicate song handling based on room settings.
-
-## 🔧 Environment Setup
-
-Copy the sample environment file and configure your API keys:
-
+Copy and configure the environment file:
 ```bash
 cp .env.sample .env
-# Edit .env with your API keys (YouTube, Spotify, SoundCloud)
+# Configure required API keys:
+# - YOUTUBE_API_KEY (required)
+# - SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET (optional)
+# - SOUNDCLOUD_API_KEY (optional)
 ```
 
-## 🐳 Deployment
+## Architecture
 
-Vibez supports blue-green deployments via Docker Compose and Caddy. See [docs/DEPLOYMENT.md](./docs/DEPLOYMENT.md) for details.
+- **`cmd/server`**: Application entrypoint and dependency injection
+- **`cmd/migrator`**: Migration entrypoint
+- **`client/`**: External integrations (Database, YouTube, Spotify, SoundCloud, PubSub)
+- **`client/frontend/render`**: Frontend pnpm workspace
+- **`server/`**: HTTP router, middleware, and handlers
+- **`server/internal/handler`**: Domain-specific HTTP handlers
+- **`vibe/`**: Core domain types and interfaces (pure Go, no dependencies)
+- **`config/`**: Configuration management and environment variables
+- **`monitoring/`**: OpenTelemetry tracing, metrics, and telemetry
+
+## Key Conventions
+
+- **No service layers**: Direct client usage via interfaces
+- **Domain types in `vibe/`**: All business logic types defined here
+- **Error handling**: All errors wrapped with context
+- **Database**: Prepared statements with 1:1 naming convention
+- **HTTP clients only**: All external integrations under `client/`
+- **Database Transactions**: Avoid transactions unless no single-statement approach is reasonable.
+
+---
+
+For complete coding conventions, read the [AGENTS.md](./AGENTS.md).
