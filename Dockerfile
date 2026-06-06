@@ -46,7 +46,7 @@ EXPOSE 8080
 
 ENTRYPOINT ["/app/docker-entrypoint.sh"]
 
-FROM node:${NODE_VERSION}-bookworm-slim AS frontend-builder
+FROM node:${NODE_VERSION}-bookworm-slim AS frontend-deps
 
 WORKDIR /src
 
@@ -55,40 +55,50 @@ COPY client/frontend/render/apps ./client/frontend/render/apps
 COPY client/frontend/render/packages ./client/frontend/render/packages
 
 RUN npm install -g pnpm@${PNPM_VERSION} \
-	&& pnpm --dir client/frontend/render install --frozen-lockfile \
-	&& pnpm --dir client/frontend/render --filter @vibez/platform build \
-	&& pnpm --dir client/frontend/render --filter @vibez/cast build
+	&& pnpm --dir client/frontend/render install --frozen-lockfile
+
+FROM frontend-deps AS frontend-platform-builder
+
+RUN pnpm --dir client/frontend/render --filter @vibez/platform build
 
 FROM node:${NODE_VERSION}-bookworm-slim AS frontend-platform-prod
 
 WORKDIR /app
 
-COPY --from=frontend-builder /src/client/frontend/render/package.json ./package.json
-COPY --from=frontend-builder /src/client/frontend/render/node_modules ./node_modules
-COPY --from=frontend-builder /src/client/frontend/render/apps/platform/package.json ./apps/platform/package.json
-COPY --from=frontend-builder /src/client/frontend/render/apps/platform/node_modules ./apps/platform/node_modules
-COPY --from=frontend-builder /src/client/frontend/render/apps/platform/dist ./apps/platform/dist
-COPY --from=frontend-builder /src/client/frontend/render/packages ./packages
+COPY --from=frontend-platform-builder /src/client/frontend/render/package.json ./package.json
+COPY --from=frontend-platform-builder /src/client/frontend/render/node_modules ./node_modules
+COPY --from=frontend-platform-builder /src/client/frontend/render/apps/platform/package.json ./apps/platform/package.json
+COPY --from=frontend-platform-builder /src/client/frontend/render/apps/platform/node_modules ./apps/platform/node_modules
+COPY --from=frontend-platform-builder /src/client/frontend/render/apps/platform/dist ./apps/platform/dist
+COPY --from=frontend-platform-builder /src/client/frontend/render/packages ./packages
 
 ENV NODE_ENV=production
 ENV VITE_API_URL_INTERNAL=http://backend:8080
 
 EXPOSE 3000
 
-CMD ["./apps/platform/node_modules/.bin/react-router-serve", "./apps/platform/dist/server/index.js"]
+WORKDIR /app/apps/platform
+
+CMD ["./node_modules/.bin/react-router-serve", "./dist/server/index.js"]
+
+FROM frontend-deps AS frontend-cast-builder
+
+RUN pnpm --dir client/frontend/render --filter @vibez/cast build
 
 FROM node:${NODE_VERSION}-bookworm-slim AS frontend-cast-prod
 
 WORKDIR /app
 
-COPY --from=frontend-builder /src/client/frontend/render/package.json ./package.json
-COPY --from=frontend-builder /src/client/frontend/render/node_modules ./node_modules
-COPY --from=frontend-builder /src/client/frontend/render/apps/cast/package.json ./apps/cast/package.json
-COPY --from=frontend-builder /src/client/frontend/render/apps/cast/node_modules ./apps/cast/node_modules
-COPY --from=frontend-builder /src/client/frontend/render/apps/cast/dist ./apps/cast/dist
+COPY --from=frontend-cast-builder /src/client/frontend/render/package.json ./package.json
+COPY --from=frontend-cast-builder /src/client/frontend/render/node_modules ./node_modules
+COPY --from=frontend-cast-builder /src/client/frontend/render/apps/cast/package.json ./apps/cast/package.json
+COPY --from=frontend-cast-builder /src/client/frontend/render/apps/cast/node_modules ./apps/cast/node_modules
+COPY --from=frontend-cast-builder /src/client/frontend/render/apps/cast/dist ./apps/cast/dist
 
 ENV NODE_ENV=production
 
 EXPOSE 3001
 
-CMD ["./apps/cast/node_modules/.bin/vite", "preview", "--host", "0.0.0.0", "--port", "3001", "--outDir", "./apps/cast/dist"]
+WORKDIR /app/apps/cast
+
+CMD ["./node_modules/.bin/vite", "preview", "--host", "0.0.0.0", "--port", "3001", "--outDir", "./dist"]
