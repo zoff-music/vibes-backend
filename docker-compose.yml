@@ -1,35 +1,4 @@
 services:
-  shared-local:
-    image: postgres:18
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: password
-      POSTGRES_DB: vibes
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
-  migrator:
-    build:
-      context: .
-      target: migrator-prod
-    environment:
-      DATABASE_URL: postgres://postgres:password@shared-local:5432/vibes?sslmode=disable
-    depends_on:
-      shared-local:
-        condition: service_healthy
-
-  tbls:
-    image: ghcr.io/k1low/tbls
-    volumes:
-      - ./docs/db:/docs
-    command: doc --force "postgres://postgres:password@shared-local:5432/vibes?sslmode=disable" /docs
-    depends_on:
-      shared-local:
-        condition: service_healthy
-
   backend:
     build:
       context: .
