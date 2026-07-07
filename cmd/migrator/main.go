@@ -14,14 +14,18 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 )
 
-type Config struct {
-	DatabasePath string
-}
-
 func main() {
 	var databaseURL string
 	var down bool
 	var steps int
+	command := "up"
+
+	if len(os.Args) > 1 {
+		if os.Args[1] == "up" || os.Args[1] == "down" {
+			command = os.Args[1]
+			os.Args = append([]string{os.Args[0]}, os.Args[2:]...)
+		}
+	}
 
 	flag.StringVar(&databaseURL, "db", os.Getenv("DATABASE_URL"), "Postgres connection URL")
 	flag.BoolVar(&down, "down", false, "Run down migrations")
@@ -42,7 +46,12 @@ func main() {
 		log.Fatalf("Failed to ensure migration table: %v", err)
 	}
 
-	if err := runMigrations(db, down, steps); err != nil {
+	if command == "down" {
+		down = true
+	}
+
+	err = runMigrations(db, down, steps)
+	if err != nil {
 		log.Fatalf("Migration failed: %v", err)
 	}
 
@@ -102,7 +111,7 @@ func getCurrentVersion(db *sql.DB) (int, bool, error) {
 }
 
 func getMigrationFiles() ([]string, error) {
-	paths := []string{"./migrator/postgres", "./postgres", "./migrator/migrations", "./migrations"}
+	paths := []string{"./migrator/postgres", "./postgres"}
 	var dir string
 	for _, p := range paths {
 		if _, err := os.Stat(p); err == nil {

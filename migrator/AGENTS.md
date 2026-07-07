@@ -10,85 +10,50 @@ Non-negotiable conventions. Follow strictly.
 - **Limit Return Values** - NEVER return more than 2 values. 3 or more is strictly illegal.
 - **NO `interface{}`** - always use concrete types or specific interfaces.
 - **NO Inlined Structs** - never use `struct{}{}` or anonymous structs.
-- **SQL Files naming**: `NNNN_description.up.sql` / `NNNN_description.down.sql` (e.g. `0001_initial_schema.up.sql`).
+- **SQL file naming**: `NNNN_description.up.sql` / `NNNN_description.down.sql`.
 
 ## Command Line Interface
 
 The migrator accepts these flags only:
-- `-db`: Database path (required) - e.g., `-db ./data/db/vibes.db`
-- `-down`: Run down migrations (optional boolean flag)
-- `-steps`: Number of migration steps to run (optional, 0 = all)
 
-**Usage Examples:**
-```bash
-# Run all up migrations
-./migrator -db ./data/db/vibes.db
+- `-db`: Postgres connection URL. Defaults to `DATABASE_URL`.
+- `-down`: Run down migrations.
+- `-steps`: Number of migration steps to run. `0` means all.
 
-# Run down migrations (1 step)
-./migrator -db ./data/db/vibes.db -down -steps 1
-
-# Run specific number of up migrations
-./migrator -db ./data/db/vibes.db -steps 3
-```
+The migrator also accepts `up` and `down` subcommands for Docker Compose and k8s job usage.
 
 ## File Layout
 
 ```
 migrator/
-├── main.go                # Entrypoint with CLI handling
-└── migrations/            # SQL migration files
-    ├── 0001_initial_schema.up.sql
-    ├── 0001_initial_schema.down.sql
-    ├── 0002_add_song_votes_and_constraints.up.sql
-    ├── 0002_add_song_votes_and_constraints.down.sql
-    └── ...
+└── postgres/
+    ├── 0001_current_schema.up.sql
+    └── 0001_current_schema.down.sql
 ```
 
 ## Migration Pattern
 
-- Migrations are applied using custom logic with SQLite.
-- Always include both UP and DOWN migrations.
-- **Atomic operations**: Each migration file should ideally run in a transaction (unless utility prevents it).
-- **Migration discovery**: The migrator searches for migration files in `./migrations` directory.
-- **Migration tracking**: Uses `schema_migrations` table to track applied migrations.
-
-## Database Schema Evolution
-
-Current migrations include:
-
-1. **0001_initial_schema**: Core tables (rooms, songs, playback_state, room_users, etc.)
-2. **0002_add_song_votes_and_constraints**: Skip voting system
-3. **0003_add_room_modes**: Server vs Host mode support
-4. **0004_add_participant_status**: Active participant tracking
-5. **0005_update_rooms_view**: Room view optimizations
-6. **0006_add_external_auth**: OAuth integration tables
-7. **0007_add_pending_auth**: OAuth state management
-8. **0008_add_tokens_to_external_auth**: Access token storage
-9. **0009_add_last_checked_to_access_tokens**: Token refresh tracking
-10. **0010_update_room_users_pk**: Primary key updates
-11. **0011_consolidate_room_users**: User session consolidation
-
-## Migration Best Practices
-
-- **Backwards Compatibility**: Ensure down migrations can cleanly reverse changes
-- **Data Preservation**: Avoid destructive operations without backup strategies
-- **Index Management**: Create indexes for performance-critical queries
-- **Foreign Key Constraints**: Maintain referential integrity
-- **Default Values**: Provide sensible defaults for new columns
+- Migrations are applied using custom Postgres migration logic in `cmd/migrator/main.go`.
+- Always include both up and down migrations.
+- Migration discovery checks `./migrator/postgres` from repo root and `./postgres` from inside `migrator`.
+- Migration tracking uses the `migrations` table.
 
 ## Development Workflow
 
 ```bash
 # Create new migration files
-touch migrations/0012_new_feature.up.sql
-touch migrations/0012_new_feature.down.sql
+touch migrator/postgres/0002_new_feature.up.sql
+touch migrator/postgres/0002_new_feature.down.sql
 
-# Test migration up
-make migrate-up
+# Run all up migrations
+DATABASE_URL=postgres://user:password@localhost:5432/vibes?sslmode=disable make migrator
 
-# Test migration down
-make migrate-down STEPS=1
+# Run down migrations
+go run ./cmd/migrator/main.go -down -steps 1
 
-# Build migrator binary
-make build-migrator
+# Run local integration test
+make integrationtest
+
+# Generate tbls database docs
+make docs
 ```

@@ -1,48 +1,46 @@
 # Vibez Migrator
 
-Database migration tool for managing SQLite schema changes.
-
-## Features
-
-- **Forward & Backward Migrations**: Support for both up and down migrations
-- **Atomic Operations**: Each migration runs in a transaction
-- **Sequential Numbering**: Migrations numbered sequentially (0001, 0002, etc.)
-- **Automatic Execution**: Runs automatically in Docker and local-dev
+Database migration tool for managing Postgres schema changes.
 
 ## Usage
 
 ### Manual Execution
+
 ```bash
-cd migrator
-export DATABASE_PATH=../data/db/vibes.db
-go run main.go
+export DATABASE_URL=postgres://user:password@localhost:5432/vibes?sslmode=disable
+go run ./cmd/migrator/main.go
 ```
 
 ### With Makefile
+
 ```bash
-# Run all up migrations
-make migrate-up
-
-# Run down migrations (1 step by default)
-make migrate-down
-
-# Run multiple down steps
-make migrate-down STEPS=3
+make migrator
 ```
 
-### Automatic Execution
-Migrations run automatically when using:
-- `make local-dev` (local development)
-- `make dev` (Docker development)
-- Docker Compose production deployments
+### Integration Test
+
+```bash
+make integrationtest
+```
+
+This starts a local Postgres container, runs all up migrations, then runs down migrations.
+
+### Database Docs
+
+```bash
+make docs
+```
+
+This starts local Postgres, runs migrations, and generates tbls documentation in `docs/db/`.
 
 ## Migration Files
 
-Located in `migrations/` directory:
-- `NNNN_description.up.sql` - Forward migration
-- `NNNN_description.down.sql` - Rollback migration
+Postgres migrations live in `migrator/postgres/`:
 
-Example: `0001_initial_schema.up.sql`, `0001_initial_schema.down.sql`
+- `NNNN_description.up.sql` - forward migration
+- `NNNN_description.down.sql` - rollback migration
+
+The migrator also supports `./postgres` when run from inside the `migrator` directory.
 
 ## Rules
 

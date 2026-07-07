@@ -175,12 +175,3 @@ test-youtube-search.sh
 
 # Generated files
 Caddyfile.prod
-
-!.env.sample.agents/rules.md
-.agents
-.agents/rules.md
-.agents/skills/create_processor_handler
-.agents/skills/create_api_handler
-.agents/skills/add_database_query
-.agents/skills/create_client
-.agent
