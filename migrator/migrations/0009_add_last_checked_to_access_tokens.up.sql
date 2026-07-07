@@ -1,1 +1,0 @@
-ALTER TABLE access_tokens ADD COLUMN last_checked DATETIME DEFAULT NULL;

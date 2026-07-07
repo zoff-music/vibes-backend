@@ -1,4 +1,4 @@
-.PHONY: build backend migrator dev install update test help gosec govulncheck docker
+.PHONY: build backend migrator dev install update test help gosec govulncheck docker integrationtest docs
 
 PROJECT_NAME=$(shell basename $(CURDIR))
 BACKEND_PORT ?= 8080
@@ -8,7 +8,7 @@ DEV_BACKEND_PORT ?= 8080
 build:
 	go mod download; \
 	CGO_ENABLED=1 go build -ldflags '-w -s' -o main cmd/server/main.go; \
-	CGO_ENABLED=0 go build -ldflags '-w -s' -o migrator-main cmd/migrator/main.go
+	CGO_ENABLED=0 go build -ldflags '-w -s' -o vibes-migrator cmd/migrator/main.go
 
 ## backend: runs the backend server only
 backend:
@@ -38,6 +38,36 @@ update:
 test:
 	go test -race ./...
 
+## integrationtest: runs migrator up and down against local Postgres
+integrationtest:
+	@set -e; \
+	trap 'echo "Stopping postgres..." && docker compose down -v' EXIT INT TERM; \
+	docker compose down -v 2>/dev/null || true; \
+	echo "Starting postgres..."; \
+	docker compose up -d shared-local; \
+	echo "Waiting for postgres..."; \
+	sleep 5; \
+	echo "Running migrations up..."; \
+	docker compose run --rm --build migrator up; \
+	echo "Running migrations down..."; \
+	docker compose run --rm migrator down
+
+## docs: generates database table documentation using tbls
+docs:
+	@set -e; \
+	trap 'echo "Stopping postgres..." && docker compose down -v' EXIT INT TERM; \
+	docker compose down -v 2>/dev/null || true; \
+	echo "Starting postgres..."; \
+	docker compose up -d shared-local; \
+	echo "Waiting for postgres..."; \
+	sleep 5; \
+	echo "Running migrations..."; \
+	docker compose run --rm --build migrator up; \
+	echo "Generating database documentation..."; \
+	rm -rf docs/db; \
+	mkdir -p docs/db; \
+	docker compose run --rm tbls
+
 ## help: prints help message
 help:
 	@echo "Usage:"
@@ -54,3 +84,4 @@ govulncheck:
 ## docker: builds the production backend image
 docker:
 	docker build --target backend-prod -t $(PROJECT_NAME)-backend .
+	docker build --target migrator-prod -t $(PROJECT_NAME)-migrator .
