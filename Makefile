@@ -1,21 +1,21 @@
-.PHONY: build backend dev install update test help gosec govulncheck docker
+.PHONY: build serve dev install update test help gosec govulncheck docker
 
 PROJECT_NAME=$(shell basename $(CURDIR))
-BACKEND_PORT ?= 8080
-DEV_BACKEND_PORT ?= 8080
+PORT ?= 8080
+DEV_PORT ?= 8080
 
 ## build: builds the Go binaries
 build:
 	go mod download; \
 	CGO_ENABLED=1 go build -ldflags '-w -s' -o main cmd/server/main.go
 
-## backend: runs the backend server only
-backend:
-	PORT=$(BACKEND_PORT) go run -race cmd/server/main.go
+## serve: runs the server
+serve:
+	PORT=$(PORT) go run -race cmd/server/main.go
 
-## dev: runs backend
+## dev: runs the server
 dev:
-	PORT=$(DEV_BACKEND_PORT) go run -race cmd/server/main.go
+	PORT=$(DEV_PORT) go run -race cmd/server/main.go
 
 ## install: fetches Go modules
 install:
@@ -29,7 +29,7 @@ update:
 	go mod download; \
 	go mod tidy
 
-## test: runs backend tests
+## test: runs tests
 test:
 	go test -race ./...
 
@@ -46,6 +46,6 @@ gosec:
 govulncheck:
 	@echo "Running govulncheck:" && govulncheck ./...
 
-## docker: builds the production backend image
+## docker: builds the production image
 docker:
-	docker build --target backend-prod -t $(PROJECT_NAME)-backend .
+	docker build --target prod -t $(PROJECT_NAME) .
