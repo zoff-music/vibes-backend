@@ -20,7 +20,7 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	defer span.Finish()
 
 	if c.apiKey == "" {
-		return nil, fmt.Errorf("YouTube API key not configured")
+		return nil, fmt.Errorf("error youtube api key not configured")
 	}
 
 	params := url.Values{}

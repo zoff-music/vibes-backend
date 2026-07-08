@@ -8,7 +8,7 @@ Use these rules for Go backend work in this repository.
 2. Read nearby code first and match the existing shape before introducing new patterns.
 3. Keep handlers as readable business recipes. Put dependency-specific implementation in clients.
 4. Put shared data types and minimal interfaces in the `vibe` domain package.
-5. Do not add tracing, OpenTelemetry, metrics middleware, or a monitoring package.
+5. Keep the existing `monitoring/` package wired through the backend. New tracing, metrics, or middleware work should follow the current monitoring package shape.
 6. Do not use global variables or generics unless explicitly requested.
 7. Run focused Go tests and the relevant Makefile target before finishing.
 8. Write Go tests and smoketests as table tests. Even single-scenario tests should use a `tests := []struct{...}` table and a `for _, tt := range tests { t.Run(tt.name, ...) }` loop so new cases can be added without changing the test shape.
@@ -16,17 +16,15 @@ Use these rules for Go backend work in this repository.
 ## Project Layout
 
 - `cmd/server`: backend server entrypoint.
-- `cmd/migrator`: migration CLI entrypoint.
 - `config`: env and `.env` backed configuration.
 - `vibe`: shared domain structs, request/response payloads, and minimal interfaces.
 - `server`: server setup, dependency injection, and top-level router.
 - `server/internal/handler`: HTTP handlers only.
 - `server/internal/event`: app-event wiring and handlers.
 - `client/database`: Postgres client split by mirrored feature files.
-- `client/frontend`: Go frontend asset client. The actual frontend source is not here; it lives in `client/frontend/render`.
 - `client/internalpubsub`: in-process event fanout client.
 - `client/youtube`, `client/spotify`, and `client/soundcloud`: external music provider clients.
-- `migrator/postgres`: SQL up/down migrations.
+- Database migrations live in the separate `~/dev/vibes-migrator` repository.
 
 ## Architecture
 

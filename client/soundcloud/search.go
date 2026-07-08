@@ -19,13 +19,13 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	defer span.Finish()
 
 	if !c.Enabled {
-		return nil, fmt.Errorf("SoundCloud client is not enabled")
+		return nil, fmt.Errorf("error soundcloud client is not enabled")
 	}
 
 	// Ensure valid access token
 	err := c.EnsureToken(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to ensure token: %w", err)
+		return nil, fmt.Errorf("error ensuring token in Search: %w", err)
 	}
 
 	if len(c.accessToken) > 5 {

@@ -19,9 +19,9 @@ func TestCreateRoomWithOnlyAdminAddSongs(t *testing.T) {
 	settings := vibe.DefaultRoomSettings()
 	settings.OnlyAdminAddSongs = true
 
-	createPayload := map[string]interface{}{
-		"name":     "Strict Room Fail",
-		"settings": settings,
+	createPayload := vibe.CreateRoomRequest{
+		Name:     "Strict Room Fail",
+		Settings: &settings,
 	}
 	body, _ := json.Marshal(createPayload)
 	resp, err := http.Post(env.ServerURL+"/api/v1/rooms", "application/json", bytes.NewReader(body))
@@ -35,8 +35,8 @@ func TestCreateRoomWithOnlyAdminAddSongs(t *testing.T) {
 	}
 
 	// 2. Try to create room with OnlyAdminAddSongs=true AND password (should success)
-	createPayload["name"] = "Strict Room Success"
-	createPayload["password"] = "admin123"
+	createPayload.Name = "Strict Room Success"
+	createPayload.Password = "admin123"
 
 	body, _ = json.Marshal(createPayload)
 	resp, err = http.Post(env.ServerURL+"/api/v1/rooms", "application/json", bytes.NewReader(body))
@@ -68,8 +68,8 @@ func TestUpdateRoomSettingsOnlyAdminAddSongs(t *testing.T) {
 	defer env.Teardown()
 
 	// 1. Create a room without password
-	createPayload := map[string]interface{}{
-		"name": "Update Test Room",
+	createPayload := vibe.CreateRoomRequest{
+		Name: "Update Test Room",
 	}
 	body, _ := json.Marshal(createPayload)
 	resp, err := http.Post(env.ServerURL+"/api/v1/rooms", "application/json", bytes.NewReader(body))

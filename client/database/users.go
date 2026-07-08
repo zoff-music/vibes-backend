@@ -144,7 +144,7 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 	}
 
 	if room.IsEmpty() {
-		return nil, fmt.Errorf("room not found in authenticate admin")
+		return nil, fmt.Errorf("error room not found in authenticate admin")
 	}
 
 	isFirstTimeSetup := false
@@ -154,12 +154,12 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 		isFirstTimeSetup = true
 		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
-			return nil, fmt.Errorf("failed to hash password: %w", err)
+			return nil, fmt.Errorf("error hashing password: %w", err)
 		}
 		room.AdminPasswordHash = string(hash)
 		_, err = c.UpdateRoom(ctx, room)
 		if err != nil {
-			return nil, fmt.Errorf("failed to update room password: %w", err)
+			return nil, fmt.Errorf("error updating room password: %w", err)
 		}
 	}
 

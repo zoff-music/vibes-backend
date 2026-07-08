@@ -19,7 +19,7 @@ func OtelTraceProvider(exp sdktrace.SpanExporter, samplerParam float64, appName 
 		semconv.ServiceName(appName),
 	)
 
-	return sdktrace.NewTracerProvider(
+	provider := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(
 			exp,
 			sdktrace.WithBatchTimeout(batchInterval),
@@ -30,7 +30,9 @@ func OtelTraceProvider(exp sdktrace.SpanExporter, samplerParam float64, appName 
 		// If the parent span does not exist, generate a new trace ID for a
 		// portion of the requests, based on the samplerParam.
 		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(samplerParam))),
-	), nil
+	)
+
+	return provider, nil
 }
 
 type OtelCloser struct {

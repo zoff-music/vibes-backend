@@ -66,7 +66,7 @@ type HTTPStatusCodeError struct {
 
 // Error return an error string.
 func (e HTTPStatusCodeError) Error() string {
-	return fmt.Sprintf("Error response from %s, got status: %d. Message: %s", e.URL, e.StatusCode, e.Message)
+	return fmt.Sprintf("error response from %s, got status: %d. Message: %s", e.URL, e.StatusCode, e.Message)
 }
 
 // RequestBytes does the actual HTTP request.
@@ -91,15 +91,18 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 		resp, _ := io.ReadAll(r.Body)
 
 		message := string(resp)
-		span.SetTag("error", true)
-		span.LogKV(
-			"message",
-			fmt.Errorf(
-				"error making request to %s, body: %s. Got error: %s",
-				reqData.URL,
-				redactBodyForLog(reqData.Headers, reqData.Body),
-				message,
-			),
+		span.SetBoolTag("error", true)
+		span.LogFields(
+			opentracing.SpanField{
+				Key:  "message",
+				Type: opentracing.SpanFieldError,
+				ErrorValue: fmt.Errorf(
+					"error making request to %s, body: %s. Got error: %s",
+					reqData.URL,
+					redactBodyForLog(reqData.Headers, reqData.Body),
+					message,
+				),
+			},
 		)
 
 		httpStatusCodeError := HTTPStatusCodeError{
@@ -201,12 +204,12 @@ func redactBodyForLog(headers map[string]string, body []byte) string {
 	}
 
 	if strings.Contains(contentType, "application/json") {
-		var obj map[string]any
+		var obj map[string]json.RawMessage
 		err := json.Unmarshal(body, &obj)
 		if err == nil {
 			for k := range obj {
 				if redactKey(k) {
-					obj[k] = "[REDACTED]"
+					obj[k] = json.RawMessage(`"[REDACTED]"`)
 				}
 			}
 			b, err := json.Marshal(obj)

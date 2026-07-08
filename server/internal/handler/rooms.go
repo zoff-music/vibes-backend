@@ -26,14 +26,14 @@ func CreateRoom(
 		var req vibe.CreateRoomRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
+			handleError(w, fmt.Errorf("error decoding request body: %w", err), http.StatusBadRequest, true)
 			return
 		}
 
 		if req.Name == "" {
 			handleError(
 				w,
-				fmt.Errorf("room name is required"),
+				fmt.Errorf("error room name is required"),
 				http.StatusBadRequest,
 				false,
 			)
@@ -48,7 +48,7 @@ func CreateRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to check existing room: %w", err),
+				fmt.Errorf("error checking existing room: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -80,7 +80,7 @@ func CreateRoom(
 			if err != nil {
 				handleError(
 					w,
-					fmt.Errorf("failed to hash password: %w", err),
+					fmt.Errorf("error hashing password: %w", err),
 					http.StatusInternalServerError,
 					true,
 				)
@@ -95,7 +95,7 @@ func CreateRoom(
 			// Fallback if slugify results in empty string (e.g. "   ")
 			handleError(
 				w,
-				fmt.Errorf("invalid room name"),
+				fmt.Errorf("error invalid room name"),
 				http.StatusBadRequest,
 				false,
 			)
@@ -138,7 +138,7 @@ func CreateRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to create room: %w", err),
+				fmt.Errorf("error creating room: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -178,7 +178,7 @@ func GetRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to fetch room: %w", err),
+				fmt.Errorf("error fetching room: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -188,7 +188,7 @@ func GetRoom(
 		if room.IsEmpty() {
 			handleError(
 				w,
-				fmt.Errorf("room not found"),
+				fmt.Errorf("error room not found"),
 				http.StatusNotFound,
 				false,
 			)
@@ -268,7 +268,7 @@ func UpdateRoomSettings(
 		if room.Settings.OnlyAdminAddSongs && !room.HasPassword {
 			handleError(
 				w,
-				internalerror.ErrMissingAdminPassword{Err: fmt.Errorf("room must have a password to enable 'only admin add songs'")},
+				internalerror.ErrMissingAdminPassword{Err: fmt.Errorf("error room must have a password to enable 'only admin add songs'")},
 				http.StatusBadRequest,
 				false,
 			)
@@ -333,7 +333,7 @@ func CreateSession(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("invalid request body: %w", err),
+				fmt.Errorf("error decoding request body: %w", err),
 				http.StatusBadRequest,
 				true,
 			)
@@ -391,7 +391,7 @@ func CreateSession(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to fetch room: %w", err),
+				fmt.Errorf("error fetching room: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

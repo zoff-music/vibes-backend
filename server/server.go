@@ -49,31 +49,31 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	var internalpubsubClient internalpubsub.Client
 	err := internalpubsubClient.Init()
 	if err != nil {
-		return fmt.Errorf("internalpubsub client: %w", err)
+		return fmt.Errorf("error initializing internalpubsub client: %w", err)
 	}
 
 	var dbClient database.Client
 	err = dbClient.Init(ctx, config)
 	if err != nil {
-		return fmt.Errorf("database client: %w", err)
+		return fmt.Errorf("error initializing database client: %w", err)
 	}
 
 	var youtubeClient youtube.Client
 	err = youtubeClient.Init(ctx, config)
 	if err != nil {
-		return fmt.Errorf("youtube client: %w", err)
+		return fmt.Errorf("error initializing youtube client: %w", err)
 	}
 
 	var soundcloudClient soundcloud.Client
 	err = soundcloudClient.Init(ctx, config)
 	if err != nil {
-		return fmt.Errorf("soundcloud client: %w", err)
+		return fmt.Errorf("error initializing soundcloud client: %w", err)
 	}
 
 	var spotifyClient spotify.Client
 	err = spotifyClient.Init(ctx, config)
 	if err != nil {
-		return fmt.Errorf("spotify client: %w", err)
+		return fmt.Errorf("error initializing spotify client: %w", err)
 	}
 
 	s.Config = config

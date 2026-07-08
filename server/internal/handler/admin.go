@@ -28,7 +28,7 @@ func AdminLogin(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("invalid request body: %w", err),
+				fmt.Errorf("error decoding request body: %w", err),
 				http.StatusBadRequest,
 				true,
 			)
@@ -81,7 +81,7 @@ func AdminLogin(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to sign admin session: %w", err),
+				fmt.Errorf("error signing admin session: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -177,7 +177,7 @@ func AdminRooms(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to fetch admin rooms: %w", err),
+				fmt.Errorf("error fetching admin rooms: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -218,7 +218,7 @@ func AdminEvents(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to subscribe to admin events: %w", err),
+				fmt.Errorf("error subscribing to admin events: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

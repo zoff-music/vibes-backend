@@ -170,7 +170,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	for _, prepareStmt := range prepareStatements {
 		err := prepareStmt()
 		if err != nil {
-			return fmt.Errorf("failed to prepare statements: %w", err)
+			return fmt.Errorf("error preparing statements: %w", err)
 		}
 	}
 

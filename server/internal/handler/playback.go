@@ -38,7 +38,7 @@ func GetPlaybackState(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to fetch playback state: %w", err),
+				fmt.Errorf("error fetching playback state: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -78,7 +78,7 @@ func UpdatePlaybackState(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("invalid request body: %w", err),
+				fmt.Errorf("error decoding request body: %w", err),
 				http.StatusBadRequest,
 				true,
 			)
@@ -91,7 +91,7 @@ func UpdatePlaybackState(
 		default:
 			handleError(
 				w,
-				fmt.Errorf("invalid action for state update: %s", req.Action),
+				fmt.Errorf("error invalid action for state update: %s", req.Action),
 				http.StatusBadRequest,
 				false,
 			)
@@ -114,7 +114,7 @@ func UpdatePlaybackState(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to fetch room: %w", err),
+				fmt.Errorf("error fetching room: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -133,7 +133,7 @@ func UpdatePlaybackState(
 			if err != nil {
 				handleError(
 					w,
-					fmt.Errorf("failed to get playback state: %w", err),
+					fmt.Errorf("error getting playback state: %w", err),
 					http.StatusInternalServerError,
 					true,
 				)

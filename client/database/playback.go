@@ -181,7 +181,7 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 		if state.CurrentSong.Duration > 0 && currentPosition >= state.CurrentSong.Duration*1000 {
 			newState, err := c.skipTrack(ctx, roomID)
 			if err != nil {
-				return nil, fmt.Errorf("lazy skip: %w", err)
+				return nil, fmt.Errorf("error lazy skipping playback: %w", err)
 			}
 			return newState, nil
 		}
@@ -282,12 +282,12 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 	// Use internal getPlaybackState to avoid recursion / lazy-skip trigger
 	state, err := c.getPlaybackState(ctx, roomID)
 	if err != nil {
-		return nil, fmt.Errorf("skip track: get playback state: %w", err)
+		return nil, fmt.Errorf("error getting playback state in skipTrack: %w", err)
 	}
 
 	room, err := c.GetRoom(ctx, roomID, "")
 	if err != nil {
-		return nil, fmt.Errorf("skip track: get room: %w", err)
+		return nil, fmt.Errorf("error getting room in skipTrack: %w", err)
 	}
 
 	var currentSongID string
@@ -301,18 +301,18 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 
 		err = c.clearSkipVotes(ctx, roomID, currentSongID)
 		if err != nil {
-			return nil, fmt.Errorf("skip track: clear skip votes: %w", err)
+			return nil, fmt.Errorf("error clearing skip votes in skipTrack: %w", err)
 		}
 
 		err = c.clearVotesSong(ctx, roomID, currentSongID)
 		if err != nil {
-			return nil, fmt.Errorf("skip track: clear song votes: %w", err)
+			return nil, fmt.Errorf("error clearing song votes in skipTrack: %w", err)
 		}
 
 		if room.Settings.RemoveOnPlay {
 			err = c.RemoveSong(ctx, roomID, currentSongID)
 			if err != nil {
-				return nil, fmt.Errorf("skip track: remove song: %w", err)
+				return nil, fmt.Errorf("error removing song in skipTrack: %w", err)
 			}
 		}
 
@@ -321,14 +321,14 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 			// This prevents it from being immediately replayed and moves it to the end of the queue.
 			err = c.updateSongAddedAt(ctx, roomID, currentSongID)
 			if err != nil {
-				return nil, fmt.Errorf("skip track: update song added_at: %w", err)
+				return nil, fmt.Errorf("error updating song added_at in skipTrack: %w", err)
 			}
 		}
 	}
 
 	nextSong, err := c.GetNextSong(ctx, roomID, 0)
 	if err != nil {
-		return nil, fmt.Errorf("skip track: get next song: %w", err)
+		return nil, fmt.Errorf("error getting next song in skipTrack: %w", err)
 	}
 
 	log.Printf("[DEBUG-SKIP] next-song %+v", nextSong)
@@ -341,7 +341,7 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 
 		nextSong, err = c.GetNextSong(ctx, roomID, 0)
 		if err != nil {
-			return nil, fmt.Errorf("skip track: get first song for loop: %w", err)
+			return nil, fmt.Errorf("error getting first song for loop in skipTrack: %w", err)
 		}
 	}
 
@@ -357,7 +357,7 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 
 	err = c.UpsertPlaybackState(ctx, state)
 	if err != nil {
-		return nil, fmt.Errorf("skip track: upsert playback state: %w", err)
+		return nil, fmt.Errorf("error upserting playback state in skipTrack: %w", err)
 	}
 
 	return state, nil
@@ -375,7 +375,7 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 
 	state, err := c.GetPlaybackState(ctx, roomID)
 	if err != nil {
-		return nil, fmt.Errorf("update playback: get playback state: %w", err)
+		return nil, fmt.Errorf("error getting playback state in UpdatePlayback: %w", err)
 	}
 
 	switch action {
@@ -388,7 +388,7 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 		// If no song is selected, try to play the first one
 		firstSong, err := c.GetNextSong(ctx, roomID, 0)
 		if err != nil {
-			return nil, fmt.Errorf("update playback: get next song: %w", err)
+			return nil, fmt.Errorf("error getting next song in UpdatePlayback: %w", err)
 		}
 
 		if firstSong.IsEmpty() {
@@ -406,14 +406,14 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 	case vibe.RoomActionSeek:
 		state.PositionMs = positionMs
 	default:
-		return nil, fmt.Errorf("update playback: invalid action: %s", action)
+		return nil, fmt.Errorf("error invalid action in UpdatePlayback: %s", action)
 	}
 
 	state.UpdatedAt = time.Now()
 
 	err = c.UpsertPlaybackState(ctx, state)
 	if err != nil {
-		return nil, fmt.Errorf("update playback: upsert playback state: %w", err)
+		return nil, fmt.Errorf("error upserting playback state in UpdatePlayback: %w", err)
 	}
 
 	return state, nil
@@ -446,12 +446,16 @@ func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.
 	// 1. Check if we have songs in the queue
 	firstSong, err := c.GetNextSong(ctx, roomID, 0)
 	if err != nil {
-		return nil, fmt.Errorf("start playback if idle: get first song: %w", err)
+		return nil, fmt.Errorf("error getting first song in StartPlaybackIfIdle: %w", err)
 	}
 
 	if firstSong.IsEmpty() {
 		// No songs, just return current state
-		return c.getPlaybackState(ctx, roomID)
+		state, err := c.getPlaybackState(ctx, roomID)
+		if err != nil {
+			return nil, fmt.Errorf("error getting playback state in StartPlaybackIfIdle: %w", err)
+		}
+		return state, nil
 	}
 
 	// 2. Atomic update: only update if current_song_id IS NULL
@@ -460,17 +464,21 @@ func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.
 
 	res, err := c.StartPlaybackIfIdleStatement.ExecContext(cctx, firstSong.ID, roomID)
 	if err != nil {
-		return nil, fmt.Errorf("start playback if idle: exec: %w", err)
+		return nil, fmt.Errorf("error executing statement in StartPlaybackIfIdle: %w", err)
 	}
 
 	rows, err := res.RowsAffected()
 	if err != nil {
-		return nil, fmt.Errorf("start playback if idle: rows affected: %w", err)
+		return nil, fmt.Errorf("error getting rows affected in StartPlaybackIfIdle: %w", err)
 	}
 
 	if rows == 0 {
 		// Someone else started it or it wasn't idle, return current state
-		return c.getPlaybackState(ctx, roomID)
+		state, err := c.getPlaybackState(ctx, roomID)
+		if err != nil {
+			return nil, fmt.Errorf("error getting playback state in StartPlaybackIfIdle: %w", err)
+		}
+		return state, nil
 	}
 
 	now := time.Now().UTC()

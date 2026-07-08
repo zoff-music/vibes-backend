@@ -190,7 +190,7 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 
 	room, err := c.GetRoom(ctx, roomID, userID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to fetch room: %w", err)
+		return nil, fmt.Errorf("error fetching room in SkipSong: %w", err)
 	}
 
 	// Determine if user is host

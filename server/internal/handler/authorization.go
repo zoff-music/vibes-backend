@@ -65,7 +65,7 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 		state := query.Get("state")
 
 		// Validate state from database (stateless check to handle cross-domain cookies)
-		userID, codeVerifier, err := db.ValidateAndDeletePendingOAuthState(ctx, state)
+		pendingState, err := db.ValidateAndDeletePendingOAuthState(ctx, state)
 		if err != nil {
 			handleError(
 				w,
@@ -76,10 +76,10 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 			return
 		}
 
-		if userID == "" {
+		if pendingState.IsEmpty() {
 			handleError(
 				w,
-				fmt.Errorf("invalid state parameter"),
+				fmt.Errorf("error invalid state parameter"),
 				http.StatusBadRequest,
 				true,
 			)
@@ -87,7 +87,7 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 		}
 
 		// Exchange code for tokens
-		tokenResp, err := oa.ExchangeCode(ctx, code, codeVerifier)
+		tokenResp, err := oa.ExchangeCode(ctx, code, pendingState.CodeVerifier)
 		if err != nil {
 			handleError(
 				w,
@@ -104,7 +104,7 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 
 		// Store initial auth token info
 		authExpiresAt := time.Now().UTC().Add(24 * time.Hour)
-		err = db.UpsertAuthToken(ctx, userID, providerName, code, state, authExpiresAt)
+		err = db.UpsertAuthToken(ctx, pendingState.UserID, providerName, code, state, authExpiresAt)
 		if err != nil {
 			handleError(
 				w,
@@ -116,7 +116,7 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 		}
 
 		// Store access tokens
-		err = db.UpsertAccessToken(ctx, userID, providerName, tokenResp.AccessToken, tokenResp.RefreshToken, expiresAt, refreshExpiresAt)
+		err = db.UpsertAccessToken(ctx, pendingState.UserID, providerName, tokenResp.AccessToken, tokenResp.RefreshToken, expiresAt, refreshExpiresAt)
 		if err != nil {
 			handleError(
 				w,
