@@ -26,7 +26,12 @@ func CreateRoom(
 		var req vibe.CreateRoomRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			handleError(w, fmt.Errorf("error decoding request body: %w", err), http.StatusBadRequest, true)
+			handleError(
+				w,
+				fmt.Errorf("error decoding request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
 			return
 		}
 

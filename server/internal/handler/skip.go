@@ -27,7 +27,12 @@ func SkipSong(
 
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
-			handleError(w, fmt.Errorf("unauthorized"), http.StatusUnauthorized, false)
+			handleError(
+				w,
+				fmt.Errorf("unauthorized"),
+				http.StatusUnauthorized,
+				false,
+			)
 			return
 		}
 		userID := session.UserID

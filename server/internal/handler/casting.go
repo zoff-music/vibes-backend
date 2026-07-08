@@ -21,32 +21,62 @@ func CreateCastingToken(
 
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
-			handleError(w, fmt.Errorf("unauthorized"), http.StatusUnauthorized, false)
+			handleError(
+				w,
+				fmt.Errorf("unauthorized"),
+				http.StatusUnauthorized,
+				false,
+			)
 			return
 		}
 		if session.AuthType != "" && session.AuthType != "cookie" {
-			handleError(w, fmt.Errorf("forbidden"), http.StatusForbidden, false)
+			handleError(
+				w,
+				fmt.Errorf("forbidden"),
+				http.StatusForbidden,
+				false,
+			)
 			return
 		}
 
 		var req vibe.CreateCastingTokenRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			handleError(w, fmt.Errorf("error decoding request body: %w", err), http.StatusBadRequest, true)
+			handleError(
+				w,
+				fmt.Errorf("error decoding request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
 			return
 		}
 		if req.RoomID == "" {
-			handleError(w, fmt.Errorf("roomId is required"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("roomId is required"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
 		room, err := db.GetRoom(ctx, req.RoomID, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error fetching room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error fetching room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 		if room == nil || room.IsEmpty() {
-			handleError(w, fmt.Errorf("error room not found"), http.StatusNotFound, false)
+			handleError(
+				w,
+				fmt.Errorf("error room not found"),
+				http.StatusNotFound,
+				false,
+			)
 			return
 		}
 
@@ -59,7 +89,12 @@ func CreateCastingToken(
 			Exp:    expiresAt.Unix(),
 		})
 		if err != nil {
-			handleError(w, fmt.Errorf("error signing cast token: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error signing cast token: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -71,7 +106,12 @@ func CreateCastingToken(
 
 		body, err := json.Marshal(resp)
 		if err != nil {
-			handleError(w, fmt.Errorf("marshal response: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
