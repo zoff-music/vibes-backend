@@ -20,7 +20,6 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 		ctx := r.Context()
 		state := generateRandomString(32)
 
-		// Get user ID from session
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
 			handleError(
@@ -34,7 +33,6 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 
 		codeVerifier := generateRandomString(43) // length between 43 and 128 for PKCE
 
-		// Store state in database
 		err := db.SavePendingOAuthState(ctx, session.UserID, state, codeVerifier)
 		if err != nil {
 			handleError(
@@ -64,7 +62,6 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 		code := query.Get("code")
 		state := query.Get("state")
 
-		// Validate state from database (stateless check to handle cross-domain cookies)
 		pendingState, err := db.ValidateAndDeletePendingOAuthState(ctx, state)
 		if err != nil {
 			handleError(
@@ -86,7 +83,6 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 			return
 		}
 
-		// Exchange code for tokens
 		tokenResp, err := oa.ExchangeCode(ctx, code, pendingState.CodeVerifier)
 		if err != nil {
 			handleError(
@@ -98,11 +94,9 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 			return
 		}
 
-		// Calculate expiration
 		expiresAt := time.Now().UTC().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
 		refreshExpiresAt := time.Now().UTC().Add(30 * 24 * time.Hour) // Default 30 days specific for refresh token if not provided.
 
-		// Store initial auth token info
 		authExpiresAt := time.Now().UTC().Add(24 * time.Hour)
 		err = db.UpsertAuthToken(ctx, pendingState.UserID, providerName, code, state, authExpiresAt)
 		if err != nil {
@@ -115,7 +109,6 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 			return
 		}
 
-		// Store access tokens
 		err = db.UpsertAccessToken(ctx, pendingState.UserID, providerName, tokenResp.AccessToken, tokenResp.RefreshToken, expiresAt, refreshExpiresAt)
 		if err != nil {
 			handleError(
@@ -127,7 +120,6 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 			return
 		}
 
-		// Redirect to frontend callback page
 		http.Redirect(
 			w,
 			r,
@@ -152,7 +144,6 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 			return
 		}
 
-		// Get current access token
 		token, err := db.GetAccessToken(ctx, session.UserID, providerName)
 		if err != nil {
 			var notFoundErr internalerror.ErrAccessTokenNotFound
@@ -166,7 +157,6 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 				return
 			}
 
-			// If not found or error, return 403
 			handleError(
 				w,
 				fmt.Errorf("error getting access token: %w", err),
@@ -176,7 +166,6 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 			return
 		}
 
-		// Check if access token is valid
 		if token.ExpiresAt.After(time.Now().UTC().Add(1 * time.Minute)) {
 			resp := vibe.ProviderTokenResponse{
 				AccessToken: token.AccessToken,
@@ -200,7 +189,6 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 			return
 		}
 
-		// Check Refresh Token expiration if we track it (optional check, provider will fail anyway)
 		if token.RefreshToken == "" || !token.RefreshExpiresAt.IsZero() && token.RefreshExpiresAt.Before(time.Now().UTC()) {
 			handleError(
 				w,
@@ -211,7 +199,6 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 			return
 		}
 
-		// Refresh token
 		tokenResp, err := oa.RefreshToken(ctx, token.RefreshToken)
 		if err != nil {
 			handleError(
@@ -223,7 +210,6 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 			return
 		}
 
-		// Update DB
 		newExpiresAt := time.Now().UTC().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
 		newRefreshToken := tokenResp.RefreshToken
 		if newRefreshToken == "" {

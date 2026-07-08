@@ -27,19 +27,18 @@ type Client struct {
 	ProcessNextAbandonedHostStatement *sql.Stmt
 
 	// Song statements
-	GetSongsStatement             *sql.Stmt
-	GetSongStatement              *sql.Stmt
-	AddSongStatement              *sql.Stmt
-	RemoveSongStatement           *sql.Stmt
-	GetNextSongStatement          *sql.Stmt
-	GetNextSongExcludingStatement *sql.Stmt
-	VoteSongStatement             *sql.Stmt
-	ClearVotesSongStatement       *sql.Stmt
-	UpdateSongAddedAtStatement    *sql.Stmt
+	GetSongsStatement          *sql.Stmt
+	GetSongStatement           *sql.Stmt
+	AddSongStatement           *sql.Stmt
+	RemoveSongStatement        *sql.Stmt
+	VoteSongStatement          *sql.Stmt
+	ClearVotesSongStatement    *sql.Stmt
+	UpdateSongAddedAtStatement *sql.Stmt
 
 	// Playback statements
 	GetPlaybackStateStatement           *sql.Stmt
 	UpsertPlaybackStateStatement        *sql.Stmt
+	SkipTrackStatement                  *sql.Stmt
 	ProcessNextExpiredPlaybackStatement *sql.Stmt
 	StartPlaybackIfIdleStatement        *sql.Stmt
 
@@ -81,7 +80,6 @@ type Client struct {
 	DeleteInactiveParticipantsStatement *sql.Stmt
 
 	// Additional room statements
-	ElectNewHostStatement     *sql.Stmt
 	GetActiveSourcesStatement *sql.Stmt
 	GetAdminRoomsStatement    *sql.Stmt
 }
@@ -119,7 +117,6 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareCreateRoomStmt,
 		c.prepareUpdateRoomStmt,
 		c.prepareProcessNextAbandonedHostStmt,
-		c.prepareElectNewHostStmt,
 		c.prepareGetActiveSourcesStmt,
 		c.prepareGetAdminRoomsStmt,
 		// Song statements
@@ -127,14 +124,13 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareGetSongStmt,
 		c.prepareAddSongStmt,
 		c.prepareRemoveSongStmt,
-		c.prepareGetNextSongStmt,
-		c.prepareGetNextSongExcludingStmt,
 		c.prepareVoteSongStmt,
 		c.prepareClearVotesSongStmt,
 		c.prepareUpdateSongAddedAtStmt,
 		// Playback statements
 		c.prepareGetPlaybackStateStmt,
 		c.prepareUpsertPlaybackStateStmt,
+		c.prepareSkipTrackStmt,
 		c.prepareProcessNextExpiredPlaybackStmt,
 		c.prepareStartPlaybackIfIdleStmt,
 		// User statements
@@ -189,13 +185,12 @@ func (c *Client) Close() error {
 		c.GetSongStatement,
 		c.AddSongStatement,
 		c.RemoveSongStatement,
-		c.GetNextSongStatement,
-		c.GetNextSongExcludingStatement,
 		c.VoteSongStatement,
 		c.ClearVotesSongStatement,
 		c.UpdateSongAddedAtStatement,
 		c.GetPlaybackStateStatement,
 		c.UpsertPlaybackStateStatement,
+		c.SkipTrackStatement,
 		c.ProcessNextExpiredPlaybackStatement,
 		c.StartPlaybackIfIdleStatement,
 		c.GetUserStatement,
@@ -221,7 +216,6 @@ func (c *Client) Close() error {
 		c.SetRoomHostStatement,
 		c.RemoveParticipantStatement,
 		c.DeleteInactiveParticipantsStatement,
-		c.ElectNewHostStatement,
 		c.GetActiveSourcesStatement,
 	}
 

@@ -22,10 +22,10 @@ func (c *Client) prepareUpdateParticipantStmt() error {
 		)
 		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT(id, room_id) DO UPDATE SET
-			last_seen_at = $3,
-			is_active_listener = $4,
-			is_cast_receiver = $5,
-			cast_owner_id = $6
+		last_seen_at = $3,
+		is_active_listener = $4,
+		is_cast_receiver = $5,
+		cast_owner_id = $6
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateParticipantStatement: %w", err)
@@ -79,21 +79,6 @@ func (c *Client) prepareGetActiveParticipantsStmt() error {
 	return nil
 }
 
-func (c *Client) prepareGetActiveListenerCountsStmt() error {
-	stmt, err := c.DB.Prepare(`
-		SELECT
-			COALESCE(SUM(CASE WHEN is_active_listener = 1 AND is_cast_receiver = 0 THEN 1 ELSE 0 END), 0) as active_listeners,
-			COALESCE(SUM(CASE WHEN is_cast_receiver = 1 THEN 1 ELSE 0 END), 0) as active_cast
-		FROM room_users
-		WHERE room_id = $1 AND last_seen_at > $2
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing GetActiveListenerCountsStatement: %w", err)
-	}
-	c.GetActiveListenerCountsStatement = stmt
-	return nil
-}
-
 // GetActiveParticipants returns a list of participants active in the room within the duration
 func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activeWithin time.Duration) ([]vibe.Participant, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetActiveParticipants")
@@ -121,31 +106,6 @@ func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activ
 	}
 
 	return participants, nil
-}
-
-// GetActiveListenerCounts returns listener counts within the duration.
-func (c *Client) GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (vibe.ListenerCounts, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetActiveListenerCounts")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	cutoff := time.Now().Add(-activeWithin)
-
-	row := c.GetActiveListenerCountsStatement.QueryRowContext(cctx, roomID, cutoff)
-
-	var listeners int
-	var castReceivers int
-	err := row.Scan(&listeners, &castReceivers)
-	if err != nil {
-		return vibe.ListenerCounts{}, fmt.Errorf("error scanning listener counts: %w", err)
-	}
-
-	return vibe.ListenerCounts{
-		ActiveListeners:     listeners,
-		ActiveCastReceivers: castReceivers,
-	}, nil
 }
 
 type participantRow struct {
@@ -177,6 +137,46 @@ func (p *participantRow) toParticipant() vibe.Participant {
 		IsCastReceiver:   p.IsCast.Int64 == 1,
 		CastOwnerID:      p.CastOwner.String,
 	}
+}
+
+func (c *Client) prepareGetActiveListenerCountsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT
+			COALESCE(SUM(CASE WHEN is_active_listener = 1 AND is_cast_receiver = 0 THEN 1 ELSE 0 END), 0) as active_listeners,
+			COALESCE(SUM(CASE WHEN is_cast_receiver = 1 THEN 1 ELSE 0 END), 0) as active_cast
+		FROM room_users
+		WHERE room_id = $1 AND last_seen_at > $2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetActiveListenerCountsStatement: %w", err)
+	}
+	c.GetActiveListenerCountsStatement = stmt
+	return nil
+}
+
+// GetActiveListenerCounts returns listener counts within the duration.
+func (c *Client) GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (vibe.ListenerCounts, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetActiveListenerCounts")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	cutoff := time.Now().Add(-activeWithin)
+
+	row := c.GetActiveListenerCountsStatement.QueryRowContext(cctx, roomID, cutoff)
+
+	var listeners int
+	var castReceivers int
+	err := row.Scan(&listeners, &castReceivers)
+	if err != nil {
+		return vibe.ListenerCounts{}, fmt.Errorf("error scanning listener counts: %w", err)
+	}
+
+	return vibe.ListenerCounts{
+		ActiveListeners:     listeners,
+		ActiveCastReceivers: castReceivers,
+	}, nil
 }
 
 func (c *Client) prepareSetRoomHostStmt() error {

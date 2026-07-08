@@ -40,10 +40,8 @@ func CreateRoom(
 			return
 		}
 
-		// Get session from context
 		session, _ := helper.GetSessionFromContext(ctx)
 
-		// Check if room already exists
 		existingRoom, err := db.GetRoomByName(ctx, req.Name, session.UserID)
 		if err != nil {
 			handleError(
@@ -56,7 +54,6 @@ func CreateRoom(
 		}
 
 		if !existingRoom.IsEmpty() {
-			// Room exists, return it with 200 OK
 			body, err := json.Marshal(existingRoom)
 			if err != nil {
 				handleError(
@@ -89,10 +86,8 @@ func CreateRoom(
 			passwordHash = string(hash)
 		}
 
-		// Generate slug from name
 		slug := helper.Slugify(req.Name)
 		if slug == "" {
-			// Fallback if slugify results in empty string (e.g. "   ")
 			handleError(
 				w,
 				fmt.Errorf("error invalid room name"),
@@ -171,7 +166,6 @@ func GetRoom(
 		vars := mux.Vars(r)
 		roomID := vars["id"]
 
-		// Get session from context (guaranteed by middleware)
 		session, _ := helper.GetSessionFromContext(ctx)
 
 		room, err := db.GetRoom(ctx, roomID, session.UserID)
@@ -256,7 +250,6 @@ func UpdateRoomSettings(
 			return
 		}
 
-		// Only update settings if they are provided and not empty
 		if req.Settings != nil && !req.Settings.IsEmpty() {
 			room.Settings = *req.Settings
 		}
@@ -264,7 +257,6 @@ func UpdateRoomSettings(
 			room.Mode = req.Mode
 		}
 
-		// Validation: If OnlyAdminAddSongs is enabled, room must have a password
 		if room.Settings.OnlyAdminAddSongs && !room.HasPassword {
 			handleError(
 				w,
@@ -297,7 +289,6 @@ func UpdateRoomSettings(
 			return
 		}
 
-		// Broadcast room update to all connected clients
 		err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 			Type:    vibe.SettingsUpdate,
 			Payload: body,
@@ -340,7 +331,6 @@ func CreateSession(
 			return
 		}
 
-		// Get session from context (guaranteed by middleware)
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
 			handleError(
@@ -362,7 +352,6 @@ func CreateSession(
 			return
 		}
 
-		// Authenticate and elevate in the DB
 		authResult, err := db.AuthenticateAdmin(ctx, roomID, session.UserID, req.Password)
 		if err != nil {
 			handleError(
@@ -386,7 +375,6 @@ func CreateSession(
 
 		isFirstTimeSetup := authResult.IsFirstTimeSetup
 
-		// Fetch updated room to return
 		room, err := db.GetRoom(ctx, roomID, session.UserID)
 		if err != nil {
 			handleError(
@@ -398,7 +386,6 @@ func CreateSession(
 			return
 		}
 
-		// If this was a first-time password setup, notify all clients
 		if isFirstTimeSetup {
 			neutralRoom, err := db.GetRoom(ctx, roomID, "")
 			if err != nil {

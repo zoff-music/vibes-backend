@@ -333,39 +333,78 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 		song.AddedByNickname,
 	)
 
-	var result string
-	var row songRow
-	err := r.Scan(
-		&result,
-		&row.ID,
-		&row.RoomID,
-		&row.SourceType,
-		&row.SourceID,
-		&row.Title,
-		&row.Artist,
-		&row.ThumbnailURL,
-		&row.Duration,
-		&row.AddedBy,
-		&row.AddedByNickname,
-		&row.AddedAt,
-		&row.VoteCount,
-	)
+	var row addSongRow
+	err := row.scan(r)
 	if err != nil {
 		return nil, fmt.Errorf("error adding song atomically in AddSong: %w", err)
 	}
 
-	if result == "duplicate" {
+	if row.Result.String == addSongResultDuplicate {
 		return nil, internalerror.ErrDuplicateSong{
 			Err: fmt.Errorf("song already exists"),
 		}
 	}
 
-	if result == "room_not_found" {
+	if row.Result.String == addSongResultRoomNotFound {
 		return nil, fmt.Errorf("error adding song in AddSong: room %s not found", song.RoomID)
 	}
 
 	addedSong := row.toSong()
 	return &addedSong, nil
+}
+
+const addSongResultDuplicate = "duplicate"
+const addSongResultRoomNotFound = "room_not_found"
+
+type addSongRow struct {
+	Result          sql.NullString
+	ID              sql.NullString
+	RoomID          sql.NullString
+	SourceType      sql.NullString
+	SourceID        sql.NullString
+	Title           sql.NullString
+	Artist          sql.NullString
+	ThumbnailURL    sql.NullString
+	Duration        sql.NullInt64
+	AddedBy         sql.NullString
+	AddedByNickname sql.NullString
+	AddedAt         sql.NullTime
+	VoteCount       sql.NullInt64
+}
+
+func (r *addSongRow) scan(row *sql.Row) error {
+	return row.Scan(
+		&r.Result,
+		&r.ID,
+		&r.RoomID,
+		&r.SourceType,
+		&r.SourceID,
+		&r.Title,
+		&r.Artist,
+		&r.ThumbnailURL,
+		&r.Duration,
+		&r.AddedBy,
+		&r.AddedByNickname,
+		&r.AddedAt,
+		&r.VoteCount,
+	)
+}
+
+func (r *addSongRow) toSong() vibe.Song {
+	return vibe.Song{
+		ID:              r.ID.String,
+		RoomID:          r.RoomID.String,
+		SourceType:      vibe.SourceType(r.SourceType.String),
+		SourceID:        r.SourceID.String,
+		Title:           r.Title.String,
+		Artist:          r.Artist.String,
+		ThumbnailURL:    r.ThumbnailURL.String,
+		Duration:        int(r.Duration.Int64),
+		AddedBy:         r.AddedBy.String,
+		AddedByNickname: r.AddedByNickname.String,
+		AddedAt:         r.AddedAt.Time,
+		VoteCount:       int(r.VoteCount.Int64),
+	}
 }
 
 // prepareRemoveSongStmt prepares the RemoveSongStatement.
@@ -399,7 +438,6 @@ func (c *Client) RemoveSong(ctx context.Context, roomID, songID string) error {
 	return nil
 }
 
-// prepareGetMaxPositionStmt prepares the GetMaxPositionStatement.
 // prepareVoteSongStmt prepares the VoteSongStatement.
 func (c *Client) prepareVoteSongStmt() error {
 	stmt, err := c.DB.Prepare(`
@@ -456,21 +494,6 @@ func (c *Client) prepareClearVotesSongStmt() error {
 	return nil
 }
 
-func (c *Client) prepareUpdateSongAddedAtStmt() error {
-	stmt, err := c.DB.Prepare(`
-		UPDATE songs
-		SET added_at = NOW()
-		WHERE room_id = $1 AND id = $2
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing UpdateSongAddedAtStatement: %w", err)
-	}
-
-	c.UpdateSongAddedAtStatement = stmt
-
-	return nil
-}
-
 // clearVotesSong clears all votes for a song.
 func (c *Client) clearVotesSong(ctx context.Context, roomID, songID string) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "clearVotesSong")
@@ -493,6 +516,21 @@ func (c *Client) clearVotesSong(ctx context.Context, roomID, songID string) erro
 		return nil
 	}
 	log.Printf("[DEBUG-VOTES] Cleared %d votes for song %s in room %s", rowsAffected, songID, roomID)
+
+	return nil
+}
+
+func (c *Client) prepareUpdateSongAddedAtStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE songs
+		SET added_at = NOW()
+		WHERE room_id = $1 AND id = $2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing UpdateSongAddedAtStatement: %w", err)
+	}
+
+	c.UpdateSongAddedAtStatement = stmt
 
 	return nil
 }
@@ -521,120 +559,4 @@ func (c *Client) updateSongAddedAt(ctx context.Context, roomID, songID string) e
 	log.Printf("[DEBUG-VOTES] Updated added_at for %d song(s) %s in room %s", rowsAffected, songID, roomID)
 
 	return nil
-}
-
-// prepareGetNextSongStmt prepares the GetNextSongStatement.
-func (c *Client) prepareGetNextSongStmt() error {
-	stmt, err := c.DB.Prepare(`
-		SELECT
-			a.id,
-			a.room_id,
-			a.source_type,
-			a.source_id,
-			a.title,
-			a.artist,
-			a.thumbnail_url,
-			a.duration,
-			a.added_by,
-			a.added_by_nickname,
-			a.added_at,
-			COUNT(b.user_id) as vote_count
-		FROM songs a
-		LEFT JOIN song_votes b
-		ON a.id = b.song_id
-		AND a.room_id = b.room_id
-		WHERE a.room_id = $1
-		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
-		ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
-		LIMIT 1
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing GetNextSongStatement: %w", err)
-	}
-
-	c.GetNextSongStatement = stmt
-
-	return nil
-}
-
-// prepareGetNextSongExcludingStmt prepares the GetNextSongExcludingStatement.
-func (c *Client) prepareGetNextSongExcludingStmt() error {
-	stmt, err := c.DB.Prepare(`
-		SELECT
-			a.id,
-			a.room_id,
-			a.source_type,
-			a.source_id,
-			a.title,
-			a.artist,
-			a.thumbnail_url,
-			a.duration,
-			a.added_by,
-			a.added_by_nickname,
-			a.added_at,
-			COUNT(b.user_id) as vote_count
-		FROM songs a
-		LEFT JOIN song_votes b
-		ON a.id = b.song_id
-		AND a.room_id = b.room_id
-		WHERE a.room_id = $1 AND a.id != $2
-		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
-		ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
-		LIMIT 1
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing GetNextSongExcludingStatement: %w", err)
-	}
-
-	c.GetNextSongExcludingStatement = stmt
-
-	return nil
-}
-
-// GetNextSong gets the next song in the queue (highest voted, earliest added as tiebreaker).
-func (c *Client) GetNextSong(ctx context.Context, roomID string, currentPosition int) (*vibe.Song, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetNextSong")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	r := c.GetNextSongStatement.QueryRowContext(cctx, roomID)
-
-	var row songRow
-	err := row.scan(r)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return &vibe.Song{}, nil
-		}
-
-		return nil, fmt.Errorf("error getting next song: %w", err)
-	}
-
-	song := row.toSong()
-	return &song, nil
-}
-
-// GetNextSongExcluding gets the next song in the queue excluding a specific song ID.
-func (c *Client) GetNextSongExcluding(ctx context.Context, roomID string, excludeSongID string) (*vibe.Song, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetNextSongExcluding")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	r := c.GetNextSongExcludingStatement.QueryRowContext(cctx, roomID, excludeSongID)
-
-	var row songRow
-	err := row.scan(r)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return &vibe.Song{}, nil
-		}
-
-		return nil, fmt.Errorf("error getting next song excluding %s: %w", excludeSongID, err)
-	}
-
-	song := row.toSong()
-	return &song, nil
 }

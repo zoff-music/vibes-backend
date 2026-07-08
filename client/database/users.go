@@ -149,7 +149,6 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 
 	isFirstTimeSetup := false
 
-	// Handle initial password setup
 	if !room.HasPassword {
 		isFirstTimeSetup = true
 		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -163,7 +162,6 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 		}
 	}
 
-	// Verify existing or newly set password
 	err = bcrypt.CompareHashAndPassword([]byte(room.AdminPasswordHash), []byte(password))
 	if err != nil {
 		return &vibe.AdminAuthResult{
@@ -172,7 +170,6 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 		}, nil
 	}
 
-	// Elevate user to admin
 	log.Printf("AuthenticateAdmin: successfully verified password for userID=%s", userID)
 	user, err := c.GetUser(ctx, roomID, userID)
 	if err != nil {

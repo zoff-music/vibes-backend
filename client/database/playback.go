@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -29,66 +28,6 @@ func (c *Client) prepareGetPlaybackStateStmt() error {
 	return nil
 }
 
-// prepareProcessNextExpiredPlaybackStmt prepares the ProcessNextExpiredPlaybackStatement.
-func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
-	stmt, err := c.DB.Prepare(`
-		SELECT a.room_id
-		FROM playback_state a
-		JOIN songs b 
-		ON a.current_song_id = b.id
-		JOIN rooms c 
-		ON a.room_id = c.id
-			WHERE a.is_playing = 1
-			AND (c.mode = 'server' OR c.mode = 'host')
-			AND ((EXTRACT(EPOCH FROM (NOW() - a.updated_at)) * 1000) + a.position_ms) >= (b.duration * 1000 - 500)
-			LIMIT 1
-			FOR UPDATE OF a SKIP LOCKED
-		`)
-	if err != nil {
-		return fmt.Errorf("error preparing ProcessNextExpiredPlaybackStatement: %w", err)
-	}
-
-	c.ProcessNextExpiredPlaybackStatement = stmt
-
-	return nil
-}
-
-// ProcessNextExpiredPlayback checks for an expired song, skips it, and returns the new state.
-func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackState, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextExpiredPlayback")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	r := c.ProcessNextExpiredPlaybackStatement.QueryRowContext(cctx)
-
-	var row sql.NullString
-	err := r.Scan(&row)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, internalerror.ErrExpected{
-				Err: internalerror.ErrNonRecoverable{
-					Err: fmt.Errorf("no expired playback found"),
-				},
-			}
-		}
-
-		return nil, fmt.Errorf("error finding expired playback: %w", err)
-	}
-
-	roomID := row.String
-
-	// Skip the track
-	// skipTrack is internal and doesn't check permissions, which is what we want here
-	newState, err := c.skipTrack(ctx, roomID)
-	if err != nil {
-		return nil, fmt.Errorf("error skipping track for room %s: %w", roomID, err)
-	}
-
-	return newState, nil
-}
-
 // getPlaybackState fetches the playback state for a room (internal).
 func (c *Client) getPlaybackState(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "getPlaybackState")
@@ -103,7 +42,6 @@ func (c *Client) getPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			// Return default state if no state exists
 			return &vibe.PlaybackState{
 				RoomID:       roomID,
 				CurrentSong:  nil,
@@ -228,12 +166,224 @@ func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
 	}, nil
 }
 
+type playbackSongRow struct {
+	PlaybackRoomID        sql.NullString
+	PlaybackCurrentSongID sql.NullString
+	PlaybackIsPlaying     sql.NullInt64
+	PlaybackPositionMs    sql.NullInt64
+	PlaybackUpdatedAt     sql.NullTime
+	Song                  songRow
+}
+
+func (r *playbackSongRow) scan(row *sql.Row) error {
+	return row.Scan(
+		&r.PlaybackRoomID,
+		&r.PlaybackCurrentSongID,
+		&r.PlaybackIsPlaying,
+		&r.PlaybackPositionMs,
+		&r.PlaybackUpdatedAt,
+		&r.Song.ID,
+		&r.Song.RoomID,
+		&r.Song.SourceType,
+		&r.Song.SourceID,
+		&r.Song.Title,
+		&r.Song.Artist,
+		&r.Song.ThumbnailURL,
+		&r.Song.Duration,
+		&r.Song.AddedBy,
+		&r.Song.AddedByNickname,
+		&r.Song.AddedAt,
+		&r.Song.VoteCount,
+	)
+}
+
+func (r *playbackSongRow) toPlaybackState() (*vibe.PlaybackState, error) {
+	state := &vibe.PlaybackState{
+		RoomID:       r.PlaybackRoomID.String,
+		CurrentSong:  nil,
+		IsPlaying:    r.PlaybackIsPlaying.Valid && r.PlaybackIsPlaying.Int64 == 1,
+		PositionMs:   int(r.PlaybackPositionMs.Int64),
+		UpdatedAt:    r.PlaybackUpdatedAt.Time,
+		ServerTimeMs: int(time.Now().UnixMilli()),
+	}
+
+	if !r.Song.ID.Valid || r.Song.ID.String == "" {
+		return state, nil
+	}
+
+	song := r.Song.toSong()
+	state.CurrentSong = &song
+
+	return state, nil
+}
+
+// prepareProcessNextExpiredPlaybackStmt prepares the ProcessNextExpiredPlaybackStatement.
+func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH locked_playback_q AS (
+			SELECT
+				a.room_id,
+				a.current_song_id,
+				COALESCE(d.remove_on_play, 0) = 1 AS remove_on_play
+			FROM playback_state a
+			JOIN songs b ON a.current_song_id = b.id
+			JOIN rooms c ON a.room_id = c.id
+			JOIN room_settings d ON d.room_id = c.id
+			WHERE a.is_playing = 1
+			AND (c.mode = 'server' OR c.mode = 'host')
+			AND ((EXTRACT(EPOCH FROM (NOW() - a.updated_at)) * 1000) + a.position_ms) >= (b.duration * 1000 - 500)
+			LIMIT 1
+			FOR UPDATE OF a SKIP LOCKED
+		),
+		cleared_skip_votes_q AS (
+			DELETE FROM skip_votes a
+			USING locked_playback_q b
+			WHERE a.room_id = b.room_id
+			AND a.song_id = b.current_song_id
+			RETURNING 1
+		),
+		cleared_song_votes_q AS (
+			DELETE FROM song_votes a
+			USING locked_playback_q b
+			WHERE a.room_id = b.room_id
+			AND a.song_id = b.current_song_id
+			RETURNING 1
+		),
+		removed_song_q AS (
+			DELETE FROM songs a
+			USING locked_playback_q b
+			WHERE b.remove_on_play
+			AND a.room_id = b.room_id
+			AND a.id = b.current_song_id
+			RETURNING 1
+		),
+		requeued_song_q AS (
+			UPDATE songs a
+			SET added_at = NOW()
+			FROM locked_playback_q b
+			WHERE NOT b.remove_on_play
+			AND a.room_id = b.room_id
+			AND a.id = b.current_song_id
+			RETURNING 1
+		),
+		next_song_q AS (
+			SELECT
+				a.id,
+				a.room_id,
+				a.source_type,
+				a.source_id,
+				a.title,
+				a.artist,
+				a.thumbnail_url,
+				a.duration,
+				a.added_by,
+				a.added_by_nickname,
+				CASE
+					WHEN a.id = c.current_song_id AND NOT c.remove_on_play THEN NOW()
+					ELSE a.added_at
+				END AS added_at,
+				COUNT(b.user_id) AS vote_count
+			FROM songs a
+			JOIN locked_playback_q c ON c.room_id = a.room_id
+			LEFT JOIN song_votes b
+			ON a.id = b.song_id
+			AND a.room_id = b.room_id
+			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
+			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
+			LIMIT 1
+		),
+			updated_playback_q AS (
+				UPDATE playback_state a
+				SET current_song_id = b.id,
+				is_playing = CASE WHEN b.id IS NULL THEN 0 ELSE 1 END,
+				position_ms = 0,
+				updated_at = NOW()
+				FROM locked_playback_q c
+				LEFT JOIN next_song_q b ON b.room_id = c.room_id
+				WHERE a.room_id = c.room_id
+			RETURNING a.room_id, a.current_song_id, a.is_playing, a.position_ms, a.updated_at
+		)
+		SELECT
+			a.room_id,
+			a.current_song_id,
+			a.is_playing,
+			a.position_ms,
+			a.updated_at,
+			b.id,
+			b.room_id,
+			b.source_type,
+			b.source_id,
+			b.title,
+			b.artist,
+			b.thumbnail_url,
+			b.duration,
+			b.added_by,
+			b.added_by_nickname,
+			b.added_at,
+			COALESCE(b.vote_count, 0) AS vote_count
+		FROM updated_playback_q a
+		LEFT JOIN next_song_q b ON b.id = a.current_song_id
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ProcessNextExpiredPlaybackStatement: %w", err)
+	}
+
+	c.ProcessNextExpiredPlaybackStatement = stmt
+
+	return nil
+}
+
+func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackState, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "processNextExpiredPlayback")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	r := c.ProcessNextExpiredPlaybackStatement.QueryRowContext(cctx)
+
+	var row playbackSongRow
+	err := row.scan(r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, internalerror.ErrExpected{
+				Err: internalerror.ErrNonRecoverable{
+					Err: fmt.Errorf("no expired playback found"),
+				},
+			}
+		}
+
+		return nil, fmt.Errorf("error scanning expired playback: %w", err)
+	}
+
+	state, err := row.toPlaybackState()
+	if err != nil {
+		return nil, fmt.Errorf("error converting expired playback state: %w", err)
+	}
+
+	return state, nil
+}
+
+// ProcessNextExpiredPlayback checks for an expired song, skips it, and returns the new state.
+func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackState, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextExpiredPlayback")
+	defer span.End()
+
+	state, err := c.processNextExpiredPlayback(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error processing next expired playback: %w", err)
+	}
+
+	return state, nil
+}
+
 // prepareUpsertPlaybackStateStmt prepares the UpsertPlaybackStateStatement.
 func (c *Client) prepareUpsertPlaybackStateStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO playback_state (room_id, current_song_id, is_playing, position_ms, updated_at)
-		VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
-		ON CONFLICT(room_id) DO UPDATE SET
+			VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+			ON CONFLICT(room_id) DO UPDATE SET
 			current_song_id = EXCLUDED.current_song_id,
 			is_playing = EXCLUDED.is_playing,
 			position_ms = EXCLUDED.position_ms,
@@ -274,90 +424,145 @@ func (c *Client) UpsertPlaybackState(ctx context.Context, state *vibe.PlaybackSt
 	return nil
 }
 
+func (c *Client) prepareSkipTrackStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH locked_playback_q AS (
+			SELECT
+				a.room_id,
+				a.current_song_id,
+				COALESCE(b.remove_on_play, 0) = 1 AS remove_on_play
+			FROM playback_state a
+			JOIN room_settings b ON b.room_id = a.room_id
+			WHERE a.room_id = $1
+			FOR UPDATE OF a SKIP LOCKED
+		),
+		cleared_skip_votes_q AS (
+			DELETE FROM skip_votes a
+			USING locked_playback_q b
+			WHERE a.room_id = b.room_id
+			AND a.song_id = b.current_song_id
+			RETURNING 1
+		),
+		cleared_song_votes_q AS (
+			DELETE FROM song_votes a
+			USING locked_playback_q b
+			WHERE a.room_id = b.room_id
+			AND a.song_id = b.current_song_id
+			RETURNING 1
+		),
+		removed_song_q AS (
+			DELETE FROM songs a
+			USING locked_playback_q b
+			WHERE b.current_song_id IS NOT NULL
+			AND b.remove_on_play
+			AND a.room_id = b.room_id
+			AND a.id = b.current_song_id
+			RETURNING 1
+		),
+		requeued_song_q AS (
+			UPDATE songs a
+			SET added_at = NOW()
+			FROM locked_playback_q b
+			WHERE b.current_song_id IS NOT NULL
+			AND NOT b.remove_on_play
+			AND a.room_id = b.room_id
+			AND a.id = b.current_song_id
+			RETURNING 1
+		),
+		next_song_q AS (
+			SELECT
+				a.id,
+				a.room_id,
+				a.source_type,
+				a.source_id,
+				a.title,
+				a.artist,
+				a.thumbnail_url,
+				a.duration,
+				a.added_by,
+				a.added_by_nickname,
+				CASE
+					WHEN a.id = c.current_song_id AND NOT c.remove_on_play THEN NOW()
+					ELSE a.added_at
+				END AS added_at,
+				COUNT(b.user_id) AS vote_count
+			FROM songs a
+			JOIN locked_playback_q c ON c.room_id = a.room_id
+			LEFT JOIN song_votes b
+			ON a.id = b.song_id
+			AND a.room_id = b.room_id
+			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
+			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
+			LIMIT 1
+		),
+			updated_playback_q AS (
+				UPDATE playback_state a
+				SET current_song_id = b.id,
+				is_playing = CASE WHEN b.id IS NULL THEN 0 ELSE 1 END,
+				position_ms = 0,
+				updated_at = NOW()
+				FROM locked_playback_q c
+				LEFT JOIN next_song_q b ON b.room_id = c.room_id
+				WHERE a.room_id = c.room_id
+			RETURNING a.room_id, a.current_song_id, a.is_playing, a.position_ms, a.updated_at
+		)
+		SELECT
+			a.room_id,
+			a.current_song_id,
+			a.is_playing,
+			a.position_ms,
+			a.updated_at,
+			b.id,
+			b.room_id,
+			b.source_type,
+			b.source_id,
+			b.title,
+			b.artist,
+			b.thumbnail_url,
+			b.duration,
+			b.added_by,
+			b.added_by_nickname,
+			b.added_at,
+			COALESCE(b.vote_count, 0) AS vote_count
+		FROM updated_playback_q a
+		LEFT JOIN next_song_q b ON b.id = a.current_song_id
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing SkipTrackStatement: %w", err)
+	}
+
+	c.SkipTrackStatement = stmt
+
+	return nil
+}
+
 // skipTrack skips the current track to the next one in the queue (internal).
 func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "skipTrack")
 	defer span.End()
 
-	// Use internal getPlaybackState to avoid recursion / lazy-skip trigger
-	state, err := c.getPlaybackState(ctx, roomID)
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	r := c.SkipTrackStatement.QueryRowContext(cctx, roomID)
+
+	var row playbackSongRow
+	err := row.scan(r)
 	if err != nil {
-		return nil, fmt.Errorf("error getting playback state in skipTrack: %w", err)
-	}
-
-	room, err := c.GetRoom(ctx, roomID, "")
-	if err != nil {
-		return nil, fmt.Errorf("error getting room in skipTrack: %w", err)
-	}
-
-	var currentSongID string
-	if state.CurrentSong != nil {
-		currentSongID = state.CurrentSong.ID
-	}
-
-	// Clear votes for the current song when it ends/is skipped
-	if currentSongID != "" {
-		log.Printf("[DEBUG-VOTES] Clearing votes for current song %s in room %s during skip", currentSongID, roomID)
-
-		err = c.clearSkipVotes(ctx, roomID, currentSongID)
-		if err != nil {
-			return nil, fmt.Errorf("error clearing skip votes in skipTrack: %w", err)
-		}
-
-		err = c.clearVotesSong(ctx, roomID, currentSongID)
-		if err != nil {
-			return nil, fmt.Errorf("error clearing song votes in skipTrack: %w", err)
-		}
-
-		if room.Settings.RemoveOnPlay {
-			err = c.RemoveSong(ctx, roomID, currentSongID)
+		if errors.Is(err, sql.ErrNoRows) {
+			state, err := c.getPlaybackState(ctx, roomID)
 			if err != nil {
-				return nil, fmt.Errorf("error removing song in skipTrack: %w", err)
+				return nil, fmt.Errorf("error getting playback state in skipTrack: %w", err)
 			}
+			return state, nil
 		}
-
-		if !room.Settings.RemoveOnPlay {
-			// If song stays in queue, update its added_at timestamp to treat it as "new"
-			// This prevents it from being immediately replayed and moves it to the end of the queue.
-			err = c.updateSongAddedAt(ctx, roomID, currentSongID)
-			if err != nil {
-				return nil, fmt.Errorf("error updating song added_at in skipTrack: %w", err)
-			}
-		}
+		return nil, fmt.Errorf("error scanning playback state in skipTrack: %w", err)
 	}
 
-	nextSong, err := c.GetNextSong(ctx, roomID, 0)
+	state, err := row.toPlaybackState()
 	if err != nil {
-		return nil, fmt.Errorf("error getting next song in skipTrack: %w", err)
-	}
-
-	log.Printf("[DEBUG-SKIP] next-song %+v", nextSong)
-
-	// 3. Handle LoopQueue if no next song found
-	if nextSong.IsEmpty() && room.Settings.LoopQueue {
-		// We can just get the next song directly since logic is same for both branches due to prev updateSongAddedAt
-		// If RemoveOnPlay was true, current was gone, so we get next (first)
-		// If RemoveOnPlay was false, current was moved to end, so we get next (first)
-
-		nextSong, err = c.GetNextSong(ctx, roomID, 0)
-		if err != nil {
-			return nil, fmt.Errorf("error getting first song for loop in skipTrack: %w", err)
-		}
-	}
-
-	state.CurrentSong = nil
-	state.IsPlaying = false
-	if !nextSong.IsEmpty() {
-		state.CurrentSong = nextSong
-		state.IsPlaying = true
-	}
-
-	state.PositionMs = 0
-	state.UpdatedAt = time.Now()
-
-	err = c.UpsertPlaybackState(ctx, state)
-	if err != nil {
-		return nil, fmt.Errorf("error upserting playback state in skipTrack: %w", err)
+		return nil, fmt.Errorf("error converting playback state in skipTrack: %w", err)
 	}
 
 	return state, nil
@@ -385,18 +590,16 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 			break
 		}
 
-		// If no song is selected, try to play the first one
-		firstSong, err := c.GetNextSong(ctx, roomID, 0)
+		state, err = c.StartPlaybackIfIdle(ctx, roomID)
 		if err != nil {
-			return nil, fmt.Errorf("error getting next song in UpdatePlayback: %w", err)
+			return nil, fmt.Errorf("error starting playback in UpdatePlayback: %w", err)
 		}
 
-		if firstSong.IsEmpty() {
-			break
+		if state.CurrentSong == nil {
+			state.IsPlaying = false
 		}
 
-		state.CurrentSong = firstSong
-		state.PositionMs = 0
+		return state, nil
 	case vibe.RoomActionPause:
 		if state.IsPlaying {
 			elapsed := time.Since(state.UpdatedAt).Milliseconds()
@@ -421,12 +624,67 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 
 func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE playback_state
-		SET current_song_id = $1,
-		is_playing = 1,
-		updated_at = CURRENT_TIMESTAMP
-		WHERE room_id = $2
-		AND current_song_id IS NULL
+		WITH locked_playback_q AS (
+			SELECT a.room_id
+			FROM playback_state a
+			WHERE a.room_id = $1
+			AND a.current_song_id IS NULL
+			FOR UPDATE OF a SKIP LOCKED
+		),
+		next_song_q AS (
+			SELECT
+				a.id,
+				a.room_id,
+				a.source_type,
+				a.source_id,
+				a.title,
+				a.artist,
+				a.thumbnail_url,
+				a.duration,
+				a.added_by,
+				a.added_by_nickname,
+				a.added_at,
+				COUNT(b.user_id) AS vote_count
+			FROM songs a
+			JOIN locked_playback_q c ON c.room_id = a.room_id
+			LEFT JOIN song_votes b
+			ON a.id = b.song_id
+			AND a.room_id = b.room_id
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
+			ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
+			LIMIT 1
+		),
+			updated_playback_q AS (
+				UPDATE playback_state a
+				SET current_song_id = b.id,
+				is_playing = 1,
+				position_ms = 0,
+				updated_at = NOW()
+				FROM locked_playback_q c
+				JOIN next_song_q b ON b.room_id = c.room_id
+				WHERE a.room_id = c.room_id
+			RETURNING a.room_id, a.current_song_id, a.is_playing, a.position_ms, a.updated_at
+		)
+		SELECT
+			a.room_id,
+			a.current_song_id,
+			a.is_playing,
+			a.position_ms,
+			a.updated_at,
+			b.id,
+			b.room_id,
+			b.source_type,
+			b.source_id,
+			b.title,
+			b.artist,
+			b.thumbnail_url,
+			b.duration,
+			b.added_by,
+			b.added_by_nickname,
+			b.added_at,
+			COALESCE(b.vote_count, 0) AS vote_count
+		FROM updated_playback_q a
+		JOIN next_song_q b ON b.id = a.current_song_id
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing StartPlaybackIfIdleStatement: %w", err)
@@ -437,20 +695,44 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 	return nil
 }
 
+func (c *Client) startPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "startPlaybackIfIdle")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	r := c.StartPlaybackIfIdleStatement.QueryRowContext(cctx, roomID)
+
+	var row playbackSongRow
+	err := row.scan(r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return &vibe.PlaybackState{}, nil
+		}
+		return nil, fmt.Errorf("error scanning playback state in startPlaybackIfIdle: %w", err)
+	}
+
+	state, err := row.toPlaybackState()
+	if err != nil {
+		return nil, fmt.Errorf("error converting playback state in startPlaybackIfIdle: %w", err)
+	}
+
+	return state, nil
+}
+
 // StartPlaybackIfIdle attempts to start playback if the room is currently idle.
 // It returns the new state if it successfully started playback, or the current state if it didn't.
 func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "StartPlaybackIfIdle")
 	defer span.End()
 
-	// 1. Check if we have songs in the queue
-	firstSong, err := c.GetNextSong(ctx, roomID, 0)
+	startedState, err := c.startPlaybackIfIdle(ctx, roomID)
 	if err != nil {
-		return nil, fmt.Errorf("error getting first song in StartPlaybackIfIdle: %w", err)
+		return nil, fmt.Errorf("error starting playback if idle in StartPlaybackIfIdle: %w", err)
 	}
 
-	if firstSong.IsEmpty() {
-		// No songs, just return current state
+	if startedState.RoomID == "" || startedState.CurrentSong == nil {
 		state, err := c.getPlaybackState(ctx, roomID)
 		if err != nil {
 			return nil, fmt.Errorf("error getting playback state in StartPlaybackIfIdle: %w", err)
@@ -458,39 +740,7 @@ func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.
 		return state, nil
 	}
 
-	// 2. Atomic update: only update if current_song_id IS NULL
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	res, err := c.StartPlaybackIfIdleStatement.ExecContext(cctx, firstSong.ID, roomID)
-	if err != nil {
-		return nil, fmt.Errorf("error executing statement in StartPlaybackIfIdle: %w", err)
-	}
-
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return nil, fmt.Errorf("error getting rows affected in StartPlaybackIfIdle: %w", err)
-	}
-
-	if rows == 0 {
-		// Someone else started it or it wasn't idle, return current state
-		state, err := c.getPlaybackState(ctx, roomID)
-		if err != nil {
-			return nil, fmt.Errorf("error getting playback state in StartPlaybackIfIdle: %w", err)
-		}
-		return state, nil
-	}
-
-	now := time.Now().UTC()
-	// 3. Successfully started, return the new state
-	return &vibe.PlaybackState{
-		RoomID:       roomID,
-		CurrentSong:  firstSong,
-		IsPlaying:    true,
-		PositionMs:   0,
-		UpdatedAt:    now,
-		ServerTimeMs: int(now.UnixMilli()),
-	}, nil
+	return startedState, nil
 }
 
 func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string) error {
@@ -517,7 +767,6 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 	}
 
 	if room.HostID == "" {
-		// Claim host
 		err := c.SetRoomHost(ctx, roomID, userID)
 		if err != nil {
 			return fmt.Errorf("error setting room host in check host permission in %s for %s: %w", roomID, userID, err)
@@ -529,7 +778,6 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 		return nil
 	}
 
-	// Check if current host is still active
 	activeParticipants, err := c.GetActiveParticipants(ctx, roomID, 30*time.Second)
 	if err != nil {
 		return fmt.Errorf("error getting active participants in check host permission in %s for %s: %w", roomID, userID, err)
@@ -544,7 +792,6 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 	}
 
 	if !hostStillActive {
-		// Previous host inactive, claim host
 		err := c.SetRoomHost(ctx, roomID, userID)
 		if err != nil {
 			return fmt.Errorf("error setting room host in check host permission in %s for %s: %w", roomID, userID, err)

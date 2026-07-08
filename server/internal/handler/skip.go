@@ -32,13 +32,10 @@ func SkipSong(
 		}
 		userID := session.UserID
 
-		// Check if user is admin - currently session doesn't have IsAdmin
-		// Logic moved to DB, passing false for now unless we can verify admin status
 		isAdmin := false
 
 		result, err := db.SkipSong(ctx, roomID, userID, isAdmin)
 		if err != nil {
-			// Check if it's a host mode restriction error
 			var errHostMode internalerror.ErrHostModeSkipOnly
 			if errors.As(err, &errHostMode) {
 				handleError(
@@ -50,7 +47,6 @@ func SkipSong(
 				return
 			}
 
-			// Check if skipping is disabled
 			var errDisabled internalerror.ErrSkipDisabled
 			if errors.As(err, &errDisabled) {
 				handleError(
