@@ -400,15 +400,16 @@ func CreateSession(
 
 		// If this was a first-time password setup, notify all clients
 		if isFirstTimeSetup {
-			// Fetch room without user-specific data for broadcast
 			neutralRoom, err := db.GetRoom(ctx, roomID, "")
 			if err != nil {
 				log.Printf("CreateSession: failed to fetch neutral room for notification: %v", err)
-			} else {
+			}
+			if err == nil {
 				body, err := json.Marshal(neutralRoom)
 				if err != nil {
 					log.Printf("CreateSession: failed to marshal room for notification: %v", err)
-				} else {
+				}
+				if err == nil {
 					err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 						Type:    vibe.SettingsUpdate,
 						Payload: body,

@@ -26,7 +26,8 @@ func main() {
 
 	var s server.Server
 
-	if err := s.Create(ctx, config); err != nil {
+	err = s.Create(ctx, config)
+	if err != nil {
 		log.Fatalf("Server error from s.Create(): %v", err)
 	}
 

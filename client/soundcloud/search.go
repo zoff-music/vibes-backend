@@ -30,7 +30,8 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 
 	if len(c.accessToken) > 5 {
 		fmt.Printf("DEBUG: Access key is valid: %s...\n", c.accessToken[:5])
-	} else {
+	}
+	if len(c.accessToken) <= 5 {
 		fmt.Printf("DEBUG: Access key is invalid/short: %s\n", c.accessToken)
 	}
 

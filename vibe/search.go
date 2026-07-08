@@ -5,11 +5,9 @@ import "context"
 // SourceType represents the type of music source
 type SourceType string
 
-const (
-	SourceTypeYouTube    SourceType = "youtube"
-	SourceTypeSpotify    SourceType = "spotify"
-	SourceTypeSoundCloud SourceType = "soundcloud"
-)
+const SourceTypeYouTube SourceType = "youtube"
+const SourceTypeSpotify SourceType = "spotify"
+const SourceTypeSoundCloud SourceType = "soundcloud"
 
 // MusicTrack represents a generic music track
 type MusicTrack struct {

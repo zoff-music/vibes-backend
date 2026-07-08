@@ -282,8 +282,8 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 	// If there is only 1 participant, allow them to skip alone
 	if participantCount == 1 {
 		requiredVotes = 1
-	} else if requiredVotes < 2 {
-		// Otherwise, enforce minimum 2 votes to prevent single-vote skips in groups
+	}
+	if participantCount != 1 && requiredVotes < 2 {
 		requiredVotes = 2
 	}
 

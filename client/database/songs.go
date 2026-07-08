@@ -459,9 +459,9 @@ func (c *Client) clearVotesSong(ctx context.Context, roomID, songID string) erro
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		log.Printf("[DEBUG-VOTES] Error getting rows affected for song %s in room %s: %v", songID, roomID, err)
-	} else {
-		log.Printf("[DEBUG-VOTES] Cleared %d votes for song %s in room %s", rowsAffected, songID, roomID)
+		return nil
 	}
+	log.Printf("[DEBUG-VOTES] Cleared %d votes for song %s in room %s", rowsAffected, songID, roomID)
 
 	return nil
 }
@@ -485,9 +485,9 @@ func (c *Client) updateSongAddedAt(ctx context.Context, roomID, songID string) e
 	rowsAffected, err := result.RowsAffected()
 	if err != nil {
 		log.Printf("[DEBUG-VOTES] Error getting rows affected for song %s in room %s: %v", songID, roomID, err)
-	} else {
-		log.Printf("[DEBUG-VOTES] Updated added_at for %d song(s) %s in room %s", rowsAffected, songID, roomID)
+		return nil
 	}
+	log.Printf("[DEBUG-VOTES] Updated added_at for %d song(s) %s in room %s", rowsAffected, songID, roomID)
 
 	return nil
 }

@@ -14,8 +14,8 @@ type SkipVoteFetcher interface {
 	HasUserVoted(ctx context.Context, roomID, songID, userID string) (bool, error)
 }
 
-// SkipVoteManager manages skip votes
-type SkipVoteManager interface {
+// SkipVoteAdder adds skip votes.
+type SkipVoteAdder interface {
 	AddSkipVote(ctx context.Context, roomID, songID, userID string) error
 }
 

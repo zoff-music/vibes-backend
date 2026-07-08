@@ -20,11 +20,12 @@ func (c *Client) prepareProcessNextAbandonedHostStmt() error {
 		SELECT r.id
 		FROM rooms r
 		LEFT JOIN room_users ru ON r.host_id = ru.id
-		WHERE r.mode = 'host'
-		AND r.host_id IS NOT NULL AND r.host_id != ''
-		AND (ru.last_seen_at IS NULL OR ru.last_seen_at < NOW() - INTERVAL '15 seconds')
-		LIMIT 1
-	`)
+			WHERE r.mode = 'host'
+			AND r.host_id IS NOT NULL AND r.host_id != ''
+			AND (ru.last_seen_at IS NULL OR ru.last_seen_at < NOW() - INTERVAL '15 seconds')
+			LIMIT 1
+			FOR UPDATE OF r SKIP LOCKED
+		`)
 	if err != nil {
 		return fmt.Errorf("error preparing ProcessNextAbandonedHostStatement: %w", err)
 	}
@@ -203,10 +204,9 @@ func (c *Client) GetRoomByName(ctx context.Context, name string, userID string) 
 
 	counts, err := c.GetActiveListenerCounts(ctx, room.ID, 15*time.Second)
 	if err == nil {
+		room.UserCount = counts.ActiveListeners
 		if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
 			room.UserCount = 1
-		} else {
-			room.UserCount = counts.ActiveListeners
 		}
 	}
 
@@ -367,10 +367,9 @@ func (c *Client) GetRoom(ctx context.Context, id string, userID string) (*vibe.R
 
 	counts, err := c.GetActiveListenerCounts(ctx, room.ID, 15*time.Second)
 	if err == nil {
+		room.UserCount = counts.ActiveListeners
 		if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
 			room.UserCount = 1
-		} else {
-			room.UserCount = counts.ActiveListeners
 		}
 	}
 
@@ -440,11 +439,11 @@ func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
 	sources := []string{}
 	if r.EnabledSources.Valid && r.EnabledSources.String != "" {
 		sources = strings.Split(r.EnabledSources.String, ",")
-	} else if r.EnabledSources.Valid && r.EnabledSources.String == "" {
-		// Empty string means no sources enabled
+	}
+	if r.EnabledSources.Valid && r.EnabledSources.String == "" {
 		sources = []string{}
-	} else {
-		// Default to all sources if NULL (though column is NOT NULL)
+	}
+	if !r.EnabledSources.Valid {
 		sources = []string{"youtube", "spotify", "soundcloud"}
 	}
 
