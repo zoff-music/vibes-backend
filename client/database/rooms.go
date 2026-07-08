@@ -32,8 +32,8 @@ func (c *Client) prepareProcessNextAbandonedHostStmt() error {
 			FROM room_users a
 			JOIN abandoned_room_q b ON b.id = a.room_id
 			WHERE a.last_seen_at >= NOW() - INTERVAL '15 seconds'
-			AND a.is_active_listener = 1
-			AND a.is_cast_receiver = 0
+			AND a.is_active_listener
+			AND NOT a.is_cast_receiver
 			ORDER BY a.joined_at ASC
 			LIMIT 1
 		),
@@ -126,7 +126,7 @@ func (c *Client) prepareGetRoomStmt() error {
 			b.remove_on_play,
 			b.loop_queue,
 			b.allow_duplicates,
-			COALESCE(c.is_admin, 0) as is_requester_admin,
+			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
 			b.only_admin_add_songs
 		FROM rooms a
@@ -231,7 +231,7 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 			b.remove_on_play,
 			b.loop_queue,
 			b.allow_duplicates,
-			COALESCE(c.is_admin, 0) as is_requester_admin,
+			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
 			b.only_admin_add_songs
 		FROM rooms a
@@ -303,16 +303,16 @@ type roomRow struct {
 	HostID            sql.NullString
 	AdminPasswordHash sql.NullString
 	CreatedAt         sql.NullTime
-	SkipAllowed       sql.NullInt64
-	DemocraticSkip    sql.NullInt64
+	SkipAllowed       sql.NullBool
+	DemocraticSkip    sql.NullBool
 	SkipVoteThreshold sql.NullFloat64
 	MaxContinuousAdds sql.NullInt64
-	RemoveOnPlay      sql.NullInt64
-	LoopQueue         sql.NullInt64
-	AllowDuplicates   sql.NullInt64
-	IsRequesterAdmin  sql.NullInt64
+	RemoveOnPlay      sql.NullBool
+	LoopQueue         sql.NullBool
+	AllowDuplicates   sql.NullBool
+	IsRequesterAdmin  sql.NullBool
 	EnabledSources    sql.NullString
-	OnlyAdminAddSongs sql.NullInt64
+	OnlyAdminAddSongs sql.NullBool
 }
 
 func (r *roomRow) scanRow(row *sql.Row) error {
@@ -349,7 +349,7 @@ func (r *roomRow) toRoom() (*vibe.Room, error) {
 		HostID:            r.HostID.String,
 		AdminPasswordHash: r.AdminPasswordHash.String,
 		HasPassword:       r.AdminPasswordHash.Valid && r.AdminPasswordHash.String != "",
-		IsAdmin:           r.IsRequesterAdmin.Int64 == 1,
+		IsAdmin:           r.IsRequesterAdmin.Bool,
 		Settings:          *settings,
 		CreatedAt:         r.CreatedAt.Time,
 	}, nil
@@ -368,15 +368,15 @@ func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
 	}
 
 	return &vibe.RoomSettings{
-		SkipAllowed:       int(r.SkipAllowed.Int64) == 1,
-		DemocraticSkip:    int(r.DemocraticSkip.Int64) == 1,
+		SkipAllowed:       r.SkipAllowed.Bool,
+		DemocraticSkip:    r.DemocraticSkip.Bool,
 		SkipVoteThreshold: r.SkipVoteThreshold.Float64,
 		MaxContinuousAdds: int(r.MaxContinuousAdds.Int64),
-		RemoveOnPlay:      int(r.RemoveOnPlay.Int64) == 1,
-		LoopQueue:         int(r.LoopQueue.Int64) == 1,
-		AllowDuplicates:   r.AllowDuplicates.Int64 == 1,
+		RemoveOnPlay:      r.RemoveOnPlay.Bool,
+		LoopQueue:         r.LoopQueue.Bool,
+		AllowDuplicates:   r.AllowDuplicates.Bool,
 		EnabledSources:    sources,
-		OnlyAdminAddSongs: int(r.OnlyAdminAddSongs.Int64) == 1,
+		OnlyAdminAddSongs: r.OnlyAdminAddSongs.Bool,
 	}, nil
 }
 
@@ -425,7 +425,7 @@ func (c *Client) prepareGetAdminRoomsStmt() error {
 				a.room_id,
 				COUNT(*) AS user_count
 			FROM room_users a
-			WHERE a.is_active_listener = 1
+			WHERE a.is_active_listener
 			AND a.last_seen_at >= $1
 			GROUP BY a.room_id
 		),
@@ -566,15 +566,15 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		room.HostID,
 		room.AdminPasswordHash,
 		room.CreatedAt,
-		boolToInt(room.Settings.SkipAllowed),
-		boolToInt(room.Settings.DemocraticSkip),
+		room.Settings.SkipAllowed,
+		room.Settings.DemocraticSkip,
 		room.Settings.SkipVoteThreshold,
 		room.Settings.MaxContinuousAdds,
-		boolToInt(room.Settings.RemoveOnPlay),
-		boolToInt(room.Settings.LoopQueue),
-		boolToInt(room.Settings.AllowDuplicates),
+		room.Settings.RemoveOnPlay,
+		room.Settings.LoopQueue,
+		room.Settings.AllowDuplicates,
 		strings.Join(room.Settings.EnabledSources, ","),
-		boolToInt(room.Settings.OnlyAdminAddSongs),
+		room.Settings.OnlyAdminAddSongs,
 	)
 
 	var scanned createRoomRow
@@ -639,18 +639,18 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	_, err := c.UpdateRoomStatement.ExecContext(cctx,
 		room.Name,
 		room.ID,
-		boolToInt(room.Settings.SkipAllowed),
-		boolToInt(room.Settings.DemocraticSkip),
+		room.Settings.SkipAllowed,
+		room.Settings.DemocraticSkip,
 		room.Settings.SkipVoteThreshold,
 		room.Settings.MaxContinuousAdds,
-		boolToInt(room.Settings.RemoveOnPlay),
-		boolToInt(room.Settings.LoopQueue),
-		boolToInt(room.Settings.AllowDuplicates),
+		room.Settings.RemoveOnPlay,
+		room.Settings.LoopQueue,
+		room.Settings.AllowDuplicates,
 		room.Mode,
 		room.HostID,
 		room.AdminPasswordHash,
 		strings.Join(room.Settings.EnabledSources, ","),
-		boolToInt(room.Settings.OnlyAdminAddSongs),
+		room.Settings.OnlyAdminAddSongs,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error updating room: %w", err)
@@ -662,12 +662,4 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	}
 
 	return updatedRoom, nil
-}
-
-func boolToInt(value bool) int {
-	if value {
-		return 1
-	}
-
-	return 0
 }

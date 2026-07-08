@@ -60,7 +60,7 @@ func (c *Client) GetUser(ctx context.Context, roomID, userID string) (*vibe.User
 type userRow struct {
 	ID         sql.NullString
 	RoomID     sql.NullString
-	IsAdmin    sql.NullInt64
+	IsAdmin    sql.NullBool
 	JoinedAt   sql.NullTime
 	LastSeenAt sql.NullTime
 }
@@ -79,7 +79,7 @@ func (r *userRow) toUser() (*vibe.User, error) {
 	return &vibe.User{
 		ID:         r.ID.String,
 		RoomID:     r.RoomID.String,
-		IsAdmin:    r.IsAdmin.Valid && r.IsAdmin.Int64 == 1,
+		IsAdmin:    r.IsAdmin.Bool,
 		JoinedAt:   r.JoinedAt.Time,
 		LastSeenAt: r.LastSeenAt.Time,
 	}, nil
@@ -116,8 +116,8 @@ func (c *Client) CreateUser(ctx context.Context, user *vibe.User) (*vibe.User, e
 	r := c.CreateUserStatement.QueryRowContext(cctx,
 		user.ID,
 		user.RoomID,
-		boolToInt(user.IsAdmin),
-		0, // is_active_listener (default to 0 for now)
+		user.IsAdmin,
+		false,
 		user.JoinedAt,
 		user.LastSeenAt,
 	)

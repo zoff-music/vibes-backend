@@ -204,7 +204,7 @@ func (c *Client) prepareAddSongStmt() error {
 		WITH room_config_q AS (
 			SELECT
 				a.id AS room_id,
-				COALESCE(b.allow_duplicates, 0) = 1 AS allow_duplicates
+				COALESCE(b.allow_duplicates, FALSE) AS allow_duplicates
 			FROM rooms a
 			LEFT JOIN room_settings b ON b.room_id = a.id
 			WHERE a.id = $1
@@ -242,12 +242,12 @@ func (c *Client) prepareAddSongStmt() error {
 				$8,
 				$9,
 				NOW(),
-				CASE WHEN a.allow_duplicates THEN 0 ELSE 1 END
+				NOT a.allow_duplicates
 			FROM room_config_q a
 			WHERE a.allow_duplicates
 			OR NOT EXISTS (SELECT 1 FROM existing_song_q)
 			ON CONFLICT (room_id, source_type, source_id)
-			WHERE duplicate_guard = 1
+			WHERE duplicate_guard
 			DO NOTHING
 			RETURNING
 				id,
@@ -300,7 +300,7 @@ func (c *Client) prepareAddSongStmt() error {
 			NULL::INTEGER AS duration,
 			NULL::TEXT AS added_by,
 			NULL::TEXT AS added_by_nickname,
-			NULL::TIMESTAMPTZ AS added_at,
+			NULL::TIMESTAMP AS added_at,
 			0::BIGINT AS vote_count
 		WHERE NOT EXISTS (SELECT 1 FROM inserted_song_q)
 	`)

@@ -140,7 +140,7 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 type playbackStateRow struct {
 	RoomID        sql.NullString
 	CurrentSongID sql.NullString
-	IsPlaying     sql.NullInt64
+	IsPlaying     sql.NullBool
 	PositionMs    sql.NullInt64
 	UpdatedAt     sql.NullTime
 }
@@ -159,7 +159,7 @@ func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
 	return &vibe.PlaybackState{
 		RoomID:       r.RoomID.String,
 		CurrentSong:  nil,
-		IsPlaying:    r.IsPlaying.Valid && r.IsPlaying.Int64 == 1,
+		IsPlaying:    r.IsPlaying.Bool,
 		PositionMs:   int(r.PositionMs.Int64),
 		UpdatedAt:    r.UpdatedAt.Time,
 		ServerTimeMs: int(time.Now().UnixMilli()),
@@ -169,7 +169,7 @@ func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
 type playbackSongRow struct {
 	PlaybackRoomID        sql.NullString
 	PlaybackCurrentSongID sql.NullString
-	PlaybackIsPlaying     sql.NullInt64
+	PlaybackIsPlaying     sql.NullBool
 	PlaybackPositionMs    sql.NullInt64
 	PlaybackUpdatedAt     sql.NullTime
 	Song                  songRow
@@ -201,7 +201,7 @@ func (r *playbackSongRow) toPlaybackState() (*vibe.PlaybackState, error) {
 	state := &vibe.PlaybackState{
 		RoomID:       r.PlaybackRoomID.String,
 		CurrentSong:  nil,
-		IsPlaying:    r.PlaybackIsPlaying.Valid && r.PlaybackIsPlaying.Int64 == 1,
+		IsPlaying:    r.PlaybackIsPlaying.Bool,
 		PositionMs:   int(r.PlaybackPositionMs.Int64),
 		UpdatedAt:    r.PlaybackUpdatedAt.Time,
 		ServerTimeMs: int(time.Now().UnixMilli()),
@@ -224,12 +224,12 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			SELECT
 				a.room_id,
 				a.current_song_id,
-				COALESCE(d.remove_on_play, 0) = 1 AS remove_on_play
+				COALESCE(d.remove_on_play, FALSE) AS remove_on_play
 			FROM playback_state a
 			JOIN songs b ON a.current_song_id = b.id
 			JOIN rooms c ON a.room_id = c.id
 			JOIN room_settings d ON d.room_id = c.id
-			WHERE a.is_playing = 1
+			WHERE a.is_playing
 			AND (c.mode = 'server' OR c.mode = 'host')
 			AND ((EXTRACT(EPOCH FROM (NOW() - a.updated_at)) * 1000) + a.position_ms) >= (b.duration * 1000 - 500)
 			LIMIT 1
@@ -296,7 +296,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 		updated_playback_q AS (
 			UPDATE playback_state a
 			SET current_song_id = b.id,
-			is_playing = CASE WHEN b.id IS NULL THEN 0 ELSE 1 END,
+			is_playing = b.id IS NOT NULL,
 			position_ms = 0,
 			updated_at = NOW()
 			FROM locked_playback_q c
@@ -414,7 +414,7 @@ func (c *Client) UpsertPlaybackState(ctx context.Context, state *vibe.PlaybackSt
 	_, err := c.UpsertPlaybackStateStatement.ExecContext(cctx,
 		state.RoomID,
 		currentSongID,
-		boolToInt(state.IsPlaying),
+		state.IsPlaying,
 		state.PositionMs,
 	)
 	if err != nil {
@@ -430,7 +430,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 			SELECT
 				a.room_id,
 				a.current_song_id,
-				COALESCE(b.remove_on_play, 0) = 1 AS remove_on_play
+				COALESCE(b.remove_on_play, FALSE) AS remove_on_play
 			FROM playback_state a
 			JOIN room_settings b ON b.room_id = a.room_id
 			WHERE a.room_id = $1
@@ -499,7 +499,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 		updated_playback_q AS (
 			UPDATE playback_state a
 			SET current_song_id = b.id,
-			is_playing = CASE WHEN b.id IS NULL THEN 0 ELSE 1 END,
+			is_playing = b.id IS NOT NULL,
 			position_ms = 0,
 			updated_at = NOW()
 			FROM locked_playback_q c
@@ -657,7 +657,7 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 		updated_playback_q AS (
 			UPDATE playback_state a
 			SET current_song_id = b.id,
-			is_playing = 1,
+			is_playing = TRUE,
 			position_ms = 0,
 			updated_at = NOW()
 			FROM locked_playback_q c

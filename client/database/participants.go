@@ -112,8 +112,8 @@ type participantRow struct {
 	RoomID     string
 	UserID     string
 	LastSeenAt time.Time
-	IsActive   sql.NullInt64
-	IsCast     sql.NullInt64
+	IsActive   sql.NullBool
+	IsCast     sql.NullBool
 	CastOwner  sql.NullString
 }
 
@@ -133,8 +133,8 @@ func (p *participantRow) toParticipant() vibe.Participant {
 		RoomID:           p.RoomID,
 		UserID:           p.UserID,
 		LastSeenAt:       p.LastSeenAt,
-		IsActiveListener: p.IsActive.Int64 == 1,
-		IsCastReceiver:   p.IsCast.Int64 == 1,
+		IsActiveListener: p.IsActive.Bool,
+		IsCastReceiver:   p.IsCast.Bool,
 		CastOwnerID:      p.CastOwner.String,
 	}
 }
@@ -142,8 +142,8 @@ func (p *participantRow) toParticipant() vibe.Participant {
 func (c *Client) prepareGetActiveListenerCountsStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT
-			COALESCE(SUM(CASE WHEN is_active_listener = 1 AND is_cast_receiver = 0 THEN 1 ELSE 0 END), 0) as active_listeners,
-			COALESCE(SUM(CASE WHEN is_cast_receiver = 1 THEN 1 ELSE 0 END), 0) as active_cast
+			COALESCE(SUM(CASE WHEN is_active_listener AND NOT is_cast_receiver THEN 1 ELSE 0 END), 0) as active_listeners,
+			COALESCE(SUM(CASE WHEN is_cast_receiver THEN 1 ELSE 0 END), 0) as active_cast
 		FROM room_users
 		WHERE room_id = $1 AND last_seen_at > $2
 	`)
