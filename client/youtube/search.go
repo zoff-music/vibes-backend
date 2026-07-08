@@ -44,12 +44,13 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 
 		resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 		if err != nil {
-			return searchResponse{}, err
+			return searchResponse{}, fmt.Errorf("error requesting youtube search in Search: %w", err)
 		}
 
 		var result searchResponse
-		if err := json.Unmarshal(resp, &result); err != nil {
-			return searchResponse{}, err
+		err = json.Unmarshal(resp, &result)
+		if err != nil {
+			return searchResponse{}, fmt.Errorf("error unmarshaling youtube search response in Search: %w", err)
 		}
 		return result, nil
 	}
@@ -80,12 +81,13 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 
 		vresp, err := c.HTTPClient.RequestBytes(ctx, vreqData)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("error requesting youtube video details in Search: %w", err)
 		}
 
 		var vresult videoResponse
-		if err := json.Unmarshal(vresp, &vresult); err != nil {
-			return nil, err
+		err = json.Unmarshal(vresp, &vresult)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshaling youtube video details in Search: %w", err)
 		}
 
 		durations := make(map[string]string)

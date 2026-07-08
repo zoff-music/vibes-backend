@@ -38,11 +38,12 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 		ON a.current_song_id = b.id
 		JOIN rooms c 
 		ON a.room_id = c.id
-		WHERE a.is_playing = 1
-		AND (c.mode = 'server' OR c.mode = 'host')
-		AND ((EXTRACT(EPOCH FROM (NOW() - a.updated_at)) * 1000) + a.position_ms) >= (b.duration * 1000 - 500)
-		LIMIT 1
-	`)
+			WHERE a.is_playing = 1
+			AND (c.mode = 'server' OR c.mode = 'host')
+			AND ((EXTRACT(EPOCH FROM (NOW() - a.updated_at)) * 1000) + a.position_ms) >= (b.duration * 1000 - 500)
+			LIMIT 1
+			FOR UPDATE OF a SKIP LOCKED
+		`)
 	if err != nil {
 		return fmt.Errorf("error preparing ProcessNextExpiredPlaybackStatement: %w", err)
 	}

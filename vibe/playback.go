@@ -18,13 +18,11 @@ type PlaybackState struct {
 // RoomAction represents a playback action
 type RoomAction string
 
-const (
-	RoomActionPlay  = "play"
-	RoomActionPause = "pause"
-	RoomActionSeek  = "seek"
-	RoomActionSkip  = "skip"
-	RoomActionVote  = "vote"
-)
+const RoomActionPlay = "play"
+const RoomActionPause = "pause"
+const RoomActionSeek = "seek"
+const RoomActionSkip = "skip"
+const RoomActionVote = "vote"
 
 // RoomActionRequest is the request payload for room actions.
 type RoomActionRequest struct {

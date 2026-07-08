@@ -67,12 +67,11 @@ type RoomHostInfo struct {
 	NewHostID string
 }
 
-const (
-	// RoomModeServer is the mode where the server controls playback
-	RoomModeServer = "server"
-	// RoomModeHost is the mode where a host controls playback
-	RoomModeHost = "host"
-)
+// RoomModeServer is the mode where the server controls playback
+const RoomModeServer = "server"
+
+// RoomModeHost is the mode where a host controls playback
+const RoomModeHost = "host"
 
 // CreateRoomRequest is the request payload for creating a room.
 type CreateRoomRequest struct {

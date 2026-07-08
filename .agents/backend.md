@@ -48,10 +48,12 @@ Use these rules for Go backend work in this repository.
 - Use slices, not fixed-length arrays.
 - Avoid name stutter.
 - Use minimal capability interfaces such as `Fetcher`, `Creator`, `Updater`, `Deleter`, and `Notifier`; combine names when combining interfaces.
+- Do not use broad interface names such as `Manager`, `Service`, `Repository`, or `Coordinator`.
 - Return at most two values.
 - Return either `error` or `(*StructData, error)` for functions that return actual struct data. On error, return `nil, error`; on success, return `&StructData{}, nil` or `&data, nil`.
 - If empty struct data is meaningful, return a struct pointer and give the struct an `IsEmpty` method instead of returning the struct by value.
-- Scalar data such as `string`, `bool`, `int`, and slices/maps can still be returned normally with `error`.
+- Scalar data such as `string`, `bool`, `int`, `int64`, and slices/maps can still be returned normally with `error`.
+- Only Go test files may use underscores in filenames. Non-test Go files should use plain domain names such as `song.go`; avoid hyperspecific names like `song_skip.go`, `song_next.go`, or `song_playback.go`.
 - Do not use `any` or `interface{}`. Prefer explicit concrete types, even when it is more verbose.
 - Never build JSON payloads with string formatting; define structs and use `json.Marshal`.
 - Do not directly return another method call. Assign to a local variable first, then return it so error handling and wrapping can stay explicit.
@@ -62,6 +64,7 @@ Use these rules for Go backend work in this repository.
 - All database SQL should use prepared statements.
 - Postgres placeholders should use `$1`, `$2`, and so on.
 - Prefer one atomic SQL statement over Go-managed transactions.
+- App-event worker claim queries that can be processed by multiple backend pods must use concurrency guards such as `FOR UPDATE SKIP LOCKED`.
 - Do not add foreign keys unless explicitly requested.
 - `client/database/database.go` contains the `Client` struct and `Init`.
 - Feature files mirror the handlers/events using them, such as `session.go` and `events.go`.

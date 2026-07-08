@@ -404,11 +404,12 @@ func (c *Client) prepareClaimAndGetExpiredTokenForRefreshStmt() error {
 			FROM access_tokens
 			WHERE provider = $1
 			AND expires_at <= CURRENT_TIMESTAMP
-			AND refresh_expires_at > CURRENT_TIMESTAMP
-			AND (last_checked IS NULL OR last_checked <= NOW() - INTERVAL '2 minutes')
-			ORDER BY last_checked ASC
-			LIMIT 1
-		)
+				AND refresh_expires_at > CURRENT_TIMESTAMP
+				AND (last_checked IS NULL OR last_checked <= NOW() - INTERVAL '2 minutes')
+				ORDER BY last_checked ASC
+				LIMIT 1
+				FOR UPDATE SKIP LOCKED
+			)
 		UPDATE access_tokens
 		SET last_checked = CURRENT_TIMESTAMP
 		WHERE (user_id, provider) IN (SELECT user_id, provider FROM claimed_token)

@@ -25,17 +25,15 @@ type Subscriber interface {
 	Subscribe(topic string) (*SubscriptionContainer, error)
 }
 
-const (
-	PlaybackUpdate = "playback_update"
-	SongAdded      = "song_added"
-	SongRemoved    = "song_removed"
-	QueueReordered = "songs_update"
-	NewHost        = "new_host"
-	UserJoined     = "user_joined"
-	UserLeft       = "user_left"
-	UsersUpdate    = "users_update"
-	SettingsUpdate = "settings_update"
-)
+const PlaybackUpdate = "playback_update"
+const SongAdded = "song_added"
+const SongRemoved = "song_removed"
+const QueueReordered = "songs_update"
+const NewHost = "new_host"
+const UserJoined = "user_joined"
+const UserLeft = "user_left"
+const UsersUpdate = "users_update"
+const SettingsUpdate = "settings_update"
 
 type SubscriberPublisher interface {
 	Subscriber

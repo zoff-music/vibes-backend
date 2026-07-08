@@ -168,7 +168,8 @@ func AdminRooms(
 		}
 		if !hasAdminCookie {
 			log.Printf("AdminRooms: request missing admin_session cookie")
-		} else {
+		}
+		if hasAdminCookie {
 			log.Printf("AdminRooms: request has admin_session cookie")
 		}
 

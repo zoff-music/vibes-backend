@@ -85,7 +85,8 @@ func VerifyCastToken(secret string, token string, now time.Time) (CastTokenPaylo
 	if err != nil {
 		return out, ErrCastTokenInvalid
 	}
-	if err := json.Unmarshal(raw, &out); err != nil {
+	err = json.Unmarshal(raw, &out)
+	if err != nil {
 		return out, ErrCastTokenInvalid
 	}
 

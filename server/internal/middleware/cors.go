@@ -54,7 +54,8 @@ func (m *CORSMiddleware) Middleware(next http.Handler) http.Handler {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
 				w.Header().Set("Access-Control-Allow-Credentials", "true")
 				w.Header().Add("Vary", "Origin")
-			} else if r.Method == http.MethodOptions {
+			}
+			if !m.originAllowed(origin) && r.Method == http.MethodOptions {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}

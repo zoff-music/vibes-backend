@@ -32,7 +32,8 @@ func CreateCastingToken(
 		}
 
 		var req vibe.CreateCastingTokenRequest
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
 			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
 			return
 		}

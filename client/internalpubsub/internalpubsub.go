@@ -86,7 +86,11 @@ func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []
 		}
 	}
 
-	return err
+	if err != nil {
+		return fmt.Errorf("error notifying room updates in NotifyRoomUpdates: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) Subscribe(topicName string) (*vibe.SubscriptionContainer, error) {

@@ -3,10 +3,10 @@ package handler
 import (
 	"context"
 	"fmt"
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
 	"log"
 	"time"
 
+	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -22,7 +22,7 @@ func (h *CleanupInactiveParticipants) Handle(ctx context.Context, _ []byte) erro
 
 	deleted, err := h.DB.DeleteInactiveParticipants(ctx, 1*time.Hour)
 	if err != nil {
-		return err
+		return fmt.Errorf("error deleting inactive participants in CleanupInactiveParticipants.Handle: %w", err)
 	}
 
 	if deleted > 0 {
@@ -44,12 +44,12 @@ func (h *CleanupExpiredTokens) Handle(ctx context.Context, _ []byte) error {
 
 	deletedAuth, err := h.DB.DeleteExpiredAuthTokens(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error deleting expired auth tokens in CleanupExpiredTokens.Handle: %w", err)
 	}
 
 	deletedAccess, err := h.DB.DeleteExpiredAccessTokens(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error deleting expired access tokens in CleanupExpiredTokens.Handle: %w", err)
 	}
 
 	totalDeleted := deletedAuth + deletedAccess
@@ -91,7 +91,7 @@ func (h *RefreshSpotifyTokens) Handle(ctx context.Context, _ []byte) error {
 
 	err = h.DB.UpsertAccessToken(ctx, token.UserID, "spotify", newToken.AccessToken, refreshToken, expiresAt, token.RefreshExpiresAt)
 	if err != nil {
-		return err
+		return fmt.Errorf("error upserting access token in RefreshSpotifyTokens.Handle: %w", err)
 	}
 
 	log.Printf("Refreshed Spotify token for user %s", token.UserID)
@@ -128,7 +128,7 @@ func (h *RefreshYouTubeTokens) Handle(ctx context.Context, _ []byte) error {
 
 	err = h.DB.UpsertAccessToken(ctx, token.UserID, "youtube", newToken.AccessToken, refreshToken, expiresAt, token.RefreshExpiresAt)
 	if err != nil {
-		return fmt.Errorf("error upserting access-token for refreh in youtube handler")
+		return fmt.Errorf("error upserting access token in RefreshYouTubeTokens.Handle: %w", err)
 	}
 
 	log.Printf("Refreshed YouTube token for user %s", token.UserID)
@@ -147,7 +147,7 @@ func (h *CleanupExpiredPendingOAuthStates) Handle(ctx context.Context, _ []byte)
 
 	deleted, err := h.DB.DeleteExpiredPendingOAuthStates(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("error deleting expired pending OAuth states in CleanupExpiredPendingOAuthStates.Handle: %w", err)
 	}
 
 	if deleted > 0 {

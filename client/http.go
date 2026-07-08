@@ -202,13 +202,15 @@ func redactBodyForLog(headers map[string]string, body []byte) string {
 
 	if strings.Contains(contentType, "application/json") {
 		var obj map[string]any
-		if err := json.Unmarshal(body, &obj); err == nil {
+		err := json.Unmarshal(body, &obj)
+		if err == nil {
 			for k := range obj {
 				if redactKey(k) {
 					obj[k] = "[REDACTED]"
 				}
 			}
-			if b, err := json.Marshal(obj); err == nil {
+			b, err := json.Marshal(obj)
+			if err == nil {
 				return string(b)
 			}
 		}
