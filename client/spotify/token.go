@@ -11,13 +11,13 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/client"
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 func (c *Client) getAccessToken(ctx context.Context) (string, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "getAccessToken")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "getAccessToken")
+	defer span.End()
 
 	c.mu.RLock()
 	if c.accessToken != "" && time.Now().Before(c.expiresAt) {
@@ -67,8 +67,8 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 }
 
 func (c *Client) ExchangeCode(ctx context.Context, code, codeVerifier string) (*vibe.TokenResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "ExchangeCode")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "ExchangeCode")
+	defer span.End()
 
 	params := url.Values{}
 	params.Set("grant_type", "authorization_code")
@@ -106,8 +106,8 @@ func (c *Client) ExchangeCode(ctx context.Context, code, codeVerifier string) (*
 }
 
 func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*vibe.TokenResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "RefreshToken")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "RefreshToken")
+	defer span.End()
 
 	params := url.Values{}
 	params.Set("grant_type", "refresh_token")

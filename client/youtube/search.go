@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -16,8 +16,8 @@ import (
 
 // Search searches for videos on YouTube
 func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Search")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "Search")
+	defer span.End()
 
 	if c.apiKey == "" {
 		return nil, fmt.Errorf("error youtube api key not configured")

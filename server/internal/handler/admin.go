@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"log"
 	"net/http"
 	"time"
@@ -287,8 +287,8 @@ type ReviewAdminRooms struct {
 
 // Handle fetches admin rooms and broadcasts the update
 func (h *ReviewAdminRooms) Handle(ctx context.Context, data []byte) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Handle")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	defer span.End()
 
 	rooms, err := h.DB.ListAdminRooms(ctx)
 	if err != nil {

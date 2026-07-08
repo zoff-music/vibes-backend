@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -37,8 +37,8 @@ func (c *Client) prepareProcessNextAbandonedHostStmt() error {
 
 // ProcessNextAbandonedHost finds a room with an inactive host, elects a new one, and returns info.
 func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostInfo, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "ProcessNextAbandonedHost")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextAbandonedHost")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -172,8 +172,8 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 
 // GetRoomByName fetches a room by name.
 func (c *Client) GetRoomByName(ctx context.Context, name string, userID string) (*vibe.Room, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetRoomByName")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetRoomByName")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -244,8 +244,8 @@ func (c *Client) prepareGetAdminRoomsStmt() error {
 }
 
 func (c *Client) ListAdminRooms(ctx context.Context) ([]vibe.AdminRoomSummary, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "ListAdminRooms")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "ListAdminRooms")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -305,8 +305,8 @@ func (r *adminRoomRow) toSummary() vibe.AdminRoomSummary {
 }
 
 func (c *Client) fillActiveSources(ctx context.Context, room vibe.Room) (*vibe.Room, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "fillActiveSources")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "fillActiveSources")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -334,8 +334,8 @@ func (c *Client) fillActiveSources(ctx context.Context, room vibe.Room) (*vibe.R
 // GetRoom fetches a room by ID.
 // If userID is provided, it also populates the IsAdmin field for that user.
 func (c *Client) GetRoom(ctx context.Context, id string, userID string) (*vibe.Room, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetRoom")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetRoom")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -495,8 +495,8 @@ func (c *Client) prepareCreateRoomStmt() error {
 
 // CreateRoom creates a new room.
 func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "CreateRoom")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "CreateRoom")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -572,8 +572,8 @@ func (c *Client) prepareUpdateRoomStmt() error {
 
 // UpdateRoom updates an existing room.
 func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "UpdateRoom")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "UpdateRoom")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

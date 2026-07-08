@@ -13,7 +13,10 @@ import (
 	"strings"
 	"time"
 
-	opentracing "github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
 )
 
 // Parameters provides the parameters used when creating a new HTTP client.
@@ -29,7 +32,8 @@ func NewHTTPClient(parameters Parameters) HTTPClient {
 	}
 
 	client := &http.Client{
-		Timeout: *parameters.Timeout,
+		Timeout:   *parameters.Timeout,
+		Transport: otelhttp.NewTransport(http.DefaultTransport),
 	}
 
 	return HTTPClient{client}
@@ -72,8 +76,8 @@ func (e HTTPStatusCodeError) Error() string {
 // RequestBytes does the actual HTTP request.
 // Returns a slice of bytes or an error.
 func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestData) ([]byte, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "RequestBytes")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "RequestBytes")
+	defer span.End()
 
 	r, err := client.request(ctx, reqData)
 	if err != nil {
@@ -91,19 +95,15 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 		resp, _ := io.ReadAll(r.Body)
 
 		message := string(resp)
-		span.SetBoolTag("error", true)
-		span.LogFields(
-			opentracing.SpanField{
-				Key:  "message",
-				Type: opentracing.SpanFieldError,
-				ErrorValue: fmt.Errorf(
-					"error making request to %s, body: %s. Got error: %s",
-					reqData.URL,
-					redactBodyForLog(reqData.Headers, reqData.Body),
-					message,
-				),
-			},
+		requestErr := fmt.Errorf(
+			"error making request to %s, body: %s. Got error: %s",
+			reqData.URL,
+			redactBodyForLog(reqData.Headers, reqData.Body),
+			message,
 		)
+		span.RecordError(requestErr)
+		span.SetStatus(codes.Error, "error making request")
+		span.SetAttributes(attribute.String("message", requestErr.Error()))
 
 		httpStatusCodeError := HTTPStatusCodeError{
 			URL:        reqData.URL,
@@ -129,29 +129,16 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 }
 
 func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) (*http.Response, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "request")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "request")
+	defer span.End()
 
-	req, err := http.NewRequest(reqData.Method, reqData.URL, bytes.NewBuffer(reqData.Body))
+	req, err := http.NewRequestWithContext(ctx, reqData.Method, reqData.URL, bytes.NewBuffer(reqData.Body))
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
 	if reqData.Payload != nil {
 		req.URL.RawQuery = reqData.Payload.Encode()
-	}
-
-	parentSpan := opentracing.SpanFromContext(ctx)
-
-	if parentSpan != nil {
-		err := opentracing.GlobalTracer().Inject(
-			parentSpan.Context(),
-			opentracing.HTTPHeaders,
-			opentracing.HTTPHeadersCarrier(req.Header),
-		)
-		if err != nil {
-			log.Printf("error injecting span into request headers: %s", err.Error())
-		}
 	}
 
 	for k, v := range reqData.Headers {

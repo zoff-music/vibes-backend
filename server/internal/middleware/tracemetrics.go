@@ -2,14 +2,14 @@
 package middleware
 
 import (
-	"context"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/monitoring/metrics"
-
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 // TraceMetrics is the configuration for trace and metrics middleware.
@@ -17,23 +17,25 @@ type TraceMetrics struct{}
 
 // TraceMiddleware handles tracing of our HTTPS requests.
 func (tm *TraceMetrics) TraceMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		routeName := mux.CurrentRoute(r).GetName()
+	middleware := otelhttp.NewMiddleware(
+		"http.server",
+		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+			return routeName(r)
+		}),
+	)
 
-		span, ctx := initRootSpan(r, routeName)
-		defer span.Finish()
-
-		next.ServeHTTP(w, r.WithContext(ctx))
-
-		span.SetStringTag("path", r.RequestURI)
-	})
+	return middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		span := tracing.SpanFromContext(r.Context())
+		span.SetAttributes(attribute.String("path", r.RequestURI))
+		next.ServeHTTP(w, r)
+	}))
 }
 
 // MetricsMiddleware collects HTTP request metrics for Prometheus.
 // Collects request duration and response code.
 func (tm *TraceMetrics) MetricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		routeName := mux.CurrentRoute(r).GetName()
+		routeName := routeName(r)
 
 		crw := customResponseWriter{ResponseWriter: w, status: http.StatusOK}
 		start := time.Now()
@@ -66,16 +68,16 @@ func (crw *customResponseWriter) Flush() {
 	flusher.Flush()
 }
 
-func initRootSpan(r *http.Request, operationName string) (opentracing.Span, context.Context) {
-	wireContext, err := opentracing.GlobalTracer().Extract(
-		opentracing.TextMap,
-		opentracing.HTTPHeadersCarrier(r.Header),
-	)
-	if err != nil {
-		span, ctx := opentracing.StartSpanFromContext(r.Context(), operationName)
-		return span, ctx
+func routeName(r *http.Request) string {
+	route := mux.CurrentRoute(r)
+	if route == nil {
+		return "http.server"
 	}
 
-	span, ctx := opentracing.StartSpanFromContext(r.Context(), operationName, opentracing.ChildOf(wireContext))
-	return span, ctx
+	name := route.GetName()
+	if name == "" {
+		return "http.server"
+	}
+
+	return name
 }

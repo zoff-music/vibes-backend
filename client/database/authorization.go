@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -31,8 +31,8 @@ func (c *Client) prepareUpsertAuthTokenStmt() error {
 
 // UpsertAuthToken stores or updates initial auth token data (code/state) for a user.
 func (c *Client) UpsertAuthToken(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "UpsertAuthToken")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "UpsertAuthToken")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -58,8 +58,8 @@ func (c *Client) prepareGetAuthProvidersStmt() error {
 
 // GetAuthProviders retrieves a list of providers the user has authorized.
 func (c *Client) GetAuthProviders(ctx context.Context, userID string) ([]string, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetAuthProviders")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetAuthProviders")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -109,8 +109,8 @@ func (c *Client) prepareUpsertAccessTokenStmt() error {
 
 // UpsertAccessToken stores or updates access token data for a user.
 func (c *Client) UpsertAccessToken(ctx context.Context, userID, provider, accessToken, refreshToken string, expiresAt, refreshExpiresAt time.Time) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "UpsertAccessToken")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "UpsertAccessToken")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -138,8 +138,8 @@ func (c *Client) prepareGetAccessTokenStmt() error {
 
 // GetAccessToken retrieves specific access tokens for a user.
 func (c *Client) GetAccessToken(ctx context.Context, userID, provider string) (*vibe.AccessToken, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetAccessToken")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetAccessToken")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -203,8 +203,8 @@ func (c *Client) prepareDeleteExpiredAuthTokensStmt() error {
 
 // DeleteExpiredAuthTokens removes all expired auth tokens records from the database.
 func (c *Client) DeleteExpiredAuthTokens(ctx context.Context) (int64, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "DeleteExpiredAuthTokens")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteExpiredAuthTokens")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -235,8 +235,8 @@ func (c *Client) prepareDeleteExpiredAccessTokensStmt() error {
 
 // DeleteExpiredAccessTokens removes all expired access tokens records from the database.
 func (c *Client) DeleteExpiredAccessTokens(ctx context.Context) (int64, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "DeleteExpiredAccessTokens")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteExpiredAccessTokens")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -271,8 +271,8 @@ func (c *Client) prepareSavePendingOAuthStateStmt() error {
 
 // SavePendingOAuthState stores a pending OAuth state for a user.
 func (c *Client) SavePendingOAuthState(ctx context.Context, userID, state, codeVerifier string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SavePendingOAuthState")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "SavePendingOAuthState")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -298,8 +298,8 @@ func (c *Client) prepareValidatePendingOAuthStateStmt() error {
 }
 
 func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (*vibe.PendingOAuthState, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "validatePendingOAuthState")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "validatePendingOAuthState")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -335,8 +335,8 @@ func (c *Client) prepareDeletePendingOAuthStateStmt() error {
 }
 
 func (c *Client) deletePendingOAuthState(ctx context.Context, userID, state string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "deletePendingOAuthState")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "deletePendingOAuthState")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -350,8 +350,8 @@ func (c *Client) deletePendingOAuthState(ctx context.Context, userID, state stri
 
 // ValidateAndDeletePendingOAuthState checks if the state exists and is valid, then deletes it.
 func (c *Client) ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (*vibe.PendingOAuthState, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "ValidateAndDeletePendingOAuthState")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "ValidateAndDeletePendingOAuthState")
+	defer span.End()
 
 	pendingState, err := c.validatePendingOAuthState(ctx, state)
 	if err != nil {
@@ -381,8 +381,8 @@ func (c *Client) prepareDeleteExpiredPendingOAuthStatesStmt() error {
 
 // DeleteExpiredPendingOAuthStates removes all expired pending OAuth states.
 func (c *Client) DeleteExpiredPendingOAuthStates(ctx context.Context) (int64, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "DeleteExpiredPendingOAuthStates")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteExpiredPendingOAuthStates")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -427,8 +427,8 @@ func (c *Client) prepareClaimAndGetExpiredTokenForRefreshStmt() error {
 
 // ClaimAndGetExpiredTokenForRefresh finds an expired token, claims it by updating last_checked, and returns it.
 func (c *Client) ClaimAndGetExpiredTokenForRefresh(ctx context.Context, provider string) (*vibe.AccessToken, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "ClaimAndGetExpiredTokenForRefresh")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "ClaimAndGetExpiredTokenForRefresh")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

@@ -7,7 +7,7 @@ import (
 	"log"
 	"sync"
 
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 
 	"github.com/google/uuid"
@@ -25,8 +25,8 @@ func (c *Client) Init() error {
 }
 
 func (c *Client) NotifyTopic(ctx context.Context, topicName string, data []byte) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyTopic")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyTopic")
+	defer span.End()
 
 	topic := c.getTopic(topicName)
 
@@ -35,8 +35,8 @@ func (c *Client) NotifyTopic(ctx context.Context, topicName string, data []byte)
 }
 
 func (c *Client) NotifyRoomUpdate(ctx context.Context, roomID string, event vibe.RoomEvent) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyRoomUpdate")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdate")
+	defer span.End()
 
 	data, err := json.Marshal(event)
 	if err != nil {
@@ -53,8 +53,8 @@ func (c *Client) NotifyRoomUpdate(ctx context.Context, roomID string, event vibe
 }
 
 func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyAdminUpdate")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyAdminUpdate")
+	defer span.End()
 
 	data, err := json.Marshal(event)
 	if err != nil {
@@ -70,8 +70,8 @@ func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) e
 }
 
 func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []vibe.RoomEvent) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "NotifyRoomUpdates")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdates")
+	defer span.End()
 
 	var err error
 	topicName := fmt.Sprintf("room:%s", roomID)

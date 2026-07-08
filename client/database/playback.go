@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -55,8 +55,8 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 
 // ProcessNextExpiredPlayback checks for an expired song, skips it, and returns the new state.
 func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackState, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "ProcessNextExpiredPlayback")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextExpiredPlayback")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -91,8 +91,8 @@ func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.Playback
 
 // getPlaybackState fetches the playback state for a room (internal).
 func (c *Client) getPlaybackState(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "getPlaybackState")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "getPlaybackState")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -162,8 +162,8 @@ func (c *Client) getPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 // GetPlaybackState fetches the playback state for a room.
 // It will automatically attempt to start playback if the room is idle.
 func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetPlaybackState")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetPlaybackState")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -250,8 +250,8 @@ func (c *Client) prepareUpsertPlaybackStateStmt() error {
 
 // UpsertPlaybackState creates or updates the playback state for a room.
 func (c *Client) UpsertPlaybackState(ctx context.Context, state *vibe.PlaybackState) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "UpsertPlaybackState")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "UpsertPlaybackState")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -276,8 +276,8 @@ func (c *Client) UpsertPlaybackState(ctx context.Context, state *vibe.PlaybackSt
 
 // skipTrack skips the current track to the next one in the queue (internal).
 func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "skipTrack")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "skipTrack")
+	defer span.End()
 
 	// Use internal getPlaybackState to avoid recursion / lazy-skip trigger
 	state, err := c.getPlaybackState(ctx, roomID)
@@ -365,8 +365,8 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 
 // UpdatePlayback updates the playback state based on the action (play/pause/seek).
 func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID string, action vibe.RoomAction, positionMs int) (*vibe.PlaybackState, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "UpdatePlayback")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "UpdatePlayback")
+	defer span.End()
 
 	err := c.checkHostPermissions(ctx, roomID, userID)
 	if err != nil {
@@ -440,8 +440,8 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 // StartPlaybackIfIdle attempts to start playback if the room is currently idle.
 // It returns the new state if it successfully started playback, or the current state if it didn't.
 func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "StartPlaybackIfIdle")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "StartPlaybackIfIdle")
+	defer span.End()
 
 	// 1. Check if we have songs in the queue
 	firstSong, err := c.GetNextSong(ctx, roomID, 0)
@@ -494,8 +494,8 @@ func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.
 }
 
 func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "checkHostPermissions")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "checkHostPermissions")
+	defer span.End()
 
 	if userID == "" {
 		return nil

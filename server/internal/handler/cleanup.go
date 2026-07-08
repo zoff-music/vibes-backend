@@ -6,7 +6,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -17,8 +17,8 @@ type CleanupInactiveParticipants struct {
 
 // Handle deletes participants who haven't been seen in 1 hour
 func (h *CleanupInactiveParticipants) Handle(ctx context.Context, _ []byte) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Handle")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	defer span.End()
 
 	deleted, err := h.DB.DeleteInactiveParticipants(ctx, 1*time.Hour)
 	if err != nil {
@@ -39,8 +39,8 @@ type CleanupExpiredTokens struct {
 
 // Handle deletes expired external auth tokens
 func (h *CleanupExpiredTokens) Handle(ctx context.Context, _ []byte) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Handle")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	defer span.End()
 
 	deletedAuth, err := h.DB.DeleteExpiredAuthTokens(ctx)
 	if err != nil {
@@ -68,8 +68,8 @@ type RefreshSpotifyTokens struct {
 
 // Handle refreshes the next expired Spotify token
 func (h *RefreshSpotifyTokens) Handle(ctx context.Context, _ []byte) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Handle")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	defer span.End()
 
 	token, err := h.DB.ClaimAndGetExpiredTokenForRefresh(ctx, "spotify")
 	if err != nil {
@@ -106,8 +106,8 @@ type RefreshYouTubeTokens struct {
 
 // Handle refreshes the next expired YouTube token
 func (h *RefreshYouTubeTokens) Handle(ctx context.Context, _ []byte) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Handle")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	defer span.End()
 
 	token, err := h.DB.ClaimAndGetExpiredTokenForRefresh(ctx, "youtube")
 	if err != nil {
@@ -142,8 +142,8 @@ type CleanupExpiredPendingOAuthStates struct {
 
 // Handle deletes expired pending OAuth states
 func (h *CleanupExpiredPendingOAuthStates) Handle(ctx context.Context, _ []byte) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Handle")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	defer span.End()
 
 	deleted, err := h.DB.DeleteExpiredPendingOAuthStates(ctx)
 	if err != nil {
