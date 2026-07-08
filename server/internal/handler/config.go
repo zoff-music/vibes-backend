@@ -24,7 +24,12 @@ func GetProviders(cfg *config.Config) http.HandlerFunc {
 
 		body, err := json.Marshal(providers)
 		if err != nil {
-			handleError(w, err, http.StatusInternalServerError, true)
+			handleError(
+				w,
+				err,
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 

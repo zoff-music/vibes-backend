@@ -88,12 +88,22 @@ func AddSong(
 
 		room, err := db.GetRoom(ctx, roomID, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error fetching room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error fetching room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		if room.IsEmpty() {
-			handleError(w, fmt.Errorf("error room not found"), http.StatusNotFound, false)
+			handleError(
+				w,
+				fmt.Errorf("error room not found"),
+				http.StatusNotFound,
+				false,
+			)
 			return
 		}
 
@@ -252,21 +262,41 @@ func RemoveSong(
 
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
-			handleError(w, fmt.Errorf("unauthorized"), http.StatusUnauthorized, false)
+			handleError(
+				w,
+				fmt.Errorf("unauthorized"),
+				http.StatusUnauthorized,
+				false,
+			)
 			return
 		}
 
 		room, err := db.GetRoom(ctx, roomID, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error fetching room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error fetching room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 		if room.IsEmpty() {
-			handleError(w, fmt.Errorf("error room not found"), http.StatusNotFound, false)
+			handleError(
+				w,
+				fmt.Errorf("error room not found"),
+				http.StatusNotFound,
+				false,
+			)
 			return
 		}
 		if !room.IsAdmin {
-			handleError(w, fmt.Errorf("forbidden"), http.StatusForbidden, false)
+			handleError(
+				w,
+				fmt.Errorf("forbidden"),
+				http.StatusForbidden,
+				false,
+			)
 			return
 		}
 
