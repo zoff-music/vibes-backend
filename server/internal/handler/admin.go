@@ -13,8 +13,6 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-const adminSessionDuration = 24 * time.Hour
-
 // AdminLogin handles POST /api/v1/admin/sessions
 func AdminLogin(
 	adminPassword *string,
@@ -310,3 +308,5 @@ func (h *ReviewAdminRooms) Handle(ctx context.Context, data []byte) error {
 
 	return nil
 }
+
+const adminSessionDuration = 24 * time.Hour

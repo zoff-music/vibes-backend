@@ -353,9 +353,6 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 	return &addedSong, nil
 }
 
-const addSongResultDuplicate = "duplicate"
-const addSongResultRoomNotFound = "room_not_found"
-
 type addSongRow struct {
 	Result          sql.NullString
 	ID              sql.NullString
@@ -560,3 +557,6 @@ func (c *Client) updateSongAddedAt(ctx context.Context, roomID, songID string) e
 
 	return nil
 }
+
+const addSongResultDuplicate = "duplicate"
+const addSongResultRoomNotFound = "room_not_found"

@@ -13,8 +13,6 @@ import (
 	"github.com/zoff-music/vibes-backend/internalerror"
 )
 
-const AdminAuthCookieName string = "admin_session"
-
 type AdminAuthPayload struct {
 	UserID       string `json:"user_id"`
 	PasswordHash string `json:"password_hash"`
@@ -176,3 +174,5 @@ func unsignAdminPayload(value string, secret string) (string, error) {
 
 	return payload, nil
 }
+
+const AdminAuthCookieName string = "admin_session"

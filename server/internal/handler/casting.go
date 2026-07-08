@@ -10,8 +10,6 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-const castTokenTTL = 6 * time.Hour
-
 // CreateCastingToken handles POST /api/v1/casting/tokens.
 // It requires a cookie-authenticated session (not a cast bearer token).
 func CreateCastingToken(
@@ -82,3 +80,5 @@ func CreateCastingToken(
 		_, _ = w.Write(body)
 	}
 }
+
+const castTokenTTL = 6 * time.Hour

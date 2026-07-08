@@ -25,17 +25,6 @@ type Subscriber interface {
 	Subscribe(topic string) (*SubscriptionContainer, error)
 }
 
-const PlaybackUpdate = "playback_update"
-const SongAdded = "song_added"
-const SongRemoved = "song_removed"
-const QueueReordered = "songs_update"
-const SkipVoteEvent = "skip_vote"
-const NewHost = "new_host"
-const UserJoined = "user_joined"
-const UserLeft = "user_left"
-const UsersUpdate = "users_update"
-const SettingsUpdate = "settings_update"
-
 type SubscriberPublisher interface {
 	Subscriber
 	RoomEventNotifier
@@ -76,3 +65,14 @@ type ParticipantGetterUpdaterPlaybackGetter interface {
 	GetPlaybackState(ctx context.Context, roomID string) (*PlaybackState, error)
 	RemoveParticipant(ctx context.Context, roomID, userID string) error
 }
+
+const PlaybackUpdate = "playback_update"
+const SongAdded = "song_added"
+const SongRemoved = "song_removed"
+const QueueReordered = "songs_update"
+const SkipVoteEvent = "skip_vote"
+const NewHost = "new_host"
+const UserJoined = "user_joined"
+const UserLeft = "user_left"
+const UsersUpdate = "users_update"
+const SettingsUpdate = "settings_update"
