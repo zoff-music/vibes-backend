@@ -9,19 +9,18 @@ Go API backend for the Vibes collaborative music queue.
 - **PostgreSQL Storage**: Atomic database operations through prepared statements
 - **OAuth2 Flow**: Centralized authorization management for music providers
 - **OpenTelemetry**: Comprehensive monitoring with metrics and tracing
-- **Automatic Migrations**: Database schema management via migrator tool
 
 ## Getting Started
 
 ### Prerequisites
 - Go 1.26.4+
-- Environment variables configured (see `.env.sample`)
+- PostgreSQL schema applied by the `vibes-migrator` repository
+- Environment variables configured for local development
 
 ### Development
 
 ```bash
-# Run with automatic database migration in another shell
-go run cmd/migrator/main.go
+# Run the backend server
 go run cmd/server/main.go
 
 # Or use the Makefile
@@ -32,17 +31,16 @@ make dev
 
 Copy and configure the environment file:
 ```bash
-cp .env.sample .env
 # Configure required API keys:
+# - DATABASE_URL (required)
 # - YOUTUBE_API_KEY (required)
 # - SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET (optional)
-# - SOUNDCLOUD_API_KEY (optional)
+# - SOUNDCLOUD_CLIENT_ID, SOUNDCLOUD_CLIENT_SECRET (optional)
 ```
 
 ## Architecture
 
 - **`cmd/server`**: Application entrypoint and dependency injection
-- **`cmd/migrator`**: Migration entrypoint
 - **`client/`**: External integrations (Database, YouTube, Spotify, SoundCloud, PubSub)
 - **`server/`**: HTTP router, middleware, and handlers
 - **`server/internal/handler`**: Domain-specific HTTP handlers

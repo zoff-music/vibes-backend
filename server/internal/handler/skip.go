@@ -36,7 +36,7 @@ func SkipSong(
 		// Logic moved to DB, passing false for now unless we can verify admin status
 		isAdmin := false
 
-		state, err := db.SkipSong(ctx, roomID, userID, isAdmin)
+		result, err := db.SkipSong(ctx, roomID, userID, isAdmin)
 		if err != nil {
 			// Check if it's a host mode restriction error
 			var errHostMode internalerror.ErrHostModeSkipOnly
@@ -71,58 +71,93 @@ func SkipSong(
 			return
 		}
 
-		songs, err := db.GetSongs(ctx, roomID)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error fetching songs: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
+		if result.Playback != nil {
+			result.Playback.ServerTimeMs = int(time.Now().UnixMilli())
 		}
 
-		state.ServerTimeMs = int(time.Now().UnixMilli())
+		if !result.Skipped {
+			payload := vibe.SkipVoteUpdate{
+				UserID:        userID,
+				CurrentVotes:  result.CurrentVotes,
+				RequiredVotes: result.RequiredVotes,
+			}
+			if result.Playback != nil && result.Playback.CurrentSong != nil {
+				payload.SongID = result.Playback.CurrentSong.ID
+			}
 
-		// Notify room updates
-		// We have to marshal payloads manually now
-		songsPayload, err := json.Marshal(songs)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error marshaling songs payload: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
+			votePayload, err := json.Marshal(payload)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshaling skip vote payload: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			err = ips.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
+				{
+					Type:    vibe.SkipVoteEvent,
+					Payload: votePayload,
+					UserID:  userID,
+				},
+			})
+			if err != nil {
+				log.Printf("failed to notify skip vote: %v", err)
+			}
 		}
 
-		statePayload, err := json.Marshal(state)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error marshaling playback state payload: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
+		if result.Skipped {
+			songs, err := db.GetSongs(ctx, roomID)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error fetching songs: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			songsPayload, err := json.Marshal(songs)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshaling songs payload: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			statePayload, err := json.Marshal(result.Playback)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshaling playback state payload: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			err = ips.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
+				{
+					Type:    vibe.QueueReordered,
+					Payload: songsPayload,
+				},
+				{
+					Type:    vibe.PlaybackUpdate,
+					Payload: statePayload,
+				},
+			})
+			if err != nil {
+				log.Printf("failed to notify room updates: %v", err)
+			}
 		}
 
-		err = ips.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
-			{
-				Type:    vibe.QueueReordered,
-				Payload: songsPayload,
-			},
-			{
-				Type:    vibe.PlaybackUpdate,
-				Payload: statePayload,
-			},
-		})
-		if err != nil {
-			log.Printf("failed to notify room updates: %v", err)
-		}
-
-		body, err := json.Marshal(state)
+		body, err := json.Marshal(result)
 		if err != nil {
 			handleError(
 				w,
