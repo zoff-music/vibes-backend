@@ -9,14 +9,14 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/client"
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // EnsureToken checks if the current token is valid and refreshes it if necessary
 func (c *Client) EnsureToken(ctx context.Context) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "EnsureToken")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "EnsureToken")
+	defer span.End()
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -44,8 +44,8 @@ func (c *Client) EnsureToken(ctx context.Context) error {
 
 // GetClientCredentialsToken authenticates using client_credentials grant type
 func (c *Client) GetClientCredentialsToken(ctx context.Context) (*vibe.TokenResponse, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetClientCredentialsToken")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetClientCredentialsToken")
+	defer span.End()
 
 	params := url.Values{}
 	params.Set("grant_type", "client_credentials")

@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -48,8 +48,8 @@ func (c *Client) prepareGetSongsStmt() error {
 
 // GetSongs fetches all songs in a room's queue.
 func (c *Client) GetSongs(ctx context.Context, roomID string) ([]vibe.Song, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetSongs")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetSongs")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -176,8 +176,8 @@ func (c *Client) prepareGetSongStmt() error {
 
 // GetSong fetches a single song by ID.
 func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetSong")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetSong")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -315,8 +315,8 @@ func (c *Client) prepareAddSongStmt() error {
 
 // AddSong adds a song to the queue.
 func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "AddSong")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "AddSong")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -385,8 +385,8 @@ func (c *Client) prepareRemoveSongStmt() error {
 
 // RemoveSong removes a song from the queue.
 func (c *Client) RemoveSong(ctx context.Context, roomID, songID string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "RemoveSong")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "RemoveSong")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -418,8 +418,8 @@ func (c *Client) prepareVoteSongStmt() error {
 
 // VoteSong adds a vote for a song.
 func (c *Client) VoteSong(ctx context.Context, roomID, songID, userID string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "VoteSong")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "VoteSong")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -473,8 +473,8 @@ func (c *Client) prepareUpdateSongAddedAtStmt() error {
 
 // clearVotesSong clears all votes for a song.
 func (c *Client) clearVotesSong(ctx context.Context, roomID, songID string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "clearVotesSong")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "clearVotesSong")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -499,8 +499,8 @@ func (c *Client) clearVotesSong(ctx context.Context, roomID, songID string) erro
 
 // updateSongAddedAt updates the added_at timestamp for a song to treat it as "new"
 func (c *Client) updateSongAddedAt(ctx context.Context, roomID, songID string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "updateSongAddedAt")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "updateSongAddedAt")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -593,8 +593,8 @@ func (c *Client) prepareGetNextSongExcludingStmt() error {
 
 // GetNextSong gets the next song in the queue (highest voted, earliest added as tiebreaker).
 func (c *Client) GetNextSong(ctx context.Context, roomID string, currentPosition int) (*vibe.Song, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetNextSong")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetNextSong")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -617,8 +617,8 @@ func (c *Client) GetNextSong(ctx context.Context, roomID string, currentPosition
 
 // GetNextSongExcluding gets the next song in the queue excluding a specific song ID.
 func (c *Client) GetNextSongExcluding(ctx context.Context, roomID string, excludeSongID string) (*vibe.Song, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetNextSongExcluding")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetNextSongExcluding")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()

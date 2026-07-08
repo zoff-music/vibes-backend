@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -30,8 +30,8 @@ func (c *Client) prepareGetSkipVotesStmt() error {
 
 // GetSkipVotes fetches all skip votes for a song.
 func (c *Client) GetSkipVotes(ctx context.Context, roomID, songID string) ([]vibe.SkipVote, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetSkipVotes")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetSkipVotes")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -92,8 +92,8 @@ func (c *Client) prepareHasUserVotedStmt() error {
 
 // HasUserVoted checks if a user has already voted to skip a song.
 func (c *Client) HasUserVoted(ctx context.Context, roomID, songID, userID string) (bool, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "HasUserVoted")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "HasUserVoted")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -139,8 +139,8 @@ func (c *Client) prepareAddSkipVoteStmt() error {
 
 // AddSkipVote adds a skip vote for a song.
 func (c *Client) AddSkipVote(ctx context.Context, roomID, songID, userID string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "AddSkipVote")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "AddSkipVote")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -169,8 +169,8 @@ func (c *Client) prepareClearSkipVotesStmt() error {
 
 // clearSkipVotes clears all skip votes for a song.
 func (c *Client) clearSkipVotes(ctx context.Context, roomID, songID string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "clearSkipVotes")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "clearSkipVotes")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -185,8 +185,8 @@ func (c *Client) clearSkipVotes(ctx context.Context, roomID, songID string) erro
 
 // SkipSong skips the current track to the next one in the queue, either immediately (if host/admin/forced) or by voting.
 func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bool) (*vibe.SkipSongResult, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SkipSong")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "SkipSong")
+	defer span.End()
 
 	room, err := c.GetRoom(ctx, roomID, userID)
 	if err != nil {
@@ -334,8 +334,8 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 }
 
 func (c *Client) getRequiredSkipVotes(ctx context.Context, roomID string, threshold float64) (int, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "getRequiredSkipVotes")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "getRequiredSkipVotes")
+	defer span.End()
 
 	counts, err := c.GetActiveListenerCounts(ctx, roomID, 5*time.Second)
 	if err != nil {

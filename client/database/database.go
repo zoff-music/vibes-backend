@@ -9,7 +9,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/zoff-music/vibes-backend/config"
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 )
 
 // Client holds the database client and prepared statements.
@@ -88,8 +88,8 @@ type Client struct {
 
 // Init sets up a new database client.
 func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "Init")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "Init")
+	defer span.End()
 
 	c.maxNameLength = cfg.MaxNameLength
 	if c.maxNameLength == 0 {

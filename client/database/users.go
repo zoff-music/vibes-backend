@@ -8,7 +8,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -31,8 +31,8 @@ func (c *Client) prepareGetUserStmt() error {
 
 // GetUser fetches a user by ID.
 func (c *Client) GetUser(ctx context.Context, roomID, userID string) (*vibe.User, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetUser")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetUser")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -107,8 +107,8 @@ func (c *Client) prepareCreateUserStmt() error {
 
 // CreateUser creates or updates a user session in a room.
 func (c *Client) CreateUser(ctx context.Context, user *vibe.User) (*vibe.User, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "CreateUser")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "CreateUser")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -135,8 +135,8 @@ func (c *Client) CreateUser(ctx context.Context, user *vibe.User) (*vibe.User, e
 
 // AuthenticateAdmin handles password verification and admin elevation.
 func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (*vibe.AdminAuthResult, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "AuthenticateAdmin")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "AuthenticateAdmin")
+	defer span.End()
 
 	room, err := c.GetRoom(ctx, roomID, userID)
 	if err != nil {

@@ -23,7 +23,7 @@ import (
 	"github.com/zoff-music/vibes-backend/client/youtube"
 	"github.com/zoff-music/vibes-backend/config"
 	"github.com/zoff-music/vibes-backend/monitoring/metrics"
-	"github.com/zoff-music/vibes-backend/monitoring/trace"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/server/internal/event"
 )
 
@@ -108,9 +108,10 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
-	closer, err := trace.InitGlobalTracer(s.Config)
+	closer, err := tracing.Init(s.Config)
 	if err != nil {
 		errc <- err
+		return
 	}
 
 	defer closer.Close()

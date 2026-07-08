@@ -9,7 +9,7 @@ import (
 
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/metrics"
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 )
 
 // AppEvents contains a slice of AppEvent.
@@ -24,8 +24,8 @@ type AppEvent struct {
 
 // SubscribeAndListen subscribes to an AppEvent.
 func (e *AppEvent) SubscribeAndListen(ctx context.Context) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SubscribeAndListen")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "SubscribeAndListen")
+	defer span.End()
 
 	ticker := time.NewTicker(e.Rate)
 	defer ticker.Stop()
@@ -36,8 +36,8 @@ func (e *AppEvent) SubscribeAndListen(ctx context.Context) {
 			return
 		case t := <-ticker.C:
 			go func(t time.Time) {
-				span, ctx := opentracing.StartSpanFromContext(ctx, e.Name)
-				defer span.Finish()
+				span, ctx := tracing.StartSpanFromContext(ctx, e.Name)
+				defer span.End()
 				start := time.Now()
 				status := http.StatusOK
 				defer func() {

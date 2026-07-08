@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/zoff-music/vibes-backend/monitoring/opentracing"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -43,8 +43,8 @@ func (c *Client) UpdateParticipant(
 	isCastReceiver bool,
 	castOwnerID string,
 ) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "UpdateParticipant")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "UpdateParticipant")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -96,8 +96,8 @@ func (c *Client) prepareGetActiveListenerCountsStmt() error {
 
 // GetActiveParticipants returns a list of participants active in the room within the duration
 func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activeWithin time.Duration) ([]vibe.Participant, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetActiveParticipants")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetActiveParticipants")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -125,8 +125,8 @@ func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activ
 
 // GetActiveListenerCounts returns listener counts within the duration.
 func (c *Client) GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (vibe.ListenerCounts, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "GetActiveListenerCounts")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetActiveListenerCounts")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -194,8 +194,8 @@ func (c *Client) prepareSetRoomHostStmt() error {
 
 // SetRoomHost updates the host for a room
 func (c *Client) SetRoomHost(ctx context.Context, roomID, userID string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "SetRoomHost")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "SetRoomHost")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -226,8 +226,8 @@ func (c *Client) prepareRemoveParticipantStmt() error {
 
 // RemoveParticipant removes a participant from a room
 func (c *Client) RemoveParticipant(ctx context.Context, roomID, userID string) error {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "RemoveParticipant")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "RemoveParticipant")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
@@ -253,8 +253,8 @@ func (c *Client) prepareDeleteInactiveParticipantsStmt() error {
 
 // DeleteInactiveParticipants removes participants who haven't been seen within the duration
 func (c *Client) DeleteInactiveParticipants(ctx context.Context, olderThan time.Duration) (int, error) {
-	span, ctx := opentracing.StartSpanFromContext(ctx, "DeleteInactiveParticipants")
-	defer span.Finish()
+	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteInactiveParticipants")
+	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
