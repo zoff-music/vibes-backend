@@ -1,6 +1,6 @@
 # Music Providers
 
-Vibez supports multiple music providers for search and synchronized playback.
+Vibes supports multiple music providers for search and synchronized playback.
 
 ## Supported Providers
 
@@ -54,7 +54,7 @@ SPOTIFY_CLIENT_SECRET=your-spotify-app-client-secret
 3. Backend generates OAuth state and redirects to Spotify
 4. Spotify redirects to `GET /api/v1/callbacks/spotify?code=...&state=...`
 5. Backend exchanges code for access/refresh tokens
-6. Backend stores tokens in SQLite (`access_tokens` table)
+6. Backend stores tokens in Postgres (`access_tokens` table)
 7. Backend serves success page with `postMessage` to parent window
 8. Frontend receives success message and updates UI
 
@@ -148,126 +148,6 @@ Response:
     "enabled": false,
     "requiresAuth": true
   }
-}
-```
-
-### Frontend Integration
-
-#### Provider Token Management
-```typescript
-import { useProviderToken } from '@vibez/shared';
-
-const { getToken, isAuthenticated, authenticate } = useProviderToken('spotify');
-
-// Check authentication status
-if (!isAuthenticated) {
-  await authenticate(); // Triggers OAuth flow
-}
-
-// Get valid token (automatically refreshes if needed)
-const token = await getToken();
-```
-
-#### Search Integration
-```typescript
-import { api } from '@vibez/api';
-import { safeWrapAsync } from '@vibez/shared';
-
-// Search across providers
-const searchProviders = async (query: string) => {
-  const [youtubeError, youtubeResults] = await safeWrapAsync(
-    api.get('/youtube/search', {}, { q: query })
-  );
-  
-  const [spotifyError, spotifyResults] = await safeWrapAsync(
-    api.get('/spotify/search', {}, { q: query })
-  );
-  
-  // Combine results
-  return [
-    ...(youtubeResults || []),
-    ...(spotifyResults || [])
-  ];
-};
-```
-
-#### Player Components
-```typescript
-import { SpotifyPlayer, VideoPlayer, SoundCloudPlayer } from '@vibez/player';
-
-// Render appropriate player based on source type
-const renderPlayer = (song: Song) => {
-  switch (song.sourceType) {
-    case 'spotify':
-      return <SpotifyPlayer track={song} />;
-    case 'youtube':
-      return <VideoPlayer url={`https://youtube.com/watch?v=${song.sourceId}`} />;
-    case 'soundcloud':
-      return <SoundCloudPlayer url={song.sourceId} />;
-  }
-};
-```
-
-### Casting Integration
-
-When casting to Chromecast receivers, authentication tokens are automatically handled:
-
-1. **Token Injection**: `castManager.ts` fetches current tokens and includes them in cast session data
-2. **Receiver Authentication**: Cast receiver extracts tokens from session data
-3. **Automatic Playback**: Receiver uses tokens for authenticated provider playback
-
-```typescript
-// Cast manager automatically handles token injection
-const castCurrentSong = async (song: Song) => {
-  const tokens = await getAllProviderTokens();
-  
-  await castManager.loadMedia({
-    contentId: song.sourceId,
-    contentType: song.sourceType,
-    customData: {
-      tokens, // Automatically injected
-      roomId,
-      songData: song
-    }
-  });
-};
-```
-
-### Error Handling
-
-#### Provider Availability
-```typescript
-// Check if provider is available before using
-const [error, providers] = await safeWrapAsync(api.get('/providers'));
-
-if (providers?.spotify?.enabled) {
-  // Spotify is available
-} else {
-  // Show fallback or disable Spotify features
-}
-```
-
-#### Authentication Errors
-```typescript
-// Handle authentication failures gracefully
-const [error, results] = await safeWrapAsync(
-  api.get('/spotify/search', {}, { q: query })
-);
-
-if (error?.message.includes('unauthorized')) {
-  // Trigger re-authentication
-  await authenticate();
-  // Retry search
-}
-```
-
-#### Rate Limiting
-```typescript
-// Handle rate limiting from providers
-if (error?.message.includes('rate limit')) {
-  // Show user-friendly message
-  setError('Too many requests. Please wait a moment.');
-  // Implement exponential backoff
 }
 ```
 

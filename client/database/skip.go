@@ -184,7 +184,7 @@ func (c *Client) clearSkipVotes(ctx context.Context, roomID, songID string) erro
 }
 
 // SkipSong skips the current track to the next one in the queue, either immediately (if host/admin/forced) or by voting.
-func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bool) (*vibe.PlaybackState, error) {
+func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bool) (*vibe.SkipSongResult, error) {
 	span, ctx := opentracing.StartSpanFromContext(ctx, "SkipSong")
 	defer span.Finish()
 
@@ -226,7 +226,12 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 			return nil, fmt.Errorf("error skipping track in shouldForce: %w", err)
 		}
 
-		return state, nil
+		return &vibe.SkipSongResult{
+			Action:   vibe.RoomActionSkip,
+			Skipped:  true,
+			NextSong: state.CurrentSong,
+			Playback: state,
+		}, nil
 	}
 
 	// 7. Execute Vote Skip
@@ -240,7 +245,10 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 	log.Printf("[DEBUG-SKIP] Current-playing %+v", state.CurrentSong)
 
 	if state.CurrentSong == nil {
-		return state, nil
+		return &vibe.SkipSongResult{
+			Action:   vibe.RoomActionSkip,
+			Playback: state,
+		}, nil
 	}
 	songID := state.CurrentSong.ID
 
@@ -251,7 +259,23 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 
 	if voted {
 		log.Printf("[DEBUG-SKIP] User has voted %+v", voted)
-		return state, nil
+		votes, err := c.GetSkipVotes(ctx, roomID, songID)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching skip votes for already voted result: %w", err)
+		}
+
+		requiredVotes, err := c.getRequiredSkipVotes(ctx, roomID, room.Settings.SkipVoteThreshold)
+		if err != nil {
+			return nil, fmt.Errorf("error getting required skip votes for already voted result: %w", err)
+		}
+
+		return &vibe.SkipSongResult{
+			Action:        vibe.RoomActionSkip,
+			AlreadyVoted:  true,
+			CurrentVotes:  len(votes),
+			RequiredVotes: requiredVotes,
+			Playback:      state,
+		}, nil
 	}
 
 	err = c.AddSkipVote(ctx, roomID, songID, userID)
@@ -264,31 +288,20 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 		return nil, fmt.Errorf("error fetching skip votes count: %w", err)
 	}
 
-	// Count active participants for threshold (non-cast listeners)
-	counts, err := c.GetActiveListenerCounts(ctx, roomID, 5*time.Second)
-	if err != nil {
-		return nil, fmt.Errorf("error counting active participants: %w", err)
-	}
-
-	participantCount := counts.ActiveListeners
-	if participantCount == 0 && counts.ActiveCastReceivers > 0 {
-		participantCount = 1
-	}
 	voteCount := len(votes)
-	requiredVotes := int(float64(participantCount) * room.Settings.SkipVoteThreshold)
-
-	log.Printf("[DEBUG-SKIP] Room: %s, Participants: %d, Votes: %d, Threshold: %f, Required: %d\n", roomID, participantCount, voteCount, room.Settings.SkipVoteThreshold, requiredVotes)
-
-	// If there is only 1 participant, allow them to skip alone
-	if participantCount == 1 {
-		requiredVotes = 1
-	}
-	if participantCount != 1 && requiredVotes < 2 {
-		requiredVotes = 2
+	requiredVotes, err := c.getRequiredSkipVotes(ctx, roomID, room.Settings.SkipVoteThreshold)
+	if err != nil {
+		return nil, fmt.Errorf("error getting required skip votes: %w", err)
 	}
 
 	if voteCount < requiredVotes {
-		return state, nil
+		return &vibe.SkipSongResult{
+			Action:        vibe.RoomActionSkip,
+			Voted:         true,
+			CurrentVotes:  voteCount,
+			RequiredVotes: requiredVotes,
+			Playback:      state,
+		}, nil
 	}
 
 	// Threshold met, skip the track
@@ -309,5 +322,40 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 		return nil, fmt.Errorf("error skipping track after vote: %w", err)
 	}
 
-	return newState, nil
+	return &vibe.SkipSongResult{
+		Action:        vibe.RoomActionSkip,
+		Skipped:       true,
+		Voted:         true,
+		CurrentVotes:  voteCount,
+		RequiredVotes: requiredVotes,
+		NextSong:      newState.CurrentSong,
+		Playback:      newState,
+	}, nil
+}
+
+func (c *Client) getRequiredSkipVotes(ctx context.Context, roomID string, threshold float64) (int, error) {
+	span, ctx := opentracing.StartSpanFromContext(ctx, "getRequiredSkipVotes")
+	defer span.Finish()
+
+	counts, err := c.GetActiveListenerCounts(ctx, roomID, 5*time.Second)
+	if err != nil {
+		return 0, fmt.Errorf("error counting active participants: %w", err)
+	}
+
+	participantCount := counts.ActiveListeners
+	if participantCount == 0 && counts.ActiveCastReceivers > 0 {
+		participantCount = 1
+	}
+
+	requiredVotes := int(float64(participantCount) * threshold)
+	log.Printf("[DEBUG-SKIP] Room: %s, Participants: %d, Threshold: %f, Required: %d\n", roomID, participantCount, threshold, requiredVotes)
+
+	if participantCount == 1 {
+		return 1, nil
+	}
+	if requiredVotes < 2 {
+		return 2, nil
+	}
+
+	return requiredVotes, nil
 }

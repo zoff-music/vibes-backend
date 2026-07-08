@@ -7,7 +7,7 @@ Complete API specification for frontend-backend communication.
 ## Base URL
 
 ```
-Development: https://localhost/api/v1 (via make local-dev)
+Development: http://localhost:8080/api/v1
 Production: https://api.vibez.app/api/v1
 ```
 
