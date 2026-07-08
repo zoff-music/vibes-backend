@@ -408,7 +408,7 @@ func (c *Client) prepareClaimAndGetExpiredTokenForRefreshStmt() error {
 			ORDER BY last_checked ASC
 			LIMIT 1
 			FOR UPDATE SKIP LOCKED
-			)
+		)
 		UPDATE access_tokens
 		SET last_checked = CURRENT_TIMESTAMP
 		WHERE (user_id, provider) IN (SELECT user_id, provider FROM claimed_token_q)

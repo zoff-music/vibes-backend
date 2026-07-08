@@ -293,15 +293,15 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
 			LIMIT 1
 		),
-			updated_playback_q AS (
-				UPDATE playback_state a
-				SET current_song_id = b.id,
-				is_playing = CASE WHEN b.id IS NULL THEN 0 ELSE 1 END,
-				position_ms = 0,
-				updated_at = NOW()
-				FROM locked_playback_q c
-				LEFT JOIN next_song_q b ON b.room_id = c.room_id
-				WHERE a.room_id = c.room_id
+		updated_playback_q AS (
+			UPDATE playback_state a
+			SET current_song_id = b.id,
+			is_playing = CASE WHEN b.id IS NULL THEN 0 ELSE 1 END,
+			position_ms = 0,
+			updated_at = NOW()
+			FROM locked_playback_q c
+			LEFT JOIN next_song_q b ON b.room_id = c.room_id
+			WHERE a.room_id = c.room_id
 			RETURNING a.room_id, a.current_song_id, a.is_playing, a.position_ms, a.updated_at
 		)
 		SELECT
@@ -496,15 +496,15 @@ func (c *Client) prepareSkipTrackStmt() error {
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
 			LIMIT 1
 		),
-			updated_playback_q AS (
-				UPDATE playback_state a
-				SET current_song_id = b.id,
-				is_playing = CASE WHEN b.id IS NULL THEN 0 ELSE 1 END,
-				position_ms = 0,
-				updated_at = NOW()
-				FROM locked_playback_q c
-				LEFT JOIN next_song_q b ON b.room_id = c.room_id
-				WHERE a.room_id = c.room_id
+		updated_playback_q AS (
+			UPDATE playback_state a
+			SET current_song_id = b.id,
+			is_playing = CASE WHEN b.id IS NULL THEN 0 ELSE 1 END,
+			position_ms = 0,
+			updated_at = NOW()
+			FROM locked_playback_q c
+			LEFT JOIN next_song_q b ON b.room_id = c.room_id
+			WHERE a.room_id = c.room_id
 			RETURNING a.room_id, a.current_song_id, a.is_playing, a.position_ms, a.updated_at
 		)
 		SELECT
@@ -654,15 +654,15 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 			LIMIT 1
 		),
-			updated_playback_q AS (
-				UPDATE playback_state a
-				SET current_song_id = b.id,
-				is_playing = 1,
-				position_ms = 0,
-				updated_at = NOW()
-				FROM locked_playback_q c
-				JOIN next_song_q b ON b.room_id = c.room_id
-				WHERE a.room_id = c.room_id
+		updated_playback_q AS (
+			UPDATE playback_state a
+			SET current_song_id = b.id,
+			is_playing = 1,
+			position_ms = 0,
+			updated_at = NOW()
+			FROM locked_playback_q c
+			JOIN next_song_q b ON b.room_id = c.room_id
+			WHERE a.room_id = c.room_id
 			RETURNING a.room_id, a.current_song_id, a.is_playing, a.position_ms, a.updated_at
 		)
 		SELECT

@@ -524,7 +524,8 @@ func (c *Client) prepareCreateRoomStmt() error {
 			INSERT INTO rooms (id, name, mode, host_id, admin_password_hash, created_at)
 			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id
-		), created_settings_q AS (
+		),
+		created_settings_q AS (
 			INSERT INTO room_settings (
 				room_id,
 				skip_allowed,
@@ -596,25 +597,25 @@ func (r *createRoomRow) scan(row *sql.Row) error {
 // prepareUpdateRoomStmt prepares the UpdateRoomStatement.
 func (c *Client) prepareUpdateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-			WITH updated_room_q AS (
-				UPDATE rooms
-				SET name = $1,
-				mode = $10,
-				host_id = $11,
-				admin_password_hash = $12
-				WHERE id = $2
-				RETURNING id
-			)
-			UPDATE room_settings
-			SET skip_allowed = $3,
-			democratic_skip = $4,
-			skip_vote_threshold = $5,
-			max_continuous_adds = $6,
-			remove_on_play = $7,
-			loop_queue = $8,
-			allow_duplicates = $9,
-			enabled_sources = $13,
-			only_admin_add_songs = $14
+		WITH updated_room_q AS (
+			UPDATE rooms
+			SET name = $1,
+			mode = $10,
+			host_id = $11,
+			admin_password_hash = $12
+			WHERE id = $2
+			RETURNING id
+		)
+		UPDATE room_settings
+		SET skip_allowed = $3,
+		democratic_skip = $4,
+		skip_vote_threshold = $5,
+		max_continuous_adds = $6,
+		remove_on_play = $7,
+		loop_queue = $8,
+		allow_duplicates = $9,
+		enabled_sources = $13,
+		only_admin_add_songs = $14
 		FROM updated_room_q a
 		WHERE room_settings.room_id = a.id
 	`)
