@@ -198,53 +198,117 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 	return &song, nil
 }
 
-func (c *Client) prepareInsertSongVoteStmt() error {
-	stmt, err := c.DB.Prepare(`
-		INSERT INTO song_votes (room_id, song_id, user_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT(room_id, song_id, user_id) DO NOTHING
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing InsertSongVoteStatement: %w", err)
-	}
-	c.InsertSongVoteStatement = stmt
-	return nil
-}
-
 // prepareAddSongStmt prepares the AddSongStatement.
 func (c *Client) prepareAddSongStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO songs (
-			room_id, source_type, source_id, title, artist, thumbnail_url,
-			duration, added_by, added_by_nickname, added_at
+		WITH room_config_q AS (
+			SELECT
+				a.id AS room_id,
+				COALESCE(b.allow_duplicates, 0) = 1 AS allow_duplicates
+			FROM rooms a
+			LEFT JOIN room_settings b ON b.room_id = a.id
+			WHERE a.id = $1
+		),
+		existing_song_q AS (
+			SELECT 1
+			FROM songs a
+			WHERE a.room_id = $1
+			AND a.source_type = $2
+			AND a.source_id = $3
+			LIMIT 1
+		),
+		inserted_song_q AS (
+			INSERT INTO songs (
+				room_id,
+				source_type,
+				source_id,
+				title,
+				artist,
+				thumbnail_url,
+				duration,
+				added_by,
+				added_by_nickname,
+				added_at,
+				duplicate_guard
+			)
+			SELECT
+				a.room_id,
+				$2,
+				$3,
+				$4,
+				$5,
+				$6,
+				$7,
+				$8,
+				$9,
+				NOW(),
+				CASE WHEN a.allow_duplicates THEN 0 ELSE 1 END
+			FROM room_config_q a
+			WHERE a.allow_duplicates
+			OR NOT EXISTS (SELECT 1 FROM existing_song_q)
+			ON CONFLICT (room_id, source_type, source_id)
+			WHERE duplicate_guard = 1
+			DO NOTHING
+			RETURNING
+				id,
+				room_id,
+				source_type,
+				source_id,
+				title,
+				artist,
+				thumbnail_url,
+				duration,
+				added_by,
+				added_by_nickname,
+				added_at
+		),
+		inserted_vote_q AS (
+			INSERT INTO song_votes (room_id, song_id, user_id)
+			SELECT a.room_id, a.id, a.added_by
+			FROM inserted_song_q a
+			ON CONFLICT (room_id, song_id, user_id) DO NOTHING
+			RETURNING 1
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
-		RETURNING id
+		SELECT
+			'inserted' AS result,
+			a.id,
+			a.room_id,
+			a.source_type,
+			a.source_id,
+			a.title,
+			a.artist,
+			a.thumbnail_url,
+			a.duration,
+			a.added_by,
+			a.added_by_nickname,
+			a.added_at,
+			1::BIGINT AS vote_count
+		FROM inserted_song_q a
+		UNION ALL
+		SELECT
+			CASE
+				WHEN EXISTS (SELECT 1 FROM room_config_q) THEN 'duplicate'
+				ELSE 'room_not_found'
+			END AS result,
+			NULL::TEXT AS id,
+			NULL::TEXT AS room_id,
+			NULL::TEXT AS source_type,
+			NULL::TEXT AS source_id,
+			NULL::TEXT AS title,
+			NULL::TEXT AS artist,
+			NULL::TEXT AS thumbnail_url,
+			NULL::INTEGER AS duration,
+			NULL::TEXT AS added_by,
+			NULL::TEXT AS added_by_nickname,
+			NULL::TIMESTAMPTZ AS added_at,
+			0::BIGINT AS vote_count
+		WHERE NOT EXISTS (SELECT 1 FROM inserted_song_q)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing AddSongStatement: %w", err)
 	}
 
 	c.AddSongStatement = stmt
-
-	return nil
-}
-
-// prepareCheckSongExistsStmt prepares the CheckSongExistsStatement.
-func (c *Client) prepareCheckSongExistsStmt() error {
-	stmt, err := c.DB.Prepare(`
-		SELECT id
-		FROM songs
-		WHERE room_id = $1
-		AND source_type = $2
-		AND source_id = $3
-		LIMIT 1
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing CheckSongExistsStatement: %w", err)
-	}
-
-	c.CheckSongExistsStatement = stmt
 
 	return nil
 }
@@ -257,45 +321,7 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// Get room settings to check if duplicates are allowed
-	room, err := c.GetRoom(ctx, song.RoomID, song.AddedBy)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching room settings: %w", err)
-	}
-
-	// This is an exception to the no-transactions rule as we need to ensure
-	// that we don't add duplicate songs when room settings forbid it.
-	// See README.md for more details.
-	tx, err := c.DB.BeginTx(cctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("error beginning transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	if !room.Settings.AllowDuplicates {
-		var existingID string
-		stmt := tx.StmtContext(cctx, c.CheckSongExistsStatement)
-		r := stmt.QueryRowContext(
-			cctx,
-			song.RoomID,
-			string(song.SourceType),
-			song.SourceID,
-		)
-
-		err := r.Scan(&existingID)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-			return nil, fmt.Errorf("error checking if song exists: %w", err)
-		}
-		if err == nil {
-			return nil, internalerror.ErrDuplicateSong{
-				Err: fmt.Errorf("song already exists"),
-			}
-		}
-	}
-
-	stmt := tx.StmtContext(cctx, c.AddSongStatement)
-	// 1. Insert Song
-	r := stmt.QueryRowContext(cctx,
+	r := c.AddSongStatement.QueryRowContext(cctx,
 		song.RoomID,
 		string(song.SourceType),
 		song.SourceID,
@@ -307,34 +333,39 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 		song.AddedByNickname,
 	)
 
-	err = r.Scan(&song.ID)
-	if err != nil {
-		return nil, fmt.Errorf("error inserting song: %w", err)
-	}
-
-	stmt = tx.StmtContext(cctx, c.InsertSongVoteStatement)
-	_, err = stmt.ExecContext(
-		cctx,
-		song.RoomID,
-		song.ID,
-		song.AddedBy,
+	var result string
+	var row songRow
+	err := r.Scan(
+		&result,
+		&row.ID,
+		&row.RoomID,
+		&row.SourceType,
+		&row.SourceID,
+		&row.Title,
+		&row.Artist,
+		&row.ThumbnailURL,
+		&row.Duration,
+		&row.AddedBy,
+		&row.AddedByNickname,
+		&row.AddedAt,
+		&row.VoteCount,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error inserting vote: %w", err)
+		return nil, fmt.Errorf("error adding song atomically in AddSong: %w", err)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, fmt.Errorf("error committing transaction: %w", err)
+	if result == "duplicate" {
+		return nil, internalerror.ErrDuplicateSong{
+			Err: fmt.Errorf("song already exists"),
+		}
 	}
 
-	// 3. Fetch full song details to get accurate vote count
-	updatedSong, err := c.GetSong(ctx, song.RoomID, song.ID)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching updated song: %w", err)
+	if result == "room_not_found" {
+		return nil, fmt.Errorf("error adding song in AddSong: room %s not found", song.RoomID)
 	}
 
-	return updatedSong, nil
+	addedSong := row.toSong()
+	return &addedSong, nil
 }
 
 // prepareRemoveSongStmt prepares the RemoveSongStatement.
