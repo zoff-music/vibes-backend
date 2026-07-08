@@ -10,6 +10,15 @@ import (
 )
 
 // GetMusicTrack handles GET /api/v1/youtube/videos/{id}
+//
+//	@Summary	Get a YouTube track
+//	@Tags		providers
+//	@Produce	json
+//	@Param		id	path		string	true	"Video ID"
+//	@Success	200	{object}	vibe.MusicTrack
+//	@Failure	400	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/youtube/videos/{id} [get]
 func GetMusicTrack(
 	ms vibe.MusicSearcher,
 ) http.HandlerFunc {
@@ -57,6 +66,15 @@ func GetMusicTrack(
 }
 
 // GetSoundCloudTrack handles GET /api/v1/soundcloud/tracks/{id}
+//
+//	@Summary	Get a SoundCloud track
+//	@Tags		providers
+//	@Produce	json
+//	@Param		id	path		string	true	"Track ID"
+//	@Success	200	{object}	vibe.MusicTrack
+//	@Failure	400	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/soundcloud/tracks/{id} [get]
 func GetSoundCloudTrack(
 	ms vibe.MusicSearcher,
 ) http.HandlerFunc {
@@ -104,6 +122,15 @@ func GetSoundCloudTrack(
 }
 
 // GetSpotifyTrack handles GET /api/v1/spotify/tracks/{id}
+//
+//	@Summary	Get a Spotify track
+//	@Tags		providers
+//	@Produce	json
+//	@Param		id	path		string	true	"Track ID"
+//	@Success	200	{object}	vibe.MusicTrack
+//	@Failure	400	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/spotify/tracks/{id} [get]
 func GetSpotifyTrack(
 	ms vibe.MusicSearcher,
 ) http.HandlerFunc {

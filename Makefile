@@ -1,21 +1,21 @@
-.PHONY: build serve dev install update test help gosec govulncheck docker
+.PHONY: build serve dev install update test docs help gosec govulncheck docker
 
 PROJECT_NAME=$(shell basename $(CURDIR))
 PORT ?= 8080
 DEV_PORT ?= 8080
 
 ## build: builds the Go binaries
-build:
+build: docs
 	go mod download; \
-	CGO_ENABLED=1 go build -ldflags '-w -s' -o main cmd/server/main.go
+	CGO_ENABLED=1 GOFLAGS=-mod=mod go build -ldflags '-w -s' -o main cmd/server/main.go
 
 ## serve: runs the server
-serve:
-	PORT=$(PORT) go run -race cmd/server/main.go
+serve: docs
+	PORT=$(PORT) GOFLAGS=-mod=mod go run -race cmd/server/main.go
 
 ## dev: runs the server
-dev:
-	PORT=$(DEV_PORT) go run -race cmd/server/main.go
+dev: docs
+	PORT=$(DEV_PORT) GOFLAGS=-mod=mod go run -race cmd/server/main.go
 
 ## install: fetches Go modules
 install:
@@ -30,8 +30,12 @@ update:
 	go mod tidy
 
 ## test: runs tests
-test:
-	go test -race ./...
+test: docs
+	GOFLAGS=-mod=mod go test -race ./...
+
+## docs: generates Swagger documentation
+docs:
+	GOFLAGS=-mod=mod go run github.com/swaggo/swag/cmd/swag init -d cmd/server,server,server/internal/handler,vibe -g main.go -o swaggerdocs --parseInternal
 
 ## help: prints help message
 help:

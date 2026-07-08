@@ -14,6 +14,14 @@ import (
 )
 
 // RoomEvents handles GET /api/v1/rooms/:id/events (SSE)
+//
+//	@Summary	Subscribe to room events
+//	@Tags		events
+//	@Produce	text/event-stream
+//	@Param		id	path	string	true	"Room ID"
+//	@Success	200	{string}	string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/rooms/{id}/events [get]
 func RoomEvents(
 	ips vibe.SubscriberPublisher,
 	db vibe.ParticipantGetterUpdaterPlaybackGetter,

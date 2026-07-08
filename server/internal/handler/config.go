@@ -8,6 +8,13 @@ import (
 )
 
 // GetProviders handles GET /api/v1/providers
+//
+//	@Summary	List enabled providers
+//	@Tags		config
+//	@Produce	json
+//	@Success	200	{array}		string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/providers [get]
 func GetProviders(cfg *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		providers := []string{}

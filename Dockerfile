@@ -13,7 +13,8 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=1 go build -ldflags '-w -s' -o /out/main cmd/server/main.go
+RUN go run github.com/swaggo/swag/cmd/swag init -d cmd/server,server,server/internal/handler,vibe -g main.go -o swaggerdocs --parseInternal \
+	&& CGO_ENABLED=1 go build -ldflags '-w -s' -o /out/main cmd/server/main.go
 
 FROM debian:bookworm-slim AS prod
 

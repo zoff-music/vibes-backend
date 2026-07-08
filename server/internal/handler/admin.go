@@ -14,6 +14,18 @@ import (
 )
 
 // AdminLogin handles POST /api/v1/admin/sessions
+//
+//	@Summary	Create an admin session
+//	@Tags		admin
+//	@Accept		json
+//	@Produce	json
+//	@Param		request	body		vibe.AdminLoginRequest	true	"Admin login payload"
+//	@Success	200		{object}	vibe.AdminSessionResponse
+//	@Failure	400		{object}	map[string]string
+//	@Failure	401		{object}	map[string]string
+//	@Failure	403		{object}	map[string]string
+//	@Failure	500		{object}	map[string]string
+//	@Router		/api/v1/admin/sessions [post]
 func AdminLogin(
 	adminPassword *string,
 	cookieSecret string,
@@ -118,6 +130,13 @@ func AdminLogin(
 }
 
 // AdminLogout handles DELETE /api/v1/admin/sessions
+//
+//	@Summary	Delete an admin session
+//	@Tags		admin
+//	@Produce	json
+//	@Success	200	{object}	vibe.AdminSessionResponse
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/admin/sessions [delete]
 func AdminLogout() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
@@ -152,6 +171,13 @@ func AdminLogout() http.HandlerFunc {
 }
 
 // AdminRooms handles GET /api/v1/admin/rooms
+//
+//	@Summary	List admin room summaries
+//	@Tags		admin
+//	@Produce	json
+//	@Success	200	{array}		vibe.AdminRoomSummary
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/admin/rooms [get]
 func AdminRooms(
 	db vibe.AdminRoomLister,
 ) http.HandlerFunc {
@@ -200,6 +226,13 @@ func AdminRooms(
 }
 
 // AdminEvents handles GET /api/v1/admin/events (SSE)
+//
+//	@Summary	Subscribe to admin events
+//	@Tags		admin
+//	@Produce	text/event-stream
+//	@Success	200	{string}	string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/admin/events [get]
 func AdminEvents(
 	ips vibe.AdminSubscriberPublisher,
 	db vibe.AdminRoomLister,

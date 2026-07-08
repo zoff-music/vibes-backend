@@ -16,6 +16,17 @@ import (
 )
 
 // CreateRoom handles POST /api/v1/rooms
+//
+//	@Summary		Create a room
+//	@Tags			rooms
+//	@Accept			json
+//	@Produce		json
+//	@Param			request	body		vibe.CreateRoomRequest	true	"Room creation payload"
+//	@Success		201		{object}	vibe.Room
+//	@Success		200		{object}	vibe.Room
+//	@Failure		400		{object}	map[string]string
+//	@Failure		500		{object}	map[string]string
+//	@Router			/api/v1/rooms [post]
 func CreateRoom(
 	db vibe.RoomCreatorAdminRoomLister,
 	ips vibe.AdminEventNotifier,
@@ -163,6 +174,15 @@ func CreateRoom(
 }
 
 // GetRoom handles GET /api/v1/rooms/{id}
+//
+//	@Summary	Get a room
+//	@Tags		rooms
+//	@Produce	json
+//	@Param		id	path		string	true	"Room ID"
+//	@Success	200	{object}	vibe.Room
+//	@Failure	404	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/rooms/{id} [get]
 func GetRoom(
 	db vibe.RoomFetcher,
 ) http.HandlerFunc {
@@ -212,6 +232,18 @@ func GetRoom(
 }
 
 // UpdateRoomSettings handles PATCH /rooms/{id}/settings
+//
+//	@Summary	Update room settings
+//	@Tags		rooms
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string					true	"Room ID"
+//	@Param		request	body		vibe.UpdateRoomRequest	true	"Room update payload"
+//	@Success	200		{object}	vibe.Room
+//	@Failure	400		{object}	map[string]string
+//	@Failure	404		{object}	map[string]string
+//	@Failure	500		{object}	map[string]string
+//	@Router		/api/v1/rooms/{id}/settings [patch]
 func UpdateRoomSettings(
 	db vibe.RoomSettingsUpdater,
 	ips vibe.RoomEventNotifier,
@@ -315,6 +347,18 @@ func UpdateRoomSettings(
 }
 
 // CreateSession handles POST /api/v1/rooms/:id/sessions
+//
+//	@Summary	Create a room session
+//	@Tags		rooms
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string						true	"Room ID"
+//	@Param		request	body		vibe.CreateSessionRequest	true	"Session payload"
+//	@Success	200		{object}	vibe.SessionResponse
+//	@Failure	401		{object}	map[string]string
+//	@Failure	403		{object}	map[string]string
+//	@Failure	500		{object}	map[string]string
+//	@Router		/api/v1/rooms/{id}/sessions [post]
 func CreateSession(
 	db vibe.SessionCreatorGetter,
 	ips vibe.RoomEventNotifier,

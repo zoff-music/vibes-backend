@@ -9,6 +9,10 @@ import (
 	"github.com/zoff-music/vibes-backend/server"
 )
 
+// @title			Vibes API
+// @version		1.0
+// @description	Backend API for Vibes rooms, queues, playback, providers, casting, and admin tools.
+// @BasePath		/
 func main() {
 	// Enable debug logging if DEBUG=TRUE
 	if os.Getenv("DEBUG") == "TRUE" || os.Getenv("DEBUG") == "true" {

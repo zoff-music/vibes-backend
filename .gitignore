@@ -19,6 +19,9 @@ coverage/
 # Generated dependency output from make update
 vendor/
 
+# Generated API documentation from make docs
+swaggerdocs/
+
 # Local tooling
 .DS_Store
 .idea/
