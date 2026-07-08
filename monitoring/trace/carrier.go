@@ -40,5 +40,6 @@ func ExtractFromCarrier(ctx context.Context, carrier opentracing.TextMapCarrier,
 		ctx = context.Background()
 	}
 
-	return tracer.StartFromContext(ctx, spanName, wireContext)
+	span, spanCtx := tracer.StartFromContext(ctx, spanName, wireContext)
+	return span, spanCtx
 }

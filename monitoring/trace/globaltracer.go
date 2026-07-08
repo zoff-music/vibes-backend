@@ -16,8 +16,9 @@ func InitGlobalTracer(conf *config.Config) (io.Closer, error) {
 	ctx := context.Background()
 	tracer, err := opentracing.StartGlobalTracer(ctx, conf, "vibes")
 	if err != nil {
-		return nil, fmt.Errorf("failed to start global tracer: %w", err)
+		return nil, fmt.Errorf("error starting global tracer: %w", err)
 	}
 
-	return tracer.GetCloser(), nil
+	closer := tracer.GetCloser()
+	return closer, nil
 }

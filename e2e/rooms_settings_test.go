@@ -21,9 +21,9 @@ func TestCreateRoomWithSettings(t *testing.T) {
 	settings.LoopQueue = true
 	settings.SkipAllowed = false
 
-	createPayload := map[string]interface{}{
-		"name":     "Settings Test Room",
-		"settings": settings,
+	createPayload := vibe.CreateRoomRequest{
+		Name:     "Settings Test Room",
+		Settings: &settings,
 	}
 	body, _ := json.Marshal(createPayload)
 	resp, err := http.Post(env.ServerURL+"/api/v1/rooms", "application/json", bytes.NewReader(body))

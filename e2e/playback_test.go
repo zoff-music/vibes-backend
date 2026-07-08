@@ -163,9 +163,12 @@ func createTestRoom(t *testing.T, env *TestEnv, name string) string {
 	}
 	defer resp.Body.Close()
 
-	var result map[string]interface{}
-	json.NewDecoder(resp.Body).Decode(&result)
-	return result["id"].(string)
+	var result vibe.Room
+	err = json.NewDecoder(resp.Body).Decode(&result)
+	if err != nil {
+		t.Fatalf("failed to decode room response: %v", err)
+	}
+	return result.ID
 }
 
 func addTestSong(t *testing.T, env *TestEnv, roomID, title string) *vibe.Song {

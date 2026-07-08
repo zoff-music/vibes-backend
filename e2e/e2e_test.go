@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"testing"
+
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 func TestHealthz(t *testing.T) {
@@ -41,14 +43,14 @@ func TestCreateAndGetRoom(t *testing.T) {
 		t.Errorf("expected 201 Created or 200 OK, got %d", resp.StatusCode)
 	}
 
-	var result map[string]interface{}
+	var result vibe.Room
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	if err != nil {
 		t.Fatalf("failed to decode response: %v", err)
 	}
 
-	roomID, ok := result["id"].(string)
-	if !ok {
+	roomID := result.ID
+	if roomID == "" {
 		t.Fatalf("response does not contain room id. got: %v", result)
 	}
 
@@ -73,13 +75,13 @@ func TestCreateAndGetRoom(t *testing.T) {
 		t.Errorf("expected 200 OK, got %d", resp.StatusCode)
 	}
 
-	var roomResult map[string]interface{}
+	var roomResult vibe.Room
 	err = json.NewDecoder(resp.Body).Decode(&roomResult)
 	if err != nil {
 		t.Fatalf("failed to decode room response: %v", err)
 	}
 
-	if roomResult["name"] != "E2E Test Room" {
-		t.Errorf("expected room name 'E2E Test Room', got %v", roomResult["name"])
+	if roomResult.Name != "E2E Test Room" {
+		t.Errorf("expected room name 'E2E Test Room', got %v", roomResult.Name)
 	}
 }

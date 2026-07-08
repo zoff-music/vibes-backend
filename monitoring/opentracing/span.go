@@ -16,9 +16,27 @@ import (
 type Span interface {
 	Context() *SpanContext
 	Finish()
-	SetTag(key string, value any)
-	LogKV(alternatingKeyValues ...any)
+	LogFields(fields ...SpanField)
+	SetBoolTag(key string, value bool)
+	SetErrorTag(key string, value error)
+	SetStringTag(key string, value string)
 	CombineContexts(extraContexts ...*SpanContext)
+}
+
+type SpanFieldType string
+
+const SpanFieldString SpanFieldType = "string"
+
+const SpanFieldBool SpanFieldType = "bool"
+
+const SpanFieldError SpanFieldType = "error"
+
+type SpanField struct {
+	Key         string
+	StringValue string
+	BoolValue   bool
+	ErrorValue  error
+	Type        SpanFieldType
 }
 
 // SpanFromContext is a drop-in replacement for opentracing.SpanFromContext
@@ -36,7 +54,8 @@ func SpanFromContext(ctx context.Context) Span {
 
 // StartSpanFromContext is a drop-in replacement for opentracing.StartSpanFromContext
 func StartSpanFromContext(ctx context.Context, name string, extraContexts ...*SpanContext) (Span, context.Context) {
-	return globalTracer.StartFromContext(ctx, name, extraContexts...)
+	span, spanCtx := globalTracer.StartFromContext(ctx, name, extraContexts...)
+	return span, spanCtx
 }
 
 // OtSpan implements the pretend-opentracing Span interface.
@@ -53,26 +72,18 @@ func (s *OtSpan) Finish() {
 	s.otelSpan.End()
 }
 
-// Such a messy function, but we seem to be using it
-func (s *OtSpan) LogKV(alternatingKeyValues ...any) {
-	for i := 0; i < len(alternatingKeyValues); i += 2 {
-		key := alternatingKeyValues[i].(string)
-		value := alternatingKeyValues[i+1]
-		s.SetTag(key, value)
-	}
-}
-
-// Inefficient, but it saves us from having to change a lot of code
-func (s *OtSpan) SetTag(key string, value any) {
-	switch v := value.(type) {
-	case string:
-		s.SetStringTag(key, v)
-	case bool:
-		s.SetBoolTag(key, v)
-	case error:
-		s.SetStringTag(key, v.Error())
-	default:
-		log.Printf("trace.SetTag: unsupported tag type: %T (value: %v)", v, v)
+func (s *OtSpan) LogFields(fields ...SpanField) {
+	for _, field := range fields {
+		switch field.Type {
+		case SpanFieldString:
+			s.SetStringTag(field.Key, field.StringValue)
+		case SpanFieldBool:
+			s.SetBoolTag(field.Key, field.BoolValue)
+		case SpanFieldError:
+			s.SetErrorTag(field.Key, field.ErrorValue)
+		default:
+			log.Printf("trace.LogFields: unsupported tag type: %s", field.Type)
+		}
 	}
 }
 
@@ -82,6 +93,10 @@ func (s *OtSpan) SetStringTag(key string, value string) {
 
 func (s *OtSpan) SetBoolTag(key string, value bool) {
 	s.otelSpan.SetAttributes(attribute.Bool(key, value))
+}
+
+func (s *OtSpan) SetErrorTag(key string, value error) {
+	s.SetStringTag(key, value.Error())
 }
 
 func (s *OtSpan) Context() *SpanContext {

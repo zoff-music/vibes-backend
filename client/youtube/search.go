@@ -20,7 +20,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	defer span.Finish()
 
 	if c.apiKey == "" {
-		return nil, fmt.Errorf("YouTube API key not configured")
+		return nil, fmt.Errorf("error youtube api key not configured")
 	}
 
 	const targetResults = 15

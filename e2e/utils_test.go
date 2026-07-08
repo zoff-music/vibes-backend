@@ -185,7 +185,7 @@ func applyMigrations(dbPath string) error {
 		}
 		_, err = db.Exec(string(content))
 		if err != nil {
-			return fmt.Errorf("failed to exec migration %s: %w", file, err)
+			return fmt.Errorf("error executing migration %s: %w", file, err)
 		}
 	}
 	return nil

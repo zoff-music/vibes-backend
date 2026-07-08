@@ -75,7 +75,7 @@ func SkipSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to fetch songs: %w", err),
+				fmt.Errorf("error fetching songs: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -90,7 +90,7 @@ func SkipSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to marshal songs payload: %w", err),
+				fmt.Errorf("error marshaling songs payload: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -101,7 +101,7 @@ func SkipSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to marshal playback state payload: %w", err),
+				fmt.Errorf("error marshaling playback state payload: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

@@ -34,7 +34,7 @@ func CreateCastingToken(
 		var req vibe.CreateCastingTokenRequest
 		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
-			handleError(w, fmt.Errorf("invalid request body: %w", err), http.StatusBadRequest, true)
+			handleError(w, fmt.Errorf("error decoding request body: %w", err), http.StatusBadRequest, true)
 			return
 		}
 		if req.RoomID == "" {
@@ -44,11 +44,11 @@ func CreateCastingToken(
 
 		room, err := db.GetRoom(ctx, req.RoomID, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
+			handleError(w, fmt.Errorf("error fetching room: %w", err), http.StatusInternalServerError, true)
 			return
 		}
 		if room == nil || room.IsEmpty() {
-			handleError(w, fmt.Errorf("room not found"), http.StatusNotFound, false)
+			handleError(w, fmt.Errorf("error room not found"), http.StatusNotFound, false)
 			return
 		}
 
@@ -61,7 +61,7 @@ func CreateCastingToken(
 			Exp:    expiresAt.Unix(),
 		})
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to sign cast token: %w", err), http.StatusInternalServerError, true)
+			handleError(w, fmt.Errorf("error signing cast token: %w", err), http.StatusInternalServerError, true)
 			return
 		}
 

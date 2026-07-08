@@ -83,7 +83,7 @@ func RoomEvents(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to subscribe to room events: %w", err),
+				fmt.Errorf("error subscribing to room events: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

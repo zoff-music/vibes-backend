@@ -28,7 +28,7 @@ func (c *Client) EnsureToken(ctx context.Context) error {
 
 	token, err := c.GetClientCredentialsToken(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get client credentials token: %w", err)
+		return fmt.Errorf("error getting client credentials token: %w", err)
 	}
 
 	c.accessToken = token.AccessToken

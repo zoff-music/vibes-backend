@@ -29,7 +29,7 @@ func GetSongs(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to fetch songs: %w", err),
+				fmt.Errorf("error fetching songs: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -68,7 +68,7 @@ func AddSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("invalid request body: %w", err),
+				fmt.Errorf("error decoding request body: %w", err),
 				http.StatusBadRequest,
 				true,
 			)
@@ -90,12 +90,12 @@ func AddSong(
 		// Get room to check enabled sources
 		room, err := db.GetRoom(ctx, roomID, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
+			handleError(w, fmt.Errorf("error fetching room: %w", err), http.StatusInternalServerError, true)
 			return
 		}
 
 		if room.IsEmpty() {
-			handleError(w, fmt.Errorf("room not found"), http.StatusNotFound, false)
+			handleError(w, fmt.Errorf("error room not found"), http.StatusNotFound, false)
 			return
 		}
 
@@ -146,7 +146,7 @@ func AddSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to add song: %w", err),
+				fmt.Errorf("error adding song: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -158,7 +158,7 @@ func AddSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to fetch songs: %w", err),
+				fmt.Errorf("error fetching songs: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -200,7 +200,7 @@ func AddSong(
 			if err != nil {
 				handleError(
 					w,
-					fmt.Errorf("failed to auto-play first song: %w", err),
+					fmt.Errorf("error auto-playing first song: %w", err),
 					http.StatusInternalServerError,
 					true,
 				)
@@ -264,11 +264,11 @@ func RemoveSong(
 
 		room, err := db.GetRoom(ctx, roomID, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("failed to fetch room: %w", err), http.StatusInternalServerError, true)
+			handleError(w, fmt.Errorf("error fetching room: %w", err), http.StatusInternalServerError, true)
 			return
 		}
 		if room.IsEmpty() {
-			handleError(w, fmt.Errorf("room not found"), http.StatusNotFound, false)
+			handleError(w, fmt.Errorf("error room not found"), http.StatusNotFound, false)
 			return
 		}
 		if !room.IsAdmin {
@@ -280,7 +280,7 @@ func RemoveSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to remove song: %w", err),
+				fmt.Errorf("error removing song: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -360,7 +360,7 @@ func VoteSong(
 
 			handleError(
 				w,
-				fmt.Errorf("failed to vote for song: %w", err),
+				fmt.Errorf("error voting for song: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -383,7 +383,7 @@ func VoteSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("failed to marshal songs payload: %w", err),
+				fmt.Errorf("error marshaling songs payload: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

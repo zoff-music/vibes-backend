@@ -50,12 +50,12 @@ func StartGlobalTracer(ctx context.Context, cfg *config.Config, appName string) 
 
 	err := exporter.Init(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create otel exporter: %w", err)
+		return nil, fmt.Errorf("error creating otel exporter: %w", err)
 	}
 
 	tracerProvider, err := telemetry.OtelTraceProvider(exporter, cfg.OtelSamplerParam, appName, batchInterval, batchSize)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create otel trace provider: %w", err)
+		return nil, fmt.Errorf("error creating otel trace provider: %w", err)
 	}
 
 	otel.SetTracerProvider(tracerProvider) // Another global, but one we can mostly ignore

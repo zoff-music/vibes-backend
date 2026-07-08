@@ -4,13 +4,10 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
 	"time"
 
 	"go.opentelemetry.io/otel/exporters/otlp/otlptrace/otlptracegrpc"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
@@ -62,16 +59,15 @@ func (d *ExporterWithLogging) Init(ctx context.Context) error {
 	options := []otlptracegrpc.Option{
 		otlptracegrpc.WithEndpoint(d.Endpoint),
 		otlptracegrpc.WithTimeout(d.Timeout),
-		otlptracegrpc.WithDialOption(grpc.WithUnaryInterceptor(d.LoggingInterceptor)),
 	}
 
 	if d.Insecure {
-		options = append(options, d.insecureCreds())
+		options = append(options, otlptracegrpc.WithTLSCredentials(insecure.NewCredentials()))
 	}
 
 	exporter, err := otlptracegrpc.New(ctx, options...)
 	if err != nil {
-		return fmt.Errorf("otlptracegrpc.New: %w", err)
+		return fmt.Errorf("error creating otel trace grpc exporter: %w", err)
 	}
 
 	d.traceExporter = exporter
@@ -86,51 +82,4 @@ func (noopSpanExporter) ExportSpans(context.Context, []sdktrace.ReadOnlySpan) er
 
 func (noopSpanExporter) Shutdown(context.Context) error {
 	return nil
-}
-
-// LoggingInterceptor is a unary client interceptor for logging requests and responses.
-func (d *ExporterWithLogging) LoggingInterceptor(
-	ctx context.Context,
-	method string,
-	req, reply interface{},
-	cc *grpc.ClientConn,
-	invoker grpc.UnaryInvoker,
-	opts ...grpc.CallOption,
-) error {
-	start := time.Now()
-	err := invoker(ctx, method, req, reply, cc, opts...)
-	if err != nil {
-		log.Printf("RPC error method=%s duration=%v error=%v", method, time.Since(start), err)
-		return err
-	}
-
-	if d.LogSuccess {
-		log.Printf("RPC call method=%s duration=%v", method, time.Since(start))
-	}
-
-	return nil
-}
-
-// insecureCreds returns a custom insecure credential option that logs the success or failure of a handshake.
-func (d *ExporterWithLogging) insecureCreds() otlptracegrpc.Option {
-	return otlptracegrpc.WithTLSCredentials(
-		&loggingCreds{insecure.NewCredentials(), d.LogSuccess},
-	)
-}
-
-// loggingCreds is a wrapper around a TransportCredentials value, which logs the success or failure of a handshake.
-type loggingCreds struct {
-	credentials.TransportCredentials
-	logSuccess bool
-}
-
-func (c *loggingCreds) ClientHandshake(ctx context.Context, addr string, rawConn net.Conn) (net.Conn, credentials.AuthInfo, error) {
-	conn, auth, err := c.TransportCredentials.ClientHandshake(ctx, addr, rawConn)
-	if err != nil {
-		log.Printf("Client handshake failed: %v", err)
-	}
-	if err == nil && c.logSuccess {
-		log.Println("Client handshake succeeded")
-	}
-	return conn, auth, err
 }

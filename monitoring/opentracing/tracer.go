@@ -60,7 +60,8 @@ func (t *Tracer) StartFromContext(ctx context.Context, name string, extraContext
 		pc = trace.ContextWithSpanContext(pc, sc.traceCtx)
 	}
 
-	return t.Start(pc, name)
+	span, spanCtx := t.Start(pc, name)
+	return span, spanCtx
 }
 
 // HttpTransport returns an HTTP transport that instruments HTTP requests, by
@@ -70,11 +71,12 @@ func (t *Tracer) StartFromContext(ctx context.Context, name string, extraContext
 func (t *Tracer) HttpTransport(rt http.RoundTripper) *otelhttp.Transport {
 	p := t.compositePropagator()
 
-	return otelhttp.NewTransport(rt,
+	transport := otelhttp.NewTransport(rt,
 		otelhttp.WithTracerProvider(t.provider),
 		otelhttp.WithPropagators(p),
 		otelhttp.WithFilter(func(*http.Request) bool { return false }),
 	)
+	return transport
 }
 
 func (t *Tracer) GetCloser() io.Closer {
@@ -101,10 +103,12 @@ func (t *Tracer) compositePropagator() propagation.TextMapPropagator {
 		return t.Propagators[0]
 	}
 	if len(t.Propagators) > 1 {
-		return propagation.NewCompositeTextMapPropagator(t.Propagators...)
+		propagator := propagation.NewCompositeTextMapPropagator(t.Propagators...)
+		return propagator
 	}
 
-	return propagation.NewCompositeTextMapPropagator(propagation.TraceContext{})
+	propagator := propagation.NewCompositeTextMapPropagator(propagation.TraceContext{})
+	return propagator
 }
 
 func (t *Tracer) Inject(sc *SpanContext, format int, carrier propagation.TextMapCarrier) error {

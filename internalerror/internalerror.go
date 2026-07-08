@@ -38,7 +38,7 @@ type ErrAlreadyVoted struct {
 }
 
 func (e ErrAlreadyVoted) Error() string {
-	return fmt.Sprintf("Already voted error: %v", e.Err)
+	return fmt.Sprintf("error already voted: %v", e.Err)
 }
 
 func (e ErrAlreadyVoted) Unwrap() error {
@@ -51,7 +51,7 @@ type ErrDuplicateSong struct {
 }
 
 func (e ErrDuplicateSong) Error() string {
-	return fmt.Sprintf("Duplicate song error: %v", e.Err)
+	return fmt.Sprintf("error duplicate song: %v", e.Err)
 }
 
 func (e ErrDuplicateSong) Unwrap() error {
@@ -64,7 +64,7 @@ type ErrHostModeSkipOnly struct {
 }
 
 func (e ErrHostModeSkipOnly) Error() string {
-	return fmt.Sprintf("Host mode skip only error: %v", e.Err)
+	return fmt.Sprintf("error host mode skip only: %v", e.Err)
 }
 
 func (e ErrHostModeSkipOnly) Unwrap() error {
@@ -77,7 +77,7 @@ type ErrSkipDisabled struct {
 }
 
 func (e ErrSkipDisabled) Error() string {
-	return fmt.Sprintf("Skip disabled error: %v", e.Err)
+	return fmt.Sprintf("error skip disabled: %v", e.Err)
 }
 
 func (e ErrSkipDisabled) Unwrap() error {
@@ -90,7 +90,7 @@ type ErrAccessTokenNotFound struct {
 }
 
 func (e ErrAccessTokenNotFound) Error() string {
-	return fmt.Sprintf("Access token not found error: %v", e.Err)
+	return fmt.Sprintf("error access token not found: %v", e.Err)
 }
 
 func (e ErrAccessTokenNotFound) Unwrap() error {
@@ -103,9 +103,35 @@ type ErrMissingAdminPassword struct {
 }
 
 func (e ErrMissingAdminPassword) Error() string {
-	return fmt.Sprintf("Missing admin password error: %v", e.Err)
+	return fmt.Sprintf("error missing admin password: %v", e.Err)
 }
 
 func (e ErrMissingAdminPassword) Unwrap() error {
+	return e.Err
+}
+
+// ErrCastTokenInvalid is an error type for errors where a cast token is malformed or has an invalid signature.
+type ErrCastTokenInvalid struct {
+	Err error
+}
+
+func (e ErrCastTokenInvalid) Error() string {
+	return fmt.Sprintf("error cast token invalid: %v", e.Err)
+}
+
+func (e ErrCastTokenInvalid) Unwrap() error {
+	return e.Err
+}
+
+// ErrCastTokenExpired is an error type for errors where a cast token is expired.
+type ErrCastTokenExpired struct {
+	Err error
+}
+
+func (e ErrCastTokenExpired) Error() string {
+	return fmt.Sprintf("error cast token expired: %v", e.Err)
+}
+
+func (e ErrCastTokenExpired) Unwrap() error {
 	return e.Err
 }

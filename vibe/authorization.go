@@ -41,6 +41,16 @@ type AccessToken struct {
 	RefreshExpiresAt time.Time `json:"-"`
 }
 
+// PendingOAuthState represents a stored OAuth state waiting for provider callback validation.
+type PendingOAuthState struct {
+	UserID       string
+	CodeVerifier string
+}
+
+func (p *PendingOAuthState) IsEmpty() bool {
+	return p == nil || p.UserID == ""
+}
+
 // PendingOAuthStateSaver handles saving pending OAuth state
 type PendingOAuthStateSaver interface {
 	SavePendingOAuthState(ctx context.Context, userID, state, codeVerifier string) error
@@ -48,7 +58,7 @@ type PendingOAuthStateSaver interface {
 
 // CodeValidatorUpserter handles database operations for OAuth callbacks
 type CodeValidatorUpserter interface {
-	ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (string, string, error)
+	ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (*PendingOAuthState, error)
 	UpsertAuthToken(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error
 	UpsertAccessToken(ctx context.Context, userID, provider, accessToken, refreshToken string, expiresAt, refreshExpiresAt time.Time) error
 }

@@ -5,10 +5,11 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/zoff-music/vibes-backend/internalerror"
 )
 
 type CastTokenPayload struct {
@@ -20,31 +21,26 @@ type CastTokenPayload struct {
 	Exp    int64  `json:"exp"`
 }
 
-var (
-	ErrCastTokenInvalid = errors.New("cast token invalid")
-	ErrCastTokenExpired = errors.New("cast token expired")
-)
-
 func SignCastToken(secret string, payload CastTokenPayload) (string, error) {
 	if secret == "" {
-		return "", fmt.Errorf("cast token secret is required")
+		return "", fmt.Errorf("error cast token secret is required")
 	}
 
 	payload.V = 1
 	payload.Typ = "cast"
 	if payload.RoomID == "" || payload.UserID == "" {
-		return "", fmt.Errorf("cast token payload missing roomId/userId")
+		return "", fmt.Errorf("error cast token payload missing roomId/userId")
 	}
 	if payload.Iat == 0 {
 		payload.Iat = time.Now().Unix()
 	}
 	if payload.Exp == 0 {
-		return "", fmt.Errorf("cast token payload missing exp")
+		return "", fmt.Errorf("error cast token payload missing exp")
 	}
 
 	raw, err := json.Marshal(payload)
 	if err != nil {
-		return "", fmt.Errorf("marshal cast token payload: %w", err)
+		return "", fmt.Errorf("error marshaling cast token payload: %w", err)
 	}
 
 	payloadB64 := base64.RawURLEncoding.EncodeToString(raw)
@@ -59,43 +55,43 @@ func SignCastToken(secret string, payload CastTokenPayload) (string, error) {
 func VerifyCastToken(secret string, token string, now time.Time) (CastTokenPayload, error) {
 	var out CastTokenPayload
 	if secret == "" {
-		return out, ErrCastTokenInvalid
+		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error missing cast token secret")}
 	}
 
 	parts := strings.SplitN(token, ".", 2)
 	if len(parts) != 2 {
-		return out, ErrCastTokenInvalid
+		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error malformed cast token")}
 	}
 	payloadB64 := parts[0]
 	sigB64 := parts[1]
 
 	sig, err := base64.RawURLEncoding.DecodeString(sigB64)
 	if err != nil {
-		return out, ErrCastTokenInvalid
+		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error decoding cast token signature: %w", err)}
 	}
 
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(payloadB64))
 	expected := mac.Sum(nil)
 	if !hmac.Equal(sig, expected) {
-		return out, ErrCastTokenInvalid
+		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error invalid cast token signature")}
 	}
 
 	raw, err := base64.RawURLEncoding.DecodeString(payloadB64)
 	if err != nil {
-		return out, ErrCastTokenInvalid
+		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error decoding cast token payload: %w", err)}
 	}
 	err = json.Unmarshal(raw, &out)
 	if err != nil {
-		return out, ErrCastTokenInvalid
+		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error unmarshaling cast token payload: %w", err)}
 	}
 
 	if out.V != 1 || out.Typ != "cast" || out.RoomID == "" || out.UserID == "" {
-		return CastTokenPayload{}, ErrCastTokenInvalid
+		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error invalid cast token payload")}
 	}
 
 	if out.Exp <= now.Unix() {
-		return out, ErrCastTokenExpired
+		return out, internalerror.ErrCastTokenExpired{Err: fmt.Errorf("error expired cast token")}
 	}
 
 	return out, nil

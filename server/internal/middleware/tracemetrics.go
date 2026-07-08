@@ -25,7 +25,7 @@ func (tm *TraceMetrics) TraceMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 
-		span.SetTag("path", r.RequestURI)
+		span.SetStringTag("path", r.RequestURI)
 	})
 }
 
@@ -72,8 +72,10 @@ func initRootSpan(r *http.Request, operationName string) (opentracing.Span, cont
 		opentracing.HTTPHeadersCarrier(r.Header),
 	)
 	if err != nil {
-		return opentracing.StartSpanFromContext(r.Context(), operationName)
+		span, ctx := opentracing.StartSpanFromContext(r.Context(), operationName)
+		return span, ctx
 	}
 
-	return opentracing.StartSpanFromContext(r.Context(), operationName, opentracing.ChildOf(wireContext))
+	span, ctx := opentracing.StartSpanFromContext(r.Context(), operationName, opentracing.ChildOf(wireContext))
+	return span, ctx
 }

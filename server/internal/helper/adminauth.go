@@ -59,7 +59,7 @@ func ParseAdminAuthPayload(value string, secret string) (AdminAuthPayload, error
 	}
 
 	if payload.UserID == "" || payload.PasswordHash == "" {
-		return payload, fmt.Errorf("invalid admin payload")
+		return payload, fmt.Errorf("error invalid admin payload")
 	}
 
 	return payload, nil
@@ -72,7 +72,7 @@ func unsignAdminPayload(value string, secret string) (string, error) {
 
 	parts := strings.SplitN(value, ".", 2)
 	if len(parts) != 2 {
-		return "", fmt.Errorf("invalid admin payload signature")
+		return "", fmt.Errorf("error invalid admin payload signature")
 	}
 
 	payload := parts[0]
@@ -83,7 +83,7 @@ func unsignAdminPayload(value string, secret string) (string, error) {
 	expected := base64.StdEncoding.EncodeToString(mac.Sum(nil))
 
 	if !hmac.Equal([]byte(signature), []byte(expected)) {
-		return "", fmt.Errorf("invalid admin payload signature")
+		return "", fmt.Errorf("error invalid admin payload signature")
 	}
 
 	return payload, nil

@@ -44,7 +44,12 @@ func (c *Client) NotifyRoomUpdate(ctx context.Context, roomID string, event vibe
 	}
 
 	topicName := fmt.Sprintf("room:%s", roomID)
-	return c.NotifyTopic(ctx, topicName, data)
+	err = c.NotifyTopic(ctx, topicName, data)
+	if err != nil {
+		return fmt.Errorf("error notifying topic in NotifyRoomUpdate: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) error {
@@ -56,7 +61,12 @@ func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) e
 		return fmt.Errorf("error marshaling admin event: %w", err)
 	}
 
-	return c.NotifyTopic(ctx, adminTopicName, data)
+	err = c.NotifyTopic(ctx, adminTopicName, data)
+	if err != nil {
+		return fmt.Errorf("error notifying topic in NotifyAdminUpdate: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []vibe.RoomEvent) error {
