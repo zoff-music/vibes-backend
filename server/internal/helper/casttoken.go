@@ -53,37 +53,38 @@ func SignCastToken(secret string, payload CastTokenPayload) (string, error) {
 }
 
 func VerifyCastToken(secret string, token string, now time.Time) (CastTokenPayload, error) {
-	var out CastTokenPayload
 	if secret == "" {
-		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error missing cast token secret")}
+		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error missing cast token secret")}
 	}
 
 	parts := strings.SplitN(token, ".", 2)
 	if len(parts) != 2 {
-		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error malformed cast token")}
+		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error malformed cast token")}
 	}
 	payloadB64 := parts[0]
 	sigB64 := parts[1]
 
 	sig, err := base64.RawURLEncoding.DecodeString(sigB64)
 	if err != nil {
-		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error decoding cast token signature: %w", err)}
+		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error decoding cast token signature: %w", err)}
 	}
 
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(payloadB64))
 	expected := mac.Sum(nil)
 	if !hmac.Equal(sig, expected) {
-		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error invalid cast token signature")}
+		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error invalid cast token signature")}
 	}
 
 	raw, err := base64.RawURLEncoding.DecodeString(payloadB64)
 	if err != nil {
-		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error decoding cast token payload: %w", err)}
+		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error decoding cast token payload: %w", err)}
 	}
+
+	var out CastTokenPayload
 	err = json.Unmarshal(raw, &out)
 	if err != nil {
-		return out, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error unmarshaling cast token payload: %w", err)}
+		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error unmarshaling cast token payload: %w", err)}
 	}
 
 	if out.V != 1 || out.Typ != "cast" || out.RoomID == "" || out.UserID == "" {
@@ -91,7 +92,7 @@ func VerifyCastToken(secret string, token string, now time.Time) (CastTokenPaylo
 	}
 
 	if out.Exp <= now.Unix() {
-		return out, internalerror.ErrCastTokenExpired{Err: fmt.Errorf("error expired cast token")}
+		return CastTokenPayload{}, internalerror.ErrCastTokenExpired{Err: fmt.Errorf("error expired cast token")}
 	}
 
 	return out, nil
