@@ -34,7 +34,6 @@ type Client struct {
 	GetNextSongStatement          *sql.Stmt
 	GetNextSongExcludingStatement *sql.Stmt
 	VoteSongStatement             *sql.Stmt
-	CheckSongExistsStatement      *sql.Stmt
 	ClearVotesSongStatement       *sql.Stmt
 	UpdateSongAddedAtStatement    *sql.Stmt
 
@@ -85,9 +84,6 @@ type Client struct {
 	ElectNewHostStatement     *sql.Stmt
 	GetActiveSourcesStatement *sql.Stmt
 	GetAdminRoomsStatement    *sql.Stmt
-
-	// Additional song statements
-	InsertSongVoteStatement *sql.Stmt
 }
 
 // Init sets up a new database client.
@@ -134,8 +130,6 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareGetNextSongStmt,
 		c.prepareGetNextSongExcludingStmt,
 		c.prepareVoteSongStmt,
-		c.prepareCheckSongExistsStmt,
-		c.prepareInsertSongVoteStmt,
 		c.prepareClearVotesSongStmt,
 		c.prepareUpdateSongAddedAtStmt,
 		// Playback statements
@@ -200,7 +194,6 @@ func (c *Client) Close() error {
 		c.VoteSongStatement,
 		c.ClearVotesSongStatement,
 		c.UpdateSongAddedAtStatement,
-		c.CheckSongExistsStatement,
 		c.GetPlaybackStateStatement,
 		c.UpsertPlaybackStateStatement,
 		c.ProcessNextExpiredPlaybackStatement,
@@ -230,7 +223,6 @@ func (c *Client) Close() error {
 		c.DeleteInactiveParticipantsStatement,
 		c.ElectNewHostStatement,
 		c.GetActiveSourcesStatement,
-		c.InsertSongVoteStatement,
 	}
 
 	for _, stmt := range statements {
