@@ -17,10 +17,10 @@ func (c *Client) prepareUpsertAuthTokenStmt() error {
 		INSERT INTO auth_tokens (user_id, provider, code, state, expires_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP)
 		ON CONFLICT(user_id, provider) DO UPDATE SET
-			code = EXCLUDED.code,
-			state = EXCLUDED.state,
-			expires_at = EXCLUDED.expires_at,
-			updated_at = CURRENT_TIMESTAMP
+		code = EXCLUDED.code,
+		state = EXCLUDED.state,
+		expires_at = EXCLUDED.expires_at,
+		updated_at = CURRENT_TIMESTAMP
 	`)
 	if err != nil {
 		return fmt.Errorf("error in db: prepare upsert auth token statement: %w", err)
@@ -94,11 +94,11 @@ func (c *Client) prepareUpsertAccessTokenStmt() error {
 		INSERT INTO access_tokens (user_id, provider, access_token, refresh_token, expires_at, refresh_expires_at, updated_at)
 		VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP)
 		ON CONFLICT(user_id, provider) DO UPDATE SET
-			access_token = EXCLUDED.access_token,
-			refresh_token = EXCLUDED.refresh_token,
-			expires_at = EXCLUDED.expires_at,
-			refresh_expires_at = EXCLUDED.refresh_expires_at,
-			updated_at = CURRENT_TIMESTAMP
+		access_token = EXCLUDED.access_token,
+		refresh_token = EXCLUDED.refresh_token,
+		expires_at = EXCLUDED.expires_at,
+		refresh_expires_at = EXCLUDED.refresh_expires_at,
+		updated_at = CURRENT_TIMESTAMP
 	`)
 	if err != nil {
 		return fmt.Errorf("error in db: prepare upsert access token statement: %w", err)
@@ -259,8 +259,8 @@ func (c *Client) prepareSavePendingOAuthStateStmt() error {
 		INSERT INTO pending_oauth_state (user_id, state, code_verifier, expires_at)
 		VALUES ($1, $2, $3, $4)
 		ON CONFLICT(user_id, state) DO UPDATE SET
-			code_verifier = excluded.code_verifier,
-			expires_at = excluded.expires_at
+		code_verifier = excluded.code_verifier,
+		expires_at = excluded.expires_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing SavePendingOAuthStateStatement: %w", err)
@@ -306,9 +306,8 @@ func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (*
 
 	r := c.ValidatePendingOAuthStateStatement.QueryRowContext(cctx, state)
 
-	var userID sql.NullString
-	var codeVerifier sql.NullString
-	err := r.Scan(&userID, &codeVerifier)
+	var pendingState vibe.PendingOAuthState
+	err := r.Scan(&pendingState.UserID, &pendingState.CodeVerifier)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return &vibe.PendingOAuthState{}, nil
@@ -317,10 +316,7 @@ func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (*
 		return nil, fmt.Errorf("error in db: validate pending oauth state: %w", err)
 	}
 
-	return &vibe.PendingOAuthState{
-		UserID:       userID.String,
-		CodeVerifier: codeVerifier.String,
-	}, nil
+	return &pendingState, nil
 }
 
 func (c *Client) prepareDeletePendingOAuthStateStmt() error {
@@ -402,20 +398,20 @@ func (c *Client) DeleteExpiredPendingOAuthStates(ctx context.Context) (int64, er
 
 func (c *Client) prepareClaimAndGetExpiredTokenForRefreshStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH claimed_token AS (
+		WITH claimed_token_q AS (
 			SELECT user_id, provider, access_token, refresh_token, expires_at, refresh_expires_at
 			FROM access_tokens
 			WHERE provider = $1
 			AND expires_at <= CURRENT_TIMESTAMP
-				AND refresh_expires_at > CURRENT_TIMESTAMP
-				AND (last_checked IS NULL OR last_checked <= NOW() - INTERVAL '2 minutes')
-				ORDER BY last_checked ASC
-				LIMIT 1
-				FOR UPDATE SKIP LOCKED
+			AND refresh_expires_at > CURRENT_TIMESTAMP
+			AND (last_checked IS NULL OR last_checked <= NOW() - INTERVAL '2 minutes')
+			ORDER BY last_checked ASC
+			LIMIT 1
+			FOR UPDATE SKIP LOCKED
 			)
 		UPDATE access_tokens
 		SET last_checked = CURRENT_TIMESTAMP
-		WHERE (user_id, provider) IN (SELECT user_id, provider FROM claimed_token)
+		WHERE (user_id, provider) IN (SELECT user_id, provider FROM claimed_token_q)
 		RETURNING user_id, provider, access_token, refresh_token, expires_at, refresh_expires_at
 	`)
 	if err != nil {

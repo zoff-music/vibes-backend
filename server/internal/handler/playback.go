@@ -123,11 +123,8 @@ func UpdatePlaybackState(
 
 		log.Printf("Room %s: User %s attempting %s", roomID, userID, req.Action)
 
-		var state *vibe.PlaybackState // adjust if your type name differs
+		var state *vibe.PlaybackState
 
-		// ----------------------------
-		// Server mode: do NOT broadcast.
-		// ----------------------------
 		if room.Mode == vibe.RoomModeServer {
 			state, err = db.GetPlaybackState(ctx, roomID)
 			if err != nil {
@@ -140,9 +137,6 @@ func UpdatePlaybackState(
 				return
 			}
 
-			// Cases where we actually update DB in server mode:
-			// 1) play when no current song (kick off first song from queue)
-			// 2) seek (allowed)
 			shouldPersist := req.Action == vibe.RoomActionSeek ||
 				(req.Action == vibe.RoomActionPlay && state.CurrentSong == nil)
 
@@ -157,8 +151,6 @@ func UpdatePlaybackState(
 					)
 					return
 				}
-
-				// fallthrough to response writing
 			}
 
 			switch req.Action {
@@ -187,9 +179,6 @@ func UpdatePlaybackState(
 			return
 		}
 
-		// ----------------------------
-		// Non-server modes: update DB.
-		// ----------------------------
 		state, err = db.UpdatePlayback(ctx, roomID, userID, req.Action, req.PositionMs)
 		if err != nil {
 			handleError(
@@ -203,7 +192,6 @@ func UpdatePlaybackState(
 
 		state.ServerTimeMs = int(time.Now().UnixMilli())
 
-		// Host mode broadcast (best effort; only marshal once)
 		if room.Mode == vibe.RoomModeHost {
 			statePayload, err := json.Marshal(state)
 			if err != nil {

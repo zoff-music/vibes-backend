@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -17,15 +16,36 @@ import (
 // prepareProcessNextAbandonedHostStmt prepares the ProcessNextAbandonedHostStatement.
 func (c *Client) prepareProcessNextAbandonedHostStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT r.id
-		FROM rooms r
-		LEFT JOIN room_users ru ON r.host_id = ru.id
-			WHERE r.mode = 'host'
-			AND r.host_id IS NOT NULL AND r.host_id != ''
-			AND (ru.last_seen_at IS NULL OR ru.last_seen_at < NOW() - INTERVAL '15 seconds')
+		WITH abandoned_room_q AS (
+			SELECT a.id
+			FROM rooms a
+			LEFT JOIN room_users b ON a.host_id = b.id
+			WHERE a.mode = 'host'
+			AND a.host_id IS NOT NULL
+			AND a.host_id != ''
+			AND (b.last_seen_at IS NULL OR b.last_seen_at < NOW() - INTERVAL '15 seconds')
 			LIMIT 1
-			FOR UPDATE OF r SKIP LOCKED
-		`)
+			FOR UPDATE OF a SKIP LOCKED
+		),
+		elected_host_q AS (
+			SELECT a.room_id, a.id
+			FROM room_users a
+			JOIN abandoned_room_q b ON b.id = a.room_id
+			WHERE a.last_seen_at >= NOW() - INTERVAL '15 seconds'
+			AND a.is_active_listener = 1
+			AND a.is_cast_receiver = 0
+			ORDER BY a.joined_at ASC
+			LIMIT 1
+		),
+		updated_room_q AS (
+			UPDATE rooms a
+			SET host_id = COALESCE((SELECT id FROM elected_host_q), '')
+			FROM abandoned_room_q b
+			WHERE a.id = b.id
+			RETURNING a.id, a.host_id
+		)
+		SELECT id, host_id FROM updated_room_q
+	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ProcessNextAbandonedHostStatement: %w", err)
 	}
@@ -35,9 +55,8 @@ func (c *Client) prepareProcessNextAbandonedHostStmt() error {
 	return nil
 }
 
-// ProcessNextAbandonedHost finds a room with an inactive host, elects a new one, and returns info.
-func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostInfo, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextAbandonedHost")
+func (c *Client) processNextAbandonedHost(ctx context.Context) (*vibe.RoomHostInfo, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "processNextAbandonedHost")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -45,8 +64,8 @@ func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostIn
 
 	r := c.ProcessNextAbandonedHostStatement.QueryRowContext(cctx)
 
-	var roomID sql.NullString
-	err := r.Scan(&roomID)
+	var row abandonedHostRow
+	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, internalerror.ErrExpected{
@@ -55,45 +74,39 @@ func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostIn
 				},
 			}
 		}
-		return nil, fmt.Errorf("error finding abandoned host: %w", err)
+		return nil, fmt.Errorf("error scanning abandoned host: %w", err)
 	}
 
-	r = c.ElectNewHostStatement.QueryRowContext(cctx, roomID)
-
-	var newHostID sql.NullString
-	err = r.Scan(&newHostID)
-	if err != nil && !errors.Is(err, sql.ErrNoRows) {
-		return nil, fmt.Errorf("error electing new host: %w", err)
-	}
-	// if ErrNoRows, newHostID is "", which is fine (no host)
-
-	// Update the room
-	err = c.SetRoomHost(ctx, roomID.String, newHostID.String)
-	if err != nil {
-		return nil, fmt.Errorf("error setting room host: %w", err)
-	}
-
-	return &vibe.RoomHostInfo{
-		RoomID:    roomID.String,
-		NewHostID: newHostID.String,
-	}, nil
+	return row.toRoomHostInfo(), nil
 }
 
-func (c *Client) prepareElectNewHostStmt() error {
-	stmt, err := c.DB.Prepare(`
-		SELECT id FROM room_users
-		WHERE room_id = $1
-		AND last_seen_at >= NOW() - INTERVAL '15 seconds'
-		AND is_active_listener = 1
-		AND is_cast_receiver = 0
-		ORDER BY joined_at ASC
-		LIMIT 1
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing ElectNewHostStatement: %w", err)
+type abandonedHostRow struct {
+	RoomID sql.NullString
+	HostID sql.NullString
+}
+
+func (r *abandonedHostRow) scan(row *sql.Row) error {
+	return row.Scan(&r.RoomID, &r.HostID)
+}
+
+func (r *abandonedHostRow) toRoomHostInfo() *vibe.RoomHostInfo {
+	return &vibe.RoomHostInfo{
+		RoomID:    r.RoomID.String,
+		NewHostID: r.HostID.String,
 	}
-	c.ElectNewHostStatement = stmt
-	return nil
+}
+
+// ProcessNextAbandonedHost finds a room with an inactive host, elects a new one, and returns info.
+func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostInfo, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextAbandonedHost")
+	defer span.End()
+
+	hostInfo, err := c.processNextAbandonedHost(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error processing abandoned host: %w", err)
+	}
+
+	return hostInfo, nil
 }
 
 // prepareGetRoomStmt prepares the GetRoomStatement.
@@ -131,6 +144,74 @@ func (c *Client) prepareGetRoomStmt() error {
 	c.GetRoomStatement = stmt
 
 	return nil
+}
+
+// GetRoom fetches a room by ID.
+// If userID is provided, it also populates the IsAdmin field for that user.
+func (c *Client) GetRoom(ctx context.Context, id string, userID string) (*vibe.Room, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetRoom")
+	defer span.End()
+
+	room, err := c.getRoom(ctx, id, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting room: %w", err)
+	}
+
+	room, err = c.fillRoomDetails(ctx, *room, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error filling room details: %w", err)
+	}
+
+	return room, nil
+}
+
+func (c *Client) getRoom(ctx context.Context, id string, userID string) (*vibe.Room, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "getRoom")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	r := c.GetRoomStatement.QueryRowContext(cctx, id, userID)
+
+	var row roomRow
+	err := row.scanRow(r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return &vibe.Room{}, nil
+		}
+
+		return nil, fmt.Errorf("error fetching room: %w", err)
+	}
+
+	room, err := row.toRoom()
+	if err != nil {
+		return nil, fmt.Errorf("error converting room row: %w", err)
+	}
+
+	return room, nil
+}
+
+func (c *Client) fillRoomDetails(ctx context.Context, room vibe.Room, userID string) (*vibe.Room, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "fillRoomDetails")
+	defer span.End()
+
+	filledRoom, err := c.fillActiveSources(ctx, room)
+	if err != nil {
+		return nil, fmt.Errorf("error filling active sources: %w", err)
+	}
+
+	filledRoom.UserID = userID
+
+	counts, err := c.GetActiveListenerCounts(ctx, filledRoom.ID, 15*time.Second)
+	if err == nil {
+		filledRoom.UserCount = counts.ActiveListeners
+		if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
+			filledRoom.UserCount = 1
+		}
+	}
+
+	return filledRoom, nil
 }
 
 // prepareGetRoomByNameStmt prepares the GetRoomByNameStatement.
@@ -175,6 +256,23 @@ func (c *Client) GetRoomByName(ctx context.Context, name string, userID string) 
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetRoomByName")
 	defer span.End()
 
+	room, err := c.getRoomByName(ctx, name, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error getting room by name: %w", err)
+	}
+
+	room, err = c.fillRoomDetails(ctx, *room, userID)
+	if err != nil {
+		return nil, fmt.Errorf("error filling room details: %w", err)
+	}
+
+	return room, nil
+}
+
+func (c *Client) getRoomByName(ctx context.Context, name string, userID string) (*vibe.Room, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "getRoomByName")
+	defer span.End()
+
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -193,184 +291,6 @@ func (c *Client) GetRoomByName(ctx context.Context, name string, userID string) 
 	room, err := scanned.toRoom()
 	if err != nil {
 		return nil, fmt.Errorf("error converting room row: %w", err)
-	}
-
-	room, err = c.fillActiveSources(ctx, *room)
-	if err != nil {
-		return nil, fmt.Errorf("error filling active sources: %w", err)
-	}
-
-	room.UserID = userID
-
-	counts, err := c.GetActiveListenerCounts(ctx, room.ID, 15*time.Second)
-	if err == nil {
-		room.UserCount = counts.ActiveListeners
-		if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
-			room.UserCount = 1
-		}
-	}
-
-	return room, nil
-}
-
-func (c *Client) prepareGetActiveSourcesStmt() error {
-	stmt, err := c.DB.Prepare(`
-		SELECT DISTINCT source_type FROM songs WHERE room_id = $1
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing GetActiveSourcesStatement: %w", err)
-	}
-	c.GetActiveSourcesStatement = stmt
-	return nil
-}
-
-func (c *Client) prepareGetAdminRoomsStmt() error {
-	stmt, err := c.DB.Prepare(`
-		SELECT
-			r.id,
-			r.name,
-			(SELECT COUNT(*) FROM room_users ru WHERE ru.room_id = r.id AND ru.is_active_listener = 1 AND ru.last_seen_at >= $1) as user_count,
-			(SELECT COUNT(*) FROM songs s WHERE s.room_id = r.id) as song_count,
-			(SELECT STRING_AGG(DISTINCT s.source_type, ',') FROM songs s WHERE s.room_id = r.id) as active_sources
-		FROM rooms r
-		ORDER BY user_count DESC, song_count DESC
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing GetAdminRoomsStatement: %w", err)
-	}
-
-	c.GetAdminRoomsStatement = stmt
-	return nil
-}
-
-func (c *Client) ListAdminRooms(ctx context.Context) ([]vibe.AdminRoomSummary, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ListAdminRooms")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	cutoff := time.Now().Add(-15 * time.Second)
-	rows, err := c.GetAdminRoomsStatement.QueryContext(cctx, cutoff)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching admin rooms: %w", err)
-	}
-	defer rows.Close()
-
-	rooms := []vibe.AdminRoomSummary{}
-	for rows.Next() {
-		var row adminRoomRow
-		err := row.scanRows(rows)
-		if err != nil {
-			return nil, fmt.Errorf("error scanning admin room: %w", err)
-		}
-
-		rooms = append(rooms, row.toSummary())
-	}
-
-	return rooms, nil
-}
-
-type adminRoomRow struct {
-	ID            sql.NullString
-	Name          sql.NullString
-	UserCount     sql.NullInt64
-	SongCount     sql.NullInt64
-	ActiveSources sql.NullString
-}
-
-func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
-	return rows.Scan(
-		&r.ID,
-		&r.Name,
-		&r.UserCount,
-		&r.SongCount,
-		&r.ActiveSources,
-	)
-}
-
-func (r *adminRoomRow) toSummary() vibe.AdminRoomSummary {
-	sources := []string{}
-	if r.ActiveSources.Valid && r.ActiveSources.String != "" {
-		sources = strings.Split(r.ActiveSources.String, ",")
-	}
-
-	return vibe.AdminRoomSummary{
-		ID:            r.ID.String,
-		Name:          r.Name.String,
-		UserCount:     int(r.UserCount.Int64),
-		SongCount:     int(r.SongCount.Int64),
-		ActiveSources: sources,
-	}
-}
-
-func (c *Client) fillActiveSources(ctx context.Context, room vibe.Room) (*vibe.Room, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "fillActiveSources")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	rows, err := c.GetActiveSourcesStatement.QueryContext(cctx, room.ID)
-	if err != nil {
-		return nil, fmt.Errorf("error in db: get active sources: %w", err)
-	}
-	defer rows.Close()
-
-	sources := []string{}
-	for rows.Next() {
-		var row sql.NullString
-		err := rows.Scan(&row)
-		if err != nil {
-			return nil, fmt.Errorf("error in db: scan active source: %w", err)
-		}
-		sources = append(sources, row.String)
-	}
-
-	room.ActiveSources = sources
-	return &room, nil
-}
-
-// GetRoom fetches a room by ID.
-// If userID is provided, it also populates the IsAdmin field for that user.
-func (c *Client) GetRoom(ctx context.Context, id string, userID string) (*vibe.Room, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetRoom")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	r := c.GetRoomStatement.QueryRowContext(cctx, id, userID)
-	log.Printf("database.GetRoom: roomID=%s, userID=%s", id, userID)
-
-	var row roomRow
-	err := row.scanRow(r)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return &vibe.Room{}, nil
-		}
-
-		return nil, fmt.Errorf("error fetching room: %w", err)
-	}
-
-	room, err := row.toRoom()
-	if err != nil {
-		return nil, fmt.Errorf("error converting room row: %w", err)
-	}
-
-	room, err = c.fillActiveSources(ctx, *room)
-	if err != nil {
-		return nil, fmt.Errorf("error filling active sources: %w", err)
-	}
-
-	room.UserID = userID
-
-	counts, err := c.GetActiveListenerCounts(ctx, room.ID, 15*time.Second)
-	if err == nil {
-		room.UserCount = counts.ActiveListeners
-		if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
-			room.UserCount = 1
-		}
 	}
 
 	return room, nil
@@ -460,14 +380,151 @@ func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
 	}, nil
 }
 
+func (c *Client) prepareGetActiveSourcesStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT DISTINCT source_type FROM songs WHERE room_id = $1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetActiveSourcesStatement: %w", err)
+	}
+	c.GetActiveSourcesStatement = stmt
+	return nil
+}
+
+func (c *Client) fillActiveSources(ctx context.Context, room vibe.Room) (*vibe.Room, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "fillActiveSources")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := c.GetActiveSourcesStatement.QueryContext(cctx, room.ID)
+	if err != nil {
+		return nil, fmt.Errorf("error in db: get active sources: %w", err)
+	}
+	defer rows.Close()
+
+	sources := []string{}
+	for rows.Next() {
+		var row sql.NullString
+		err := rows.Scan(&row)
+		if err != nil {
+			return nil, fmt.Errorf("error in db: scan active source: %w", err)
+		}
+		sources = append(sources, row.String)
+	}
+
+	room.ActiveSources = sources
+	return &room, nil
+}
+
+func (c *Client) prepareGetAdminRoomsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH active_users_q AS (
+			SELECT
+				a.room_id,
+				COUNT(*) AS user_count
+			FROM room_users a
+			WHERE a.is_active_listener = 1
+			AND a.last_seen_at >= $1
+			GROUP BY a.room_id
+		),
+		song_counts_q AS (
+			SELECT
+				a.room_id,
+				COUNT(*) AS song_count,
+				STRING_AGG(DISTINCT a.source_type, ',') AS active_sources
+			FROM songs a
+			GROUP BY a.room_id
+		)
+		SELECT
+			a.id,
+			a.name,
+			COALESCE(b.user_count, 0) AS user_count,
+			COALESCE(c.song_count, 0) AS song_count,
+			COALESCE(c.active_sources, '') AS active_sources
+		FROM rooms a
+		LEFT JOIN active_users_q b ON b.room_id = a.id
+		LEFT JOIN song_counts_q c ON c.room_id = a.id
+		ORDER BY user_count DESC, song_count DESC
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetAdminRoomsStatement: %w", err)
+	}
+
+	c.GetAdminRoomsStatement = stmt
+	return nil
+}
+
+func (c *Client) ListAdminRooms(ctx context.Context) ([]vibe.AdminRoomSummary, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ListAdminRooms")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	cutoff := time.Now().Add(-15 * time.Second)
+	rows, err := c.GetAdminRoomsStatement.QueryContext(cctx, cutoff)
+	if err != nil {
+		return nil, fmt.Errorf("error fetching admin rooms: %w", err)
+	}
+	defer rows.Close()
+
+	rooms := []vibe.AdminRoomSummary{}
+	for rows.Next() {
+		var row adminRoomRow
+		err := row.scanRows(rows)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning admin room: %w", err)
+		}
+
+		rooms = append(rooms, row.toSummary())
+	}
+
+	return rooms, nil
+}
+
+type adminRoomRow struct {
+	ID            sql.NullString
+	Name          sql.NullString
+	UserCount     sql.NullInt64
+	SongCount     sql.NullInt64
+	ActiveSources sql.NullString
+}
+
+func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
+	return rows.Scan(
+		&r.ID,
+		&r.Name,
+		&r.UserCount,
+		&r.SongCount,
+		&r.ActiveSources,
+	)
+}
+
+func (r *adminRoomRow) toSummary() vibe.AdminRoomSummary {
+	sources := []string{}
+	if r.ActiveSources.Valid && r.ActiveSources.String != "" {
+		sources = strings.Split(r.ActiveSources.String, ",")
+	}
+
+	return vibe.AdminRoomSummary{
+		ID:            r.ID.String,
+		Name:          r.Name.String,
+		UserCount:     int(r.UserCount.Int64),
+		SongCount:     int(r.SongCount.Int64),
+		ActiveSources: sources,
+	}
+}
+
 // prepareCreateRoomStmt prepares the CreateRoomStatement.
 func (c *Client) prepareCreateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH created_room AS (
+		WITH created_room_q AS (
 			INSERT INTO rooms (id, name, mode, host_id, admin_password_hash, created_at)
 			VALUES ($1, $2, $3, $4, $5, $6)
 			RETURNING id
-		), created_settings AS (
+		), created_settings_q AS (
 			INSERT INTO room_settings (
 				room_id,
 				skip_allowed,
@@ -480,9 +537,9 @@ func (c *Client) prepareCreateRoomStmt() error {
 				enabled_sources,
 				only_admin_add_songs
 			)
-			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15 FROM created_room
+			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15 FROM created_room_q
 		)
-		SELECT id FROM created_room
+		SELECT id FROM created_room_q
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRoomStatement: %w", err)
@@ -501,7 +558,6 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	// Atomic CTE query
 	row := c.CreateRoomStatement.QueryRowContext(cctx,
 		room.ID,
 		room.Name,
@@ -540,17 +596,17 @@ func (r *createRoomRow) scan(row *sql.Row) error {
 // prepareUpdateRoomStmt prepares the UpdateRoomStatement.
 func (c *Client) prepareUpdateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH updated_room AS (
-			UPDATE rooms
-			SET name = $1,
+			WITH updated_room_q AS (
+				UPDATE rooms
+				SET name = $1,
 				mode = $10,
 				host_id = $11,
 				admin_password_hash = $12
-			WHERE id = $2
-			RETURNING id
-		)
-		UPDATE room_settings
-		SET skip_allowed = $3,
+				WHERE id = $2
+				RETURNING id
+			)
+			UPDATE room_settings
+			SET skip_allowed = $3,
 			democratic_skip = $4,
 			skip_vote_threshold = $5,
 			max_continuous_adds = $6,
@@ -559,7 +615,8 @@ func (c *Client) prepareUpdateRoomStmt() error {
 			allow_duplicates = $9,
 			enabled_sources = $13,
 			only_admin_add_songs = $14
-		WHERE room_id = (SELECT id FROM updated_room)
+		FROM updated_room_q a
+		WHERE room_settings.room_id = a.id
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateRoomStatement: %w", err)
@@ -598,7 +655,6 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		return nil, fmt.Errorf("error updating room: %w", err)
 	}
 
-	// Fetch and return the updated room to ensure we have the latest data
 	updatedRoom, err := c.GetRoom(ctx, room.ID, room.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching updated room: %w", err)

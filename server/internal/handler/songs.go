@@ -75,7 +75,6 @@ func AddSong(
 			return
 		}
 
-		// Get the user from the session
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
 			handleError(
@@ -87,7 +86,6 @@ func AddSong(
 			return
 		}
 
-		// Get room to check enabled sources
 		room, err := db.GetRoom(ctx, roomID, session.UserID)
 		if err != nil {
 			handleError(w, fmt.Errorf("error fetching room: %w", err), http.StatusInternalServerError, true)
@@ -109,7 +107,6 @@ func AddSong(
 			return
 		}
 
-		// Validate source type
 		sourceEnabled := false
 		for _, source := range room.Settings.EnabledSources {
 			if string(req.SourceType) == source {
@@ -153,7 +150,6 @@ func AddSong(
 			return
 		}
 
-		// Broadcast queue update
 		songs, err := db.GetSongs(ctx, roomID)
 		if err != nil {
 			handleError(
@@ -184,7 +180,6 @@ func AddSong(
 			log.Printf("failed to notify room: %v", err)
 		}
 
-		// Auto-play if this is the first song in the queue
 		allSongs, err := db.GetSongs(ctx, roomID)
 		if err == nil && len(allSongs) == 1 {
 			playbackState := &vibe.PlaybackState{
@@ -207,7 +202,6 @@ func AddSong(
 				return
 			}
 
-			// Notify room about playback update
 			playbackPayload, err := json.Marshal(playbackState)
 			if err != nil {
 				handleError(w,
@@ -287,7 +281,6 @@ func RemoveSong(
 			return
 		}
 
-		// Broadcast queue update
 		songs, err := db.GetSongs(ctx, roomID)
 		if err != nil {
 			handleError(
@@ -367,7 +360,6 @@ func VoteSong(
 			return
 		}
 
-		// Broadcast queue update
 		songs, err := db.GetSongs(ctx, roomID)
 		if err != nil {
 			handleError(
