@@ -5,13 +5,16 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/zoff-music/vibes-backend/server/internal/handler"
 	"github.com/zoff-music/vibes-backend/server/internal/middleware"
+	_ "github.com/zoff-music/vibes-backend/swaggerdocs"
 )
 
 // setupRoutes - the root route function.
 func (s *Server) setupRoutes() {
 	api := s.Router.PathPrefix(v1API).Subrouter()
+	s.Router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
 
 	// Room routes
 	api.HandleFunc("/rooms", handler.CreateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")

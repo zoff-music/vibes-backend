@@ -17,6 +17,14 @@ import (
 )
 
 // GetSongs handles GET /api/v1/rooms/:id/songs
+//
+//	@Summary	List room songs
+//	@Tags		songs
+//	@Produce	json
+//	@Param		id	path		string	true	"Room ID"
+//	@Success	200	{array}		vibe.Song
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/rooms/{id}/songs [get]
 func GetSongs(
 	db vibe.SongsFetcher,
 ) http.HandlerFunc {
@@ -54,6 +62,20 @@ func GetSongs(
 }
 
 // AddSong handles the addition of a new song to the room
+//
+//	@Summary	Add a song
+//	@Tags		songs
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string				true	"Room ID"
+//	@Param		request	body		vibe.AddSongRequest	true	"Song payload"
+//	@Success	201		{object}	vibe.Song
+//	@Failure	400		{object}	map[string]string
+//	@Failure	401		{object}	map[string]string
+//	@Failure	403		{object}	map[string]string
+//	@Failure	404		{object}	map[string]string
+//	@Failure	500		{object}	map[string]string
+//	@Router		/api/v1/rooms/{id}/songs [post]
 func AddSong(
 	db vibe.SongController,
 	ips vibe.RoomEventAdminNotifier,
@@ -250,6 +272,17 @@ func AddSong(
 }
 
 // RemoveSong handles the removal of a song from the room
+//
+//	@Summary	Remove a song
+//	@Tags		songs
+//	@Param		id		path	string	true	"Room ID"
+//	@Param		songId	path	string	true	"Song ID"
+//	@Success	204
+//	@Failure	401	{object}	map[string]string
+//	@Failure	403	{object}	map[string]string
+//	@Failure	404	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/rooms/{id}/songs/{songId} [delete]
 func RemoveSong(
 	db vibe.SongController,
 	ips vibe.RoomEventAdminNotifier,
@@ -346,6 +379,16 @@ func RemoveSong(
 }
 
 // VoteSong handles voting for a song
+//
+//	@Summary	Vote for a song
+//	@Tags		songs
+//	@Param		id		path	string	true	"Room ID"
+//	@Param		songId	path	string	true	"Song ID"
+//	@Success	204
+//	@Failure	401	{object}	map[string]string
+//	@Failure	409	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/rooms/{id}/songs/{songId} [post]
 func VoteSong(
 	db vibe.SongController,
 	ips vibe.RoomEventNotifier,

@@ -15,6 +15,15 @@ import (
 )
 
 // GetPlaybackState handles GET /rooms/{id}/states
+//
+//	@Summary	Get playback state
+//	@Tags		playback
+//	@Produce	json
+//	@Param		id	path		string	true	"Room ID"
+//	@Success	200	{object}	vibe.PlaybackState
+//	@Failure	401	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/rooms/{id}/states [get]
 func GetPlaybackState(
 	db vibe.PlaybackFetcher,
 ) http.HandlerFunc {
@@ -65,6 +74,18 @@ func GetPlaybackState(
 }
 
 // UpdatePlaybackState handles PUT /rooms/{id}/states
+//
+//	@Summary	Update playback state
+//	@Tags		playback
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string					true	"Room ID"
+//	@Param		request	body		vibe.RoomActionRequest	true	"Playback action"
+//	@Success	200		{object}	vibe.PlaybackState
+//	@Failure	400		{object}	map[string]string
+//	@Failure	401		{object}	map[string]string
+//	@Failure	500		{object}	map[string]string
+//	@Router		/api/v1/rooms/{id}/states [put]
 func UpdatePlaybackState(
 	db vibe.RoomGetterPlaybackUpdater,
 	ips vibe.RoomEventNotifier,

@@ -15,6 +15,16 @@ import (
 )
 
 // Authorize redirects the user to the provider for authentication
+//
+//	@Summary	Start provider authorization
+//	@Tags		authorization
+//	@Produce	json
+//	@Success	307
+//	@Failure	401	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/authorizations/spotify [get]
+//	@Router		/api/v1/authorizations/soundcloud [get]
+//	@Router		/api/v1/authorizations/youtube [get]
 func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -55,6 +65,17 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 }
 
 // OAuthCallback handles GET /api/v1/callbacks/{provider}
+//
+//	@Summary	Handle provider authorization callback
+//	@Tags		authorization
+//	@Param		code	query	string	true	"Authorization code"
+//	@Param		state	query	string	true	"OAuth state"
+//	@Success	307
+//	@Failure	400	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/callbacks/spotify [get]
+//	@Router		/api/v1/callbacks/soundcloud [get]
+//	@Router		/api/v1/callbacks/youtube [get]
 func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, providerName string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -130,6 +151,18 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 }
 
 // GetToken handles GET /api/v1/authorizations/{provider}/token
+//
+//	@Summary	Get a provider access token
+//	@Tags		authorization
+//	@Produce	json
+//	@Success	200	{object}	vibe.ProviderTokenResponse
+//	@Failure	401	{object}	map[string]string
+//	@Failure	403	{object}	map[string]string
+//	@Failure	412	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/tokens/spotify [get]
+//	@Router		/api/v1/tokens/soundcloud [get]
+//	@Router		/api/v1/tokens/youtube [get]
 func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, providerName string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

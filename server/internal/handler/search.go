@@ -9,6 +9,15 @@ import (
 )
 
 // SearchMusic handles GET /api/v1/youtube/search
+//
+//	@Summary	Search YouTube tracks
+//	@Tags		providers
+//	@Produce	json
+//	@Param		q	query		string	true	"Search query"
+//	@Success	200	{array}		vibe.MusicTrack
+//	@Failure	400	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/youtube/search [get]
 func SearchMusic(
 	ms vibe.MusicSearcher,
 ) http.HandlerFunc {
@@ -55,6 +64,15 @@ func SearchMusic(
 }
 
 // SearchSoundCloud handles GET /api/v1/soundcloud/search
+//
+//	@Summary	Search SoundCloud tracks
+//	@Tags		providers
+//	@Produce	json
+//	@Param		q	query		string	true	"Search query"
+//	@Success	200	{array}		vibe.MusicTrack
+//	@Failure	400	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/soundcloud/search [get]
 func SearchSoundCloud(
 	ms vibe.MusicSearcher,
 ) http.HandlerFunc {
@@ -101,6 +119,15 @@ func SearchSoundCloud(
 }
 
 // SearchSpotify handles GET /api/v1/spotify/search
+//
+//	@Summary	Search Spotify tracks
+//	@Tags		providers
+//	@Produce	json
+//	@Param		q	query		string	true	"Search query"
+//	@Success	200	{array}		vibe.MusicTrack
+//	@Failure	400	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/spotify/search [get]
 func SearchSpotify(
 	ms vibe.MusicSearcher,
 ) http.HandlerFunc {
