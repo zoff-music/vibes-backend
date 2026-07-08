@@ -5,8 +5,6 @@ import (
 	"time"
 )
 
-const oauthAuthStateCookie = "oauth_auth_state"
-
 // SetOAuthStateCookie sets a secure cookie with the OAuth state
 func SetOAuthStateCookie(w http.ResponseWriter, state string) {
 	http.SetCookie(w, &http.Cookie{
@@ -39,3 +37,5 @@ func ClearOAuthStateCookie(w http.ResponseWriter) {
 		HttpOnly: true,
 	})
 }
+
+const oauthAuthStateCookie = "oauth_auth_state"

@@ -4,8 +4,6 @@ import (
 	"context"
 )
 
-const SessionKey = "session"
-
 type SessionPayload struct {
 	UserID string `json:"user_id"`
 	// AuthType indicates how this session was authenticated.
@@ -21,3 +19,5 @@ func GetSessionFromContext(ctx context.Context) (SessionPayload, bool) {
 	session, ok := ctx.Value(SessionKey).(SessionPayload)
 	return session, ok
 }
+
+const SessionKey = "session"

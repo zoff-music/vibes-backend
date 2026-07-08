@@ -2,8 +2,6 @@ package vibe
 
 import "context"
 
-const AdminRoomsUpdate = "admin_rooms_update"
-
 type AdminRoomSummary struct {
 	ID            string   `json:"id"`
 	Name          string   `json:"name"`
@@ -37,3 +35,5 @@ type AdminSubscriberPublisher interface {
 	Subscriber
 	AdminEventNotifier
 }
+
+const AdminRoomsUpdate = "admin_rooms_update"

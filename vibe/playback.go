@@ -18,12 +18,6 @@ type PlaybackState struct {
 // RoomAction represents a playback action
 type RoomAction string
 
-const RoomActionPlay = "play"
-const RoomActionPause = "pause"
-const RoomActionSeek = "seek"
-const RoomActionSkip = "skip"
-const RoomActionVote = "vote"
-
 // RoomActionRequest is the request payload for room actions.
 type RoomActionRequest struct {
 	Action     RoomAction `json:"action"`
@@ -67,3 +61,9 @@ type ExpiredPlaybackSongFetcherAdminRoomLister interface {
 type AbandonedHostProcessor interface {
 	ProcessNextAbandonedHost(ctx context.Context) (*RoomHostInfo, error)
 }
+
+const RoomActionPlay = "play"
+const RoomActionPause = "pause"
+const RoomActionSeek = "seek"
+const RoomActionSkip = "skip"
+const RoomActionVote = "vote"

@@ -9,8 +9,6 @@ import (
 	"github.com/zoff-music/vibes-backend/server/internal/middleware"
 )
 
-const v1API string = "/api/v1"
-
 // setupRoutes - the root route function.
 func (s *Server) setupRoutes() {
 	api := s.Router.PathPrefix(v1API).Subrouter()
@@ -141,3 +139,5 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 		r.Use(am.Middleware)
 	}
 }
+
+const v1API string = "/api/v1"

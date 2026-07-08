@@ -19,10 +19,6 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-const instrumentationName = "github.com/zoff-music/vibes-backend"
-
-const serviceName = "vibes"
-
 type closer struct {
 	provider *sdktrace.TracerProvider
 	timeout  time.Duration
@@ -154,3 +150,7 @@ func (noopSpanExporter) ExportSpans(context.Context, []sdktrace.ReadOnlySpan) er
 func (noopSpanExporter) Shutdown(context.Context) error {
 	return nil
 }
+
+const instrumentationName = "github.com/zoff-music/vibes-backend"
+
+const serviceName = "vibes"
