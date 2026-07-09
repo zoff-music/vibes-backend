@@ -82,6 +82,8 @@ type Client struct {
 	// Additional room statements
 	GetActiveSourcesStatement *sql.Stmt
 	GetAdminRoomsStatement    *sql.Stmt
+	UpdateAdminRoomStatement  *sql.Stmt
+	DeleteAdminRoomStatement  *sql.Stmt
 }
 
 // Init sets up a new database client.
@@ -119,6 +121,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareProcessNextAbandonedHostStmt,
 		c.prepareGetActiveSourcesStmt,
 		c.prepareGetAdminRoomsStmt,
+		c.prepareUpdateAdminRoomStmt,
+		c.prepareDeleteAdminRoomStmt,
 		// Song statements
 		c.prepareGetSongsStmt,
 		c.prepareGetSongStmt,
@@ -217,6 +221,9 @@ func (c *Client) Close() error {
 		c.RemoveParticipantStatement,
 		c.DeleteInactiveParticipantsStatement,
 		c.GetActiveSourcesStatement,
+		c.GetAdminRoomsStatement,
+		c.UpdateAdminRoomStatement,
+		c.DeleteAdminRoomStatement,
 	}
 
 	for _, stmt := range statements {

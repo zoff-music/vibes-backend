@@ -3,11 +3,17 @@ package vibe
 import "context"
 
 type AdminRoomSummary struct {
-	ID            string   `json:"id"`
-	Name          string   `json:"name"`
-	UserCount     int      `json:"userCount"`
-	SongCount     int      `json:"songCount"`
-	ActiveSources []string `json:"activeSources"`
+	ID               string   `json:"id"`
+	Name             string   `json:"name"`
+	UserCount        int      `json:"userCount"`
+	SongCount        int      `json:"songCount"`
+	ActiveSources    []string `json:"activeSources"`
+	HasAdminPassword bool     `json:"hasAdminPassword"`
+}
+
+type AdminUpdateRoomRequest struct {
+	Name               *string `json:"name,omitempty"`
+	ClearAdminPassword *bool   `json:"clearAdminPassword,omitempty"`
 }
 
 type AdminLoginRequest struct {
@@ -25,6 +31,20 @@ type AdminEvent struct {
 
 type AdminRoomLister interface {
 	ListAdminRooms(ctx context.Context) ([]AdminRoomSummary, error)
+}
+
+type AdminRoomUpdater interface {
+	UpdateAdminRoom(ctx context.Context, roomID string, request AdminUpdateRoomRequest) (bool, error)
+}
+
+type AdminRoomDeleter interface {
+	DeleteAdminRoom(ctx context.Context, roomID string) (bool, error)
+}
+
+type AdminRoomManager interface {
+	AdminRoomLister
+	AdminRoomUpdater
+	AdminRoomDeleter
 }
 
 type AdminEventNotifier interface {
