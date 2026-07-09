@@ -24,11 +24,20 @@ func (tm *TraceMetrics) TraceMiddleware(next http.Handler) http.Handler {
 		}),
 	)
 
-	return middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	tracedHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		span := tracing.SpanFromContext(r.Context())
 		span.SetAttributes(attribute.String("path", r.RequestURI))
 		next.ServeHTTP(w, r)
 	}))
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if shouldSkipTrace(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		tracedHandler.ServeHTTP(w, r)
+	})
 }
 
 // MetricsMiddleware collects HTTP request metrics for Prometheus.
@@ -80,4 +89,15 @@ func routeName(r *http.Request) string {
 	}
 
 	return name
+}
+
+func shouldSkipTrace(r *http.Request) bool {
+	name := routeName(r)
+	if name == "RoomEvents" {
+		return true
+	}
+	if name == "AdminEvents" {
+		return true
+	}
+	return false
 }

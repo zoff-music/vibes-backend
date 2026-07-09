@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/zoff-music/vibes-backend/config"
@@ -48,10 +50,7 @@ func Init(conf *config.Config) (io.Closer, error) {
 		return nil, fmt.Errorf("error creating otel exporter: %w", err)
 	}
 
-	r := resource.NewWithAttributes(
-		semconv.SchemaURL,
-		semconv.ServiceName(serviceName),
-	)
+	r := resource.NewWithAttributes(semconv.SchemaURL, resourceAttributes(conf)...)
 
 	provider := sdktrace.NewTracerProvider(
 		sdktrace.WithBatcher(
@@ -60,7 +59,7 @@ func Init(conf *config.Config) (io.Closer, error) {
 			sdktrace.WithMaxExportBatchSize(batchSize),
 		),
 		sdktrace.WithResource(r),
-		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(conf.OtelSamplerParam))),
+		sdktrace.WithSampler(sdktrace.ParentBased(sdktrace.TraceIDRatioBased(samplerParam(conf.OtelSamplerParam)))),
 	)
 
 	otel.SetTracerProvider(provider)
@@ -124,6 +123,63 @@ func tracesdkDefaultScheduleDelay() time.Duration {
 	return sdktrace.DefaultScheduleDelay * time.Millisecond
 }
 
+func resourceAttributes(conf *config.Config) []attribute.KeyValue {
+	serviceName := conf.OtelServiceName
+	if serviceName == "" {
+		serviceName = defaultServiceName
+	}
+
+	attributes := []attribute.KeyValue{
+		semconv.ServiceName(serviceName),
+	}
+
+	for _, pair := range strings.Split(conf.OtelResourceAttrs, ",") {
+		key, value, ok := strings.Cut(strings.TrimSpace(pair), "=")
+		if !ok {
+			continue
+		}
+
+		key = strings.TrimSpace(key)
+		value = strings.TrimSpace(value)
+		if key == "" || value == "" {
+			continue
+		}
+
+		attributes = append(attributes, resourceAttribute(key, value))
+	}
+
+	return attributes
+}
+
+func resourceAttribute(key string, value string) attribute.KeyValue {
+	boolValue, err := strconv.ParseBool(value)
+	if err == nil {
+		return attribute.Bool(key, boolValue)
+	}
+
+	intValue, err := strconv.ParseInt(value, 10, 64)
+	if err == nil {
+		return attribute.Int64(key, intValue)
+	}
+
+	floatValue, err := strconv.ParseFloat(value, 64)
+	if err == nil {
+		return attribute.Float64(key, floatValue)
+	}
+
+	return attribute.String(key, value)
+}
+
+func samplerParam(param float64) float64 {
+	if param < 0 {
+		return 0
+	}
+	if param > 1 {
+		return 1
+	}
+	return param
+}
+
 type exporterWithLogging struct {
 	exporter sdktrace.SpanExporter
 }
@@ -153,4 +209,4 @@ func (noopSpanExporter) Shutdown(context.Context) error {
 
 const instrumentationName = "github.com/zoff-music/vibes-backend"
 
-const serviceName = "vibes"
+const defaultServiceName = "vibes-backend"
