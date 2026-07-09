@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
+	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -223,6 +225,186 @@ func AdminRooms(
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
 	}
+}
+
+// AdminUpdateRoom handles PATCH /api/v1/admin/rooms/{id}
+//
+//	@Summary	Update admin room metadata
+//	@Tags		admin
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string						true	"Room ID"
+//	@Param		request	body		vibe.AdminUpdateRoomRequest	true	"Admin room update payload"
+//	@Success	200		{array}		vibe.AdminRoomSummary
+//	@Failure	400		{object}	map[string]string
+//	@Failure	404		{object}	map[string]string
+//	@Failure	500		{object}	map[string]string
+//	@Router		/api/v1/admin/rooms/{id} [patch]
+func AdminUpdateRoom(
+	db vibe.AdminRoomManager,
+	ips vibe.AdminEventNotifier,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		vars := mux.Vars(r)
+		roomID := vars["id"]
+		if roomID == "" {
+			handleError(
+				w,
+				fmt.Errorf("room id required"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		var req vibe.AdminUpdateRoomRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		if req.Name != nil {
+			name := strings.TrimSpace(*req.Name)
+			if name == "" {
+				handleError(
+					w,
+					fmt.Errorf("room name required"),
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+			req.Name = &name
+		}
+
+		updated, err := db.UpdateAdminRoom(ctx, roomID, req)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error updating admin room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		if !updated {
+			handleError(
+				w,
+				fmt.Errorf("room not found"),
+				http.StatusNotFound,
+				false,
+			)
+			return
+		}
+
+		writeAndNotifyAdminRooms(ctx, w, db, ips)
+	}
+}
+
+// AdminDeleteRoom handles DELETE /api/v1/admin/rooms/{id}
+//
+//	@Summary	Delete an admin room
+//	@Tags		admin
+//	@Produce	json
+//	@Param		id	path		string	true	"Room ID"
+//	@Success	200	{array}		vibe.AdminRoomSummary
+//	@Failure	400	{object}	map[string]string
+//	@Failure	404	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/admin/rooms/{id} [delete]
+func AdminDeleteRoom(
+	db vibe.AdminRoomManager,
+	ips vibe.AdminEventNotifier,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		vars := mux.Vars(r)
+		roomID := vars["id"]
+		if roomID == "" {
+			handleError(
+				w,
+				fmt.Errorf("room id required"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		deleted, err := db.DeleteAdminRoom(ctx, roomID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error deleting admin room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		if !deleted {
+			handleError(
+				w,
+				fmt.Errorf("room not found"),
+				http.StatusNotFound,
+				false,
+			)
+			return
+		}
+
+		writeAndNotifyAdminRooms(ctx, w, db, ips)
+	}
+}
+
+func writeAndNotifyAdminRooms(
+	ctx context.Context,
+	w http.ResponseWriter,
+	db vibe.AdminRoomLister,
+	ips vibe.AdminEventNotifier,
+) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "writeAndNotifyAdminRooms")
+	defer span.End()
+
+	rooms, err := db.ListAdminRooms(ctx)
+	if err != nil {
+		handleError(
+			w,
+			fmt.Errorf("error fetching admin rooms: %w", err),
+			http.StatusInternalServerError,
+			true,
+		)
+		return
+	}
+
+	body, err := json.Marshal(rooms)
+	if err != nil {
+		handleError(
+			w,
+			fmt.Errorf("error marshaling admin rooms: %w", err),
+			http.StatusInternalServerError,
+			true,
+		)
+		return
+	}
+
+	err = ips.NotifyAdminUpdate(ctx, vibe.AdminEvent{
+		Type:    vibe.AdminRoomsUpdate,
+		Payload: body,
+	})
+	if err != nil {
+		log.Printf("error notifying admin rooms update: %v", err)
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(body)
 }
 
 // AdminEvents handles GET /api/v1/admin/events (SSE)
