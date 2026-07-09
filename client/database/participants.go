@@ -105,6 +105,11 @@ func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activ
 		participants = append(participants, row.toParticipant())
 	}
 
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error iterating active participants: %w", err)
+	}
+
 	return participants, nil
 }
 
@@ -166,17 +171,32 @@ func (c *Client) GetActiveListenerCounts(ctx context.Context, roomID string, act
 
 	row := c.GetActiveListenerCountsStatement.QueryRowContext(cctx, roomID, cutoff)
 
-	var listeners int
-	var castReceivers int
-	err := row.Scan(&listeners, &castReceivers)
+	var listenerCountsRow listenerCountsRow
+	err := listenerCountsRow.scan(row)
 	if err != nil {
 		return vibe.ListenerCounts{}, fmt.Errorf("error scanning listener counts: %w", err)
 	}
 
+	return listenerCountsRow.toListenerCounts(), nil
+}
+
+type listenerCountsRow struct {
+	ActiveListeners     sql.NullInt64
+	ActiveCastReceivers sql.NullInt64
+}
+
+func (l *listenerCountsRow) scan(row *sql.Row) error {
+	return row.Scan(
+		&l.ActiveListeners,
+		&l.ActiveCastReceivers,
+	)
+}
+
+func (l *listenerCountsRow) toListenerCounts() vibe.ListenerCounts {
 	return vibe.ListenerCounts{
-		ActiveListeners:     listeners,
-		ActiveCastReceivers: castReceivers,
-	}, nil
+		ActiveListeners:     int(l.ActiveListeners.Int64),
+		ActiveCastReceivers: int(l.ActiveCastReceivers.Int64),
+	}
 }
 
 func (c *Client) prepareSetRoomHostStmt() error {
@@ -266,6 +286,10 @@ func (c *Client) DeleteInactiveParticipants(ctx context.Context, olderThan time.
 		return 0, fmt.Errorf("error deleting inactive participants: %w", err)
 	}
 
-	rowsAffected, _ := result.RowsAffected()
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("error getting deleted inactive participants rows affected: %w", err)
+	}
+
 	return int(rowsAffected), nil
 }

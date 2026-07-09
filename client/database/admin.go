@@ -75,6 +75,11 @@ func (c *Client) ListAdminRooms(ctx context.Context) ([]vibe.AdminRoomSummary, e
 		rooms = append(rooms, row.toSummary())
 	}
 
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error iterating admin rooms: %w", err)
+	}
+
 	return rooms, nil
 }
 

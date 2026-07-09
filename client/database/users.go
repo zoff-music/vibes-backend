@@ -122,15 +122,23 @@ func (c *Client) CreateUser(ctx context.Context, user *vibe.User) (*vibe.User, e
 		user.LastSeenAt,
 	)
 
-	var returnedID sql.NullString
-	err := r.Scan(&returnedID)
+	var row createdUserRow
+	err := row.scan(r)
 	if err != nil {
 		return nil, fmt.Errorf("error creating user: %w", err)
 	}
 
-	user.ID = returnedID.String
+	user.ID = row.ID.String
 
 	return user, nil
+}
+
+type createdUserRow struct {
+	ID sql.NullString
+}
+
+func (c *createdUserRow) scan(row *sql.Row) error {
+	return row.Scan(&c.ID)
 }
 
 // AuthenticateAdmin handles password verification and admin elevation.

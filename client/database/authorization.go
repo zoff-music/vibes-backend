@@ -306,8 +306,8 @@ func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (*
 
 	r := c.ValidatePendingOAuthStateStatement.QueryRowContext(cctx, state)
 
-	var pendingState vibe.PendingOAuthState
-	err := r.Scan(&pendingState.UserID, &pendingState.CodeVerifier)
+	var row pendingOAuthStateRow
+	err := row.scan(r)
 	if err != nil {
 		if err == sql.ErrNoRows {
 			return &vibe.PendingOAuthState{}, nil
@@ -316,7 +316,26 @@ func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (*
 		return nil, fmt.Errorf("error in db: validate pending oauth state: %w", err)
 	}
 
-	return &pendingState, nil
+	return row.toPendingOAuthState(), nil
+}
+
+type pendingOAuthStateRow struct {
+	UserID       sql.NullString
+	CodeVerifier sql.NullString
+}
+
+func (p *pendingOAuthStateRow) scan(row *sql.Row) error {
+	return row.Scan(
+		&p.UserID,
+		&p.CodeVerifier,
+	)
+}
+
+func (p *pendingOAuthStateRow) toPendingOAuthState() *vibe.PendingOAuthState {
+	return &vibe.PendingOAuthState{
+		UserID:       p.UserID.String,
+		CodeVerifier: p.CodeVerifier.String,
+	}
 }
 
 func (c *Client) prepareDeletePendingOAuthStateStmt() error {

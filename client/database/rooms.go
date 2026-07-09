@@ -406,16 +406,33 @@ func (c *Client) fillActiveSources(ctx context.Context, room vibe.Room) (*vibe.R
 
 	sources := []string{}
 	for rows.Next() {
-		var row sql.NullString
-		err := rows.Scan(&row)
+		var row activeSourceRow
+		err := row.scan(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error in db: scan active source: %w", err)
 		}
-		sources = append(sources, row.String)
+		sources = append(sources, row.toSource())
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error in db: iterate active sources: %w", err)
 	}
 
 	room.ActiveSources = sources
 	return &room, nil
+}
+
+type activeSourceRow struct {
+	Source sql.NullString
+}
+
+func (a *activeSourceRow) scan(rows *sql.Rows) error {
+	return rows.Scan(&a.Source)
+}
+
+func (a *activeSourceRow) toSource() string {
+	return a.Source.String
 }
 
 // prepareCreateRoomStmt prepares the CreateRoomStatement.
