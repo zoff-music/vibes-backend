@@ -53,6 +53,11 @@ func (c *Client) GetSkipVotes(ctx context.Context, roomID, songID string) ([]vib
 		votes = append(votes, row.toSkipVote())
 	}
 
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error iterating skip vote rows: %w", err)
+	}
+
 	return votes, nil
 }
 

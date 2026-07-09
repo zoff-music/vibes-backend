@@ -72,6 +72,11 @@ func (c *Client) GetSongs(ctx context.Context, roomID string) ([]vibe.Song, erro
 		songs = append(songs, row.toSong())
 	}
 
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error iterating song rows: %w", err)
+	}
+
 	return songs, nil
 }
 
