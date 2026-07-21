@@ -214,16 +214,9 @@ func (c *Client) prepareAddSongStmt() error {
 			LEFT JOIN room_settings b ON b.room_id = a.id
 			WHERE a.id = $1
 		),
-		existing_song_q AS (
-			SELECT 1
-			FROM songs a
-			WHERE a.room_id = $1
-			AND a.source_type = $2
-			AND a.source_id = $3
-			LIMIT 1
-		),
-		inserted_song_q AS (
+		upserted_song_q AS (
 			INSERT INTO songs (
+				id,
 				room_id,
 				source_type,
 				source_id,
@@ -237,6 +230,7 @@ func (c *Client) prepareAddSongStmt() error {
 				duplicate_guard
 			)
 			SELECT
+				$10,
 				a.room_id,
 				$2,
 				$3,
@@ -249,11 +243,9 @@ func (c *Client) prepareAddSongStmt() error {
 				NOW(),
 				NOT a.allow_duplicates
 			FROM room_config_q a
-			WHERE a.allow_duplicates
-			OR NOT EXISTS (SELECT 1 FROM existing_song_q)
 			ON CONFLICT (room_id, source_type, source_id)
 			WHERE duplicate_guard
-			DO NOTHING
+			DO UPDATE SET source_id = EXCLUDED.source_id
 			RETURNING
 				id,
 				room_id,
@@ -265,17 +257,22 @@ func (c *Client) prepareAddSongStmt() error {
 				duration,
 				added_by,
 				added_by_nickname,
-				added_at
+				added_at,
+				id = $10 AS inserted
 		),
 		inserted_vote_q AS (
 			INSERT INTO song_votes (room_id, song_id, user_id)
-			SELECT a.room_id, a.id, a.added_by
-			FROM inserted_song_q a
+			SELECT a.room_id, a.id, $8
+			FROM upserted_song_q a
 			ON CONFLICT (room_id, song_id, user_id) DO NOTHING
 			RETURNING 1
 		)
 		SELECT
-			'inserted' AS result,
+			CASE
+				WHEN a.inserted THEN 'added'
+				WHEN EXISTS (SELECT 1 FROM inserted_vote_q) THEN 'duplicate_voted'
+				ELSE 'duplicate_already_voted'
+			END AS result,
 			a.id,
 			a.room_id,
 			a.source_type,
@@ -287,14 +284,16 @@ func (c *Client) prepareAddSongStmt() error {
 			a.added_by,
 			a.added_by_nickname,
 			a.added_at,
-			1::BIGINT AS vote_count
-		FROM inserted_song_q a
+			(
+				SELECT COUNT(*)
+				FROM song_votes b
+				WHERE b.room_id = a.room_id
+				AND b.song_id = a.id
+			) + (SELECT COUNT(*) FROM inserted_vote_q) AS vote_count
+		FROM upserted_song_q a
 		UNION ALL
 		SELECT
-			CASE
-				WHEN EXISTS (SELECT 1 FROM room_config_q) THEN 'duplicate'
-				ELSE 'room_not_found'
-			END AS result,
+			'room_not_found' AS result,
 			NULL::TEXT AS id,
 			NULL::TEXT AS room_id,
 			NULL::TEXT AS source_type,
@@ -307,7 +306,7 @@ func (c *Client) prepareAddSongStmt() error {
 			NULL::TEXT AS added_by_nickname,
 			NULL::TIMESTAMP AS added_at,
 			0::BIGINT AS vote_count
-		WHERE NOT EXISTS (SELECT 1 FROM inserted_song_q)
+		WHERE NOT EXISTS (SELECT 1 FROM upserted_song_q)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing AddSongStatement: %w", err)
@@ -319,7 +318,7 @@ func (c *Client) prepareAddSongStmt() error {
 }
 
 // AddSong adds a song to the queue.
-func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, error) {
+func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "AddSong")
 	defer span.End()
 
@@ -336,6 +335,7 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 		song.Duration,
 		song.AddedBy,
 		song.AddedByNickname,
+		song.ID,
 	)
 
 	var row addSongRow
@@ -344,18 +344,21 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.Song, erro
 		return nil, fmt.Errorf("error adding song atomically in AddSong: %w", err)
 	}
 
-	if row.Result.String == addSongResultDuplicate {
-		return nil, internalerror.ErrDuplicateSong{
-			Err: fmt.Errorf("song already exists"),
-		}
-	}
-
 	if row.Result.String == addSongResultRoomNotFound {
 		return nil, fmt.Errorf("error adding song in AddSong: room %s not found", song.RoomID)
 	}
 
-	addedSong := row.toSong()
-	return &addedSong, nil
+	outcome := vibe.AddSongOutcome(row.Result.String)
+	if outcome != vibe.AddSongOutcomeAdded &&
+		outcome != vibe.AddSongOutcomeDuplicateVoted &&
+		outcome != vibe.AddSongOutcomeDuplicateAlreadyVoted {
+		return nil, fmt.Errorf("error adding song in AddSong: unknown outcome %s", outcome)
+	}
+
+	return &vibe.AddSongResult{
+		Song:    row.toSong(),
+		Outcome: outcome,
+	}, nil
 }
 
 type addSongRow struct {
@@ -563,5 +566,4 @@ func (c *Client) updateSongAddedAt(ctx context.Context, roomID, songID string) e
 	return nil
 }
 
-const addSongResultDuplicate = "duplicate"
 const addSongResultRoomNotFound = "room_not_found"

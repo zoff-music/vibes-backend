@@ -31,6 +31,21 @@ type AddSongRequest struct {
 	Duration   int        `json:"duration"`
 }
 
+// AddSongOutcome describes whether a song was added or an existing song was voted on.
+type AddSongOutcome string
+
+const AddSongOutcomeAdded AddSongOutcome = "added"
+
+const AddSongOutcomeDuplicateVoted AddSongOutcome = "duplicate_voted"
+
+const AddSongOutcomeDuplicateAlreadyVoted AddSongOutcome = "duplicate_already_voted"
+
+// AddSongResult is the result of adding a song or voting on an existing duplicate.
+type AddSongResult struct {
+	Song    Song           `json:"song"`
+	Outcome AddSongOutcome `json:"outcome"`
+}
+
 // IsEmpty returns true if the song is empty/not found
 func (s *Song) IsEmpty() bool {
 	return s.ID == ""
@@ -43,7 +58,7 @@ type SongsFetcher interface {
 
 // SongAdder adds songs to the queue
 type SongAdder interface {
-	AddSong(ctx context.Context, song *Song) (*Song, error)
+	AddSong(ctx context.Context, song *Song) (*AddSongResult, error)
 }
 
 // SongRemover removes songs from the queue

@@ -62,7 +62,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/providers", handler.GetProviders(s.Config)).Methods(http.MethodGet, http.MethodOptions).Name("GetProviders")
 
 	// Cast token endpoint (cookie-auth only)
-	api.HandleFunc("/casting/tokens", handler.CreateCastingToken(s.DB, s.Config.CastTokenSecret)).Methods(http.MethodPost, http.MethodOptions).Name("CreateCastingToken")
+	api.HandleFunc("/tokens/casting", handler.CreateCastingToken(s.DB, s.Config.CastTokenSecret)).Methods(http.MethodPost, http.MethodOptions).Name("CreateCastingToken")
 
 	// Admin routes (disabled when ADMIN_PASSWORD is not configured)
 	if s.Config.AdminPassword != "" {
