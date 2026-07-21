@@ -10,7 +10,7 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-// CreateCastingToken handles POST /api/v1/casting/tokens.
+// CreateCastingToken handles POST /api/v1/tokens/casting.
 // It requires a cookie-authenticated session (not a cast bearer token).
 //
 //	@Summary	Create a casting token
@@ -24,7 +24,7 @@ import (
 //	@Failure	403		{object}	map[string]string
 //	@Failure	404		{object}	map[string]string
 //	@Failure	500		{object}	map[string]string
-//	@Router		/api/v1/casting/tokens [post]
+//	@Router		/api/v1/tokens/casting [post]
 func CreateCastingToken(
 	db vibe.RoomFetcher,
 	castTokenSecret string,
