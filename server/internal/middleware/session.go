@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -19,6 +20,7 @@ import (
 type SessionMiddleware struct {
 	Secret          string
 	CastTokenSecret string
+	EmbedBasePath   string
 }
 
 // Middleware extracts the session from the "session" cookie or creates a new one
@@ -110,13 +112,25 @@ func (m *SessionMiddleware) extractSession(r *http.Request) (helper.SessionPaylo
 	return payload, true
 }
 
-func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, _ *http.Request) helper.SessionPayload {
+func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, r *http.Request) helper.SessionPayload {
 	userID := uuid.New().String()
 	payload := helper.SessionPayload{UserID: userID, AuthType: "cookie"}
 
 	sessionJSON, _ := json.Marshal(payload)
 	sessionEncoded := base64.StdEncoding.EncodeToString(sessionJSON)
 	signed := m.sign(sessionEncoded)
+	sameSite := http.SameSiteLaxMode
+	embedBasePath := "/" + strings.Trim(m.EmbedBasePath, "/")
+	referer := r.Referer()
+	if referer != "" {
+		refererURL, err := url.Parse(referer)
+		if err != nil {
+			log.Printf("SessionMiddleware: invalid referer: %v", err)
+		}
+		if err == nil && (refererURL.Path == embedBasePath || strings.HasPrefix(refererURL.Path, embedBasePath+"/")) {
+			sameSite = http.SameSiteNoneMode
+		}
+	}
 
 	http.SetCookie(w, &http.Cookie{
 		Name:     "session",
@@ -124,7 +138,7 @@ func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, _ *http.Requ
 		Path:     "/",
 		HttpOnly: true,
 		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		SameSite: sameSite,
 	})
 
 	return payload
