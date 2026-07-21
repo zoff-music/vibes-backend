@@ -92,6 +92,7 @@ func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 	sm := middleware.SessionMiddleware{
 		Secret:          s.Config.CookieSecret,
 		CastTokenSecret: s.Config.CastTokenSecret,
+		EmbedBasePath:   s.Config.EmbedBasePath,
 	}
 	for _, r := range routers {
 		r.Use(sm.Middleware)
