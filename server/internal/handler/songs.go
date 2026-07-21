@@ -69,7 +69,8 @@ func GetSongs(
 //	@Produce	json
 //	@Param		id		path		string				true	"Room ID"
 //	@Param		request	body		vibe.AddSongRequest	true	"Song payload"
-//	@Success	201		{object}	vibe.Song
+//	@Success	200		{object}	vibe.AddSongResult
+//	@Success	201		{object}	vibe.AddSongResult
 //	@Failure	400		{object}	map[string]string
 //	@Failure	401		{object}	map[string]string
 //	@Failure	403		{object}	map[string]string
@@ -171,7 +172,7 @@ func AddSong(
 			AddedAt:      time.Now(),
 		}
 
-		created, err := db.AddSong(ctx, song)
+		result, err := db.AddSong(ctx, song)
 		if err != nil {
 			handleError(
 				w,
@@ -212,11 +213,10 @@ func AddSong(
 			log.Printf("failed to notify room: %v", err)
 		}
 
-		allSongs, err := db.GetSongs(ctx, roomID)
-		if err == nil && len(allSongs) == 1 {
+		if result.Outcome == vibe.AddSongOutcomeAdded && len(songs) == 1 {
 			playbackState := &vibe.PlaybackState{
 				RoomID:       roomID,
-				CurrentSong:  created,
+				CurrentSong:  &result.Song,
 				IsPlaying:    true,
 				PositionMs:   0,
 				UpdatedAt:    time.Now(),
@@ -254,7 +254,7 @@ func AddSong(
 
 		}
 
-		body, err := json.Marshal(created)
+		body, err := json.Marshal(result)
 		if err != nil {
 			handleError(
 				w,
@@ -266,7 +266,11 @@ func AddSong(
 		}
 
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusCreated)
+		status := http.StatusOK
+		if result.Outcome == vibe.AddSongOutcomeAdded {
+			status = http.StatusCreated
+		}
+		w.WriteHeader(status)
 		_, _ = w.Write(body)
 	}
 }
