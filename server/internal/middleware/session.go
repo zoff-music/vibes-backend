@@ -6,8 +6,10 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -19,9 +21,10 @@ import (
 type SessionMiddleware struct {
 	Secret          string
 	CastTokenSecret string
+	EmbedBasePath   string
 }
 
-// Middleware extracts the session from the "session" cookie or creates a new one
+// Middleware extracts the appropriate session cookie or creates a new one.
 func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// 1) If caller provides a Bearer token, it must be valid (no silent fallback).
@@ -62,10 +65,38 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		// 2) Otherwise, use the signed cookie session (or create a new one).
-		payload, ok := m.extractSession(r)
+		// 2) Otherwise, use the isolated signed cookie session (or create a new one).
+		embedRequest := r.Header.Get(embedRequestHeader) == embedRequestHeaderValue
+		if !embedRequest {
+			embedBasePath := "/" + strings.Trim(m.EmbedBasePath, "/")
+			referer := r.Referer()
+			if referer != "" {
+				refererURL, err := url.Parse(referer)
+				if err != nil {
+					log.Printf("SessionMiddleware: error parsing referer in Middleware: %v", err)
+				}
+				if err == nil && (refererURL.Path == embedBasePath || strings.HasPrefix(refererURL.Path, embedBasePath+"/")) {
+					embedRequest = true
+				}
+			}
+		}
+
+		cookieName := sessionCookieName
+		sameSite := http.SameSiteLaxMode
+		if embedRequest {
+			cookieName = embedSessionCookieName
+			sameSite = http.SameSiteNoneMode
+		}
+
+		payload, ok := m.extractSession(r, cookieName)
 		if !ok {
-			payload = m.createNewSession(w, r)
+			createdPayload, err := m.createNewSession(w, cookieName, sameSite)
+			if err != nil {
+				log.Printf("SessionMiddleware: %v", err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
+			payload = *createdPayload
 		}
 
 		ctx := context.WithValue(r.Context(), helper.SessionKey, payload)
@@ -73,8 +104,8 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-func (m *SessionMiddleware) extractSession(r *http.Request) (helper.SessionPayload, bool) {
-	cookie, err := r.Cookie("session")
+func (m *SessionMiddleware) extractSession(r *http.Request, cookieName string) (helper.SessionPayload, bool) {
+	cookie, err := r.Cookie(cookieName)
 	if err != nil {
 		return helper.SessionPayload{}, false
 	}
@@ -110,24 +141,28 @@ func (m *SessionMiddleware) extractSession(r *http.Request) (helper.SessionPaylo
 	return payload, true
 }
 
-func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, _ *http.Request) helper.SessionPayload {
+func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, cookieName string, sameSite http.SameSite) (*helper.SessionPayload, error) {
 	userID := uuid.New().String()
 	payload := helper.SessionPayload{UserID: userID, AuthType: "cookie"}
 
-	sessionJSON, _ := json.Marshal(payload)
+	sessionJSON, err := json.Marshal(payload)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling session in createNewSession: %w", err)
+	}
 	sessionEncoded := base64.StdEncoding.EncodeToString(sessionJSON)
 	signed := m.sign(sessionEncoded)
 
 	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    signed,
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   true,
-		SameSite: http.SameSiteLaxMode,
+		Name:        cookieName,
+		Value:       signed,
+		Path:        "/",
+		HttpOnly:    true,
+		Secure:      true,
+		SameSite:    sameSite,
+		Partitioned: sameSite == http.SameSiteNoneMode,
 	})
 
-	return payload
+	return &payload, nil
 }
 
 func (m *SessionMiddleware) sign(value string) string {
@@ -157,3 +192,11 @@ func (m *SessionMiddleware) unsign(value string) (string, bool) {
 
 	return payload, hmac.Equal([]byte(signature), []byte(expected))
 }
+
+const sessionCookieName = "session"
+
+const embedSessionCookieName = "embed_session"
+
+const embedRequestHeader = "X-Zoff-Embed"
+
+const embedRequestHeaderValue = "true"
