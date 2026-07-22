@@ -17,8 +17,7 @@ import (
 func main() {
 	err := run()
 	if err != nil {
-		log.Printf("Server stopped: %v", err)
-		os.Exit(1)
+		log.Fatalf("Server stopped: %v", err)
 	}
 }
 
