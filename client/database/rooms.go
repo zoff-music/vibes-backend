@@ -86,7 +86,12 @@ type abandonedHostRow struct {
 }
 
 func (r *abandonedHostRow) scan(row *sql.Row) error {
-	return row.Scan(&r.RoomID, &r.HostID)
+	err := row.Scan(&r.RoomID, &r.HostID)
+	if err != nil {
+		return fmt.Errorf("error scanning abandoned host row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *abandonedHostRow) toRoomHostInfo() *vibe.RoomHostInfo {

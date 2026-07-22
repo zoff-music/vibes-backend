@@ -109,7 +109,12 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 		return nil, httpStatusCodeError
 	}
 
-	return io.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, fmt.Errorf("error reading response body in RequestBytes: %w", err)
+	}
+
+	return body, nil
 }
 
 func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) (*http.Response, error) {
