@@ -11,12 +11,10 @@ type RateLimitPolicy struct {
 }
 
 type RateLimitRequest struct {
-	RouteName          string
-	DeviceIdentityHash string
-	IPIdentityHash     string
-	Rate               time.Duration
-	DeviceLimit        int
-	IPLimit            int
+	RouteName    string
+	IdentityHash string
+	Rate         time.Duration
+	Limit        int
 }
 
 type RateLimitResult struct {
