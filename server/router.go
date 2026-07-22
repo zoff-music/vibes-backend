@@ -78,7 +78,9 @@ func (s *Server) setupRoutes() {
 	}
 
 	s.addSessionMiddleware(api)
-	s.addRateLimitMiddleware(api)
+	if s.Config.RateLimitEnabled {
+		s.addRateLimitMiddleware(api)
+	}
 	s.addPermissionMiddleware(api)
 	if s.Config.AdminPassword != "" {
 		s.addAdminMiddleware(api)
@@ -89,7 +91,7 @@ func (s *Server) setupRoutes() {
 
 func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 	rm := middleware.RateLimitMiddleware{
-		DB: s.DB,
+		Client: s.Redis,
 		Policies: map[string]vibe.RateLimitPolicy{
 			"CreateRoom":          {Rate: time.Minute, Limit: 10},
 			"GetRoom":             {Rate: time.Minute, Limit: 120},

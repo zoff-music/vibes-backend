@@ -2,6 +2,7 @@ package vibe
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -28,6 +29,11 @@ type RateLimitConsumer interface {
 	ConsumeRateLimit(ctx context.Context, request RateLimitRequest) (RateLimitResult, error)
 }
 
-type ExpiredRateLimitDeleter interface {
-	DeleteExpiredRateLimits(ctx context.Context) error
+type RateLimitResultError struct {
+	ExpectedLength int
+	ActualLength   int
+}
+
+func (e RateLimitResultError) Error() string {
+	return fmt.Sprintf("expected %d result values, got %d", e.ExpectedLength, e.ActualLength)
 }

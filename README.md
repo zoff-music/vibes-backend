@@ -15,6 +15,7 @@ Go API backend for the Vibes collaborative music queue.
 ### Prerequisites
 - Go 1.26.5+
 - PostgreSQL schema applied by the `vibes-migrator` repository
+- Redis when `RATE_LIMIT_ENABLED=true`
 - Environment variables configured for local development
 
 ### Development
@@ -33,6 +34,8 @@ Copy and configure the environment file:
 ```bash
 # Configure required API keys:
 # - DATABASE_URL (required)
+# - RATE_LIMIT_ENABLED (optional, defaults to false)
+# - REDIS_URL (required when rate limiting is enabled)
 # - YOUTUBE_API_KEY (required)
 # - SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET (optional)
 # - SOUNDCLOUD_CLIENT_ID, SOUNDCLOUD_CLIENT_SECRET (optional)

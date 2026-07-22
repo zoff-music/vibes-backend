@@ -17,7 +17,7 @@ import (
 )
 
 type RateLimitMiddleware struct {
-	DB       vibe.RateLimitConsumer
+	Client   vibe.RateLimitConsumer
 	Policies map[string]vibe.RateLimitPolicy
 }
 
@@ -31,11 +31,13 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		routeName := mux.CurrentRoute(r).GetName()
 		policy, ok := m.Policies[routeName]
 		if !ok {
-			next.ServeHTTP(w, r)
-			return
+			policy = vibe.RateLimitPolicy{
+				Rate:  rateLimitDefaultRate,
+				Limit: rateLimitDefaultLimit,
+			}
 		}
 
-		if policy.Rate <= 0 || policy.Limit <= 0 {
+		if policy.Rate <= 0 || policy.Limit <= 0 || policy.Rate/time.Duration(policy.Limit) < time.Microsecond {
 			log.Printf("RateLimitMiddleware: invalid policy for route %s", routeName)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
@@ -59,7 +61,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			DeviceLimit:        policy.Limit,
 			IPLimit:            policy.Limit * rateLimitIPMultiplier,
 		}
-		result, err := m.DB.ConsumeRateLimit(r.Context(), request)
+		result, err := m.Client.ConsumeRateLimit(r.Context(), request)
 		if err != nil {
 			log.Printf("RateLimitMiddleware: error consuming limit for route %s: %v", routeName, err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -68,7 +70,8 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 
 		if !result.Allowed {
 			retryAfter := max(result.RetryAfter, time.Second)
-			w.Header().Set("Retry-After", strconv.FormatInt(int64(retryAfter/time.Second), 10))
+			retryAfterSeconds := (retryAfter + time.Second - 1) / time.Second
+			w.Header().Set("Retry-After", strconv.FormatInt(int64(retryAfterSeconds), 10))
 			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 			return
 		}
@@ -116,3 +119,7 @@ func hashRateLimitIdentity(parts ...string) string {
 }
 
 const rateLimitIPMultiplier = 10
+
+const rateLimitDefaultRate = time.Minute
+
+const rateLimitDefaultLimit = 60
