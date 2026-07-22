@@ -2,6 +2,7 @@ package soundcloud
 
 import (
 	"context"
+	"net/http"
 	"sync"
 	"time"
 
@@ -33,7 +34,11 @@ func (c *Client) Init(_ context.Context, cfg *config.Config) error {
 	c.clientID = cfg.SoundCloudClientID
 	c.clientSecret = cfg.SoundCloudClientSecret
 	c.redirectURI = cfg.SoundCloudRedirectURI
-	timeout := 5 * time.Second
-	c.HTTPClient = client.NewHTTPClient(client.Parameters{Timeout: &timeout})
+	c.HTTPClient = client.HTTPClient{
+		Client: &http.Client{
+			Timeout:   5 * time.Second,
+			Transport: client.InstrumentedTransport(),
+		},
+	}
 	return nil
 }

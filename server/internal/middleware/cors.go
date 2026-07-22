@@ -9,18 +9,18 @@ import (
 type CORSMiddleware struct {
 	AllowedOriginsCSV string
 
-	allowedOrigins map[string]struct{}
+	allowedOrigins map[string]bool
 	initOnce       sync.Once
 }
 
 func (m *CORSMiddleware) init() {
-	m.allowedOrigins = map[string]struct{}{}
+	m.allowedOrigins = map[string]bool{}
 	for _, part := range strings.Split(m.AllowedOriginsCSV, ",") {
 		o := strings.TrimSpace(part)
 		if o == "" {
 			continue
 		}
-		m.allowedOrigins[o] = struct{}{}
+		m.allowedOrigins[o] = true
 	}
 }
 
@@ -29,8 +29,7 @@ func (m *CORSMiddleware) originAllowed(origin string) bool {
 		return false
 	}
 	m.initOnce.Do(m.init)
-	_, ok := m.allowedOrigins[origin]
-	return ok
+	return m.allowedOrigins[origin]
 }
 
 // Middleware handles Cross-Origin Resource Sharing (CORS) headers.

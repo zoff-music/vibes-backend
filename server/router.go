@@ -101,11 +101,9 @@ func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 
 // addTracingAndMetrics - Adds tracing and metrics to a router.
 func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
-	tm := middleware.TraceMetrics{}
-
 	for _, r := range routers {
-		r.Use(tm.TraceMiddleware)
-		r.Use(tm.MetricsMiddleware)
+		r.Use(middleware.TraceMiddleware)
+		r.Use(middleware.MetricsMiddleware)
 	}
 }
 
