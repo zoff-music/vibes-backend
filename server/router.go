@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -9,6 +10,7 @@ import (
 	"github.com/zoff-music/vibes-backend/server/internal/handler"
 	"github.com/zoff-music/vibes-backend/server/internal/middleware"
 	_ "github.com/zoff-music/vibes-backend/swaggerdocs"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // setupRoutes - the root route function.
@@ -76,12 +78,60 @@ func (s *Server) setupRoutes() {
 	}
 
 	s.addSessionMiddleware(api)
+	if s.Config.RateLimitEnabled {
+		s.addRateLimitMiddleware(api)
+	}
 	s.addPermissionMiddleware(api)
 	if s.Config.AdminPassword != "" {
 		s.addAdminMiddleware(api)
 	}
 	s.addTracingAndMetrics(api)
 	s.addCORSMiddleware(s.Router)
+}
+
+func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
+	rm := middleware.RateLimitMiddleware{
+		Checker: s.Redis,
+		Policies: map[string]vibe.RateLimitPolicy{
+			"CreateRoom":          {Rate: time.Minute, Limit: 10},
+			"GetRoom":             {Rate: time.Minute, Limit: 120},
+			"UpdateRoomSettings":  {Rate: time.Minute, Limit: 30},
+			"SkipSong":            {Rate: time.Minute, Limit: 60},
+			"GetPlaybackState":    {Rate: time.Minute, Limit: 240},
+			"UpdatePlaybackState": {Rate: time.Minute, Limit: 240},
+			"CreateSession":       {Rate: time.Minute, Limit: 30},
+			"GetSongs":            {Rate: time.Minute, Limit: 120},
+			"AddSong":             {Rate: time.Minute, Limit: 60},
+			"RemoveSong":          {Rate: time.Minute, Limit: 60},
+			"VoteSong":            {Rate: time.Minute, Limit: 120},
+			"RoomEvents":          {Rate: time.Minute, Limit: 30},
+			"SearchMusic":         {Rate: time.Minute, Limit: 60},
+			"GetMusicTrack":       {Rate: time.Minute, Limit: 120},
+			"SearchSoundCloud":    {Rate: time.Minute, Limit: 60},
+			"GetSoundCloudTrack":  {Rate: time.Minute, Limit: 120},
+			"SearchSpotify":       {Rate: time.Minute, Limit: 60},
+			"GetSpotifyTrack":     {Rate: time.Minute, Limit: 120},
+			"GetSpotifyToken":     {Rate: time.Minute, Limit: 60},
+			"GetSoundCloudToken":  {Rate: time.Minute, Limit: 60},
+			"GetYouTubeToken":     {Rate: time.Minute, Limit: 60},
+			"Authorize":           {Rate: 10 * time.Minute, Limit: 20},
+			"SpotifyCallback":     {Rate: 10 * time.Minute, Limit: 30},
+			"SoundCloudCallback":  {Rate: 10 * time.Minute, Limit: 30},
+			"YouTubeCallback":     {Rate: 10 * time.Minute, Limit: 30},
+			"GetProviders":        {Rate: time.Minute, Limit: 120},
+			"CreateCastingToken":  {Rate: time.Minute, Limit: 30},
+			"AdminLogin":          {Rate: 10 * time.Minute, Limit: 5},
+			"AdminLogout":         {Rate: time.Minute, Limit: 20},
+			"AdminRooms":          {Rate: time.Minute, Limit: 120},
+			"AdminUpdateRoom":     {Rate: time.Minute, Limit: 30},
+			"AdminDeleteRoom":     {Rate: time.Minute, Limit: 30},
+			"AdminEvents":         {Rate: time.Minute, Limit: 20},
+		},
+	}
+
+	for _, r := range routers {
+		r.Use(rm.Middleware)
+	}
 }
 
 func (s *Server) setupInternalRoutes() {
