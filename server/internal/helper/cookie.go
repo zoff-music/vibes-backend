@@ -1,6 +1,7 @@
 package helper
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 )
@@ -22,7 +23,7 @@ func SetOAuthStateCookie(w http.ResponseWriter, state string) {
 func GetOAuthStateCookie(r *http.Request) (string, error) {
 	cookie, err := r.Cookie(oauthAuthStateCookie)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error getting OAuth state cookie: %w", err)
 	}
 	return cookie.Value, nil
 }
