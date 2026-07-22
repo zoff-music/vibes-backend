@@ -24,20 +24,33 @@ func (c *Client) ConsumeRateLimit(ctx context.Context, request vibe.RateLimitReq
 	}
 	defer connection.Close()
 
-	key := c.getKeyWithPrefix(fmt.Sprintf("ratelimit:{%s}:%s", request.IdentityHash, request.RouteName))
+	identityKey := c.getKeyWithPrefix(fmt.Sprintf("ratelimit:identity:{%s}:%s", request.IdentityHash, request.RouteName))
+	ipKey := c.getKeyWithPrefix(fmt.Sprintf("ratelimit:ip:{%s}:%s", request.IPIdentityHash, request.RouteName))
 
-	count, err := getRateLimitCount(cctx, connection, key)
+	identityCount, err := getRateLimitCount(cctx, connection, identityKey)
 	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error counting rate limits: %w", err)
+		return vibe.RateLimitResult{}, fmt.Errorf("error counting identity rate limits: %w", err)
 	}
-	if count >= int64(request.Limit) {
-		return getLimitedResult(cctx, connection, key)
+	if identityCount >= int64(request.Limit) {
+		return getLimitedResult(cctx, connection, identityKey)
+	}
+
+	ipCount, err := getRateLimitCount(cctx, connection, ipKey)
+	if err != nil {
+		return vibe.RateLimitResult{}, fmt.Errorf("error counting IP rate limits: %w", err)
+	}
+	if ipCount >= int64(request.IPLimit) {
+		return getLimitedResult(cctx, connection, ipKey)
 	}
 
 	member := uuid.NewString()
-	err = setRateLimit(cctx, connection, key, member, request.Rate)
+	err = setRateLimit(cctx, connection, identityKey, member, request.Rate)
 	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error setting rate limit: %w", err)
+		return vibe.RateLimitResult{}, fmt.Errorf("error setting identity rate limit: %w", err)
+	}
+	err = setRateLimit(cctx, connection, ipKey, member, request.Rate)
+	if err != nil {
+		return vibe.RateLimitResult{}, fmt.Errorf("error setting IP rate limit: %w", err)
 	}
 
 	return vibe.RateLimitResult{Allowed: true}, nil

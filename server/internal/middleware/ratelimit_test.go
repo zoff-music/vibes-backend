@@ -28,6 +28,7 @@ type rateLimitMiddlewareTestCase struct {
 	expectedStatus     int
 	expectedCalls      int
 	expectedLimit      int
+	expectedIPLimit    int
 	expectedRetryAfter string
 }
 
@@ -50,19 +51,21 @@ func TestRateLimitMiddleware(t *testing.T) {
 			policies: map[string]vibe.RateLimitPolicy{
 				"GetRoom": {Rate: time.Minute, Limit: 12},
 			},
-			result:         vibe.RateLimitResult{Allowed: true},
-			expectedStatus: http.StatusNoContent,
-			expectedCalls:  1,
-			expectedLimit:  12,
+			result:          vibe.RateLimitResult{Allowed: true},
+			expectedStatus:  http.StatusNoContent,
+			expectedCalls:   1,
+			expectedLimit:   12,
+			expectedIPLimit: 120,
 		},
 		{
-			name:           "unconfigured route uses default",
-			method:         http.MethodGet,
-			policies:       map[string]vibe.RateLimitPolicy{},
-			result:         vibe.RateLimitResult{Allowed: true},
-			expectedStatus: http.StatusNoContent,
-			expectedCalls:  1,
-			expectedLimit:  60,
+			name:            "unconfigured route uses default",
+			method:          http.MethodGet,
+			policies:        map[string]vibe.RateLimitPolicy{},
+			result:          vibe.RateLimitResult{Allowed: true},
+			expectedStatus:  http.StatusNoContent,
+			expectedCalls:   1,
+			expectedLimit:   60,
+			expectedIPLimit: 600,
 		},
 		{
 			name:   "exceeded route is rejected",
@@ -74,16 +77,18 @@ func TestRateLimitMiddleware(t *testing.T) {
 			expectedStatus:     http.StatusTooManyRequests,
 			expectedCalls:      1,
 			expectedLimit:      12,
+			expectedIPLimit:    120,
 			expectedRetryAfter: "2",
 		},
 		{
-			name:           "options bypasses limiter",
-			method:         http.MethodOptions,
-			policies:       map[string]vibe.RateLimitPolicy{},
-			result:         vibe.RateLimitResult{Allowed: true},
-			expectedStatus: http.StatusNoContent,
-			expectedCalls:  0,
-			expectedLimit:  0,
+			name:            "options bypasses limiter",
+			method:          http.MethodOptions,
+			policies:        map[string]vibe.RateLimitPolicy{},
+			result:          vibe.RateLimitResult{Allowed: true},
+			expectedStatus:  http.StatusNoContent,
+			expectedCalls:   0,
+			expectedLimit:   0,
+			expectedIPLimit: 0,
 		},
 	}
 
@@ -113,6 +118,9 @@ func TestRateLimitMiddleware(t *testing.T) {
 			if consumer.request.Limit != testCase.expectedLimit {
 				t.Fatalf("expected limit %d, got %d", testCase.expectedLimit, consumer.request.Limit)
 			}
+			if consumer.request.IPLimit != testCase.expectedIPLimit {
+				t.Fatalf("expected IP limit %d, got %d", testCase.expectedIPLimit, consumer.request.IPLimit)
+			}
 			if recorder.Header().Get("Retry-After") != testCase.expectedRetryAfter {
 				t.Fatalf("expected Retry-After %q, got %q", testCase.expectedRetryAfter, recorder.Header().Get("Retry-After"))
 			}
@@ -126,6 +134,10 @@ func TestRateLimitMiddleware(t *testing.T) {
 			expectedIdentityHash := hashRateLimitIdentity("session-one")
 			if consumer.request.IdentityHash != expectedIdentityHash {
 				t.Fatalf("expected identity hash %q, got %q", expectedIdentityHash, consumer.request.IdentityHash)
+			}
+			expectedIPIdentityHash := hashRateLimitIdentity("203.0.113.7")
+			if consumer.request.IPIdentityHash != expectedIPIdentityHash {
+				t.Fatalf("expected IP identity hash %q, got %q", expectedIPIdentityHash, consumer.request.IPIdentityHash)
 			}
 		})
 	}
