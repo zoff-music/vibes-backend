@@ -43,23 +43,19 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		clientIP := rateLimitClientIP(r)
 		session, hasSession := helper.GetSessionFromContext(r.Context())
 		deviceIdentity := strings.TrimSpace(r.UserAgent())
 		if hasSession && session.UserID != "" {
 			deviceIdentity = session.UserID
-		}
-		if deviceIdentity == "" {
-			deviceIdentity = "unknown-device"
+		} else {
+			deviceIdentity = strings.Join([]string{rateLimitClientIP(r), deviceIdentity}, "\x00")
 		}
 
 		request := vibe.RateLimitRequest{
-			RouteName:          routeName,
-			DeviceIdentityHash: hashRateLimitIdentity(clientIP, deviceIdentity),
-			IPIdentityHash:     hashRateLimitIdentity(clientIP),
-			Rate:               policy.Rate,
-			DeviceLimit:        policy.Limit,
-			IPLimit:            policy.Limit * rateLimitIPMultiplier,
+			RouteName:    routeName,
+			IdentityHash: hashRateLimitIdentity(deviceIdentity),
+			Rate:         policy.Rate,
+			Limit:        policy.Limit,
 		}
 		result, err := m.Client.ConsumeRateLimit(r.Context(), request)
 		if err != nil {
@@ -117,8 +113,6 @@ func hashRateLimitIdentity(parts ...string) string {
 	hash := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
 	return hex.EncodeToString(hash[:])
 }
-
-const rateLimitIPMultiplier = 10
 
 const rateLimitDefaultRate = time.Minute
 
