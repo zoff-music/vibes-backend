@@ -78,3 +78,10 @@ Use these rules for Go backend work in this repository.
 - Config values must come from `config.Config` and be passed through client init or handler params.
 - Set `Content-Type: application/json` for JSON responses.
 - Use the existing error helper for HTTP errors.
+
+## Tracing
+
+- Trace bounded methods that accept `context.Context` unless their caller already provides the operation span.
+- Do not wrap process-lifetime listener or subscription loops in a span. Keep the incoming context unchanged and create a span for each bounded event or scheduled task inside the loop.
+- Do not start a span inside scheduled event `Handle` implementations. `AppEvent.SubscribeAndListen` creates the invocation span immediately around `Handler.Handle`, so another handler-level span duplicates the same operation.
+- HTTP handlers do not start spans because tracing middleware handles them.
