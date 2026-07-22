@@ -15,7 +15,7 @@ import (
 
 type rateLimitConsumerStub struct {
 	request vibe.RateLimitRequest
-	result  vibe.RateLimitResult
+	result  *vibe.RateLimitResult
 	err     error
 	calls   int
 }
@@ -24,7 +24,7 @@ type rateLimitMiddlewareTestCase struct {
 	name               string
 	method             string
 	policies           map[string]vibe.RateLimitPolicy
-	result             vibe.RateLimitResult
+	result             *vibe.RateLimitResult
 	expectedStatus     int
 	expectedCalls      int
 	expectedLimit      int
@@ -37,7 +37,7 @@ type rateLimitIdentityTestCase struct {
 	parts []string
 }
 
-func (s *rateLimitConsumerStub) ConsumeRateLimit(_ context.Context, request vibe.RateLimitRequest) (vibe.RateLimitResult, error) {
+func (s *rateLimitConsumerStub) ConsumeRateLimit(_ context.Context, request vibe.RateLimitRequest) (*vibe.RateLimitResult, error) {
 	s.request = request
 	s.calls++
 	return s.result, s.err
@@ -51,7 +51,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 			policies: map[string]vibe.RateLimitPolicy{
 				"GetRoom": {Rate: time.Minute, Limit: 12},
 			},
-			result:          vibe.RateLimitResult{Allowed: true},
+			result:          &vibe.RateLimitResult{Allowed: true},
 			expectedStatus:  http.StatusNoContent,
 			expectedCalls:   1,
 			expectedLimit:   12,
@@ -61,7 +61,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 			name:            "unconfigured route uses default",
 			method:          http.MethodGet,
 			policies:        map[string]vibe.RateLimitPolicy{},
-			result:          vibe.RateLimitResult{Allowed: true},
+			result:          &vibe.RateLimitResult{Allowed: true},
 			expectedStatus:  http.StatusNoContent,
 			expectedCalls:   1,
 			expectedLimit:   60,
@@ -73,7 +73,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 			policies: map[string]vibe.RateLimitPolicy{
 				"GetRoom": {Rate: time.Minute, Limit: 12},
 			},
-			result:             vibe.RateLimitResult{Allowed: false, RetryAfter: 1500 * time.Millisecond},
+			result:             &vibe.RateLimitResult{Allowed: false, RetryAfter: 1500 * time.Millisecond},
 			expectedStatus:     http.StatusTooManyRequests,
 			expectedCalls:      1,
 			expectedLimit:      12,
@@ -84,7 +84,7 @@ func TestRateLimitMiddleware(t *testing.T) {
 			name:            "options bypasses limiter",
 			method:          http.MethodOptions,
 			policies:        map[string]vibe.RateLimitPolicy{},
-			result:          vibe.RateLimitResult{Allowed: true},
+			result:          &vibe.RateLimitResult{Allowed: true},
 			expectedStatus:  http.StatusNoContent,
 			expectedCalls:   0,
 			expectedLimit:   0,

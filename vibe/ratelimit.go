@@ -25,5 +25,5 @@ type RateLimitResult struct {
 }
 
 type RateLimitConsumer interface {
-	ConsumeRateLimit(ctx context.Context, request RateLimitRequest) (RateLimitResult, error)
+	ConsumeRateLimit(ctx context.Context, request RateLimitRequest) (*RateLimitResult, error)
 }
