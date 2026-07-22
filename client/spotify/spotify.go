@@ -8,6 +8,7 @@ import (
 
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/config"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 )
 
 // Client implements vibe.MusicSearcher
@@ -26,7 +27,10 @@ type Client struct {
 }
 
 // Init initializes the Spotify API client
-func (c *Client) Init(_ context.Context, cfg *config.Config) error {
+func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
+	span, _ := tracing.StartSpanFromContext(ctx, "Init")
+	defer span.End()
+
 	if cfg.SpotifyClientID == "" || cfg.SpotifyClientSecret == "" || cfg.SpotifyEndpoint == "" || cfg.SpotifyTokenURL == "" {
 		c.Enabled = false
 		return nil
