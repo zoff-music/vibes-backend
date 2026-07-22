@@ -82,16 +82,7 @@ func setRateLimit(
 	expiration time.Duration,
 ) error {
 	expirationMilliseconds := max(expiration.Milliseconds(), int64(1))
-	args := redis.Args{}.
-		Add(key).
-		Add("PX").
-		Add(expirationMilliseconds).
-		Add("FIELDS").
-		Add(1).
-		Add(member).
-		Add(1)
-
-	_, err := redis.DoContext(connection, ctx, "HSETEX", args...)
+	_, err := redis.DoContext(connection, ctx, "HSETEX", key, "PX", expirationMilliseconds, "FIELDS", 1, member, 1)
 	if err != nil {
 		return fmt.Errorf("error setting expiring redis hash field: %w", err)
 	}
@@ -108,7 +99,10 @@ func rateLimitRetryAfter(ctx context.Context, connection redis.Conn, key string)
 		return time.Millisecond, nil
 	}
 
-	args := redis.Args{}.Add(key).Add("FIELDS").Add(len(fields)).AddFlat(fields)
+	args := redis.Args{key, "FIELDS", len(fields)}
+	for _, field := range fields {
+		args = append(args, field)
+	}
 	ttls, err := redis.Int64s(redis.DoContext(connection, ctx, "HPTTL", args...))
 	if err != nil {
 		return 0, fmt.Errorf("error getting redis rate limit expirations: %w", err)
