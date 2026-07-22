@@ -18,6 +18,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/client/database"
 	"github.com/zoff-music/vibes-backend/client/internalpubsub"
+	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
 	"github.com/zoff-music/vibes-backend/client/spotify"
 	"github.com/zoff-music/vibes-backend/client/youtube"
@@ -33,6 +34,7 @@ type Server struct {
 	HTTP           *http.Server
 	InternalHTTP   *http.Server
 	DB             *database.Client
+	Redis          *redisclient.Client
 	InternalPubSub *internalpubsub.Client
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
@@ -79,8 +81,19 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("error initializing spotify client: %w", err)
 	}
 
+	var redisClient redisclient.Client
+	if config.RateLimitEnabled {
+		err = redisClient.Init(ctx, config)
+		if err != nil {
+			return fmt.Errorf("error initializing redis client: %w", err)
+		}
+	}
+
 	s.Config = config
 	s.DB = &dbClient
+	if config.RateLimitEnabled {
+		s.Redis = &redisClient
+	}
 	s.InternalPubSub = &internalpubsubClient
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
@@ -221,6 +234,13 @@ func (s *Server) shutdown(ctx context.Context) {
 		err := s.DB.Close()
 		if err != nil {
 			log.Printf("error closing database: %v", err)
+		}
+	}
+
+	if s.Redis != nil {
+		err := s.Redis.Close()
+		if err != nil {
+			log.Printf("error closing redis: %v", err)
 		}
 	}
 
