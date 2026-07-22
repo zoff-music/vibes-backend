@@ -11,8 +11,8 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) ConsumeRateLimit(ctx context.Context, request vibe.RateLimitRequest) (*vibe.RateLimitResult, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ConsumeRateLimit")
+func (c *Client) CheckRateLimit(ctx context.Context, request vibe.RateLimitRequest) (*vibe.RateLimitResult, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "CheckRateLimit")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)

@@ -24,6 +24,6 @@ type RateLimitResult struct {
 	RetryAfter time.Duration
 }
 
-type RateLimitConsumer interface {
-	ConsumeRateLimit(ctx context.Context, request RateLimitRequest) (*RateLimitResult, error)
+type RateLimitChecker interface {
+	CheckRateLimit(ctx context.Context, request RateLimitRequest) (*RateLimitResult, error)
 }
