@@ -24,6 +24,9 @@ type AppEvent struct {
 
 // SubscribeAndListen subscribes to an AppEvent.
 func (e *AppEvent) SubscribeAndListen(ctx context.Context) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SubscribeAndListen")
+	defer span.End()
+
 	ticker := time.NewTicker(e.Rate)
 	defer ticker.Stop()
 
