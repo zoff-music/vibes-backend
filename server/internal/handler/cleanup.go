@@ -140,3 +140,18 @@ func (h *CleanupExpiredPendingOAuthStates) Handle(ctx context.Context, _ []byte)
 
 	return nil
 }
+
+// CleanupExpiredRateLimits cleans up completed rate limit windows.
+type CleanupExpiredRateLimits struct {
+	DB vibe.ExpiredRateLimitDeleter
+}
+
+// Handle deletes rate limit rows after their windows expire.
+func (h *CleanupExpiredRateLimits) Handle(ctx context.Context, _ []byte) error {
+	err := h.DB.DeleteExpiredRateLimits(ctx)
+	if err != nil {
+		return fmt.Errorf("error deleting expired rate limits in CleanupExpiredRateLimits.Handle: %w", err)
+	}
+
+	return nil
+}
