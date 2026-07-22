@@ -1,23 +1,28 @@
 package helper
 
 import (
-	"regexp"
 	"strings"
 )
 
 // Slugify converts a string into a URL-safe slug.
 func Slugify(s string) string {
-	// Convert to lowercase
-	s = strings.ToLower(s)
-	// Replace spaces with dashes
-	s = strings.ReplaceAll(s, " ", "-")
-	// Remove non-alphanumeric characters (except dashes)
-	reg := regexp.MustCompile("[^a-z0-9-]+")
-	s = reg.ReplaceAllString(s, "")
-	// Remove multiple dashes
-	reg = regexp.MustCompile("-+")
-	s = reg.ReplaceAllString(s, "-")
-	// Trim dashes
-	s = strings.Trim(s, "-")
-	return s
+	var slug strings.Builder
+	previousWasDash := false
+
+	for _, character := range strings.ToLower(s) {
+		isLetter := character >= 'a' && character <= 'z'
+		isDigit := character >= '0' && character <= '9'
+		if isLetter || isDigit {
+			slug.WriteRune(character)
+			previousWasDash = false
+			continue
+		}
+
+		if (character == ' ' || character == '-') && slug.Len() > 0 && !previousWasDash {
+			slug.WriteByte('-')
+			previousWasDash = true
+		}
+	}
+
+	return strings.TrimSuffix(slug.String(), "-")
 }
