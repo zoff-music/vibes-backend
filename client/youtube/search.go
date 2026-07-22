@@ -149,9 +149,9 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		return nil, fmt.Errorf("error request failed: %w", err)
 	}
 
-	seen := make(map[string]struct{}, len(musicTracks))
+	seen := make(map[string]bool, len(musicTracks))
 	for _, track := range musicTracks {
-		seen[track.ID] = struct{}{}
+		seen[track.ID] = true
 	}
 
 	tracks := make([]vibe.MusicTrack, 0, targetResults)
@@ -160,7 +160,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		if len(tracks) >= targetResults {
 			break
 		}
-		if _, exists := seen[track.ID]; exists {
+		if seen[track.ID] {
 			continue
 		}
 		tracks = append(tracks, track)

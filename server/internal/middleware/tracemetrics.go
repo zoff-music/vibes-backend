@@ -12,11 +12,8 @@ import (
 	"go.opentelemetry.io/otel/attribute"
 )
 
-// TraceMetrics is the configuration for trace and metrics middleware.
-type TraceMetrics struct{}
-
 // TraceMiddleware handles tracing of our HTTPS requests.
-func (tm *TraceMetrics) TraceMiddleware(next http.Handler) http.Handler {
+func TraceMiddleware(next http.Handler) http.Handler {
 	middleware := otelhttp.NewMiddleware(
 		"http.server",
 		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
@@ -42,7 +39,7 @@ func (tm *TraceMetrics) TraceMiddleware(next http.Handler) http.Handler {
 
 // MetricsMiddleware collects HTTP request metrics for Prometheus.
 // Collects request duration and response code.
-func (tm *TraceMetrics) MetricsMiddleware(next http.Handler) http.Handler {
+func MetricsMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		routeName := routeName(r)
 

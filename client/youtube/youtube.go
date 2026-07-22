@@ -3,6 +3,7 @@ package youtube
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/zoff-music/vibes-backend/client"
@@ -32,9 +33,11 @@ func (c *Client) Init(_ context.Context, cfg *config.Config) error {
 	c.clientID = cfg.YouTubeClientID
 	c.clientSecret = cfg.YouTubeClientSecret
 	c.redirectURI = cfg.YouTubeRedirectURI
-	timeout := 5 * time.Second
-	c.HTTPClient = client.NewHTTPClient(client.Parameters{
-		Timeout: &timeout,
-	})
+	c.HTTPClient = client.HTTPClient{
+		Client: &http.Client{
+			Timeout:   5 * time.Second,
+			Transport: client.InstrumentedTransport(),
+		},
+	}
 	return nil
 }
