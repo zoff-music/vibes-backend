@@ -17,7 +17,8 @@ import (
 
 // AdminLogin handles POST /api/v1/admin/sessions
 //
-//	@Summary	Create an admin session
+//	@Summary		Sign in to room administration
+//	@Description	Validates the admin password and creates an authenticated admin session for the current user.
 //	@Tags		admin
 //	@Accept		json
 //	@Produce	json
@@ -133,7 +134,8 @@ func AdminLogin(
 
 // AdminLogout handles DELETE /api/v1/admin/sessions
 //
-//	@Summary	Delete an admin session
+//	@Summary		Sign out of room administration
+//	@Description	Clears the current user's admin session.
 //	@Tags		admin
 //	@Produce	json
 //	@Success	200	{object}	vibe.AdminSessionResponse
@@ -174,7 +176,8 @@ func AdminLogout() http.HandlerFunc {
 
 // AdminRooms handles GET /api/v1/admin/rooms
 //
-//	@Summary	List admin room summaries
+//	@Summary		List all rooms
+//	@Description	Returns room summaries with listener counts, queued song counts, active sources, and room password status.
 //	@Tags		admin
 //	@Produce	json
 //	@Success	200	{array}		vibe.AdminRoomSummary
@@ -229,12 +232,13 @@ func AdminRooms(
 
 // AdminUpdateRoom handles PATCH /api/v1/admin/rooms/{id}
 //
-//	@Summary	Update admin room metadata
+//	@Summary		Update a room
+//	@Description	Renames a room and/or clears its room admin password, then returns the refreshed room list.
 //	@Tags		admin
 //	@Accept		json
 //	@Produce	json
 //	@Param		id		path		string						true	"Room ID"
-//	@Param		request	body		vibe.AdminUpdateRoomRequest	true	"Admin room update payload"
+//	@Param		request	body		vibe.AdminUpdateRoomRequest	true	"Room update payload"
 //	@Success	200		{array}		vibe.AdminRoomSummary
 //	@Failure	400		{object}	map[string]string
 //	@Failure	404		{object}	map[string]string
@@ -311,7 +315,8 @@ func AdminUpdateRoom(
 
 // AdminDeleteRoom handles DELETE /api/v1/admin/rooms/{id}
 //
-//	@Summary	Delete an admin room
+//	@Summary		Delete a room
+//	@Description	Deletes the identified room and returns the refreshed room list.
 //	@Tags		admin
 //	@Produce	json
 //	@Param		id	path		string	true	"Room ID"
@@ -409,7 +414,8 @@ func writeAndNotifyAdminRooms(
 
 // AdminEvents handles GET /api/v1/admin/events (SSE)
 //
-//	@Summary	Subscribe to admin events
+//	@Summary		Subscribe to room administration events
+//	@Description	Streams the initial room list and subsequent room summary updates to authenticated administrators.
 //	@Tags		admin
 //	@Produce	text/event-stream
 //	@Success	200	{string}	string
