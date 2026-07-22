@@ -343,7 +343,9 @@ func OAuthCallback(db vibe.AccessTokenCreator, client vibe.OAuthClient, provider
 ## Tracing
 
 Required for all methods taking `context.Context` **except HTTP handlers**
-(middleware handles those) and process-lifetime listener/subscription loops:
+(middleware handles those), process-lifetime listener/subscription loops, and
+scheduled event `Handle` methods (the `AppEvent` dispatcher traces each bounded
+handler invocation):
 
 ```go
 span, ctx := opentracing.StartSpanFromContext(ctx, "MethodName")
@@ -354,6 +356,10 @@ Do not wrap an unbounded listener loop in a span. A span must describe bounded
 work and finish in a useful timeframe. Long-running methods such as
 `SubscribeAndListen` must keep the incoming context unchanged and create a new
 span for each bounded event or scheduled task handled inside the loop.
+
+Do not start another span inside a scheduled event `Handle` implementation.
+`AppEvent.SubscribeAndListen` creates the invocation span immediately around
+the `Handler.Handle` call, so a handler-level span only duplicates that trace.
 
 ## Error Wrapping
 
