@@ -116,7 +116,7 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 
 	closer, err := tracing.Init(s.Config)
 	if err != nil {
-		errc <- err
+		errc <- fmt.Errorf("error initializing tracing: %w", err)
 		return
 	}
 
