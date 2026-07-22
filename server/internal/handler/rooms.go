@@ -74,7 +74,7 @@ func CreateRoom(
 			if err != nil {
 				handleError(
 					w,
-					fmt.Errorf("marshal response: %w", err),
+					fmt.Errorf("error marshal response: %w", err),
 					http.StatusInternalServerError,
 					true,
 				)
@@ -126,7 +126,7 @@ func CreateRoom(
 		if req.Settings != nil && req.Settings.OnlyAdminAddSongs && req.Password == "" {
 			handleError(
 				w,
-				fmt.Errorf("admin password is required when enabling 'only admin add songs'"),
+				fmt.Errorf("error admin password is required when enabling 'only admin add songs'"),
 				http.StatusBadRequest,
 				false,
 			)
@@ -160,7 +160,7 @@ func CreateRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshal response: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -218,7 +218,7 @@ func GetRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshal response: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -384,7 +384,7 @@ func CreateSession(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("unauthorized: missing session"),
+				fmt.Errorf("error unauthorized: missing session"),
 				http.StatusUnauthorized,
 				true,
 			)
@@ -394,7 +394,7 @@ func CreateSession(
 		if req.Password == "" {
 			handleError(
 				w,
-				fmt.Errorf("password required"),
+				fmt.Errorf("error password required"),
 				http.StatusForbidden,
 				false,
 			)
@@ -405,7 +405,7 @@ func CreateSession(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("authentication failed: %w", err),
+				fmt.Errorf("error authentication failed: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -415,7 +415,7 @@ func CreateSession(
 		if !authResult.IsAdmin {
 			handleError(
 				w,
-				fmt.Errorf("incorrect password"),
+				fmt.Errorf("error incorrect password"),
 				http.StatusForbidden,
 				false,
 			)

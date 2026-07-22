@@ -70,7 +70,7 @@ func (c *Client) processNextAbandonedHost(ctx context.Context) (*vibe.RoomHostIn
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, internalerror.ErrExpected{
 				Err: internalerror.ErrNonRecoverable{
-					Err: fmt.Errorf("no abandoned host found"),
+					Err: fmt.Errorf("error no abandoned host found"),
 				},
 			}
 		}

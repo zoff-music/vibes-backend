@@ -36,7 +36,7 @@ func GetPlaybackState(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("unauthorized"),
+				fmt.Errorf("error unauthorized"),
 				http.StatusUnauthorized,
 				false,
 			)
@@ -60,7 +60,7 @@ func GetPlaybackState(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshal response: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -123,7 +123,7 @@ func UpdatePlaybackState(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("unauthorized"),
+				fmt.Errorf("error unauthorized"),
 				http.StatusUnauthorized,
 				false,
 			)
@@ -166,7 +166,7 @@ func UpdatePlaybackState(
 				if err != nil {
 					handleError(
 						w,
-						fmt.Errorf("action %s failed: %w", req.Action, err),
+						fmt.Errorf("error action %s failed: %w", req.Action, err),
 						http.StatusInternalServerError,
 						true,
 					)
