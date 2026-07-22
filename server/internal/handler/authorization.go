@@ -225,7 +225,7 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 		if token.RefreshToken == "" || !token.RefreshExpiresAt.IsZero() && token.RefreshExpiresAt.Before(time.Now().UTC()) {
 			handleError(
 				w,
-				fmt.Errorf("refresh token expired"),
+				fmt.Errorf("error refresh token expired"),
 				http.StatusPreconditionFailed,
 				true,
 			)

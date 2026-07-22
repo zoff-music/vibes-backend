@@ -349,7 +349,7 @@ func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.Playback
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, internalerror.ErrExpected{
 				Err: internalerror.ErrNonRecoverable{
-					Err: fmt.Errorf("no expired playback found"),
+					Err: fmt.Errorf("error no expired playback found"),
 				},
 			}
 		}

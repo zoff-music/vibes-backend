@@ -50,7 +50,7 @@ func AdminLogin(
 		if req.Password == "" {
 			handleError(
 				w,
-				fmt.Errorf("password required"),
+				fmt.Errorf("error password required"),
 				http.StatusBadRequest,
 				false,
 			)
@@ -61,7 +61,7 @@ func AdminLogin(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("unauthorized"),
+				fmt.Errorf("error unauthorized"),
 				http.StatusUnauthorized,
 				false,
 			)
@@ -76,7 +76,7 @@ func AdminLogin(
 		if password == "" || req.Password != password {
 			handleError(
 				w,
-				fmt.Errorf("incorrect password"),
+				fmt.Errorf("error incorrect password"),
 				http.StatusForbidden,
 				false,
 			)
@@ -118,7 +118,7 @@ func AdminLogin(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshal response: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -159,7 +159,7 @@ func AdminLogout() http.HandlerFunc {
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshal response: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -214,7 +214,7 @@ func AdminRooms(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshal response: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -251,7 +251,7 @@ func AdminUpdateRoom(
 		if roomID == "" {
 			handleError(
 				w,
-				fmt.Errorf("room id required"),
+				fmt.Errorf("error room id required"),
 				http.StatusBadRequest,
 				false,
 			)
@@ -275,7 +275,7 @@ func AdminUpdateRoom(
 			if name == "" {
 				handleError(
 					w,
-					fmt.Errorf("room name required"),
+					fmt.Errorf("error room name required"),
 					http.StatusBadRequest,
 					false,
 				)
@@ -298,7 +298,7 @@ func AdminUpdateRoom(
 		if !updated {
 			handleError(
 				w,
-				fmt.Errorf("room not found"),
+				fmt.Errorf("error room not found"),
 				http.StatusNotFound,
 				false,
 			)
@@ -331,7 +331,7 @@ func AdminDeleteRoom(
 		if roomID == "" {
 			handleError(
 				w,
-				fmt.Errorf("room id required"),
+				fmt.Errorf("error room id required"),
 				http.StatusBadRequest,
 				false,
 			)
@@ -352,7 +352,7 @@ func AdminDeleteRoom(
 		if !deleted {
 			handleError(
 				w,
-				fmt.Errorf("room not found"),
+				fmt.Errorf("error room not found"),
 				http.StatusNotFound,
 				false,
 			)
@@ -443,7 +443,7 @@ func AdminEvents(
 		if !ok {
 			handleError(
 				w,
-				fmt.Errorf("streaming not supported"),
+				fmt.Errorf("error streaming not supported"),
 				http.StatusInternalServerError,
 				true,
 			)
