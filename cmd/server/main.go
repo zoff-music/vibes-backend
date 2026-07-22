@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 
@@ -14,6 +15,14 @@ import (
 // @description	Backend API for Vibes rooms, queues, playback, providers, casting, and admin tools.
 // @BasePath		/
 func main() {
+	err := run()
+	if err != nil {
+		log.Printf("Server stopped: %v", err)
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	// Enable debug logging if DEBUG=TRUE
 	if os.Getenv("DEBUG") == "TRUE" || os.Getenv("DEBUG") == "true" {
 		// Standard log doesn't have levels, just print that debug is enabled
@@ -23,16 +32,16 @@ func main() {
 	log.Println("Starting ...")
 
 	ctx := context.Background()
-	config, err := config.LoadConfig()
+	serverConfig, err := config.LoadConfig()
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		return fmt.Errorf("error loading config: %w", err)
 	}
 
 	var s server.Server
 
-	err = s.Create(ctx, config)
+	err = s.Create(ctx, serverConfig)
 	if err != nil {
-		log.Fatalf("Server error from s.Create(): %v", err)
+		return fmt.Errorf("error creating server: %w", err)
 	}
 
 	errc := make(chan error)
@@ -40,6 +49,8 @@ func main() {
 
 	err = <-errc
 	if err != nil {
-		log.Fatalf("Server error from s.Serve(): %v", err)
+		return fmt.Errorf("error serving: %w", err)
 	}
+
+	return nil
 }
