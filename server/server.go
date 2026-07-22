@@ -44,6 +44,9 @@ type Server struct {
 // Create sets up the HTTP server, router and all clients.
 // Returns an error if an error occurs.
 func (s *Server) Create(ctx context.Context, config *config.Config) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Create")
+	defer span.End()
+
 	metrics.RegisterPrometheusCollectors()
 
 	var internalpubsubClient internalpubsub.Client
@@ -105,6 +108,9 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 // It also makes sure that the server gracefully shuts down on exit.
 // Returns an error if an error occurs.
 func (s *Server) Serve(ctx context.Context, errc chan<- error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "Serve")
+	defer span.End()
+
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -135,6 +141,9 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 }
 
 func (s *Server) serveInternalHTTP(ctx context.Context, errc chan<- error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "serveInternalHTTP")
+	defer span.End()
+
 	go func(ctx context.Context, httpServ *http.Server) {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -163,6 +172,9 @@ func (s *Server) serveInternalHTTP(ctx context.Context, errc chan<- error) {
 }
 
 func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "serveHTTP")
+	defer span.End()
+
 	go func(ctx context.Context, httpServ *http.Server) {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -191,6 +203,9 @@ func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
 }
 
 func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "subscribeAndListen")
+	defer span.End()
+
 	for _, e := range event.GetAppEvents(s.DB, s.InternalPubSub, s.Spotify, s.YouTube) {
 		go func(e event.AppEvent) {
 			e.SubscribeAndListen(ctx)
@@ -199,6 +214,9 @@ func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
 }
 
 func (s *Server) shutdown(ctx context.Context) {
+	span, _ := tracing.StartSpanFromContext(ctx, "shutdown")
+	defer span.End()
+
 	if s.DB != nil {
 		err := s.DB.Close()
 		if err != nil {
