@@ -11,7 +11,7 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) ConsumeRateLimit(ctx context.Context, request vibe.RateLimitRequest) (vibe.RateLimitResult, error) {
+func (c *Client) ConsumeRateLimit(ctx context.Context, request vibe.RateLimitRequest) (*vibe.RateLimitResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ConsumeRateLimit")
 	defer span.End()
 
@@ -20,7 +20,7 @@ func (c *Client) ConsumeRateLimit(ctx context.Context, request vibe.RateLimitReq
 
 	connection, err := c.Redis.GetContext(cctx)
 	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error getting redis connection: %w", err)
+		return nil, fmt.Errorf("error getting redis connection: %w", err)
 	}
 	defer connection.Close()
 
@@ -29,7 +29,7 @@ func (c *Client) ConsumeRateLimit(ctx context.Context, request vibe.RateLimitReq
 
 	identityCount, err := getRateLimitCount(cctx, connection, identityKey)
 	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error counting identity rate limits: %w", err)
+		return nil, fmt.Errorf("error counting identity rate limits: %w", err)
 	}
 	if identityCount >= int64(request.Limit) {
 		return getLimitedResult(cctx, connection, identityKey)
@@ -37,7 +37,7 @@ func (c *Client) ConsumeRateLimit(ctx context.Context, request vibe.RateLimitReq
 
 	ipCount, err := getRateLimitCount(cctx, connection, ipKey)
 	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error counting IP rate limits: %w", err)
+		return nil, fmt.Errorf("error counting IP rate limits: %w", err)
 	}
 	if ipCount >= int64(request.IPLimit) {
 		return getLimitedResult(cctx, connection, ipKey)
@@ -46,14 +46,14 @@ func (c *Client) ConsumeRateLimit(ctx context.Context, request vibe.RateLimitReq
 	member := uuid.NewString()
 	err = setRateLimit(cctx, connection, identityKey, member, request.Rate)
 	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error setting identity rate limit: %w", err)
+		return nil, fmt.Errorf("error setting identity rate limit: %w", err)
 	}
 	err = setRateLimit(cctx, connection, ipKey, member, request.Rate)
 	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error setting IP rate limit: %w", err)
+		return nil, fmt.Errorf("error setting IP rate limit: %w", err)
 	}
 
-	return vibe.RateLimitResult{Allowed: true}, nil
+	return &vibe.RateLimitResult{Allowed: true}, nil
 }
 
 func getRateLimitCount(ctx context.Context, connection redis.Conn, key string) (int64, error) {
@@ -65,13 +65,13 @@ func getRateLimitCount(ctx context.Context, connection redis.Conn, key string) (
 	return count, nil
 }
 
-func getLimitedResult(ctx context.Context, connection redis.Conn, key string) (vibe.RateLimitResult, error) {
+func getLimitedResult(ctx context.Context, connection redis.Conn, key string) (*vibe.RateLimitResult, error) {
 	retryAfter, err := rateLimitRetryAfter(ctx, connection, key)
 	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error getting rate limit retry duration: %w", err)
+		return nil, fmt.Errorf("error getting rate limit retry duration: %w", err)
 	}
 
-	return vibe.RateLimitResult{RetryAfter: retryAfter}, nil
+	return &vibe.RateLimitResult{RetryAfter: retryAfter}, nil
 }
 
 func setRateLimit(
