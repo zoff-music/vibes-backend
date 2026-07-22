@@ -2,7 +2,6 @@ package redis
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
@@ -29,115 +28,73 @@ func (c *Client) ConsumeRateLimit(ctx context.Context, request vibe.RateLimitReq
 	deviceKey := fmt.Sprintf("%s:device:%s", keyPrefix, request.DeviceIdentityHash)
 	ipKey := keyPrefix + ":ip"
 
-	for attempt := 0; attempt < rateLimitTransactionAttempts; attempt++ {
-		result, consumeErr := consumeRateLimitTransaction(cctx, connection, request, deviceKey, ipKey)
-		if consumeErr == nil {
-			return result, nil
-		}
-
-		var conflictError rateLimitTransactionConflictError
-		if !errors.As(consumeErr, &conflictError) {
-			return vibe.RateLimitResult{}, fmt.Errorf("error consuming redis rate limit: %w", consumeErr)
-		}
-	}
-
-	return vibe.RateLimitResult{}, fmt.Errorf(
-		"error consuming redis rate limit after %d attempts: %w",
-		rateLimitTransactionAttempts,
-		rateLimitTransactionConflictError{Reason: "rate limit keys changed"},
-	)
-}
-
-func consumeRateLimitTransaction(
-	ctx context.Context,
-	connection redis.Conn,
-	request vibe.RateLimitRequest,
-	deviceKey string,
-	ipKey string,
-) (vibe.RateLimitResult, error) {
-	_, err := redis.DoContext(connection, ctx, "WATCH", deviceKey, ipKey)
-	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error watching redis rate limits: %w", err)
-	}
-
-	deviceCount, err := redis.Int64(redis.DoContext(connection, ctx, "HLEN", deviceKey))
+	deviceCount, err := getRateLimitCount(cctx, connection, deviceKey)
 	if err != nil {
 		return vibe.RateLimitResult{}, fmt.Errorf("error counting device rate limits: %w", err)
 	}
-	ipCount, err := redis.Int64(redis.DoContext(connection, ctx, "HLEN", ipKey))
+	if deviceCount >= int64(request.DeviceLimit) {
+		return getLimitedResult(cctx, connection, deviceKey)
+	}
+
+	ipCount, err := getRateLimitCount(cctx, connection, ipKey)
 	if err != nil {
 		return vibe.RateLimitResult{}, fmt.Errorf("error counting IP rate limits: %w", err)
 	}
-
-	result := vibe.RateLimitResult{Allowed: true}
-	limitedKey := ""
-	if deviceCount >= int64(request.DeviceLimit) {
-		result.Allowed = false
-		limitedKey = deviceKey
-	} else if ipCount >= int64(request.IPLimit) {
-		result.Allowed = false
-		limitedKey = ipKey
+	if ipCount >= int64(request.IPLimit) {
+		return getLimitedResult(cctx, connection, ipKey)
 	}
 
-	if !result.Allowed {
-		result.RetryAfter, err = rateLimitRetryAfter(ctx, connection, limitedKey)
-		if err != nil {
-			return vibe.RateLimitResult{}, fmt.Errorf("error getting rate limit retry duration: %w", err)
-		}
-	}
-
-	err = connection.Send("MULTI")
+	member := uuid.NewString()
+	err = setRateLimit(cctx, connection, deviceKey, member, request.Rate)
 	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error starting redis rate limit transaction: %w", err)
+		return vibe.RateLimitResult{}, fmt.Errorf("error setting device rate limit: %w", err)
 	}
-
-	if result.Allowed {
-		err = queueRateLimit(connection, request, deviceKey, ipKey)
-		if err != nil {
-			return vibe.RateLimitResult{}, fmt.Errorf("error queueing redis rate limit: %w", err)
-		}
-	} else {
-		err = connection.Send("HLEN", limitedKey)
-		if err != nil {
-			return vibe.RateLimitResult{}, fmt.Errorf("error queueing redis rate limit check: %w", err)
-		}
-	}
-
-	reply, err := redis.DoContext(connection, ctx, "EXEC")
+	err = setRateLimit(cctx, connection, ipKey, member, request.Rate)
 	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error executing redis rate limit transaction: %w", err)
-	}
-	if reply == nil {
-		return vibe.RateLimitResult{}, rateLimitTransactionConflictError{Reason: "rate limit keys changed"}
+		return vibe.RateLimitResult{}, fmt.Errorf("error setting IP rate limit: %w", err)
 	}
 
-	err = validateRateLimitTransaction(reply)
-	if err != nil {
-		return vibe.RateLimitResult{}, fmt.Errorf("error validating redis rate limit transaction: %w", err)
-	}
-
-	return result, nil
+	return vibe.RateLimitResult{Allowed: true}, nil
 }
 
-func queueRateLimit(connection redis.Conn, request vibe.RateLimitRequest, deviceKey string, ipKey string) error {
-	member := uuid.NewString()
-	expirationMilliseconds := max(request.Rate.Milliseconds(), int64(1))
+func getRateLimitCount(ctx context.Context, connection redis.Conn, key string) (int64, error) {
+	count, err := redis.Int64(redis.DoContext(connection, ctx, "HLEN", key))
+	if err != nil {
+		return 0, fmt.Errorf("error getting redis hash length: %w", err)
+	}
 
-	err := connection.Send("HSET", deviceKey, member, 1)
+	return count, nil
+}
+
+func getLimitedResult(ctx context.Context, connection redis.Conn, key string) (vibe.RateLimitResult, error) {
+	retryAfter, err := rateLimitRetryAfter(ctx, connection, key)
 	if err != nil {
-		return fmt.Errorf("error queueing device rate limit: %w", err)
+		return vibe.RateLimitResult{}, fmt.Errorf("error getting rate limit retry duration: %w", err)
 	}
-	err = connection.Send("HPEXPIRE", deviceKey, expirationMilliseconds, "FIELDS", 1, member)
+
+	return vibe.RateLimitResult{RetryAfter: retryAfter}, nil
+}
+
+func setRateLimit(
+	ctx context.Context,
+	connection redis.Conn,
+	key string,
+	member string,
+	expiration time.Duration,
+) error {
+	expirationMilliseconds := max(expiration.Milliseconds(), int64(1))
+	args := redis.Args{}.
+		Add(key).
+		Add("PX").
+		Add(expirationMilliseconds).
+		Add("FIELDS").
+		Add(1).
+		Add(member).
+		Add(1)
+
+	_, err := redis.DoContext(connection, ctx, "HSETEX", args...)
 	if err != nil {
-		return fmt.Errorf("error queueing device rate limit expiration: %w", err)
-	}
-	err = connection.Send("HSET", ipKey, member, 1)
-	if err != nil {
-		return fmt.Errorf("error queueing IP rate limit: %w", err)
-	}
-	err = connection.Send("HPEXPIRE", ipKey, expirationMilliseconds, "FIELDS", 1, member)
-	if err != nil {
-		return fmt.Errorf("error queueing IP rate limit expiration: %w", err)
+		return fmt.Errorf("error setting expiring redis hash field: %w", err)
 	}
 
 	return nil
@@ -171,28 +128,3 @@ func rateLimitRetryAfter(ctx context.Context, connection redis.Conn, key string)
 
 	return retryAfter, nil
 }
-
-func validateRateLimitTransaction(reply interface{}) error {
-	replies, err := redis.Values(reply, nil)
-	if err != nil {
-		return fmt.Errorf("error reading redis transaction response: %w", err)
-	}
-	for _, commandReply := range replies {
-		commandError, ok := commandReply.(redis.Error)
-		if ok {
-			return fmt.Errorf("error executing queued redis command: %w", commandError)
-		}
-	}
-
-	return nil
-}
-
-type rateLimitTransactionConflictError struct {
-	Reason string
-}
-
-func (e rateLimitTransactionConflictError) Error() string {
-	return e.Reason
-}
-
-const rateLimitTransactionAttempts = 16
