@@ -17,7 +17,7 @@ import (
 )
 
 type RateLimitMiddleware struct {
-	Client   vibe.RateLimitConsumer
+	Client   vibe.RateLimitChecker
 	Policies map[string]vibe.RateLimitPolicy
 }
 
@@ -60,7 +60,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			Limit:          policy.Limit,
 			IPLimit:        policy.Limit * rateLimitIPMultiplier,
 		}
-		result, err := m.Client.ConsumeRateLimit(r.Context(), request)
+		result, err := m.Client.CheckRateLimit(r.Context(), request)
 		if err != nil {
 			log.Printf("RateLimitMiddleware: error consuming limit for route %s: %v", routeName, err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
