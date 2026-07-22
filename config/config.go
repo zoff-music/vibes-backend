@@ -24,6 +24,8 @@ type Config struct {
 	DatabaseURL          string `envconfig:"DATABASE_URL" required:"true"`
 	DatabaseMaxConns     int    `envconfig:"DATABASE_MAX_CONNECTIONS" default:"10"`
 	DatabaseMaxIdleConns int    `envconfig:"DATABASE_MAX_IDLE_CONNECTIONS" default:"2"`
+	RedisURL             string `envconfig:"REDIS_URL" default:""`
+	RateLimitEnabled     bool   `envconfig:"RATE_LIMIT_ENABLED" default:"false"`
 	MaxNameLength        int    `envconfig:"MAX_NAME_LENGTH" default:"100"`
 	MaxQueueLength       int    `envconfig:"MAX_QUEUE_LENGTH" default:"200"`
 	YouTubeAPIKey        string `envconfig:"YOUTUBE_API_KEY" default:""`

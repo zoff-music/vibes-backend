@@ -81,13 +81,6 @@ func GetAppEvents(
 			},
 		},
 		{
-			Name: "CleanupExpiredRateLimits",
-			Rate: 10 * time.Minute,
-			Handler: &handler.CleanupExpiredRateLimits{
-				DB: db,
-			},
-		},
-		{
 			Name: "ReviewAdminRooms",
 			Rate: 15 * time.Second,
 			Handler: &handler.ReviewAdminRooms{

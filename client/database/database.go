@@ -84,10 +84,6 @@ type Client struct {
 	GetAdminRoomsStatement    *sql.Stmt
 	UpdateAdminRoomStatement  *sql.Stmt
 	DeleteAdminRoomStatement  *sql.Stmt
-
-	// Rate limit statements
-	ConsumeRateLimitStatement        *sql.Stmt
-	DeleteExpiredRateLimitsStatement *sql.Stmt
 }
 
 // Init sets up a new database client.
@@ -127,9 +123,6 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareGetAdminRoomsStmt,
 		c.prepareUpdateAdminRoomStmt,
 		c.prepareDeleteAdminRoomStmt,
-		// Rate limit statements
-		c.prepareConsumeRateLimitStmt,
-		c.prepareDeleteExpiredRateLimitsStmt,
 		// Song statements
 		c.prepareGetSongsStmt,
 		c.prepareGetSongStmt,
@@ -231,8 +224,6 @@ func (c *Client) Close() error {
 		c.GetAdminRoomsStatement,
 		c.UpdateAdminRoomStatement,
 		c.DeleteAdminRoomStatement,
-		c.ConsumeRateLimitStatement,
-		c.DeleteExpiredRateLimitsStatement,
 	}
 
 	for _, stmt := range statements {
