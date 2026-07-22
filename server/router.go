@@ -14,7 +14,8 @@ import (
 // setupRoutes - the root route function.
 func (s *Server) setupRoutes() {
 	api := s.Router.PathPrefix(v1API).Subrouter()
-	s.Router.PathPrefix("/swagger/").Handler(httpSwagger.WrapHandler)
+	s.Router.Handle(swaggerAPI, http.RedirectHandler(swaggerAPI+"/", http.StatusPermanentRedirect)).Methods(http.MethodGet)
+	s.Router.PathPrefix(swaggerAPI + "/").Handler(httpSwagger.WrapHandler)
 
 	// Room routes
 	api.HandleFunc("/rooms", handler.CreateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
@@ -147,3 +148,5 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 }
 
 const v1API string = "/api/v1"
+
+const swaggerAPI string = "/api/swagger"
