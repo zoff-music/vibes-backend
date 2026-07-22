@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"log"
 	"net/http"
 	"time"
@@ -259,9 +258,6 @@ type ReviewRoomPlayback struct {
 
 // Handle checks for rooms that need to auto-advance
 func (h *ReviewRoomPlayback) Handle(ctx context.Context, data []byte) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ReviewRoomPlayback.Handle")
-	defer span.End()
-
 	state, err := h.DB.ProcessNextExpiredPlayback(ctx)
 	if err != nil {
 		return fmt.Errorf("error processing next expired playback: %w", err)
@@ -307,9 +303,6 @@ type ReviewHostHealth struct {
 
 // Handle checks for rooms that need a new host
 func (h *ReviewHostHealth) Handle(ctx context.Context, data []byte) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ReviewHostHealth.Handle")
-	defer span.End()
-
 	info, err := h.DB.ProcessNextAbandonedHost(ctx)
 	if err != nil {
 		return fmt.Errorf("error processing next abandoned host: %w", err)
