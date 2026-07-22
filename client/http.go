@@ -11,7 +11,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -19,24 +18,9 @@ import (
 	"go.opentelemetry.io/otel/codes"
 )
 
-// Parameters provides the parameters used when creating a new HTTP client.
-type Parameters struct {
-	Timeout *time.Duration
-}
-
-// NewHTTPClient instantiates a new HTTPClient based on provided parameters.
-func NewHTTPClient(parameters Parameters) HTTPClient {
-	if parameters.Timeout == nil {
-		timeout := 1 * time.Second
-		parameters.Timeout = &timeout
-	}
-
-	client := &http.Client{
-		Timeout:   *parameters.Timeout,
-		Transport: otelhttp.NewTransport(http.DefaultTransport),
-	}
-
-	return HTTPClient{client}
+// InstrumentedTransport provides the traced transport used by external HTTP clients.
+func InstrumentedTransport() http.RoundTripper {
+	return otelhttp.NewTransport(http.DefaultTransport)
 }
 
 // HTTPRequestData contains the request data.
