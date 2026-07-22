@@ -39,7 +39,7 @@ func SkipSong(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("unauthorized"),
+				fmt.Errorf("error unauthorized"),
 				http.StatusUnauthorized,
 				false,
 			)
@@ -55,7 +55,7 @@ func SkipSong(
 			if errors.As(err, &errHostMode) {
 				handleError(
 					w,
-					fmt.Errorf("only hosts can skip in host mode"),
+					fmt.Errorf("error only hosts can skip in host mode"),
 					http.StatusForbidden,
 					false,
 				)
@@ -66,7 +66,7 @@ func SkipSong(
 			if errors.As(err, &errDisabled) {
 				handleError(
 					w,
-					fmt.Errorf("skipping is disabled in this room"),
+					fmt.Errorf("error skipping is disabled in this room"),
 					http.StatusForbidden,
 					false,
 				)
@@ -75,7 +75,7 @@ func SkipSong(
 
 			handleError(
 				w,
-				fmt.Errorf("skip failed: %w", err),
+				fmt.Errorf("error skip failed: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -172,7 +172,7 @@ func SkipSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshal response: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

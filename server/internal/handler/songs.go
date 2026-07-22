@@ -48,7 +48,7 @@ func GetSongs(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshal response: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -102,7 +102,7 @@ func AddSong(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("unauthorized"),
+				fmt.Errorf("error unauthorized"),
 				http.StatusUnauthorized,
 				false,
 			)
@@ -133,7 +133,7 @@ func AddSong(
 		if room.Settings.OnlyAdminAddSongs && !room.IsAdmin {
 			handleError(
 				w,
-				fmt.Errorf("only admins can add songs in this room"),
+				fmt.Errorf("error only admins can add songs in this room"),
 				http.StatusForbidden,
 				false,
 			)
@@ -151,7 +151,7 @@ func AddSong(
 		if !sourceEnabled {
 			handleError(
 				w,
-				fmt.Errorf("source type %s is not enabled for this room", req.SourceType),
+				fmt.Errorf("error source type %s is not enabled for this room", req.SourceType),
 				http.StatusBadRequest,
 				false,
 			)
@@ -258,7 +258,7 @@ func AddSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshal response: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -301,7 +301,7 @@ func RemoveSong(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("unauthorized"),
+				fmt.Errorf("error unauthorized"),
 				http.StatusUnauthorized,
 				false,
 			)
@@ -330,7 +330,7 @@ func RemoveSong(
 		if !room.IsAdmin {
 			handleError(
 				w,
-				fmt.Errorf("forbidden"),
+				fmt.Errorf("error forbidden"),
 				http.StatusForbidden,
 				false,
 			)
@@ -407,7 +407,7 @@ func VoteSong(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("unauthorized"),
+				fmt.Errorf("error unauthorized"),
 				http.StatusUnauthorized,
 				false,
 			)
@@ -421,7 +421,7 @@ func VoteSong(
 			if errors.As(err, &alreadyVotedError) {
 				handleError(
 					w,
-					fmt.Errorf("already voted"),
+					fmt.Errorf("error already voted"),
 					http.StatusConflict,
 					false,
 				)

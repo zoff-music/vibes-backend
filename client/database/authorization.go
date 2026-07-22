@@ -151,7 +151,7 @@ func (c *Client) GetAccessToken(ctx context.Context, userID, provider string) (*
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, internalerror.ErrAccessTokenNotFound{
-				Err: fmt.Errorf("access token not found for user %s and provider %s", userID, provider),
+				Err: fmt.Errorf("error access token not found for user %s and provider %s", userID, provider),
 			}
 		}
 		return nil, fmt.Errorf("error in db: get access token: %w", err)
@@ -456,7 +456,7 @@ func (c *Client) ClaimAndGetExpiredTokenForRefresh(ctx context.Context, provider
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, internalerror.ErrExpected{
 				Err: internalerror.ErrNonRecoverable{
-					Err: fmt.Errorf("no expired token found for refresh"),
+					Err: fmt.Errorf("error no expired token found for refresh"),
 				},
 			}
 		}

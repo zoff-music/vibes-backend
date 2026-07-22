@@ -155,7 +155,7 @@ func (s *Server) serveInternalHTTP(ctx context.Context, errc chan<- error) {
 	// Block until httpServ.Shutdown is called
 	err := s.InternalHTTP.ListenAndServe()
 	if err != http.ErrServerClosed {
-		errc <- fmt.Errorf("unexpected internal server error: %w", err)
+		errc <- fmt.Errorf("error unexpected internal server error: %w", err)
 		return
 	}
 
@@ -183,7 +183,7 @@ func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
 	// Block until httpServ.Shutdown is called
 	err := s.HTTP.ListenAndServe()
 	if err != http.ErrServerClosed {
-		errc <- fmt.Errorf("unexpected server error: %w", err)
+		errc <- fmt.Errorf("error unexpected server error: %w", err)
 		return
 	}
 

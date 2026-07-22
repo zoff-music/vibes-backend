@@ -36,7 +36,7 @@ func CreateCastingToken(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("unauthorized"),
+				fmt.Errorf("error unauthorized"),
 				http.StatusUnauthorized,
 				false,
 			)
@@ -45,7 +45,7 @@ func CreateCastingToken(
 		if session.AuthType != "" && session.AuthType != "cookie" {
 			handleError(
 				w,
-				fmt.Errorf("forbidden"),
+				fmt.Errorf("error forbidden"),
 				http.StatusForbidden,
 				false,
 			)
@@ -66,7 +66,7 @@ func CreateCastingToken(
 		if req.RoomID == "" {
 			handleError(
 				w,
-				fmt.Errorf("roomId is required"),
+				fmt.Errorf("error roomId is required"),
 				http.StatusBadRequest,
 				false,
 			)
@@ -121,7 +121,7 @@ func CreateCastingToken(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("marshal response: %w", err),
+				fmt.Errorf("error marshal response: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

@@ -203,13 +203,13 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 
 	if !room.Settings.SkipAllowed && !isHost && !isAdmin {
 		return nil, internalerror.ErrSkipDisabled{
-			Err: fmt.Errorf("skipping is disabled in this room"),
+			Err: fmt.Errorf("error skipping is disabled in this room"),
 		}
 	}
 
 	if room.Mode == vibe.RoomModeHost && !isHost && !isAdmin {
 		return nil, internalerror.ErrHostModeSkipOnly{
-			Err: fmt.Errorf("only hosts can skip in host mode"),
+			Err: fmt.Errorf("error only hosts can skip in host mode"),
 		}
 	}
 

@@ -103,7 +103,7 @@ func RoomEvents(
 		if !ok {
 			handleError(
 				w,
-				fmt.Errorf("streaming not supported"),
+				fmt.Errorf("error streaming not supported"),
 				http.StatusInternalServerError,
 				true,
 			)
