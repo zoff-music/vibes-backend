@@ -500,7 +500,7 @@ type ReviewAdminRooms struct {
 
 // Handle fetches admin rooms and broadcasts the update
 func (h *ReviewAdminRooms) Handle(ctx context.Context, data []byte) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	span, ctx := tracing.StartSpanFromContext(ctx, "ReviewAdminRooms.Handle")
 	defer span.End()
 
 	rooms, err := h.DB.ListAdminRooms(ctx)

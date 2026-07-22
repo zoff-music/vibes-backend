@@ -17,7 +17,7 @@ type CleanupInactiveParticipants struct {
 
 // Handle deletes participants who haven't been seen in 1 hour
 func (h *CleanupInactiveParticipants) Handle(ctx context.Context, _ []byte) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	span, ctx := tracing.StartSpanFromContext(ctx, "CleanupInactiveParticipants.Handle")
 	defer span.End()
 
 	deleted, err := h.DB.DeleteInactiveParticipants(ctx, 1*time.Hour)
@@ -39,7 +39,7 @@ type CleanupExpiredTokens struct {
 
 // Handle deletes expired external auth tokens
 func (h *CleanupExpiredTokens) Handle(ctx context.Context, _ []byte) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	span, ctx := tracing.StartSpanFromContext(ctx, "CleanupExpiredTokens.Handle")
 	defer span.End()
 
 	deletedAuth, err := h.DB.DeleteExpiredAuthTokens(ctx)
@@ -68,7 +68,7 @@ type RefreshSpotifyTokens struct {
 
 // Handle refreshes the next expired Spotify token
 func (h *RefreshSpotifyTokens) Handle(ctx context.Context, _ []byte) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	span, ctx := tracing.StartSpanFromContext(ctx, "RefreshSpotifyTokens.Handle")
 	defer span.End()
 
 	token, err := h.DB.ClaimAndGetExpiredTokenForRefresh(ctx, "spotify")
@@ -106,7 +106,7 @@ type RefreshYouTubeTokens struct {
 
 // Handle refreshes the next expired YouTube token
 func (h *RefreshYouTubeTokens) Handle(ctx context.Context, _ []byte) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	span, ctx := tracing.StartSpanFromContext(ctx, "RefreshYouTubeTokens.Handle")
 	defer span.End()
 
 	token, err := h.DB.ClaimAndGetExpiredTokenForRefresh(ctx, "youtube")
@@ -142,7 +142,7 @@ type CleanupExpiredPendingOAuthStates struct {
 
 // Handle deletes expired pending OAuth states
 func (h *CleanupExpiredPendingOAuthStates) Handle(ctx context.Context, _ []byte) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Handle")
+	span, ctx := tracing.StartSpanFromContext(ctx, "CleanupExpiredPendingOAuthStates.Handle")
 	defer span.End()
 
 	deleted, err := h.DB.DeleteExpiredPendingOAuthStates(ctx)
