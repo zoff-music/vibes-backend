@@ -54,7 +54,7 @@ func SearchMusic(
 		tracks := make([]vibe.MusicTrack, 0)
 		cacheHit := len(cachedSearches) > 0
 		if cacheHit {
-			tracks = cachedSearches[0].MusicTracks()
+			tracks = cachedSearches[0].GetMusicTracks()
 		}
 		if !cacheHit {
 			tracks, err = ms.Search(ctx, query)
@@ -91,7 +91,7 @@ func SearchMusic(
 		if !cacheHit {
 			search := (vibe.CachedYouTubeSearch{
 				Query: query,
-			}).WithMusicTracks(tracks)
+			}).SetMusicTracks(tracks)
 			err = cache.CacheYouTubeSearches(
 				ctx,
 				[]vibe.CachedYouTubeSearch{
