@@ -43,6 +43,16 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
+		ipLimit := policy.IPLimit
+		if ipLimit == 0 {
+			ipLimit = policy.Limit * rateLimitIPMultiplier
+		}
+		if ipLimit < 0 {
+			log.Printf("RateLimitMiddleware: invalid IP policy for route %s", routeName)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+
 		session, hasSession := helper.GetSessionFromContext(r.Context())
 		clientIP := rateLimitClientIP(r)
 		deviceIdentity := strings.TrimSpace(r.UserAgent())
@@ -58,7 +68,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			IPIdentityHash: hashRateLimitIdentity(clientIP),
 			Rate:           policy.Rate,
 			Limit:          policy.Limit,
-			IPLimit:        policy.Limit * rateLimitIPMultiplier,
+			IPLimit:        ipLimit,
 		}
 		result, err := m.Checker.CheckRateLimit(r.Context(), request)
 		if err != nil {

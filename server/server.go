@@ -17,6 +17,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/client/database"
+	"github.com/zoff-music/vibes-backend/client/grok"
 	"github.com/zoff-music/vibes-backend/client/internalpubsub"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
@@ -26,6 +27,7 @@ import (
 	"github.com/zoff-music/vibes-backend/monitoring/metrics"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/server/internal/event"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // Server holds the HTTP server, router, config and all clients.
@@ -39,6 +41,7 @@ type Server struct {
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
 	Spotify        *spotify.Client
+	AI             vibe.PlaylistGenerator
 	Router         *mux.Router
 	InternalRouter *mux.Router
 }
@@ -81,6 +84,12 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("error initializing spotify client: %w", err)
 	}
 
+	var grokClient grok.Client
+	err = grokClient.Init(ctx, config)
+	if err != nil {
+		return fmt.Errorf("error initializing grok client: %w", err)
+	}
+
 	var redisClient redisclient.Client
 	if config.RateLimitEnabled {
 		err = redisClient.Init(ctx, config)
@@ -98,6 +107,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
 	s.Spotify = &spotifyClient
+	s.AI = &grokClient
 	s.Router = mux.NewRouter()
 	s.InternalRouter = mux.NewRouter()
 	s.HTTP = &http.Server{

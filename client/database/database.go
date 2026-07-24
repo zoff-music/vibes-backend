@@ -25,6 +25,7 @@ type Client struct {
 	SuggestRoomNameStatement          *sql.Stmt
 	RoomExistsStatement               *sql.Stmt
 	CreateRoomStatement               *sql.Stmt
+	CreateGeneratedRoomStatement      *sql.Stmt
 	UpdateRoomStatement               *sql.Stmt
 	ProcessNextAbandonedHostStatement *sql.Stmt
 
@@ -121,6 +122,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareSuggestRoomNameStmt,
 		c.prepareRoomExistsStmt,
 		c.prepareCreateRoomStmt,
+		c.prepareCreateGeneratedRoomStmt,
 		c.prepareUpdateRoomStmt,
 		c.prepareProcessNextAbandonedHostStmt,
 		c.prepareGetActiveSourcesStmt,
@@ -189,6 +191,7 @@ func (c *Client) Close() error {
 		c.SuggestRoomNameStatement,
 		c.RoomExistsStatement,
 		c.CreateRoomStatement,
+		c.CreateGeneratedRoomStatement,
 		c.UpdateRoomStatement,
 		c.ProcessNextAbandonedHostStatement,
 		c.GetSongsStatement,

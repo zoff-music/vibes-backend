@@ -54,6 +54,9 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/tokens/soundcloud", handler.GetToken(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudToken")
 	api.HandleFunc("/tokens/youtube", handler.GetToken(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubeToken")
 
+	// Playlist generation routes
+	api.HandleFunc("/rooms/generations", handler.GenerateRoom(s.AI, s.YouTube, s.DB, s.Config.AIPromptMaxLength)).Methods(http.MethodPost, http.MethodOptions).Name("GenerateRoom")
+
 	// Authorization routes
 	api.HandleFunc("/authorizations/spotify", handler.Authorize(s.DB, s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
 	api.HandleFunc("/authorizations/soundcloud", handler.Authorize(s.DB, s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
@@ -118,6 +121,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"GetSpotifyToken":     {Rate: time.Minute, Limit: 60},
 			"GetSoundCloudToken":  {Rate: time.Minute, Limit: 60},
 			"GetYouTubeToken":     {Rate: time.Minute, Limit: 60},
+			"GenerateRoom":        {Rate: 5 * time.Minute, Limit: 1, IPLimit: 1},
 			"Authorize":           {Rate: 10 * time.Minute, Limit: 20},
 			"SpotifyCallback":     {Rate: 10 * time.Minute, Limit: 30},
 			"SoundCloudCallback":  {Rate: 10 * time.Minute, Limit: 30},

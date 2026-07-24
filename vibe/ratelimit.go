@@ -6,8 +6,9 @@ import (
 )
 
 type RateLimitPolicy struct {
-	Rate  time.Duration
-	Limit int
+	Rate    time.Duration
+	Limit   int
+	IPLimit int
 }
 
 type RateLimitRequest struct {
