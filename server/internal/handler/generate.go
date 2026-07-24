@@ -433,10 +433,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		return nil
 	}
 
-	generationContext, cancel := context.WithTimeout(ctx, roomGenerationTimeout)
-	defer cancel()
-
-	room, err := h.DB.GetRoom(generationContext, generation.RoomID, "")
+	room, err := h.DB.GetRoom(ctx, generation.RoomID, "")
 	if err != nil {
 		return fmt.Errorf("error getting room for generation: %w", err)
 	}
@@ -444,7 +441,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		return fmt.Errorf("error room for generation is empty")
 	}
 
-	playlist, err := h.AI.GeneratePlaylist(generationContext, generation.Prompt)
+	playlist, err := h.AI.GeneratePlaylist(ctx, generation.Prompt)
 	if err != nil {
 		return fmt.Errorf("error generating playlist: %w", err)
 	}
@@ -457,7 +454,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		queries = append(queries, track.Artist+" "+track.Title)
 	}
 	cachedSearches, err := h.Cache.GetCachedSearches(
-		generationContext,
+		ctx,
 		vibe.SourceTypeYouTube,
 		queries,
 	)
@@ -467,7 +464,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 	}
 
 	searchResult, err := h.Searcher.SearchGeneratedPlaylist(
-		generationContext,
+		ctx,
 		*playlist,
 		cachedSearches,
 	)
@@ -475,7 +472,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		var quotaError internalerror.ErrProviderQuotaExceeded
 		if errors.As(err, &quotaError) {
 			err = h.DB.FailRoomGeneration(
-				generationContext,
+				ctx,
 				generation.RoomID,
 				vibe.RoomGenerationYouTubeQuotaFailure,
 			)
@@ -491,7 +488,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 			if err != nil {
 				return fmt.Errorf("error marshaling youtube quota room generation update: %w", err)
 			}
-			err = h.IPS.NotifyRoomUpdate(generationContext, generation.RoomID, vibe.RoomEvent{
+			err = h.IPS.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
 				Type:    vibe.GenerationUpdate,
 				Payload: payload,
 			})
@@ -509,7 +506,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		return fmt.Errorf("error searching generated playlist: %w", err)
 	}
 	err = h.Cache.CacheSearches(
-		generationContext,
+		ctx,
 		vibe.SourceTypeYouTube,
 		searchResult.CachedSearches,
 	)
@@ -518,7 +515,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 	}
 	playlist = &searchResult.Playlist
 
-	playbackState, err := h.DB.GetPlaybackState(generationContext, room.ID)
+	playbackState, err := h.DB.GetPlaybackState(ctx, room.ID)
 	if err != nil {
 		return fmt.Errorf("error getting generated room playback: %w", err)
 	}
@@ -538,7 +535,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 			AddedAt:      time.Now(),
 		}
 
-		addedSong, err := h.DB.AddGeneratedSong(generationContext, song)
+		addedSong, err := h.DB.AddGeneratedSong(ctx, song)
 		if err != nil {
 			return fmt.Errorf("error adding generated song: %w", err)
 		}
@@ -551,7 +548,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 			return fmt.Errorf("error marshaling generated song: %w", err)
 		}
 
-		err = h.IPS.NotifyRoomUpdate(generationContext, room.ID, vibe.RoomEvent{
+		err = h.IPS.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
 			Type:    vibe.SongAdded,
 			Payload: songPayload,
 		})
@@ -568,7 +565,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 				UpdatedAt:    time.Now(),
 				ServerTimeMs: int(time.Now().UnixMilli()),
 			}
-			err = h.DB.UpsertPlaybackState(generationContext, playbackState)
+			err = h.DB.UpsertPlaybackState(ctx, playbackState)
 			if err != nil {
 				return fmt.Errorf("error starting generated room playback: %w", err)
 			}
@@ -577,7 +574,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 			if err != nil {
 				return fmt.Errorf("error marshaling generated room playback: %w", err)
 			}
-			err = h.IPS.NotifyRoomUpdate(generationContext, room.ID, vibe.RoomEvent{
+			err = h.IPS.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
 			})
@@ -610,8 +607,6 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 
 	return nil
 }
-
-const roomGenerationTimeout = 4 * time.Minute
 
 const roomGenerationBusyRetryAfterSeconds = "60"
 
