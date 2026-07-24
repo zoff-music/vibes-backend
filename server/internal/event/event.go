@@ -10,6 +10,7 @@ import (
 	"github.com/zoff-music/vibes-backend/client/database"
 	"github.com/zoff-music/vibes-backend/client/grok"
 	"github.com/zoff-music/vibes-backend/client/internalpubsub"
+	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/spotify"
 	"github.com/zoff-music/vibes-backend/client/youtube"
 	"github.com/zoff-music/vibes-backend/server/internal/handler"
@@ -23,6 +24,7 @@ type Handler interface {
 // GetAppEvents describes all the app events to listen to.
 func GetAppEvents(
 	db *database.Client,
+	redisClient *redisclient.Client,
 	ips *internalpubsub.Client,
 	spotifyClient *spotify.Client,
 	youtubeClient *youtube.Client,
@@ -34,6 +36,7 @@ func GetAppEvents(
 			Rate: 5 * time.Second,
 			Handler: &handler.GenerateRoomPlaylist{
 				AI:       grokClient,
+				Cache:    redisClient,
 				DB:       db,
 				IPS:      ips,
 				Searcher: youtubeClient,

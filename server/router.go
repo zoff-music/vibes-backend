@@ -44,7 +44,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
 
 	// YouTube routes
-	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
+	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
 	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetMusicTrack")
 
 	// SoundCloud routes
