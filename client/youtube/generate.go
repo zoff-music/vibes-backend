@@ -260,7 +260,7 @@ const youtubeMusicCategoryID = "10"
 
 const generatedTrackMaxDurationSeconds = 20 * 60
 
-const generatedTrackSearchResults = 5
+const generatedTrackSearchResults = 1
 
 const generatedPlaylistFallbackSearchLimit = 5
 
