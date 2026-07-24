@@ -16,71 +16,34 @@ type MusicTrack struct {
 	ChannelTitle    string     `json:"channelTitle,omitempty"`
 	ThumbnailURL    string     `json:"thumbnailUrl"`
 	Duration        string     `json:"duration,omitempty"` // ISO 8601 duration
-	DurationSeconds int        `json:"-"`
-	ViewCount       uint64     `json:"-"`
-	LikeCount       uint64     `json:"-"`
+	DurationSeconds int        `json:"durationSeconds,omitempty"`
+	ViewCount       uint64     `json:"viewCount,omitempty"`
+	LikeCount       uint64     `json:"likeCount,omitempty"`
 }
 
-type CachedYouTubeSearch struct {
-	Query  string               `json:"query"`
-	Tracks []CachedYouTubeTrack `json:"tracks"`
+type CachedSearch struct {
+	Query  string       `json:"query"`
+	Tracks []MusicTrack `json:"tracks"`
 }
 
-type CachedYouTubeTrack struct {
-	ID              string `json:"id"`
-	Title           string `json:"title"`
-	ChannelTitle    string `json:"channelTitle"`
-	ThumbnailURL    string `json:"thumbnailUrl"`
-	Duration        string `json:"duration"`
-	DurationSeconds int    `json:"durationSeconds"`
-	ViewCount       uint64 `json:"viewCount"`
-	LikeCount       uint64 `json:"likeCount"`
-}
-
-func (s CachedYouTubeSearch) GetMusicTracks() []MusicTrack {
-	tracks := make([]MusicTrack, 0, len(s.Tracks))
-	for index := range s.Tracks {
-		track := s.Tracks[index].MusicTrack()
-		tracks = append(tracks, track)
-	}
-
-	return tracks
+func (s CachedSearch) GetMusicTracks() []MusicTrack {
+	return append([]MusicTrack{}, s.Tracks...)
 }
 
 func GenerateCachedSearch(
 	query string,
 	tracks []MusicTrack,
-) CachedYouTubeSearch {
-	search := CachedYouTubeSearch{
+) CachedSearch {
+	return CachedSearch{
 		Query:  query,
-		Tracks: make([]CachedYouTubeTrack, 0, len(tracks)),
-	}
-	for index := range tracks {
-		search.Tracks = append(
-			search.Tracks,
-			tracks[index].CachedYouTubeTrack(),
-		)
-	}
-
-	return search
-}
-
-func (t *MusicTrack) CachedYouTubeTrack() CachedYouTubeTrack {
-	return CachedYouTubeTrack{
-		ID:              t.ID,
-		Title:           t.Title,
-		ChannelTitle:    t.ChannelTitle,
-		ThumbnailURL:    t.ThumbnailURL,
-		Duration:        t.Duration,
-		DurationSeconds: t.DurationSeconds,
-		ViewCount:       t.ViewCount,
-		LikeCount:       t.LikeCount,
+		Tracks: append([]MusicTrack{}, tracks...),
 	}
 }
 
-func (t *GeneratedTrack) CachedYouTubeTrack() CachedYouTubeTrack {
-	return CachedYouTubeTrack{
+func (t GeneratedTrack) MusicTrack() MusicTrack {
+	return MusicTrack{
 		ID:              t.YouTubeID,
+		Source:          SourceTypeYouTube,
 		Title:           t.Title,
 		ChannelTitle:    t.Artist,
 		ThumbnailURL:    t.ThumbnailURL,
@@ -91,21 +54,7 @@ func (t *GeneratedTrack) CachedYouTubeTrack() CachedYouTubeTrack {
 	}
 }
 
-func (t *CachedYouTubeTrack) MusicTrack() MusicTrack {
-	return MusicTrack{
-		ID:              t.ID,
-		Source:          SourceTypeYouTube,
-		Title:           t.Title,
-		ChannelTitle:    t.ChannelTitle,
-		ThumbnailURL:    t.ThumbnailURL,
-		Duration:        t.Duration,
-		DurationSeconds: t.DurationSeconds,
-		ViewCount:       t.ViewCount,
-		LikeCount:       t.LikeCount,
-	}
-}
-
-func (t *CachedYouTubeTrack) GeneratedTrack(query string) GeneratedTrack {
+func (t MusicTrack) GeneratedTrack(query string) GeneratedTrack {
 	return GeneratedTrack{
 		Artist:       t.ChannelTitle,
 		Title:        t.Title,
@@ -142,23 +91,25 @@ type MusicSearcher interface {
 	GetTrack(ctx context.Context, id string) (*MusicTrack, error)
 }
 
-type CachedYouTubeSearchFetcher interface {
-	GetCachedYouTubeSearches(
+type CachedSearchFetcher interface {
+	GetCachedSearches(
 		ctx context.Context,
+		source SourceType,
 		queries []string,
-	) ([]CachedYouTubeSearch, error)
+	) ([]CachedSearch, error)
 }
 
-type CachedYouTubeSearchCreator interface {
-	CacheYouTubeSearches(
+type CachedSearchCreator interface {
+	CacheSearches(
 		ctx context.Context,
-		searches []CachedYouTubeSearch,
+		source SourceType,
+		searches []CachedSearch,
 	) error
 }
 
-type CachedYouTubeSearchFetcherCreator interface {
-	CachedYouTubeSearchFetcher
-	CachedYouTubeSearchCreator
+type CachedSearchFetcherCreator interface {
+	CachedSearchFetcher
+	CachedSearchCreator
 }
 
 const SourceTypeYouTube SourceType = "youtube"

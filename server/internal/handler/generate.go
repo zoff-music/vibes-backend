@@ -403,7 +403,7 @@ func CreateRoomGeneration(
 
 type GenerateRoomPlaylist struct {
 	AI       vibe.PlaylistGenerator
-	Cache    vibe.CachedYouTubeSearchFetcherCreator
+	Cache    vibe.CachedSearchFetcherCreator
 	DB       vibe.RoomGenerationWorker
 	IPS      vibe.RoomEventNotifier
 	Searcher vibe.GeneratedPlaylistSearcher
@@ -456,13 +456,14 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		}
 		queries = append(queries, track.Artist+" "+track.Title)
 	}
-	cachedSearches, err := h.Cache.GetCachedYouTubeSearches(
+	cachedSearches, err := h.Cache.GetCachedSearches(
 		generationContext,
+		vibe.SourceTypeYouTube,
 		queries,
 	)
 	if err != nil {
 		log.Printf("error getting cached youtube searches for room generation: %v", err)
-		cachedSearches = []vibe.CachedYouTubeSearch{}
+		cachedSearches = []vibe.CachedSearch{}
 	}
 
 	searchResult, err := h.Searcher.SearchGeneratedPlaylist(
@@ -507,8 +508,9 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 
 		return fmt.Errorf("error searching generated playlist: %w", err)
 	}
-	err = h.Cache.CacheYouTubeSearches(
+	err = h.Cache.CacheSearches(
 		generationContext,
+		vibe.SourceTypeYouTube,
 		searchResult.CachedSearches,
 	)
 	if err != nil {

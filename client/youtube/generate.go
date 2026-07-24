@@ -22,7 +22,7 @@ import (
 func (c *Client) SearchGeneratedPlaylist(
 	ctx context.Context,
 	playlist vibe.GeneratedPlaylist,
-	cachedSearches []vibe.CachedYouTubeSearch,
+	cachedSearches []vibe.CachedSearch,
 ) (*vibe.GeneratedPlaylistSearchResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SearchGeneratedPlaylist")
 	defer span.End()
@@ -32,7 +32,7 @@ func (c *Client) SearchGeneratedPlaylist(
 	}
 
 	cachedSearchesByQuery := make(
-		map[string]vibe.CachedYouTubeSearch,
+		map[string]vibe.CachedSearch,
 		len(cachedSearches),
 	)
 	for _, search := range cachedSearches {
@@ -66,7 +66,7 @@ func (c *Client) SearchGeneratedPlaylist(
 	)
 	seen := make(map[string]bool, len(playlist))
 	searchesToCache := make(
-		[]vibe.CachedYouTubeSearch,
+		[]vibe.CachedSearch,
 		0,
 		len(playlist),
 	)
@@ -107,10 +107,10 @@ func (c *Client) SearchGeneratedPlaylist(
 		track.SearchQuery = query
 		seen[track.YouTubeID] = true
 		found = append(found, track)
-		searchesToCache = append(searchesToCache, vibe.CachedYouTubeSearch{
+		searchesToCache = append(searchesToCache, vibe.CachedSearch{
 			Query: query,
-			Tracks: []vibe.CachedYouTubeTrack{
-				track.CachedYouTubeTrack(),
+			Tracks: []vibe.MusicTrack{
+				track.MusicTrack(),
 			},
 		})
 	}
@@ -164,7 +164,7 @@ func (c *Client) SearchGeneratedPlaylist(
 	}
 	for _, search := range fallbackSearches {
 		cachedTracks := make(
-			[]vibe.CachedYouTubeTrack,
+			[]vibe.MusicTrack,
 			0,
 			len(search.YouTubeIDs),
 		)
@@ -178,7 +178,7 @@ func (c *Client) SearchGeneratedPlaylist(
 			track.SearchQuery = search.Query
 			cachedTracks = append(
 				cachedTracks,
-				track.CachedYouTubeTrack(),
+				track.MusicTrack(),
 			)
 			if selected || seen[track.YouTubeID] {
 				continue
@@ -188,7 +188,7 @@ func (c *Client) SearchGeneratedPlaylist(
 			found = append(found, track)
 			selected = true
 		}
-		searchesToCache = append(searchesToCache, vibe.CachedYouTubeSearch{
+		searchesToCache = append(searchesToCache, vibe.CachedSearch{
 			Query:  search.Query,
 			Tracks: cachedTracks,
 		})

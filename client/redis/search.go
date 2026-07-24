@@ -17,14 +17,15 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) GetCachedYouTubeSearches(
+func (c *Client) GetCachedSearches(
 	ctx context.Context,
+	source vibe.SourceType,
 	queries []string,
-) ([]vibe.CachedYouTubeSearch, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedYouTubeSearches")
+) ([]vibe.CachedSearch, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedSearches")
 	defer span.End()
 
-	searches := make([]vibe.CachedYouTubeSearch, 0, len(queries))
+	searches := make([]vibe.CachedSearch, 0, len(queries))
 	if c.Redis == nil || len(queries) == 0 {
 		return searches, nil
 	}
@@ -34,14 +35,14 @@ func (c *Client) GetCachedYouTubeSearches(
 
 	connection, err := c.Redis.GetContext(cctx)
 	if err != nil {
-		return nil, fmt.Errorf("error getting redis connection in GetCachedYouTubeSearches: %w", err)
+		return nil, fmt.Errorf("error getting redis connection in GetCachedSearches: %w", err)
 	}
 	defer connection.Close()
 
 	keys := make(redis.Args, 0, len(queries))
 	cachedQueries := make([]string, 0, len(queries))
 	for _, query := range queries {
-		key := c.youtubeSearchCacheKey(query)
+		key := c.searchCacheKey(source, query)
 		if key == "" {
 			continue
 		}
@@ -54,7 +55,7 @@ func (c *Client) GetCachedYouTubeSearches(
 
 	values, err := redis.Values(redis.DoContext(connection, cctx, "MGET", keys...))
 	if err != nil {
-		return nil, fmt.Errorf("error getting cached youtube searches in GetCachedYouTubeSearches: %w", err)
+		return nil, fmt.Errorf("error getting cached searches in GetCachedSearches: %w", err)
 	}
 
 	for index, value := range values {
@@ -64,13 +65,13 @@ func (c *Client) GetCachedYouTubeSearches(
 
 		body, err := redis.Bytes(value, nil)
 		if err != nil {
-			return nil, fmt.Errorf("error reading cached youtube search in GetCachedYouTubeSearches: %w", err)
+			return nil, fmt.Errorf("error reading cached search in GetCachedSearches: %w", err)
 		}
 
-		var search vibe.CachedYouTubeSearch
+		var search vibe.CachedSearch
 		err = json.Unmarshal(body, &search)
 		if err != nil {
-			return nil, fmt.Errorf("error unmarshaling cached youtube search in GetCachedYouTubeSearches: %w", err)
+			return nil, fmt.Errorf("error unmarshaling cached search in GetCachedSearches: %w", err)
 		}
 		search.Query = cachedQueries[index]
 		searches = append(searches, search)
@@ -79,11 +80,12 @@ func (c *Client) GetCachedYouTubeSearches(
 	return searches, nil
 }
 
-func (c *Client) CacheYouTubeSearches(
+func (c *Client) CacheSearches(
 	ctx context.Context,
-	searches []vibe.CachedYouTubeSearch,
+	source vibe.SourceType,
+	searches []vibe.CachedSearch,
 ) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "CacheYouTubeSearches")
+	span, ctx := tracing.StartSpanFromContext(ctx, "CacheSearches")
 	defer span.End()
 
 	if c.Redis == nil || len(searches) == 0 {
@@ -95,20 +97,20 @@ func (c *Client) CacheYouTubeSearches(
 
 	connection, err := c.Redis.GetContext(cctx)
 	if err != nil {
-		return fmt.Errorf("error getting redis connection in CacheYouTubeSearches: %w", err)
+		return fmt.Errorf("error getting redis connection in CacheSearches: %w", err)
 	}
 	defer connection.Close()
 
 	commandCount := 0
 	for _, search := range searches {
-		key := c.youtubeSearchCacheKey(search.Query)
+		key := c.searchCacheKey(source, search.Query)
 		if key == "" {
 			continue
 		}
 
 		body, err := json.Marshal(search)
 		if err != nil {
-			return fmt.Errorf("error marshaling cached youtube search in CacheYouTubeSearches: %w", err)
+			return fmt.Errorf("error marshaling cached search in CacheSearches: %w", err)
 		}
 
 		err = connection.Send(
@@ -116,10 +118,10 @@ func (c *Client) CacheYouTubeSearches(
 			key,
 			body,
 			"EX",
-			int(youtubeSearchCacheExpiration.Seconds()),
+			int(searchCacheExpiration.Seconds()),
 		)
 		if err != nil {
-			return fmt.Errorf("error queueing cached youtube search in CacheYouTubeSearches: %w", err)
+			return fmt.Errorf("error queueing cached search in CacheSearches: %w", err)
 		}
 		commandCount++
 	}
@@ -129,32 +131,32 @@ func (c *Client) CacheYouTubeSearches(
 
 	err = connection.Flush()
 	if err != nil {
-		return fmt.Errorf("error flushing cached youtube searches in CacheYouTubeSearches: %w", err)
+		return fmt.Errorf("error flushing cached searches in CacheSearches: %w", err)
 	}
 	for range commandCount {
 		_, err = redis.ReceiveContext(connection, cctx)
 		if err != nil {
-			return fmt.Errorf("error storing cached youtube search in CacheYouTubeSearches: %w", err)
+			return fmt.Errorf("error storing cached search in CacheSearches: %w", err)
 		}
 	}
 
 	return nil
 }
 
-func (c *Client) youtubeSearchCacheKey(query string) string {
-	normalizedQuery := normalizeYouTubeSearch(query)
-	if normalizedQuery == "" {
+func (c *Client) searchCacheKey(source vibe.SourceType, query string) string {
+	normalizedQuery := normalizeSearch(query)
+	if source == "" || normalizedQuery == "" {
 		return ""
 	}
 
 	hash := sha256.Sum256([]byte(normalizedQuery))
 
 	return c.getKeyWithPrefix(
-		"youtube:search:" + hex.EncodeToString(hash[:]),
+		"search:" + string(source) + ":" + hex.EncodeToString(hash[:]),
 	)
 }
 
-func normalizeYouTubeSearch(query string) string {
+func normalizeSearch(query string) string {
 	value := strings.ToLower(html.UnescapeString(query))
 	allTokens := make([]string, 0)
 	tokens := make([]string, 0)
@@ -170,7 +172,7 @@ func normalizeYouTubeSearch(query string) string {
 
 		word := token.String()
 		allTokens = append(allTokens, word)
-		if !isYouTubeSearchNoise(word) {
+		if !isSearchNoise(word) {
 			tokens = append(tokens, word)
 		}
 		token.Reset()
@@ -178,7 +180,7 @@ func normalizeYouTubeSearch(query string) string {
 	if token.Len() > 0 {
 		word := token.String()
 		allTokens = append(allTokens, word)
-		if !isYouTubeSearchNoise(word) {
+		if !isSearchNoise(word) {
 			tokens = append(tokens, word)
 		}
 	}
@@ -199,7 +201,7 @@ func normalizeYouTubeSearch(query string) string {
 	return strings.Join(normalizedTokens, " ")
 }
 
-func isYouTubeSearchNoise(value string) bool {
+func isSearchNoise(value string) bool {
 	switch value {
 	case "4k", "a", "an", "and", "audio", "feat", "featuring", "ft", "hd",
 		"lyric", "lyrics", "music", "official", "the", "video", "visualizer":
@@ -209,4 +211,4 @@ func isYouTubeSearchNoise(value string) bool {
 	}
 }
 
-const youtubeSearchCacheExpiration = 7 * 24 * time.Hour
+const searchCacheExpiration = 3 * 24 * time.Hour

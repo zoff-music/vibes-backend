@@ -26,7 +26,7 @@ import (
 //	@Router		/api/v1/youtube/search [get]
 func SearchMusic(
 	ms vibe.MusicSearcher,
-	cache vibe.CachedYouTubeSearchFetcherCreator,
+	cache vibe.CachedSearchFetcherCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -42,13 +42,14 @@ func SearchMusic(
 			return
 		}
 
-		cachedSearches, err := cache.GetCachedYouTubeSearches(
+		cachedSearches, err := cache.GetCachedSearches(
 			ctx,
+			vibe.SourceTypeYouTube,
 			[]string{query},
 		)
 		if err != nil {
 			log.Printf("error getting cached youtube search: %v", err)
-			cachedSearches = []vibe.CachedYouTubeSearch{}
+			cachedSearches = []vibe.CachedSearch{}
 		}
 
 		tracks := make([]vibe.MusicTrack, 0)
@@ -90,9 +91,10 @@ func SearchMusic(
 		}
 		if !cacheHit {
 			search := vibe.GenerateCachedSearch(query, tracks)
-			err = cache.CacheYouTubeSearches(
+			err = cache.CacheSearches(
 				ctx,
-				[]vibe.CachedYouTubeSearch{
+				vibe.SourceTypeYouTube,
+				[]vibe.CachedSearch{
 					search,
 				},
 			)
@@ -130,10 +132,11 @@ func SearchMusic(
 //	@Router		/api/v1/soundcloud/search [get]
 func SearchSoundCloud(
 	ms vibe.MusicSearcher,
+	cache vibe.CachedSearchFetcherCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		query := r.URL.Query().Get("q")
+		query := strings.TrimSpace(r.URL.Query().Get("q"))
 
 		if query == "" {
 			handleError(
@@ -145,7 +148,24 @@ func SearchSoundCloud(
 			return
 		}
 
-		tracks, err := ms.Search(ctx, query)
+		cachedSearches, err := cache.GetCachedSearches(
+			ctx,
+			vibe.SourceTypeSoundCloud,
+			[]string{query},
+		)
+		if err != nil {
+			log.Printf("error getting cached soundcloud search: %v", err)
+			cachedSearches = []vibe.CachedSearch{}
+		}
+
+		tracks := make([]vibe.MusicTrack, 0)
+		cacheHit := len(cachedSearches) > 0
+		if cacheHit {
+			tracks = cachedSearches[0].GetMusicTracks()
+		}
+		if !cacheHit {
+			tracks, err = ms.Search(ctx, query)
+		}
 		if err != nil {
 			handleError(
 				w,
@@ -154,6 +174,19 @@ func SearchSoundCloud(
 				true,
 			)
 			return
+		}
+		if !cacheHit {
+			search := vibe.GenerateCachedSearch(query, tracks)
+			err = cache.CacheSearches(
+				ctx,
+				vibe.SourceTypeSoundCloud,
+				[]vibe.CachedSearch{
+					search,
+				},
+			)
+			if err != nil {
+				log.Printf("error caching soundcloud search: %v", err)
+			}
 		}
 
 		body, err := json.Marshal(tracks)
