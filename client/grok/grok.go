@@ -38,7 +38,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 
 	c.HTTPClient = client.HTTPClient{
 		Client: &http.Client{
-			Timeout:   45 * time.Second,
+			Timeout:   2 * time.Minute,
 			Transport: client.InstrumentedTransport(),
 		},
 	}
