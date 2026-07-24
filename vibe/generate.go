@@ -15,6 +15,8 @@ type GeneratedTrack struct {
 	YouTubeID    string `json:"youtubeId,omitempty"`
 	ThumbnailURL string `json:"thumbnailUrl,omitempty"`
 	Duration     int    `json:"duration,omitempty"`
+	ViewCount    uint64 `json:"-"`
+	LikeCount    uint64 `json:"-"`
 }
 
 func (g *GeneratedTrack) IsEmpty() bool {
