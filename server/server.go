@@ -90,7 +90,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	}
 
 	var redisClient redisclient.Client
-	if config.RateLimitEnabled {
+	if config.RateLimitEnabled || config.RedisURL != "" {
 		err = redisClient.Init(ctx, config)
 		if err != nil {
 			return fmt.Errorf("error initializing redis client: %w", err)
@@ -99,9 +99,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 
 	s.Config = config
 	s.DB = &dbClient
-	if config.RateLimitEnabled {
-		s.Redis = &redisClient
-	}
+	s.Redis = &redisClient
 	s.InternalPubSub = &internalpubsubClient
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
@@ -228,7 +226,14 @@ func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "subscribeAndListen")
 	defer span.End()
 
-	for _, e := range event.GetAppEvents(s.DB, s.InternalPubSub, s.Spotify, s.YouTube, s.Grok) {
+	for _, e := range event.GetAppEvents(
+		s.DB,
+		s.Redis,
+		s.InternalPubSub,
+		s.Spotify,
+		s.YouTube,
+		s.Grok,
+	) {
 		go func(e event.AppEvent) {
 			e.SubscribeAndListen(ctx)
 		}(e)

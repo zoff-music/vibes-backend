@@ -22,7 +22,8 @@ import (
 func (c *Client) SearchGeneratedPlaylist(
 	ctx context.Context,
 	playlist vibe.GeneratedPlaylist,
-) (*vibe.GeneratedPlaylist, error) {
+	cachedSearches []vibe.CachedYouTubeSearch,
+) (*vibe.GeneratedPlaylistSearchResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SearchGeneratedPlaylist")
 	defer span.End()
 
@@ -30,9 +31,22 @@ func (c *Client) SearchGeneratedPlaylist(
 		return nil, fmt.Errorf("error youtube api key not configured")
 	}
 
+	cachedSearchesByQuery := make(
+		map[string]vibe.CachedYouTubeSearch,
+		len(cachedSearches),
+	)
+	for _, search := range cachedSearches {
+		cachedSearchesByQuery[search.Query] = search
+	}
+
 	youtubeIDs := make([]string, 0, len(playlist))
 	seenYouTubeIDs := make(map[string]bool, len(playlist))
 	for _, track := range playlist {
+		query := track.Artist + " " + track.Title
+		_, cached := cachedSearchesByQuery[query]
+		if cached {
+			continue
+		}
 		if track.YouTubeID == "" || seenYouTubeIDs[track.YouTubeID] {
 			continue
 		}
@@ -51,12 +65,35 @@ func (c *Client) SearchGeneratedPlaylist(
 		len(playlist),
 	)
 	seen := make(map[string]bool, len(playlist))
+	searchesToCache := make(
+		[]vibe.CachedYouTubeSearch,
+		0,
+		len(playlist),
+	)
 	unresolvedCandidates := make(
 		vibe.GeneratedPlaylist,
 		0,
 		generatedPlaylistFallbackSearchLimit,
 	)
 	for _, candidate := range playlist {
+		query := candidate.Artist + " " + candidate.Title
+		cachedSearch, cached := cachedSearchesByQuery[query]
+		if cached {
+			for _, cachedTrack := range cachedSearch.Tracks {
+				track := cachedTrack.GeneratedTrack(query)
+				if track.Duration <= 0 ||
+					track.Duration > generatedTrackMaxDurationSeconds ||
+					seen[track.YouTubeID] {
+					continue
+				}
+
+				seen[track.YouTubeID] = true
+				found = append(found, track)
+				break
+			}
+			continue
+		}
+
 		track, ok := tracksByID[candidate.YouTubeID]
 		if !ok || seen[track.YouTubeID] {
 			if candidate.Title != "" &&
@@ -67,8 +104,15 @@ func (c *Client) SearchGeneratedPlaylist(
 			continue
 		}
 
+		track.SearchQuery = query
 		seen[track.YouTubeID] = true
 		found = append(found, track)
+		searchesToCache = append(searchesToCache, vibe.CachedYouTubeSearch{
+			Query: query,
+			Tracks: []vibe.CachedYouTubeTrack{
+				track.CachedYouTubeTrack(),
+			},
+		})
 	}
 	if len(found) >= vibe.GeneratedPlaylistSelectedTrackCount {
 		unresolvedCandidates = unresolvedCandidates[:0]
@@ -79,13 +123,18 @@ func (c *Client) SearchGeneratedPlaylist(
 	}
 
 	fallbackIDs := make([]string, 0, len(unresolvedCandidates))
-	fallbackIDGroups := make([][]string, 0, len(unresolvedCandidates))
+	fallbackSearches := make(
+		[]generatedFallbackSearch,
+		0,
+		len(unresolvedCandidates),
+	)
 	var fallbackSearchErr error
 	for _, candidate := range unresolvedCandidates {
+		query := candidate.Artist + " " + candidate.Title
 		var result *searchResponse
 		result, err = c.searchVideos(
 			ctx,
-			candidate.Artist+" "+candidate.Title,
+			query,
 			generatedTrackSearchResults,
 		)
 		if err != nil {
@@ -103,24 +152,46 @@ func (c *Client) SearchGeneratedPlaylist(
 				candidateIDs = append(candidateIDs, item.ID.VideoID)
 			}
 		}
-		fallbackIDGroups = append(fallbackIDGroups, candidateIDs)
+		fallbackSearches = append(fallbackSearches, generatedFallbackSearch{
+			Query:      query,
+			YouTubeIDs: candidateIDs,
+		})
 	}
 
 	fallbackTracksByID, err := c.getGeneratedTracks(ctx, fallbackIDs)
 	if err != nil {
 		return nil, fmt.Errorf("error getting fallback generated tracks: %w", err)
 	}
-	for _, candidateIDs := range fallbackIDGroups {
-		for _, youtubeID := range candidateIDs {
+	for _, search := range fallbackSearches {
+		cachedTracks := make(
+			[]vibe.CachedYouTubeTrack,
+			0,
+			len(search.YouTubeIDs),
+		)
+		selected := false
+		for _, youtubeID := range search.YouTubeIDs {
 			track, ok := fallbackTracksByID[youtubeID]
-			if !ok || seen[track.YouTubeID] {
+			if !ok {
+				continue
+			}
+
+			track.SearchQuery = search.Query
+			cachedTracks = append(
+				cachedTracks,
+				track.CachedYouTubeTrack(),
+			)
+			if selected || seen[track.YouTubeID] {
 				continue
 			}
 
 			seen[track.YouTubeID] = true
 			found = append(found, track)
-			break
+			selected = true
 		}
+		searchesToCache = append(searchesToCache, vibe.CachedYouTubeSearch{
+			Query:  search.Query,
+			Tracks: cachedTracks,
+		})
 	}
 
 	if len(found) == 0 {
@@ -141,7 +212,17 @@ func (c *Client) SearchGeneratedPlaylist(
 		found = found[:vibe.GeneratedPlaylistSelectedTrackCount]
 	}
 
-	return &found, nil
+	result := vibe.GeneratedPlaylistSearchResult{
+		Playlist:       found,
+		CachedSearches: searchesToCache,
+	}
+
+	return &result, nil
+}
+
+type generatedFallbackSearch struct {
+	Query      string
+	YouTubeIDs []string
 }
 
 func (c *Client) getGeneratedTracks(
@@ -260,7 +341,7 @@ const youtubeMusicCategoryID = "10"
 
 const generatedTrackMaxDurationSeconds = 20 * 60
 
-const generatedTrackSearchResults = 1
+const generatedTrackSearchResults = 5
 
 const generatedPlaylistFallbackSearchLimit = 5
 

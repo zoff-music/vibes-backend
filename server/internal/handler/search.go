@@ -4,7 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
+	"strings"
 
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -24,10 +26,11 @@ import (
 //	@Router		/api/v1/youtube/search [get]
 func SearchMusic(
 	ms vibe.MusicSearcher,
+	cache vibe.CachedYouTubeSearchFetcherCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		query := r.URL.Query().Get("q")
+		query := strings.TrimSpace(r.URL.Query().Get("q"))
 
 		if query == "" {
 			handleError(
@@ -39,7 +42,29 @@ func SearchMusic(
 			return
 		}
 
-		tracks, err := ms.Search(ctx, query)
+		cachedSearches, err := cache.GetCachedYouTubeSearches(
+			ctx,
+			[]string{query},
+		)
+		if err != nil {
+			log.Printf("error getting cached youtube search: %v", err)
+			cachedSearches = []vibe.CachedYouTubeSearch{}
+		}
+
+		tracks := make([]vibe.MusicTrack, 0)
+		if len(cachedSearches) > 0 {
+			tracks = make(
+				[]vibe.MusicTrack,
+				0,
+				len(cachedSearches[0].Tracks),
+			)
+			for index := range cachedSearches[0].Tracks {
+				track := cachedSearches[0].Tracks[index].MusicTrack()
+				tracks = append(tracks, track)
+			}
+		} else {
+			tracks, err = ms.Search(ctx, query)
+		}
 		if err != nil {
 			var quotaError internalerror.ErrProviderQuotaExceeded
 			if errors.As(err, &quotaError) {
@@ -68,6 +93,31 @@ func SearchMusic(
 				true,
 			)
 			return
+		}
+		if len(cachedSearches) == 0 {
+			cachedTracks := make(
+				[]vibe.CachedYouTubeTrack,
+				0,
+				len(tracks),
+			)
+			for index := range tracks {
+				cachedTracks = append(
+					cachedTracks,
+					tracks[index].CachedYouTubeTrack(),
+				)
+			}
+			err = cache.CacheYouTubeSearches(
+				ctx,
+				[]vibe.CachedYouTubeSearch{
+					{
+						Query:  query,
+						Tracks: cachedTracks,
+					},
+				},
+			)
+			if err != nil {
+				log.Printf("error caching youtube search: %v", err)
+			}
 		}
 
 		body, err := json.Marshal(tracks)

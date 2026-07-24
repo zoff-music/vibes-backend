@@ -17,6 +17,7 @@ type GeneratedTrack struct {
 	Duration     int    `json:"duration,omitempty"`
 	ViewCount    uint64 `json:"-"`
 	LikeCount    uint64 `json:"-"`
+	SearchQuery  string `json:"-"`
 }
 
 func (g *GeneratedTrack) IsEmpty() bool {
@@ -24,6 +25,11 @@ func (g *GeneratedTrack) IsEmpty() bool {
 }
 
 type GeneratedPlaylist []GeneratedTrack
+
+type GeneratedPlaylistSearchResult struct {
+	Playlist       GeneratedPlaylist
+	CachedSearches []CachedYouTubeSearch
+}
 
 type RoomGenerationStatus string
 
@@ -44,7 +50,11 @@ type PlaylistGenerator interface {
 }
 
 type GeneratedPlaylistSearcher interface {
-	SearchGeneratedPlaylist(ctx context.Context, playlist GeneratedPlaylist) (*GeneratedPlaylist, error)
+	SearchGeneratedPlaylist(
+		ctx context.Context,
+		playlist GeneratedPlaylist,
+		cachedSearches []CachedYouTubeSearch,
+	) (*GeneratedPlaylistSearchResult, error)
 }
 
 type GeneratedSongAdder interface {

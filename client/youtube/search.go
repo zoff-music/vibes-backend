@@ -8,6 +8,7 @@ import (
 	"html"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -43,9 +44,12 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	}
 
 	params := url.Values{}
-	params.Set("part", "contentDetails")
+	params.Set("part", "snippet,contentDetails,statistics")
 	params.Set("id", strings.Join(youtubeIDs, ","))
-	params.Set("fields", "items(id,contentDetails/duration)")
+	params.Set(
+		"fields",
+		"items(id,snippet(categoryId),contentDetails/duration,statistics(viewCount,likeCount))",
+	)
 	params.Set("key", c.apiKey)
 
 	responseBody, err := c.HTTPClient.RequestBytes(ctx, client.HTTPRequestData{
@@ -63,14 +67,25 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		return nil, fmt.Errorf("error unmarshaling youtube video details: %w", err)
 	}
 
-	durations := make(map[string]string, len(videoResult.Items))
+	videoItems := make(map[string]videoItem, len(videoResult.Items))
 	for _, item := range videoResult.Items {
-		durations[item.ID] = item.ContentDetails.Duration
+		videoItems[item.ID] = item
 	}
 
 	tracks := make([]vibe.MusicTrack, 0, len(result.Items))
 	for _, item := range result.Items {
 		if item.ID.VideoID == "" {
+			continue
+		}
+
+		videoItem, ok := videoItems[item.ID.VideoID]
+		if !ok || videoItem.Snippet.CategoryID != youtubeMusicCategoryID {
+			continue
+		}
+		durationSeconds, err := youtubeDurationSeconds(
+			videoItem.ContentDetails.Duration,
+		)
+		if err != nil {
 			continue
 		}
 
@@ -82,13 +97,26 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 			thumbnailURL = item.Snippet.Thumbnails.Default.URL
 		}
 
+		viewCount, _ := strconv.ParseUint(
+			videoItem.Statistics.ViewCount,
+			10,
+			64,
+		)
+		likeCount, _ := strconv.ParseUint(
+			videoItem.Statistics.LikeCount,
+			10,
+			64,
+		)
 		tracks = append(tracks, vibe.MusicTrack{
-			ID:           item.ID.VideoID,
-			Source:       vibe.SourceTypeYouTube,
-			Title:        html.UnescapeString(item.Snippet.Title),
-			ChannelTitle: html.UnescapeString(item.Snippet.ChannelTitle),
-			ThumbnailURL: thumbnailURL,
-			Duration:     durations[item.ID.VideoID],
+			ID:              item.ID.VideoID,
+			Source:          vibe.SourceTypeYouTube,
+			Title:           html.UnescapeString(item.Snippet.Title),
+			ChannelTitle:    html.UnescapeString(item.Snippet.ChannelTitle),
+			ThumbnailURL:    thumbnailURL,
+			Duration:        videoItem.ContentDetails.Duration,
+			DurationSeconds: durationSeconds,
+			ViewCount:       viewCount,
+			LikeCount:       likeCount,
 		})
 		if len(tracks) == youtubeSearchDisplayCount {
 			break

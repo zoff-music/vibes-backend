@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -402,6 +403,7 @@ func CreateRoomGeneration(
 
 type GenerateRoomPlaylist struct {
 	AI       vibe.PlaylistGenerator
+	Cache    vibe.CachedYouTubeSearchFetcherCreator
 	DB       vibe.RoomGenerationWorker
 	IPS      vibe.RoomEventNotifier
 	Searcher vibe.GeneratedPlaylistSearcher
@@ -447,7 +449,27 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		return fmt.Errorf("error generating playlist: %w", err)
 	}
 
-	playlist, err = h.Searcher.SearchGeneratedPlaylist(generationContext, *playlist)
+	queries := make([]string, 0, len(*playlist))
+	for _, track := range *playlist {
+		if track.Artist == "" || track.Title == "" {
+			continue
+		}
+		queries = append(queries, track.Artist+" "+track.Title)
+	}
+	cachedSearches, err := h.Cache.GetCachedYouTubeSearches(
+		generationContext,
+		queries,
+	)
+	if err != nil {
+		log.Printf("error getting cached youtube searches for room generation: %v", err)
+		cachedSearches = []vibe.CachedYouTubeSearch{}
+	}
+
+	searchResult, err := h.Searcher.SearchGeneratedPlaylist(
+		generationContext,
+		*playlist,
+		cachedSearches,
+	)
 	if err != nil {
 		var quotaError internalerror.ErrProviderQuotaExceeded
 		if errors.As(err, &quotaError) {
@@ -485,6 +507,14 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 
 		return fmt.Errorf("error searching generated playlist: %w", err)
 	}
+	err = h.Cache.CacheYouTubeSearches(
+		generationContext,
+		searchResult.CachedSearches,
+	)
+	if err != nil {
+		log.Printf("error caching youtube searches for room generation: %v", err)
+	}
+	playlist = &searchResult.Playlist
 
 	playbackState, err := h.DB.GetPlaybackState(generationContext, room.ID)
 	if err != nil {
