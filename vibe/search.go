@@ -37,7 +37,7 @@ type CachedYouTubeTrack struct {
 	LikeCount       uint64 `json:"likeCount"`
 }
 
-func (s CachedYouTubeSearch) ToMusicTracks() []MusicTrack {
+func (s CachedYouTubeSearch) GetMusicTracks() []MusicTrack {
 	tracks := make([]MusicTrack, 0, len(s.Tracks))
 	for index := range s.Tracks {
 		track := s.Tracks[index].MusicTrack()
