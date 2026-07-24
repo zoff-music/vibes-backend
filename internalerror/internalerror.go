@@ -32,6 +32,20 @@ func (e ErrExpected) Unwrap() error {
 	return e.Err
 }
 
+// ErrProviderQuotaExceeded indicates that an external provider's quota is exhausted.
+type ErrProviderQuotaExceeded struct {
+	Err      error
+	Provider string
+}
+
+func (e ErrProviderQuotaExceeded) Error() string {
+	return fmt.Sprintf("error %s provider quota exceeded: %v", e.Provider, e.Err)
+}
+
+func (e ErrProviderQuotaExceeded) Unwrap() error {
+	return e.Err
+}
+
 // ErrAlreadyVoted is an error type for errors where a user has already voted on a song.
 type ErrAlreadyVoted struct {
 	Err error

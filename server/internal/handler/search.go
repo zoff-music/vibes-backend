@@ -2,9 +2,12 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
+	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -17,6 +20,7 @@ import (
 //	@Success	200	{array}		vibe.MusicTrack
 //	@Failure	400	{object}	map[string]string
 //	@Failure	500	{object}	map[string]string
+//	@Failure	503	{object}	map[string]string
 //	@Router		/api/v1/youtube/search [get]
 func SearchMusic(
 	ms vibe.MusicSearcher,
@@ -37,6 +41,26 @@ func SearchMusic(
 
 		tracks, err := ms.Search(ctx, query)
 		if err != nil {
+			var quotaError internalerror.ErrProviderQuotaExceeded
+			if errors.As(err, &quotaError) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: quotaError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "youtube_search_quota_exhausted",
+							Message:   vibe.RoomGenerationYouTubeQuotaFailure,
+							Propagate: true,
+						},
+						StatusCode: http.StatusServiceUnavailable,
+					},
+					http.StatusServiceUnavailable,
+					false,
+				)
+				return
+			}
+
 			handleError(
 				w,
 				fmt.Errorf("error search failed: %w", err),

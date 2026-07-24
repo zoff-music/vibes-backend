@@ -147,7 +147,14 @@ func (c *Client) prepareGetRoomStmt() error {
 				FROM room_generations e
 				WHERE e.room_id = a.id
 				AND e.created_at >= NOW() - INTERVAL '24 hours'
-			) AS generation_count
+			) AS generation_count,
+			(
+				SELECT f.failure_reason
+				FROM room_generations f
+				WHERE f.room_id = a.id
+				ORDER BY f.created_at DESC
+				LIMIT 1
+			) AS generation_error
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
@@ -271,7 +278,14 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 				FROM room_generations e
 				WHERE e.room_id = a.id
 				AND e.created_at >= NOW() - INTERVAL '24 hours'
-			) AS generation_count
+			) AS generation_count,
+			(
+				SELECT f.failure_reason
+				FROM room_generations f
+				WHERE f.room_id = a.id
+				ORDER BY f.created_at DESC
+				LIMIT 1
+			) AS generation_error
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
@@ -450,6 +464,7 @@ type roomRow struct {
 	OnlyAdminAddSongs sql.NullBool
 	IsGenerating      sql.NullBool
 	GenerationCount   sql.NullInt64
+	GenerationError   sql.NullString
 }
 
 func (r *roomRow) scanRow(row *sql.Row) error {
@@ -472,6 +487,7 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.OnlyAdminAddSongs,
 		&r.IsGenerating,
 		&r.GenerationCount,
+		&r.GenerationError,
 	)
 }
 
@@ -493,6 +509,7 @@ func (r *roomRow) toRoom() (*vibe.Room, error) {
 		CreatedAt:         r.CreatedAt.Time,
 		IsGenerating:      r.IsGenerating.Bool,
 		GenerationCount:   int(r.GenerationCount.Int64),
+		GenerationError:   r.GenerationError.String,
 	}, nil
 }
 
