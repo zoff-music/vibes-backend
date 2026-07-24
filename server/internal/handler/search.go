@@ -52,17 +52,11 @@ func SearchMusic(
 		}
 
 		tracks := make([]vibe.MusicTrack, 0)
-		if len(cachedSearches) > 0 {
-			tracks = make(
-				[]vibe.MusicTrack,
-				0,
-				len(cachedSearches[0].Tracks),
-			)
-			for index := range cachedSearches[0].Tracks {
-				track := cachedSearches[0].Tracks[index].MusicTrack()
-				tracks = append(tracks, track)
-			}
-		} else {
+		cacheHit := len(cachedSearches) > 0
+		if cacheHit {
+			tracks = cachedSearches[0].MusicTracks()
+		}
+		if !cacheHit {
 			tracks, err = ms.Search(ctx, query)
 		}
 		if err != nil {
@@ -94,25 +88,15 @@ func SearchMusic(
 			)
 			return
 		}
-		if len(cachedSearches) == 0 {
-			cachedTracks := make(
-				[]vibe.CachedYouTubeTrack,
-				0,
-				len(tracks),
-			)
-			for index := range tracks {
-				cachedTracks = append(
-					cachedTracks,
-					tracks[index].CachedYouTubeTrack(),
-				)
+		if !cacheHit {
+			search := vibe.CachedYouTubeSearch{
+				Query: query,
 			}
+			search.SetMusicTracks(tracks)
 			err = cache.CacheYouTubeSearches(
 				ctx,
 				[]vibe.CachedYouTubeSearch{
-					{
-						Query:  query,
-						Tracks: cachedTracks,
-					},
+					search,
 				},
 			)
 			if err != nil {
