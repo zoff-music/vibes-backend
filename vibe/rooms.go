@@ -64,6 +64,7 @@ type Room struct {
 	UserID            string       `json:"userId,omitempty"`
 	ActiveSources     []string     `json:"activeSources"`
 	IsGenerating      bool         `json:"isGenerating"`
+	GenerationCount   int          `json:"generationCount"`
 }
 
 // RoomNameSuggestion is an available, memorable name for a new room.

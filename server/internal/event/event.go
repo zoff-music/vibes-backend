@@ -70,6 +70,13 @@ func GetAppEvents(
 			},
 		},
 		{
+			Name: "CleanupRoomGenerations",
+			Rate: 10 * time.Minute,
+			Handler: &handler.CleanupRoomGenerations{
+				DB: db,
+			},
+		},
+		{
 			Name: "RefreshSpotifyTokens",
 			Rate: 10 * time.Second,
 			Handler: &handler.RefreshSpotifyTokens{

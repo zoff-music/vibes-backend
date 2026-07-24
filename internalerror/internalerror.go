@@ -123,6 +123,32 @@ func (e ErrRoomGenerationBusy) Unwrap() error {
 	return e.Err
 }
 
+// ErrRoomGenerationSongLimit is an error type for rooms with too many songs to generate a playlist.
+type ErrRoomGenerationSongLimit struct {
+	Err error
+}
+
+func (e ErrRoomGenerationSongLimit) Error() string {
+	return fmt.Sprintf("error room generation song limit exceeded: %v", e.Err)
+}
+
+func (e ErrRoomGenerationSongLimit) Unwrap() error {
+	return e.Err
+}
+
+// ErrRoomGenerationDailyLimit is an error type for rooms that reached their daily generation limit.
+type ErrRoomGenerationDailyLimit struct {
+	Err error
+}
+
+func (e ErrRoomGenerationDailyLimit) Error() string {
+	return fmt.Sprintf("error room generation daily limit exceeded: %v", e.Err)
+}
+
+func (e ErrRoomGenerationDailyLimit) Unwrap() error {
+	return e.Err
+}
+
 // ErrCastTokenInvalid is an error type for errors where a cast token is malformed or has an invalid signature.
 type ErrCastTokenInvalid struct {
 	Err error

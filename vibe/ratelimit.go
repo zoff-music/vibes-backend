@@ -6,6 +6,7 @@ import (
 )
 
 type RateLimitPolicy struct {
+	Bucket      string
 	Rate        time.Duration
 	Limit       int
 	IPLimit     int

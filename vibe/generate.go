@@ -1,6 +1,9 @@
 package vibe
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type GeneratedPlaylistRequest struct {
 	Prompt string `json:"prompt"`
@@ -65,13 +68,17 @@ type RoomGenerationProcessor interface {
 	ProcessNextRoomGeneration(ctx context.Context) (*RoomGeneration, error)
 }
 
-type RoomGenerationDeleter interface {
-	DeleteRoomGeneration(ctx context.Context, roomID string) error
+type RoomGenerationCompleter interface {
+	CompleteRoomGeneration(ctx context.Context, roomID string) error
+}
+
+type RoomGenerationCleaner interface {
+	DeleteExpiredRoomGenerations(ctx context.Context, olderThan time.Duration) (int64, error)
 }
 
 type RoomGenerationWorker interface {
 	RoomGenerationProcessor
-	RoomGenerationDeleter
+	RoomGenerationCompleter
 	RoomFetcher
 	GeneratedSongAdder
 	PlaybackController
@@ -83,6 +90,12 @@ const GeneratedPlaylistTrackCount = 50
 const GeneratedPlaylistSelectedTrackCount = 30
 
 const RoomGenerationMaxAttempts = 5
+
+const RoomGenerationMaxDailyCount = 2
+
+const RoomGenerationMaxExistingSongs = 5
+
+const RoomGenerationRetention = 24 * time.Hour
 
 const RoomGenerationGenerating RoomGenerationStatus = "generating"
 
