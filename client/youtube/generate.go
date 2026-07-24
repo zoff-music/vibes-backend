@@ -153,8 +153,8 @@ func (c *Client) getGeneratedTracks(
 	}
 
 	for _, item := range response.Items {
-		durationSeconds, durationErr := youtubeDurationSeconds(item.ContentDetails.Duration)
-		if durationErr != nil ||
+		durationSeconds, err := youtubeDurationSeconds(item.ContentDetails.Duration)
+		if err != nil ||
 			item.Snippet.CategoryID != youtubeMusicCategoryID ||
 			durationSeconds <= 0 ||
 			durationSeconds > generatedTrackMaxDurationSeconds {

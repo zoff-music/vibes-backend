@@ -18,7 +18,7 @@ func (c *Client) prepareHasActiveRoomGenerationStmt() error {
 		SELECT EXISTS (
 			SELECT 1
 			FROM room_generations
-			WHERE attempt < 5
+			WHERE attempt < $1
 		)
 	`)
 	if err != nil {
@@ -37,7 +37,10 @@ func (c *Client) HasActiveRoomGeneration(ctx context.Context) (bool, error) {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.HasActiveRoomGenerationStatement.QueryRowContext(cctx)
+	row := c.HasActiveRoomGenerationStatement.QueryRowContext(
+		cctx,
+		vibe.RoomGenerationMaxAttempts,
+	)
 
 	var hasActiveGeneration bool
 	err := row.Scan(&hasActiveGeneration)
@@ -105,7 +108,8 @@ func (c *Client) prepareProcessNextRoomGenerationStmt() error {
 				a.prompt,
 				a.attempt
 			FROM room_generations a
-			WHERE a.attempt = 0
+			WHERE a.attempt >= $1
+			OR a.attempt = 0
 			OR a.updated_at <= NOW() - INTERVAL '5 minutes'
 			ORDER BY a.updated_at ASC, a.created_at ASC
 			LIMIT 1
@@ -117,7 +121,7 @@ func (c *Client) prepareProcessNextRoomGenerationStmt() error {
 				updated_at = NOW()
 			FROM locked_generation_q b
 			WHERE a.room_id = b.room_id
-			AND b.attempt < 5
+			AND b.attempt < $1
 			RETURNING
 				a.room_id,
 				a.prompt,
@@ -128,7 +132,7 @@ func (c *Client) prepareProcessNextRoomGenerationStmt() error {
 			DELETE FROM room_generations a
 			USING locked_generation_q b
 			WHERE a.room_id = b.room_id
-			AND b.attempt >= 5
+			AND b.attempt >= $1
 			RETURNING
 				a.room_id,
 				a.prompt,
@@ -159,7 +163,10 @@ func (c *Client) ProcessNextRoomGeneration(
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.ProcessNextRoomGenerationStatement.QueryRowContext(cctx)
+	row := c.ProcessNextRoomGenerationStatement.QueryRowContext(
+		cctx,
+		vibe.RoomGenerationMaxAttempts,
+	)
 
 	var generationRow roomGenerationRow
 	err := generationRow.scan(row)
@@ -175,7 +182,9 @@ func (c *Client) ProcessNextRoomGeneration(
 		return nil, fmt.Errorf("error scanning room generation: %w", err)
 	}
 
-	return generationRow.toRoomGeneration(), nil
+	generation := generationRow.toRoomGeneration()
+
+	return generation, nil
 }
 
 type roomGenerationRow struct {
