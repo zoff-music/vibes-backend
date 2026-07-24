@@ -28,6 +28,11 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
+		if r.Header.Get(rateLimitRequestOriginHeader) != rateLimitExternalRequestOrigin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		routeName := mux.CurrentRoute(r).GetName()
 		policy, ok := m.Policies[routeName]
 		if !ok {
@@ -41,6 +46,45 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			log.Printf("RateLimitMiddleware: invalid policy for route %s", routeName)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
+		}
+
+		ipLimit := policy.IPLimit
+		if ipLimit == 0 {
+			ipLimit = policy.Limit * rateLimitIPMultiplier
+		}
+		if ipLimit < 0 {
+			log.Printf("RateLimitMiddleware: invalid IP policy for route %s", routeName)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if policy.GlobalLimit < 0 ||
+			(policy.GlobalLimit > 0 && policy.GlobalRate <= 0) {
+			log.Printf("RateLimitMiddleware: invalid global policy for route %s", routeName)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
+		if policy.GlobalLimit > 0 {
+			globalRequest := vibe.RateLimitRequest{
+				RouteName:      routeName,
+				IdentityHash:   rateLimitGlobalIdentity,
+				IPIdentityHash: rateLimitGlobalIdentity,
+				Rate:           policy.GlobalRate,
+				Limit:          policy.GlobalLimit,
+				IPLimit:        policy.GlobalLimit,
+			}
+			globalResult, err := m.Checker.CheckRateLimit(r.Context(), globalRequest)
+			if err != nil {
+				log.Printf("RateLimitMiddleware: error checking global limit for route %s: %v", routeName, err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
+			if !globalResult.Allowed {
+				retryAfter := max(globalResult.RetryAfter, time.Second)
+				retryAfterSeconds := (retryAfter + time.Second - 1) / time.Second
+				w.Header().Set("Retry-After", strconv.FormatInt(int64(retryAfterSeconds), 10))
+				http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+				return
+			}
 		}
 
 		session, hasSession := helper.GetSessionFromContext(r.Context())
@@ -58,7 +102,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			IPIdentityHash: hashRateLimitIdentity(clientIP),
 			Rate:           policy.Rate,
 			Limit:          policy.Limit,
-			IPLimit:        policy.Limit * rateLimitIPMultiplier,
+			IPLimit:        ipLimit,
 		}
 		result, err := m.Checker.CheckRateLimit(r.Context(), request)
 		if err != nil {
@@ -122,3 +166,9 @@ const rateLimitIPMultiplier = 10
 const rateLimitDefaultRate = time.Minute
 
 const rateLimitDefaultLimit = 60
+
+const rateLimitRequestOriginHeader = "X-Vibes-Request-Origin"
+
+const rateLimitExternalRequestOrigin = "external"
+
+const rateLimitGlobalIdentity = "ZOFF:GLOBAL"

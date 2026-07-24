@@ -17,6 +17,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/client/database"
+	"github.com/zoff-music/vibes-backend/client/grok"
 	"github.com/zoff-music/vibes-backend/client/internalpubsub"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
@@ -39,6 +40,7 @@ type Server struct {
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
 	Spotify        *spotify.Client
+	Grok           *grok.Client
 	Router         *mux.Router
 	InternalRouter *mux.Router
 }
@@ -81,6 +83,12 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("error initializing spotify client: %w", err)
 	}
 
+	var grokClient grok.Client
+	err = grokClient.Init(ctx, config)
+	if err != nil {
+		return fmt.Errorf("error initializing grok client: %w", err)
+	}
+
 	var redisClient redisclient.Client
 	if config.RateLimitEnabled {
 		err = redisClient.Init(ctx, config)
@@ -98,6 +106,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
 	s.Spotify = &spotifyClient
+	s.Grok = &grokClient
 	s.Router = mux.NewRouter()
 	s.InternalRouter = mux.NewRouter()
 	s.HTTP = &http.Server{
@@ -219,7 +228,7 @@ func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "subscribeAndListen")
 	defer span.End()
 
-	for _, e := range event.GetAppEvents(s.DB, s.InternalPubSub, s.Spotify, s.YouTube) {
+	for _, e := range event.GetAppEvents(s.DB, s.InternalPubSub, s.Spotify, s.YouTube, s.Grok) {
 		go func(e event.AppEvent) {
 			e.SubscribeAndListen(ctx)
 		}(e)

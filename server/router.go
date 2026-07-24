@@ -22,6 +22,9 @@ func (s *Server) setupRoutes() {
 	// Room routes
 	api.HandleFunc("/rooms", handler.CreateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
 	api.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
+	if s.Grok.Enabled {
+		api.HandleFunc("/rooms/generation", handler.CreateGeneratedRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoom")
+	}
 	api.HandleFunc("/rooms/{id}", handler.RoomExists(s.DB)).Methods(http.MethodHead).Name("RoomExists")
 	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoom")
 	api.HandleFunc("/rooms/{id}/settings", handler.UpdateRoomSettings(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoomSettings")
@@ -118,18 +121,25 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"GetSpotifyToken":     {Rate: time.Minute, Limit: 60},
 			"GetSoundCloudToken":  {Rate: time.Minute, Limit: 60},
 			"GetYouTubeToken":     {Rate: time.Minute, Limit: 60},
-			"Authorize":           {Rate: 10 * time.Minute, Limit: 20},
-			"SpotifyCallback":     {Rate: 10 * time.Minute, Limit: 30},
-			"SoundCloudCallback":  {Rate: 10 * time.Minute, Limit: 30},
-			"YouTubeCallback":     {Rate: 10 * time.Minute, Limit: 30},
-			"GetProviders":        {Rate: time.Minute, Limit: 120},
-			"CreateCastingToken":  {Rate: time.Minute, Limit: 30},
-			"AdminLogin":          {Rate: 10 * time.Minute, Limit: 5},
-			"AdminLogout":         {Rate: time.Minute, Limit: 20},
-			"AdminRooms":          {Rate: time.Minute, Limit: 120},
-			"AdminUpdateRoom":     {Rate: time.Minute, Limit: 30},
-			"AdminDeleteRoom":     {Rate: time.Minute, Limit: 30},
-			"AdminEvents":         {Rate: time.Minute, Limit: 20},
+			"CreateGeneratedRoom": {
+				Rate:        10 * time.Minute,
+				Limit:       1,
+				IPLimit:     1,
+				GlobalRate:  time.Minute,
+				GlobalLimit: 1,
+			},
+			"Authorize":          {Rate: 10 * time.Minute, Limit: 20},
+			"SpotifyCallback":    {Rate: 10 * time.Minute, Limit: 30},
+			"SoundCloudCallback": {Rate: 10 * time.Minute, Limit: 30},
+			"YouTubeCallback":    {Rate: 10 * time.Minute, Limit: 30},
+			"GetProviders":       {Rate: time.Minute, Limit: 120},
+			"CreateCastingToken": {Rate: time.Minute, Limit: 30},
+			"AdminLogin":         {Rate: 10 * time.Minute, Limit: 5},
+			"AdminLogout":        {Rate: time.Minute, Limit: 20},
+			"AdminRooms":         {Rate: time.Minute, Limit: 120},
+			"AdminUpdateRoom":    {Rate: time.Minute, Limit: 30},
+			"AdminDeleteRoom":    {Rate: time.Minute, Limit: 30},
+			"AdminEvents":        {Rate: time.Minute, Limit: 20},
 		},
 	}
 
