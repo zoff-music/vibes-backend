@@ -97,7 +97,7 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 		},
 		ReasoningEffort: "low",
 		Temperature:     0.3,
-		MaxTokens:       6000,
+		MaxTokens:       8000,
 		ResponseFormat: responseFormat{
 			Type: "json_schema",
 			JSONSchema: responseJSONSchema{
