@@ -80,7 +80,9 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 	defer span.End()
 
 	if !c.Enabled {
-		return nil, fmt.Errorf("error grok client is not configured")
+		return nil, fmt.Errorf(
+			"error validating grok client in GeneratePlaylist: client is not configured",
+		)
 	}
 
 	request := chatCompletionRequest{
@@ -137,7 +139,10 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 
 	body, err := json.Marshal(request)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling grok playlist request: %w", err)
+		return nil, fmt.Errorf(
+			"error marshaling grok playlist request in GeneratePlaylist: %w",
+			err,
+		)
 	}
 
 	responseBody, err := c.HTTPClient.RequestBytes(ctx, client.HTTPRequestData{
@@ -150,29 +155,42 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 		Body: body,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error requesting grok playlist: %w", err)
+		return nil, fmt.Errorf(
+			"error requesting grok playlist in GeneratePlaylist: %w",
+			err,
+		)
 	}
 
 	var response chatCompletionResponse
 	err = json.Unmarshal(responseBody, &response)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling grok playlist response: %w", err)
+		return nil, fmt.Errorf(
+			"error unmarshaling grok playlist response in GeneratePlaylist: %w",
+			err,
+		)
 	}
 	if len(response.Choices) == 0 {
-		return nil, fmt.Errorf("error grok playlist response has no choices")
+		return nil, fmt.Errorf(
+			"error validating grok playlist response in GeneratePlaylist: response has no choices",
+		)
 	}
 	if response.Choices[0].Message.Refusal != "" {
-		return nil, fmt.Errorf("error grok refused playlist request")
+		return nil, fmt.Errorf(
+			"error validating grok playlist response in GeneratePlaylist: request was refused",
+		)
 	}
 
 	var playlist vibe.GeneratedPlaylist
 	err = json.Unmarshal([]byte(response.Choices[0].Message.Content), &playlist)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling generated playlist: %w", err)
+		return nil, fmt.Errorf(
+			"error unmarshaling generated playlist in GeneratePlaylist: %w",
+			err,
+		)
 	}
 	if len(playlist) == 0 {
 		return nil, fmt.Errorf(
-			"error generated playlist has no tracks",
+			"error validating generated playlist in GeneratePlaylist: playlist has no tracks",
 		)
 	}
 	if len(playlist) > vibe.GeneratedPlaylistTrackCount {

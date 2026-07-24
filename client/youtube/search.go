@@ -25,12 +25,17 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	defer span.End()
 
 	if c.apiKey == "" {
-		return nil, fmt.Errorf("error youtube api key not configured")
+		return nil, fmt.Errorf(
+			"error validating youtube API key in Search: not configured",
+		)
 	}
 
 	result, err := c.searchVideos(ctx, query, youtubeSearchResultCount)
 	if err != nil {
-		return nil, fmt.Errorf("error searching youtube videos: %w", err)
+		return nil, fmt.Errorf(
+			"error searching youtube videos in Search: %w",
+			err,
+		)
 	}
 
 	youtubeIDs := make([]string, 0, len(result.Items))
@@ -58,13 +63,19 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		Payload: &params,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error requesting youtube video details: %w", err)
+		return nil, fmt.Errorf(
+			"error requesting youtube video details in Search: %w",
+			err,
+		)
 	}
 
 	var videoResult videoResponse
 	err = json.Unmarshal(responseBody, &videoResult)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling youtube video details: %w", err)
+		return nil, fmt.Errorf(
+			"error unmarshaling youtube video details in Search: %w",
+			err,
+		)
 	}
 
 	videoItems := make(map[string]videoItem, len(videoResult.Items))
@@ -136,7 +147,10 @@ func (c *Client) searchVideos(
 	c.searchQuotaMu.RUnlock()
 	if time.Now().Before(searchQuotaReset) {
 		return nil, internalerror.ErrProviderQuotaExceeded{
-			Err:      fmt.Errorf("error youtube search quota cached until %s", searchQuotaReset.Format(time.RFC3339)),
+			Err: fmt.Errorf(
+				"error checking youtube search quota in searchVideos: cached until %s",
+				searchQuotaReset.Format(time.RFC3339),
+			),
 			Provider: youtubeProvider,
 		}
 	}
@@ -179,18 +193,27 @@ func (c *Client) searchVideos(
 			c.searchQuotaMu.Unlock()
 
 			return nil, internalerror.ErrProviderQuotaExceeded{
-				Err:      fmt.Errorf("error requesting youtube search: %w", err),
+				Err: fmt.Errorf(
+					"error requesting youtube search in searchVideos: %w",
+					err,
+				),
 				Provider: youtubeProvider,
 			}
 		}
 
-		return nil, fmt.Errorf("error requesting youtube search: %w", err)
+		return nil, fmt.Errorf(
+			"error requesting youtube search in searchVideos: %w",
+			err,
+		)
 	}
 
 	var result searchResponse
 	err = json.Unmarshal(responseBody, &result)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling youtube search response: %w", err)
+		return nil, fmt.Errorf(
+			"error unmarshaling youtube search response in searchVideos: %w",
+			err,
+		)
 	}
 
 	return &result, nil

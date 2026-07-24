@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 func handleError(
@@ -19,9 +20,7 @@ func handleError(
 		log.Println(err.Error())
 	}
 
-	errorBody, _ := json.Marshal(struct {
-		Error string `json:"error"`
-	}{
+	errorBody, _ := json.Marshal(vibe.ErrorResponse{
 		Error: "something went wrong",
 	})
 

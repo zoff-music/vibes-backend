@@ -24,7 +24,10 @@ func (c *Client) prepareHasActiveRoomGenerationStmt() error {
 		)
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing HasActiveRoomGenerationStatement: %w", err)
+		return fmt.Errorf(
+			"error preparing statement in prepareHasActiveRoomGenerationStmt: %w",
+			err,
+		)
 	}
 
 	c.HasActiveRoomGenerationStatement = stmt
@@ -47,7 +50,10 @@ func (c *Client) HasActiveRoomGeneration(ctx context.Context) (bool, error) {
 	var hasActiveGeneration bool
 	err := row.Scan(&hasActiveGeneration)
 	if err != nil {
-		return false, fmt.Errorf("error scanning active room generation: %w", err)
+		return false, fmt.Errorf(
+			"error scanning active room generation in HasActiveRoomGeneration: %w",
+			err,
+		)
 	}
 
 	return hasActiveGeneration, nil
@@ -100,7 +106,10 @@ func (c *Client) prepareCreateRoomGenerationStmt() error {
 		END
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing CreateRoomGenerationStatement: %w", err)
+		return fmt.Errorf(
+			"error preparing statement in prepareCreateRoomGenerationStmt: %w",
+			err,
+		)
 	}
 
 	c.CreateRoomGenerationStatement = stmt
@@ -173,14 +182,6 @@ func (c *Client) CreateRoomGeneration(
 	return nil
 }
 
-const createRoomGenerationCreated = "created"
-
-const createRoomGenerationDailyLimit = "daily_limit"
-
-const createRoomGenerationSongLimit = "song_limit"
-
-const roomGenerationSingleActiveConstraint = "room_generations_single_active_idx"
-
 func (c *Client) prepareProcessNextRoomGenerationStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH locked_generation_q AS (
@@ -235,7 +236,10 @@ func (c *Client) prepareProcessNextRoomGenerationStmt() error {
 		FROM failed_generation_q
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing ProcessNextRoomGenerationStatement: %w", err)
+		return fmt.Errorf(
+			"error preparing statement in prepareProcessNextRoomGenerationStmt: %w",
+			err,
+		)
 	}
 
 	c.ProcessNextRoomGenerationStatement = stmt
@@ -264,12 +268,17 @@ func (c *Client) ProcessNextRoomGeneration(
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, internalerror.ErrExpected{
 				Err: internalerror.ErrNonRecoverable{
-					Err: fmt.Errorf("error no room generation ready for processing"),
+					Err: fmt.Errorf(
+						"error getting room generation in ProcessNextRoomGeneration: none ready for processing",
+					),
 				},
 			}
 		}
 
-		return nil, fmt.Errorf("error scanning room generation: %w", err)
+		return nil, fmt.Errorf(
+			"error scanning room generation in ProcessNextRoomGeneration: %w",
+			err,
+		)
 	}
 
 	generation := generationRow.toRoomGeneration()
@@ -285,12 +294,17 @@ type roomGenerationRow struct {
 }
 
 func (r *roomGenerationRow) scan(row *sql.Row) error {
-	return row.Scan(
+	err := row.Scan(
 		&r.RoomID,
 		&r.Prompt,
 		&r.Attempt,
 		&r.Exhausted,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning room generation in scan: %w", err)
+	}
+
+	return nil
 }
 
 func (r *roomGenerationRow) toRoomGeneration() *vibe.RoomGeneration {
@@ -312,7 +326,10 @@ func (c *Client) prepareCompleteRoomGenerationStmt() error {
 		AND failed_at IS NULL
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing CompleteRoomGenerationStatement: %w", err)
+		return fmt.Errorf(
+			"error preparing statement in prepareCompleteRoomGenerationStmt: %w",
+			err,
+		)
 	}
 
 	c.CompleteRoomGenerationStatement = stmt
@@ -347,7 +364,10 @@ func (c *Client) prepareFailRoomGenerationStmt() error {
 		AND failed_at IS NULL
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing FailRoomGenerationStatement: %w", err)
+		return fmt.Errorf(
+			"error preparing statement in prepareFailRoomGenerationStmt: %w",
+			err,
+		)
 	}
 
 	c.FailRoomGenerationStatement = stmt
@@ -386,7 +406,10 @@ func (c *Client) prepareDeleteExpiredRoomGenerationsStmt() error {
 		OR failed_at <= $1
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing DeleteExpiredRoomGenerationsStatement: %w", err)
+		return fmt.Errorf(
+			"error preparing statement in prepareDeleteExpiredRoomGenerationsStmt: %w",
+			err,
+		)
 	}
 
 	c.DeleteExpiredRoomGenerationsStatement = stmt
@@ -452,12 +475,15 @@ func (c *Client) AddGeneratedSong(
 	var rowData addSongRow
 	err := rowData.scan(row)
 	if err != nil {
-		return nil, fmt.Errorf("error scanning generated song: %w", err)
+		return nil, fmt.Errorf(
+			"error scanning generated song in AddGeneratedSong: %w",
+			err,
+		)
 	}
 
 	if rowData.Result.String == addSongResultRoomNotFound {
 		return nil, fmt.Errorf(
-			"error adding generated song: room %s not found",
+			"error adding generated song in AddGeneratedSong: room %s not found",
 			song.RoomID,
 		)
 	}
@@ -469,3 +495,11 @@ func (c *Client) AddGeneratedSong(
 
 	return &generatedSong, nil
 }
+
+const createRoomGenerationCreated = "created"
+
+const createRoomGenerationDailyLimit = "daily_limit"
+
+const createRoomGenerationSongLimit = "song_limit"
+
+const roomGenerationSingleActiveConstraint = "room_generations_single_active_idx"

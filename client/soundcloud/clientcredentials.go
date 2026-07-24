@@ -2,6 +2,7 @@ package soundcloud
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -28,7 +29,10 @@ func (c *Client) EnsureToken(ctx context.Context) error {
 
 	token, err := c.GetClientCredentialsToken(ctx)
 	if err != nil {
-		return fmt.Errorf("error getting client credentials token: %w", err)
+		return fmt.Errorf(
+			"error getting client credentials token in EnsureToken: %w",
+			err,
+		)
 	}
 
 	c.accessToken = token.AccessToken
@@ -49,27 +53,36 @@ func (c *Client) GetClientCredentialsToken(ctx context.Context) (*vibe.TokenResp
 
 	params := url.Values{}
 	params.Set("grant_type", "client_credentials")
-	params.Set("client_id", c.clientID)
-	params.Set("client_secret", c.clientSecret)
+	credentials := base64.StdEncoding.EncodeToString(
+		[]byte(c.clientID + ":" + c.clientSecret),
+	)
 
 	reqData := client.HTTPRequestData{
 		Method: http.MethodPost,
-		URL:    "https://secure.soundcloud.com/oauth/token",
+		URL:    soundCloudTokenURL,
 		Headers: map[string]string{
-			"Content-Type": "application/x-www-form-urlencoded",
+			"Accept":        "application/json; charset=utf-8",
+			"Authorization": "Basic " + credentials,
+			"Content-Type":  "application/x-www-form-urlencoded",
 		},
 		Body: []byte(params.Encode()),
 	}
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
-		return nil, fmt.Errorf("error requesting token: %w", err)
+		return nil, fmt.Errorf(
+			"error requesting token in GetClientCredentialsToken: %w",
+			err,
+		)
 	}
 
 	var res vibe.TokenResponse
 	err = json.Unmarshal(resp, &res)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding token response: %w", err)
+		return nil, fmt.Errorf(
+			"error decoding token response in GetClientCredentialsToken: %w",
+			err,
+		)
 	}
 
 	return &res, nil
