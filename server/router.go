@@ -121,7 +121,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"GetSpotifyToken":     {Rate: time.Minute, Limit: 60},
 			"GetSoundCloudToken":  {Rate: time.Minute, Limit: 60},
 			"GetYouTubeToken":     {Rate: time.Minute, Limit: 60},
-			"GenerateRoom":        {Rate: 5 * time.Minute, Limit: 1, IPLimit: 1},
+			"GenerateRoom":        {Rate: 10 * time.Minute, Limit: 1, IPLimit: 1},
 			"Authorize":           {Rate: 10 * time.Minute, Limit: 20},
 			"SpotifyCallback":     {Rate: 10 * time.Minute, Limit: 30},
 			"SoundCloudCallback":  {Rate: 10 * time.Minute, Limit: 30},
