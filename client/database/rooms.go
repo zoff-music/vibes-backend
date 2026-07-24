@@ -134,19 +134,26 @@ func (c *Client) prepareGetRoomStmt() error {
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
 			b.only_admin_add_songs,
-			d.room_id IS NOT NULL AND (
+			EXISTS (
+				SELECT 1
+				FROM room_generations d
+				WHERE d.room_id = a.id
+				AND d.attempt < $3
+				AND d.completed_at IS NULL
+				AND d.failed_at IS NULL
+			) AS is_generating,
+			(
 				SELECT COUNT(*)
-				FROM songs e
+				FROM room_generations e
 				WHERE e.room_id = a.id
-			) <= 2 AS is_generating
+				AND e.created_at >= NOW() - INTERVAL '24 hours'
+			) AS generation_count
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
 		LEFT JOIN room_users c
 		ON c.room_id = a.id
 		AND c.id = $2
-		LEFT JOIN room_generations d
-		ON d.room_id = a.id
 		WHERE a.id = $1
 	`)
 	if err != nil {
@@ -184,7 +191,12 @@ func (c *Client) getRoom(ctx context.Context, id string, userID string) (*vibe.R
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.GetRoomStatement.QueryRowContext(cctx, id, userID)
+	r := c.GetRoomStatement.QueryRowContext(
+		cctx,
+		id,
+		userID,
+		vibe.RoomGenerationMaxAttempts,
+	)
 
 	var row roomRow
 	err := row.scanRow(r)
@@ -246,19 +258,26 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
 			b.only_admin_add_songs,
-			d.room_id IS NOT NULL AND (
+			EXISTS (
+				SELECT 1
+				FROM room_generations d
+				WHERE d.room_id = a.id
+				AND d.attempt < $3
+				AND d.completed_at IS NULL
+				AND d.failed_at IS NULL
+			) AS is_generating,
+			(
 				SELECT COUNT(*)
-				FROM songs e
+				FROM room_generations e
 				WHERE e.room_id = a.id
-			) <= 2 AS is_generating
+				AND e.created_at >= NOW() - INTERVAL '24 hours'
+			) AS generation_count
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
 		LEFT JOIN room_users c
 		ON c.room_id = a.id
 		AND c.id = $2
-		LEFT JOIN room_generations d
-		ON d.room_id = a.id
 		WHERE a.name = $1
 	`)
 	if err != nil {
@@ -295,7 +314,12 @@ func (c *Client) getRoomByName(ctx context.Context, name string, userID string) 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.GetRoomByNameStatement.QueryRowContext(cctx, name, userID)
+	row := c.GetRoomByNameStatement.QueryRowContext(
+		cctx,
+		name,
+		userID,
+		vibe.RoomGenerationMaxAttempts,
+	)
 
 	var scanned roomRow
 	err := scanned.scanRow(row)
@@ -425,6 +449,7 @@ type roomRow struct {
 	EnabledSources    sql.NullString
 	OnlyAdminAddSongs sql.NullBool
 	IsGenerating      sql.NullBool
+	GenerationCount   sql.NullInt64
 }
 
 func (r *roomRow) scanRow(row *sql.Row) error {
@@ -446,6 +471,7 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.EnabledSources,
 		&r.OnlyAdminAddSongs,
 		&r.IsGenerating,
+		&r.GenerationCount,
 	)
 }
 
@@ -466,6 +492,7 @@ func (r *roomRow) toRoom() (*vibe.Room, error) {
 		Settings:          *settings,
 		CreatedAt:         r.CreatedAt.Time,
 		IsGenerating:      r.IsGenerating.Bool,
+		GenerationCount:   int(r.GenerationCount.Int64),
 	}, nil
 }
 

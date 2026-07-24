@@ -190,6 +190,26 @@ func CreateGeneratedRoom(
 				return
 			}
 
+			var dailyLimitError internalerror.ErrRoomGenerationDailyLimit
+			if errors.As(err, &dailyLimitError) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: dailyLimitError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_generation_daily_limit",
+							Message:   "This room has reached its daily playlist generation limit.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusTooManyRequests,
+					},
+					http.StatusTooManyRequests,
+					false,
+				)
+				return
+			}
+
 			handleError(
 				w,
 				fmt.Errorf("error queueing room generation: %w", err),
@@ -199,6 +219,7 @@ func CreateGeneratedRoom(
 			return
 		}
 		createdRoom.IsGenerating = true
+		createdRoom.GenerationCount = 1
 
 		body, err = json.Marshal(createdRoom)
 		if err != nil {
@@ -325,6 +346,26 @@ func CreateRoomGeneration(
 						StatusCode: http.StatusConflict,
 					},
 					http.StatusConflict,
+					false,
+				)
+				return
+			}
+
+			var dailyLimitError internalerror.ErrRoomGenerationDailyLimit
+			if errors.As(err, &dailyLimitError) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: dailyLimitError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_generation_daily_limit",
+							Message:   "This room has reached its daily playlist generation limit.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusTooManyRequests,
+					},
+					http.StatusTooManyRequests,
 					false,
 				)
 				return
@@ -481,9 +522,9 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		}
 	}
 
-	err = h.DB.DeleteRoomGeneration(ctx, generation.RoomID)
+	err = h.DB.CompleteRoomGeneration(ctx, generation.RoomID)
 	if err != nil {
-		return fmt.Errorf("error deleting completed room generation: %w", err)
+		return fmt.Errorf("error completing room generation: %w", err)
 	}
 
 	update := vibe.RoomGenerationUpdate{
