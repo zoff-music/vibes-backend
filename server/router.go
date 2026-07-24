@@ -123,6 +123,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"GetSoundCloudToken":  {Rate: time.Minute, Limit: 60},
 			"GetYouTubeToken":     {Rate: time.Minute, Limit: 60},
 			"CreateGeneratedRoom": {
+				Bucket:      "RoomGeneration",
 				Rate:        10 * time.Minute,
 				Limit:       1,
 				IPLimit:     1,
@@ -130,6 +131,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 				GlobalLimit: 1,
 			},
 			"CreateRoomGeneration": {
+				Bucket:      "RoomGeneration",
 				Rate:        10 * time.Minute,
 				Limit:       1,
 				IPLimit:     1,

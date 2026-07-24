@@ -42,6 +42,11 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			}
 		}
 
+		bucket := policy.Bucket
+		if bucket == "" {
+			bucket = routeName
+		}
+
 		if policy.Rate <= 0 || policy.Limit <= 0 || policy.Rate/time.Duration(policy.Limit) < time.Microsecond {
 			log.Printf("RateLimitMiddleware: invalid policy for route %s", routeName)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -65,7 +70,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		}
 		if policy.GlobalLimit > 0 {
 			globalRequest := vibe.RateLimitRequest{
-				RouteName:      routeName,
+				RouteName:      bucket,
 				IdentityHash:   rateLimitGlobalIdentity,
 				IPIdentityHash: rateLimitGlobalIdentity,
 				Rate:           policy.GlobalRate,
@@ -97,7 +102,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		}
 
 		request := vibe.RateLimitRequest{
-			RouteName:      routeName,
+			RouteName:      bucket,
 			IdentityHash:   hashRateLimitIdentity(deviceIdentity),
 			IPIdentityHash: hashRateLimitIdentity(clientIP),
 			Rate:           policy.Rate,
