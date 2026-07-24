@@ -43,12 +43,13 @@ func (c *Client) SearchGeneratedPlaylist(
 	for _, candidate := range playlist {
 		track, ok := tracksByID[candidate.YouTubeID]
 		if !ok {
-			track, err = c.searchGeneratedTrack(ctx, candidate)
+			searchedTrack, err := c.searchGeneratedTrack(ctx, candidate)
 			if err != nil {
 				return nil, fmt.Errorf("error searching generated track: %w", err)
 			}
+			track = *searchedTrack
 		}
-		if track.YouTubeID == "" || seen[track.YouTubeID] {
+		if track.IsEmpty() || seen[track.YouTubeID] {
 			continue
 		}
 
@@ -66,12 +67,12 @@ func (c *Client) SearchGeneratedPlaylist(
 func (c *Client) searchGeneratedTrack(
 	ctx context.Context,
 	candidate vibe.GeneratedTrack,
-) (vibe.GeneratedTrack, error) {
+) (*vibe.GeneratedTrack, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "searchGeneratedTrack")
 	defer span.End()
 
 	if candidate.Title == "" || candidate.Artist == "" {
-		return vibe.GeneratedTrack{}, nil
+		return &vibe.GeneratedTrack{}, nil
 	}
 
 	params := url.Values{}
@@ -88,13 +89,13 @@ func (c *Client) searchGeneratedTrack(
 		Payload: &params,
 	})
 	if err != nil {
-		return vibe.GeneratedTrack{}, fmt.Errorf("error requesting youtube generated track search: %w", err)
+		return nil, fmt.Errorf("error requesting youtube generated track search: %w", err)
 	}
 
 	var response searchResponse
 	err = json.Unmarshal(responseBody, &response)
 	if err != nil {
-		return vibe.GeneratedTrack{}, fmt.Errorf("error unmarshaling youtube generated track search: %w", err)
+		return nil, fmt.Errorf("error unmarshaling youtube generated track search: %w", err)
 	}
 
 	youtubeIDs := make([]string, 0, len(response.Items))
@@ -106,17 +107,17 @@ func (c *Client) searchGeneratedTrack(
 
 	tracksByID, err := c.getGeneratedTracks(ctx, youtubeIDs)
 	if err != nil {
-		return vibe.GeneratedTrack{}, fmt.Errorf("error getting searched generated tracks: %w", err)
+		return nil, fmt.Errorf("error getting searched generated tracks: %w", err)
 	}
 
 	for _, youtubeID := range youtubeIDs {
 		track, ok := tracksByID[youtubeID]
 		if ok {
-			return track, nil
+			return &track, nil
 		}
 	}
 
-	return vibe.GeneratedTrack{}, nil
+	return &vibe.GeneratedTrack{}, nil
 }
 
 func (c *Client) getGeneratedTracks(

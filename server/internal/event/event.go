@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/client/database"
+	"github.com/zoff-music/vibes-backend/client/grok"
 	"github.com/zoff-music/vibes-backend/client/internalpubsub"
 	"github.com/zoff-music/vibes-backend/client/spotify"
 	"github.com/zoff-music/vibes-backend/client/youtube"
@@ -25,8 +26,19 @@ func GetAppEvents(
 	ips *internalpubsub.Client,
 	spotifyClient *spotify.Client,
 	youtubeClient *youtube.Client,
+	grokClient *grok.Client,
 ) AppEvents {
 	return AppEvents{
+		{
+			Name: "GenerateRoomPlaylist",
+			Rate: 5 * time.Second,
+			Handler: &handler.GenerateRoomPlaylist{
+				AI:       grokClient,
+				DB:       db,
+				IPS:      ips,
+				Searcher: youtubeClient,
+			},
+		},
 		{
 			Name: "ReviewRoomPlayback",
 			Rate: 500 * time.Millisecond,

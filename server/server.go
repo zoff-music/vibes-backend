@@ -40,7 +40,7 @@ type Server struct {
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
 	Spotify        *spotify.Client
-	grok           *grok.Client
+	Grok           *grok.Client
 	Router         *mux.Router
 	InternalRouter *mux.Router
 }
@@ -106,7 +106,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
 	s.Spotify = &spotifyClient
-	s.grok = &grokClient
+	s.Grok = &grokClient
 	s.Router = mux.NewRouter()
 	s.InternalRouter = mux.NewRouter()
 	s.HTTP = &http.Server{
@@ -228,7 +228,7 @@ func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "subscribeAndListen")
 	defer span.End()
 
-	for _, e := range event.GetAppEvents(s.DB, s.InternalPubSub, s.Spotify, s.YouTube) {
+	for _, e := range event.GetAppEvents(s.DB, s.InternalPubSub, s.Spotify, s.YouTube, s.Grok) {
 		go func(e event.AppEvent) {
 			e.SubscribeAndListen(ctx)
 		}(e)

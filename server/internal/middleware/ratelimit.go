@@ -57,6 +57,12 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
+		if policy.GlobalLimit < 0 ||
+			(policy.GlobalLimit > 0 && policy.GlobalRate <= 0) {
+			log.Printf("RateLimitMiddleware: invalid global policy for route %s", routeName)
+			http.Error(w, "internal server error", http.StatusInternalServerError)
+			return
+		}
 
 		session, hasSession := helper.GetSessionFromContext(r.Context())
 		clientIP := rateLimitClientIP(r)
@@ -74,6 +80,8 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			Rate:           policy.Rate,
 			Limit:          policy.Limit,
 			IPLimit:        ipLimit,
+			GlobalRate:     policy.GlobalRate,
+			GlobalLimit:    policy.GlobalLimit,
 		}
 		result, err := m.Checker.CheckRateLimit(r.Context(), request)
 		if err != nil {
