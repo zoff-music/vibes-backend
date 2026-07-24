@@ -58,7 +58,7 @@ func GenerateRoom(
 			return
 		}
 
-		playlist, err = searcher.SearchGeneratedPlaylist(ctx, playlist)
+		playlist, err = searcher.SearchGeneratedPlaylist(ctx, *playlist)
 		if err != nil {
 			handleError(w, fmt.Errorf("error searching generated playlist: %w", err), http.StatusInternalServerError, true)
 			return
@@ -91,7 +91,7 @@ func GenerateRoom(
 			CreatedAt:     time.Now(),
 			ActiveSources: settings.EnabledSources,
 		}
-		generatedRoom, err := db.CreateGeneratedRoom(ctx, room, playlist)
+		generatedRoom, err := db.CreateGeneratedRoom(ctx, room, *playlist)
 		if err != nil {
 			handleError(w, fmt.Errorf("error creating generated room: %w", err), http.StatusInternalServerError, true)
 			return

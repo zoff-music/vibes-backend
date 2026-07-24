@@ -18,12 +18,12 @@ import (
 func (c *Client) SearchGeneratedPlaylist(
 	ctx context.Context,
 	playlist vibe.GeneratedPlaylist,
-) (vibe.GeneratedPlaylist, error) {
+) (*vibe.GeneratedPlaylist, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SearchGeneratedPlaylist")
 	defer span.End()
 
 	if c.apiKey == "" {
-		return vibe.GeneratedPlaylist{}, fmt.Errorf("error youtube api key not configured")
+		return nil, fmt.Errorf("error youtube api key not configured")
 	}
 
 	youtubeIDs := make([]string, 0, len(playlist))
@@ -35,7 +35,7 @@ func (c *Client) SearchGeneratedPlaylist(
 
 	tracksByID, err := c.getGeneratedTracks(ctx, youtubeIDs)
 	if err != nil {
-		return vibe.GeneratedPlaylist{}, fmt.Errorf("error getting generated tracks by ID: %w", err)
+		return nil, fmt.Errorf("error getting generated tracks by ID: %w", err)
 	}
 
 	found := make(vibe.GeneratedPlaylist, 0, len(playlist))
@@ -45,7 +45,7 @@ func (c *Client) SearchGeneratedPlaylist(
 		if !ok {
 			track, err = c.searchGeneratedTrack(ctx, candidate)
 			if err != nil {
-				return vibe.GeneratedPlaylist{}, fmt.Errorf("error searching generated track: %w", err)
+				return nil, fmt.Errorf("error searching generated track: %w", err)
 			}
 		}
 		if track.YouTubeID == "" || seen[track.YouTubeID] {
@@ -57,10 +57,10 @@ func (c *Client) SearchGeneratedPlaylist(
 	}
 
 	if len(found) == 0 {
-		return vibe.GeneratedPlaylist{}, fmt.Errorf("error no generated songs found on youtube")
+		return nil, fmt.Errorf("error no generated songs found on youtube")
 	}
 
-	return found, nil
+	return &found, nil
 }
 
 func (c *Client) searchGeneratedTrack(

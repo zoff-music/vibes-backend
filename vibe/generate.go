@@ -22,11 +22,11 @@ type GeneratedRoom struct {
 }
 
 type PlaylistGenerator interface {
-	GeneratePlaylist(ctx context.Context, prompt string) (GeneratedPlaylist, error)
+	GeneratePlaylist(ctx context.Context, prompt string) (*GeneratedPlaylist, error)
 }
 
 type GeneratedPlaylistSearcher interface {
-	SearchGeneratedPlaylist(ctx context.Context, playlist GeneratedPlaylist) (GeneratedPlaylist, error)
+	SearchGeneratedPlaylist(ctx context.Context, playlist GeneratedPlaylist) (*GeneratedPlaylist, error)
 }
 
 type GeneratedRoomCreator interface {
