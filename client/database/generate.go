@@ -240,3 +240,49 @@ func (c *Client) DeleteRoomGeneration(ctx context.Context, roomID string) error 
 
 	return nil
 }
+
+func (c *Client) AddGeneratedSong(
+	ctx context.Context,
+	song *vibe.Song,
+) (*vibe.Song, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "AddGeneratedSong")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	row := c.AddSongStatement.QueryRowContext(
+		cctx,
+		song.RoomID,
+		string(song.SourceType),
+		song.SourceID,
+		song.Title,
+		song.Artist,
+		song.ThumbnailURL,
+		song.Duration,
+		song.AddedBy,
+		song.AddedByNickname,
+		song.ID,
+		false,
+	)
+
+	var rowData addSongRow
+	err := rowData.scan(row)
+	if err != nil {
+		return nil, fmt.Errorf("error scanning generated song: %w", err)
+	}
+
+	if rowData.Result.String == addSongResultRoomNotFound {
+		return nil, fmt.Errorf(
+			"error adding generated song: room %s not found",
+			song.RoomID,
+		)
+	}
+	if vibe.AddSongOutcome(rowData.Result.String) != vibe.AddSongOutcomeAdded {
+		return &vibe.Song{}, nil
+	}
+
+	generatedSong := rowData.toSong()
+
+	return &generatedSong, nil
+}

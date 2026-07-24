@@ -288,15 +288,15 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 			AddedAt:      time.Now(),
 		}
 
-		result, err := h.DB.AddSong(generationContext, song)
+		addedSong, err := h.DB.AddGeneratedSong(generationContext, song)
 		if err != nil {
 			return fmt.Errorf("error adding generated song: %w", err)
 		}
-		if result.Outcome != vibe.AddSongOutcomeAdded {
+		if addedSong.IsEmpty() {
 			continue
 		}
 
-		songPayload, err := json.Marshal(result.Song)
+		songPayload, err := json.Marshal(addedSong)
 		if err != nil {
 			return fmt.Errorf("error marshaling generated song: %w", err)
 		}
@@ -312,7 +312,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		if shouldStartPlayback {
 			playbackState := &vibe.PlaybackState{
 				RoomID:       room.ID,
-				CurrentSong:  &result.Song,
+				CurrentSong:  addedSong,
 				IsPlaying:    true,
 				PositionMs:   0,
 				UpdatedAt:    time.Now(),

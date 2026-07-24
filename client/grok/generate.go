@@ -97,12 +97,13 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 	if err != nil {
 		return nil, fmt.Errorf("error unmarshaling generated playlist: %w", err)
 	}
-	if len(playlist) == 0 || len(playlist) > vibe.GeneratedPlaylistTrackCount {
+	if len(playlist) == 0 {
 		return nil, fmt.Errorf(
-			"error generated playlist has %d tracks outside the allowed range of 1 to %d",
-			len(playlist),
-			vibe.GeneratedPlaylistTrackCount,
+			"error generated playlist has no tracks",
 		)
+	}
+	if len(playlist) > vibe.GeneratedPlaylistTrackCount {
+		playlist = playlist[:vibe.GeneratedPlaylistTrackCount]
 	}
 
 	return &playlist, nil
