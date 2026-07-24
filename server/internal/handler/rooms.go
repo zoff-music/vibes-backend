@@ -23,8 +23,8 @@ import (
 //	@Produce		json
 //	@Param			request	body		vibe.CreateRoomRequest	true	"Room creation payload"
 //	@Success		201		{object}	vibe.Room
-//	@Success		200		{object}	vibe.Room
 //	@Failure		400		{object}	map[string]string
+//	@Failure		409		{object}	map[string]string
 //	@Failure		500		{object}	map[string]string
 //	@Router			/api/v1/rooms [post]
 func CreateRoom(
@@ -58,32 +58,35 @@ func CreateRoom(
 
 		session, _ := helper.GetSessionFromContext(ctx)
 
-		existingRoom, err := db.GetRoomByName(ctx, req.Name, session.UserID)
+		slug := helper.Slugify(req.Name)
+		if slug == "" {
+			handleError(
+				w,
+				fmt.Errorf("error invalid room name"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		roomExists, err := db.RoomExists(ctx, slug)
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error checking existing room: %w", err),
+				fmt.Errorf("error checking room existence: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
 			return
 		}
 
-		if !existingRoom.IsEmpty() {
-			body, err := json.Marshal(existingRoom)
-			if err != nil {
-				handleError(
-					w,
-					fmt.Errorf("error marshal response: %w", err),
-					http.StatusInternalServerError,
-					true,
-				)
-				return
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write(body)
+		if roomExists {
+			handleError(
+				w,
+				fmt.Errorf("error room name already exists"),
+				http.StatusConflict,
+				false,
+			)
 			return
 		}
 
@@ -100,17 +103,6 @@ func CreateRoom(
 				return
 			}
 			passwordHash = string(hash)
-		}
-
-		slug := helper.Slugify(req.Name)
-		if slug == "" {
-			handleError(
-				w,
-				fmt.Errorf("error invalid room name"),
-				http.StatusBadRequest,
-				false,
-			)
-			return
 		}
 
 		mode := req.Mode
@@ -170,6 +162,92 @@ func CreateRoom(
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		_, _ = w.Write(body)
+	}
+}
+
+// SuggestRoomName handles GET /api/v1/rooms/suggestions.
+//
+//	@Summary		Suggest an available, memorable room name
+//	@Tags			rooms
+//	@Produce		json
+//	@Success		200	{object}	vibe.RoomNameSuggestion
+//	@Failure		500	{object}	map[string]string
+//	@Router			/api/v1/rooms/suggestions [get]
+func SuggestRoomName(db vibe.RoomNameSuggester) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		candidates, err := vibe.GenerateRoomNameCandidates()
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error generating room name candidates: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		suggestion, err := db.SuggestRoomName(ctx, candidates)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error suggesting room name: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		body, err := json.Marshal(suggestion)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling room name suggestion: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}
+}
+
+// RoomExists handles HEAD /api/v1/rooms/{id}.
+//
+//	@Summary		Check whether a room exists
+//	@Tags			rooms
+//	@Param			id	path	string	true	"Room ID"
+//	@Success		200
+//	@Failure		404
+//	@Failure		500		{object}	map[string]string
+//	@Router			/api/v1/rooms/{id} [head]
+func RoomExists(db vibe.RoomExistenceChecker) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		vars := mux.Vars(r)
+		roomID := vars["id"]
+
+		exists, err := db.RoomExists(ctx, roomID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error checking room existence: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		if !exists {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
 

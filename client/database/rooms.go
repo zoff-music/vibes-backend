@@ -301,6 +301,98 @@ func (c *Client) getRoomByName(ctx context.Context, name string, userID string) 
 	return room, nil
 }
 
+// prepareSuggestRoomNameStmt prepares the SuggestRoomNameStatement.
+func (c *Client) prepareSuggestRoomNameStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT candidate_name
+		FROM UNNEST($1::text[]) WITH ORDINALITY AS candidates(candidate_name, candidate_order)
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM rooms
+			WHERE rooms.id = candidate_name
+		)
+		ORDER BY candidate_order
+		LIMIT 1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing SuggestRoomNameStatement: %w", err)
+	}
+
+	c.SuggestRoomNameStatement = stmt
+
+	return nil
+}
+
+// SuggestRoomName returns the first candidate whose room ID is not already in use.
+func (c *Client) SuggestRoomName(
+	ctx context.Context,
+	candidates []string,
+) (*vibe.RoomNameSuggestion, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SuggestRoomName")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	row := c.SuggestRoomNameStatement.QueryRowContext(cctx, candidates)
+
+	var suggestion vibe.RoomNameSuggestion
+	err := row.Scan(&suggestion.Name)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, internalerror.ErrExpected{
+				Err: internalerror.ErrNonRecoverable{
+					Err: fmt.Errorf("error no available room name"),
+				},
+			}
+		}
+
+		return nil, fmt.Errorf("error scanning room name suggestion: %w", err)
+	}
+
+	return &suggestion, nil
+}
+
+// prepareRoomExistsStmt prepares the RoomExistsStatement.
+func (c *Client) prepareRoomExistsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM rooms
+			WHERE rooms.id = $1
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing RoomExistsStatement: %w", err)
+	}
+
+	c.RoomExistsStatement = stmt
+
+	return nil
+}
+
+// RoomExists reports whether a room ID is already in use.
+func (c *Client) RoomExists(
+	ctx context.Context,
+	roomID string,
+) (bool, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "RoomExists")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	row := c.RoomExistsStatement.QueryRowContext(cctx, roomID)
+
+	var exists bool
+	err := row.Scan(&exists)
+	if err != nil {
+		return false, fmt.Errorf("error scanning room existence: %w", err)
+	}
+
+	return exists, nil
+}
+
 type roomRow struct {
 	ID                sql.NullString
 	Name              sql.NullString
