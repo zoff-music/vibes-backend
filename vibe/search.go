@@ -47,16 +47,22 @@ func (s CachedYouTubeSearch) ToMusicTracks() []MusicTrack {
 	return tracks
 }
 
-func (s CachedYouTubeSearch) FromMusicTracks(tracks []MusicTrack) CachedYouTubeSearch {
-	s.Tracks = make([]CachedYouTubeTrack, 0, len(tracks))
+func GenerateCachedYouTubeSearch(
+	query string,
+	tracks []MusicTrack,
+) CachedYouTubeSearch {
+	search := CachedYouTubeSearch{
+		Query:  query,
+		Tracks: make([]CachedYouTubeTrack, 0, len(tracks)),
+	}
 	for index := range tracks {
-		s.Tracks = append(
-			s.Tracks,
+		search.Tracks = append(
+			search.Tracks,
 			tracks[index].CachedYouTubeTrack(),
 		)
 	}
 
-	return s
+	return search
 }
 
 func (t *MusicTrack) CachedYouTubeTrack() CachedYouTubeTrack {
