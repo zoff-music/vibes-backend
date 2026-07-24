@@ -33,6 +33,7 @@ type Client struct {
 	CreateRoomGenerationStatement         *sql.Stmt
 	ProcessNextRoomGenerationStatement    *sql.Stmt
 	CompleteRoomGenerationStatement       *sql.Stmt
+	FailRoomGenerationStatement           *sql.Stmt
 	DeleteExpiredRoomGenerationsStatement *sql.Stmt
 
 	// Song statements
@@ -139,6 +140,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareCreateRoomGenerationStmt,
 		c.prepareProcessNextRoomGenerationStmt,
 		c.prepareCompleteRoomGenerationStmt,
+		c.prepareFailRoomGenerationStmt,
 		c.prepareDeleteExpiredRoomGenerationsStmt,
 		// Song statements
 		c.prepareGetSongsStmt,
@@ -208,6 +210,7 @@ func (c *Client) Close() error {
 		c.CreateRoomGenerationStatement,
 		c.ProcessNextRoomGenerationStatement,
 		c.CompleteRoomGenerationStatement,
+		c.FailRoomGenerationStatement,
 		c.DeleteExpiredRoomGenerationsStatement,
 		c.GetSongsStatement,
 		c.GetSongStatement,
