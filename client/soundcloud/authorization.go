@@ -17,7 +17,11 @@ import (
 
 // GetOAuthURL returns the URL to redirect the user to for SoundCloud authentication
 func (c *Client) GetOAuthURL(state, codeVerifier string) string {
-	u, _ := url.Parse("https://soundcloud.com/connect")
+	u := url.URL{
+		Scheme: "https",
+		Host:   "secure.soundcloud.com",
+		Path:   "/authorize",
+	}
 	q := u.Query()
 	q.Set("client_id", c.clientID)
 	q.Set("response_type", "code")
@@ -26,16 +30,16 @@ func (c *Client) GetOAuthURL(state, codeVerifier string) string {
 
 	// PKCE
 	if codeVerifier != "" {
-		h := sha256.New()
-		h.Write([]byte(codeVerifier))
-		codeChallenge := base64.RawURLEncoding.EncodeToString(h.Sum(nil))
+		hash := sha256.Sum256([]byte(codeVerifier))
+		codeChallenge := base64.RawURLEncoding.EncodeToString(hash[:])
 		q.Set("code_challenge", codeChallenge)
 		q.Set("code_challenge_method", "S256")
 	}
 
 	u.RawQuery = q.Encode()
+	authorizationURL := u.String()
 
-	return u.String()
+	return authorizationURL
 }
 
 // ExchangeCode exchanges an authorization code for an access token
@@ -55,8 +59,9 @@ func (c *Client) ExchangeCode(ctx context.Context, code, codeVerifier string) (*
 
 	reqData := client.HTTPRequestData{
 		Method: http.MethodPost,
-		URL:    "https://secure.soundcloud.com/oauth/token",
+		URL:    soundCloudTokenURL,
 		Headers: map[string]string{
+			"Accept":       "application/json; charset=utf-8",
 			"Content-Type": "application/x-www-form-urlencoded",
 		},
 		Body: []byte(params.Encode()),
@@ -64,13 +69,16 @@ func (c *Client) ExchangeCode(ctx context.Context, code, codeVerifier string) (*
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
-		return nil, fmt.Errorf("error exchanging code for token: %w", err)
+		return nil, fmt.Errorf("error exchanging code in ExchangeCode: %w", err)
 	}
 
 	var res vibe.TokenResponse
 	err = json.Unmarshal(resp, &res)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding token response: %w", err)
+		return nil, fmt.Errorf(
+			"error decoding token response in ExchangeCode: %w",
+			err,
+		)
 	}
 
 	return &res, nil
@@ -89,8 +97,9 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*vibe.T
 
 	reqData := client.HTTPRequestData{
 		Method: http.MethodPost,
-		URL:    "https://secure.soundcloud.com/oauth/token",
+		URL:    soundCloudTokenURL,
 		Headers: map[string]string{
+			"Accept":       "application/json; charset=utf-8",
 			"Content-Type": "application/x-www-form-urlencoded",
 		},
 		Body: []byte(params.Encode()),
@@ -98,14 +107,19 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*vibe.T
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
-		return nil, fmt.Errorf("error refreshing token: %w", err)
+		return nil, fmt.Errorf("error refreshing token in RefreshToken: %w", err)
 	}
 
 	var res vibe.TokenResponse
 	err = json.Unmarshal(resp, &res)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding token response: %w", err)
+		return nil, fmt.Errorf(
+			"error decoding token response in RefreshToken: %w",
+			err,
+		)
 	}
 
 	return &res, nil
 }
+
+const soundCloudTokenURL = "https://secure.soundcloud.com/oauth/token"

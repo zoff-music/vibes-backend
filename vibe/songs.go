@@ -34,12 +34,6 @@ type AddSongRequest struct {
 // AddSongOutcome describes whether a song was added or an existing song was voted on.
 type AddSongOutcome string
 
-const AddSongOutcomeAdded AddSongOutcome = "added"
-
-const AddSongOutcomeDuplicateVoted AddSongOutcome = "duplicate_voted"
-
-const AddSongOutcomeDuplicateAlreadyVoted AddSongOutcome = "duplicate_already_voted"
-
 // AddSongResult is the result of adding a song or voting on an existing duplicate.
 type AddSongResult struct {
 	Song    Song           `json:"song"`
@@ -80,3 +74,9 @@ type SongController interface {
 	RoomFetcher
 	PlaybackController
 }
+
+const AddSongOutcomeAdded AddSongOutcome = "added"
+
+const AddSongOutcomeDuplicateVoted AddSongOutcome = "duplicate_voted"
+
+const AddSongOutcomeDuplicateAlreadyVoted AddSongOutcome = "duplicate_already_voted"

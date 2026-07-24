@@ -35,7 +35,9 @@ func SearchMusic(
 		if query == "" {
 			handleError(
 				w,
-				fmt.Errorf("error missing query parameter 'q'"),
+				fmt.Errorf(
+					"error validating query in SearchMusic handler: parameter 'q' is required",
+				),
 				http.StatusBadRequest,
 				true,
 			)
@@ -83,7 +85,7 @@ func SearchMusic(
 
 			handleError(
 				w,
-				fmt.Errorf("error search failed: %w", err),
+				fmt.Errorf("error searching music in SearchMusic handler: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -107,7 +109,7 @@ func SearchMusic(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error marshal response: %w", err),
+				fmt.Errorf("error marshaling response in SearchMusic handler: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -141,7 +143,9 @@ func SearchSoundCloud(
 		if query == "" {
 			handleError(
 				w,
-				fmt.Errorf("error missing query parameter 'q'"),
+				fmt.Errorf(
+					"error validating query in SearchSoundCloud handler: parameter 'q' is required",
+				),
 				http.StatusBadRequest,
 				true,
 			)
@@ -169,7 +173,10 @@ func SearchSoundCloud(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error search failed: %w", err),
+				fmt.Errorf(
+					"error searching music in SearchSoundCloud handler: %w",
+					err,
+				),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -193,7 +200,10 @@ func SearchSoundCloud(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error marshal response: %w", err),
+				fmt.Errorf(
+					"error marshaling response in SearchSoundCloud handler: %w",
+					err,
+				),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -226,7 +236,9 @@ func SearchSpotify(
 		if query == "" {
 			handleError(
 				w,
-				fmt.Errorf("error missing query parameter 'q'"),
+				fmt.Errorf(
+					"error validating query in SearchSpotify handler: parameter 'q' is required",
+				),
 				http.StatusBadRequest,
 				true,
 			)
@@ -237,7 +249,7 @@ func SearchSpotify(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error search failed: %w", err),
+				fmt.Errorf("error searching music in SearchSpotify handler: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -248,7 +260,7 @@ func SearchSpotify(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error marshal response: %w", err),
+				fmt.Errorf("error marshaling response in SearchSpotify handler: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

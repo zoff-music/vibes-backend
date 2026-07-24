@@ -150,10 +150,11 @@ func (c *Client) searchCacheKey(source vibe.SourceType, query string) string {
 	}
 
 	hash := sha256.Sum256([]byte(normalizedQuery))
-
-	return c.getKeyWithPrefix(
+	key := c.getKeyWithPrefix(
 		"search:" + string(source) + ":" + hex.EncodeToString(hash[:]),
 	)
+
+	return key
 }
 
 func normalizeSearch(query string) string {
@@ -198,7 +199,9 @@ func normalizeSearch(query string) string {
 		normalizedTokens = append(normalizedTokens, current)
 	}
 
-	return strings.Join(normalizedTokens, " ")
+	normalizedSearch := strings.Join(normalizedTokens, " ")
+
+	return normalizedSearch
 }
 
 func isSearchNoise(value string) bool {
