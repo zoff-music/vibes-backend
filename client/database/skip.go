@@ -130,7 +130,11 @@ func (r *skipVoteCountRow) toHasUserVoted() bool {
 func (c *Client) prepareAddSkipVoteStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO skip_votes (room_id, song_id, user_id)
-		VALUES ($1, $2, $3)
+		SELECT a.room_id, a.id, $3
+		FROM songs a
+		WHERE a.room_id = $1
+		AND a.id = $2
+		FOR KEY SHARE OF a
 		ON CONFLICT(room_id, song_id, user_id) DO NOTHING
 	`)
 	if err != nil {

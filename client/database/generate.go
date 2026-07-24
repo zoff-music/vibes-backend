@@ -71,6 +71,7 @@ func (c *Client) prepareCreateRoomGenerationStmt() error {
 				) AS generation_count
 			FROM rooms a
 			WHERE a.id = $1
+			FOR KEY SHARE OF a
 		),
 		created_generation_q AS (
 			INSERT INTO room_generations (

@@ -20,7 +20,10 @@ func (c *Client) prepareUpdateParticipantStmt() error {
 			is_cast_receiver,
 			cast_owner_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		SELECT a.id, $2, $3, $4, $5, $6
+		FROM rooms a
+		WHERE a.id = $1
+		FOR KEY SHARE OF a
 		ON CONFLICT(id, room_id) DO UPDATE SET
 		last_seen_at = $3,
 		is_active_listener = $4,
