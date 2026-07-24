@@ -47,7 +47,7 @@ func (s CachedYouTubeSearch) GetMusicTracks() []MusicTrack {
 	return tracks
 }
 
-func GenerateCachedYouTubeSearch(
+func GenerateCachedSearch(
 	query string,
 	tracks []MusicTrack,
 ) CachedYouTubeSearch {

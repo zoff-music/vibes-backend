@@ -89,7 +89,7 @@ func SearchMusic(
 			return
 		}
 		if !cacheHit {
-			search := vibe.GenerateCachedYouTubeSearch(query, tracks)
+			search := vibe.GenerateCachedSearch(query, tracks)
 			err = cache.CacheYouTubeSearches(
 				ctx,
 				[]vibe.CachedYouTubeSearch{
