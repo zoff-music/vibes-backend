@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"net/url"
 	"time"
@@ -32,18 +31,23 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 
 	// Re-check after acquiring lock
 	if c.accessToken != "" && time.Now().Before(c.expiresAt) {
-		return c.accessToken, nil
+		token := c.accessToken
+
+		return token, nil
 	}
 
 	params := url.Values{}
 	params.Set("grant_type", "client_credentials")
 
-	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", c.clientID, c.clientSecret)))
+	credentials := base64.StdEncoding.EncodeToString(
+		[]byte(c.clientID + ":" + c.clientSecret),
+	)
 	reqData := client.HTTPRequestData{
 		Method: http.MethodPost,
 		URL:    c.tokenURL,
 		Headers: map[string]string{
-			"Authorization": "Basic " + auth,
+			"Accept":        "application/json",
+			"Authorization": "Basic " + credentials,
 			"Content-Type":  "application/x-www-form-urlencoded",
 		},
 		Body: []byte(params.Encode()),
@@ -51,19 +55,27 @@ func (c *Client) getAccessToken(ctx context.Context) (string, error) {
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
-		return "", fmt.Errorf("error token request failed: %w", err)
+		return "", fmt.Errorf(
+			"error requesting client credentials token in getAccessToken: %w",
+			err,
+		)
 	}
 
 	var res tokenResponse
 	err = json.Unmarshal(resp, &res)
 	if err != nil {
-		return "", fmt.Errorf("error decoding token response: %w", err)
+		return "", fmt.Errorf(
+			"error decoding token response in getAccessToken: %w",
+			err,
+		)
 	}
 
 	c.accessToken = res.AccessToken
-	c.expiresAt = time.Now().Add(time.Duration(res.ExpiresIn-60) * time.Second)
+	expiresIn := max(res.ExpiresIn-60, 1)
+	c.expiresAt = time.Now().Add(time.Duration(expiresIn) * time.Second)
+	token := c.accessToken
 
-	return c.accessToken, nil
+	return token, nil
 }
 
 func (c *Client) ExchangeCode(ctx context.Context, code, codeVerifier string) (*vibe.TokenResponse, error) {
@@ -75,31 +87,32 @@ func (c *Client) ExchangeCode(ctx context.Context, code, codeVerifier string) (*
 	params.Set("code", code)
 	params.Set("redirect_uri", c.redirectURI)
 
-	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", c.clientID, c.clientSecret)))
+	credentials := base64.StdEncoding.EncodeToString(
+		[]byte(c.clientID + ":" + c.clientSecret),
+	)
 	reqData := client.HTTPRequestData{
 		Method: http.MethodPost,
 		URL:    c.tokenURL,
 		Headers: map[string]string{
-			"Authorization": "Basic " + auth,
+			"Accept":        "application/json",
+			"Authorization": "Basic " + credentials,
 			"Content-Type":  "application/x-www-form-urlencoded",
 		},
 		Body: []byte(params.Encode()),
 	}
 
-	log.Printf("code: %s", code)
-	log.Printf("auth: %s", auth)
-	log.Printf("url: %s", c.tokenURL)
-	log.Printf("body: %s", string(reqData.Body))
-
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
-		return nil, fmt.Errorf("error token request failed: %w", err)
+		return nil, fmt.Errorf("error requesting token in ExchangeCode: %w", err)
 	}
 
 	var res vibe.TokenResponse
 	err = json.Unmarshal(resp, &res)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding token response: %w", err)
+		return nil, fmt.Errorf(
+			"error decoding token response in ExchangeCode: %w",
+			err,
+		)
 	}
 
 	return &res, nil
@@ -113,12 +126,15 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*vibe.T
 	params.Set("grant_type", "refresh_token")
 	params.Set("refresh_token", refreshToken)
 
-	auth := base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%s", c.clientID, c.clientSecret)))
+	credentials := base64.StdEncoding.EncodeToString(
+		[]byte(c.clientID + ":" + c.clientSecret),
+	)
 	reqData := client.HTTPRequestData{
 		Method: http.MethodPost,
 		URL:    c.tokenURL,
 		Headers: map[string]string{
-			"Authorization": "Basic " + auth,
+			"Accept":        "application/json",
+			"Authorization": "Basic " + credentials,
 			"Content-Type":  "application/x-www-form-urlencoded",
 		},
 		Body: []byte(params.Encode()),
@@ -126,13 +142,16 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*vibe.T
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
-		return nil, fmt.Errorf("error token request failed: %w", err)
+		return nil, fmt.Errorf("error requesting token in RefreshToken: %w", err)
 	}
 
 	var res vibe.TokenResponse
 	err = json.Unmarshal(resp, &res)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding token response: %w", err)
+		return nil, fmt.Errorf(
+			"error decoding token response in RefreshToken: %w",
+			err,
+		)
 	}
 
 	return &res, nil

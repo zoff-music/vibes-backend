@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"net/http"
 	"strings"
 
 	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -18,12 +18,14 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	defer span.End()
 
 	if !c.Enabled {
-		return nil, fmt.Errorf("error Spotify client is not enabled")
+		return nil, fmt.Errorf(
+			"error validating spotify client in GetTrack: client is not enabled",
+		)
 	}
 
 	token, err := c.getAccessToken(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error getting access token: %w", err)
+		return nil, fmt.Errorf("error getting access token in GetTrack: %w", err)
 	}
 
 	reqData := client.HTTPRequestData{
@@ -31,18 +33,19 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 		URL:    fmt.Sprintf("%s/tracks/%s", c.Endpoint, id),
 		Headers: map[string]string{
 			"Authorization": "Bearer " + token,
+			"Accept":        "application/json",
 		},
 	}
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
-		return nil, fmt.Errorf("error request failed: %w", err)
+		return nil, fmt.Errorf("error requesting spotify track in GetTrack: %w", err)
 	}
 
 	var item spotifyTrack
 	err = json.Unmarshal(resp, &item)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding response: %w", err)
+		return nil, fmt.Errorf("error decoding spotify response in GetTrack: %w", err)
 	}
 
 	artists := make([]string, 0, len(item.Artists))
