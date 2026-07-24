@@ -27,7 +27,6 @@ import (
 	"github.com/zoff-music/vibes-backend/monitoring/metrics"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/server/internal/event"
-	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // Server holds the HTTP server, router, config and all clients.
@@ -41,7 +40,7 @@ type Server struct {
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
 	Spotify        *spotify.Client
-	AI             vibe.PlaylistGenerator
+	grok           *grok.Client
 	Router         *mux.Router
 	InternalRouter *mux.Router
 }
@@ -107,7 +106,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
 	s.Spotify = &spotifyClient
-	s.AI = &grokClient
+	s.grok = &grokClient
 	s.Router = mux.NewRouter()
 	s.InternalRouter = mux.NewRouter()
 	s.HTTP = &http.Server{

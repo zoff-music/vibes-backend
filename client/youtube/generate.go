@@ -15,26 +15,125 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) VerifyGeneratedPlaylist(
+func (c *Client) SearchGeneratedPlaylist(
 	ctx context.Context,
-	playlist *vibe.GeneratedPlaylist,
-) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "VerifyGeneratedPlaylist")
+	playlist vibe.GeneratedPlaylist,
+) (vibe.GeneratedPlaylist, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SearchGeneratedPlaylist")
 	defer span.End()
 
 	if c.apiKey == "" {
-		return fmt.Errorf("error youtube api key not configured")
+		return vibe.GeneratedPlaylist{}, fmt.Errorf("error youtube api key not configured")
 	}
 
-	ids := make([]string, 0, len(playlist.Tracks))
-	for index := range playlist.Tracks {
-		ids = append(ids, playlist.Tracks[index].YouTubeVideoID)
-		playlist.Tracks[index].YouTubeVideoID = ""
+	youtubeIDs := make([]string, 0, len(playlist))
+	for _, track := range playlist {
+		if track.YouTubeID != "" {
+			youtubeIDs = append(youtubeIDs, track.YouTubeID)
+		}
+	}
+
+	tracksByID, err := c.getGeneratedTracks(ctx, youtubeIDs)
+	if err != nil {
+		return vibe.GeneratedPlaylist{}, fmt.Errorf("error getting generated tracks by ID: %w", err)
+	}
+
+	found := make(vibe.GeneratedPlaylist, 0, len(playlist))
+	seen := make(map[string]bool, len(playlist))
+	for _, candidate := range playlist {
+		track, ok := tracksByID[candidate.YouTubeID]
+		if !ok {
+			track, err = c.searchGeneratedTrack(ctx, candidate)
+			if err != nil {
+				return vibe.GeneratedPlaylist{}, fmt.Errorf("error searching generated track: %w", err)
+			}
+		}
+		if track.YouTubeID == "" || seen[track.YouTubeID] {
+			continue
+		}
+
+		seen[track.YouTubeID] = true
+		found = append(found, track)
+	}
+
+	if len(found) == 0 {
+		return vibe.GeneratedPlaylist{}, fmt.Errorf("error no generated songs found on youtube")
+	}
+
+	return found, nil
+}
+
+func (c *Client) searchGeneratedTrack(
+	ctx context.Context,
+	candidate vibe.GeneratedTrack,
+) (vibe.GeneratedTrack, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "searchGeneratedTrack")
+	defer span.End()
+
+	if candidate.Title == "" || candidate.Artist == "" {
+		return vibe.GeneratedTrack{}, nil
+	}
+
+	params := url.Values{}
+	params.Set("part", "snippet")
+	params.Set("q", candidate.Artist+" "+candidate.Title)
+	params.Set("type", "video")
+	params.Set("videoCategoryId", youtubeMusicCategoryID)
+	params.Set("maxResults", strconv.Itoa(generatedTrackSearchResults))
+	params.Set("key", c.apiKey)
+
+	responseBody, err := c.HTTPClient.RequestBytes(ctx, client.HTTPRequestData{
+		Method:  http.MethodGet,
+		URL:     fmt.Sprintf("%s/search", c.Endpoint),
+		Payload: &params,
+	})
+	if err != nil {
+		return vibe.GeneratedTrack{}, fmt.Errorf("error requesting youtube generated track search: %w", err)
+	}
+
+	var response searchResponse
+	err = json.Unmarshal(responseBody, &response)
+	if err != nil {
+		return vibe.GeneratedTrack{}, fmt.Errorf("error unmarshaling youtube generated track search: %w", err)
+	}
+
+	youtubeIDs := make([]string, 0, len(response.Items))
+	for _, item := range response.Items {
+		if item.ID.VideoID != "" {
+			youtubeIDs = append(youtubeIDs, item.ID.VideoID)
+		}
+	}
+
+	tracksByID, err := c.getGeneratedTracks(ctx, youtubeIDs)
+	if err != nil {
+		return vibe.GeneratedTrack{}, fmt.Errorf("error getting searched generated tracks: %w", err)
+	}
+
+	for _, youtubeID := range youtubeIDs {
+		track, ok := tracksByID[youtubeID]
+		if ok {
+			return track, nil
+		}
+	}
+
+	return vibe.GeneratedTrack{}, nil
+}
+
+func (c *Client) getGeneratedTracks(
+	ctx context.Context,
+	youtubeIDs []string,
+) (map[string]vibe.GeneratedTrack, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "getGeneratedTracks")
+	defer span.End()
+
+	tracks := make(map[string]vibe.GeneratedTrack, len(youtubeIDs))
+	if len(youtubeIDs) == 0 {
+		return tracks, nil
 	}
 
 	params := url.Values{}
 	params.Set("part", "snippet,contentDetails")
-	params.Set("id", strings.Join(ids, ","))
+	params.Set("id", strings.Join(youtubeIDs, ","))
 	params.Set("key", c.apiKey)
 
 	responseBody, err := c.HTTPClient.RequestBytes(ctx, client.HTTPRequestData{
@@ -43,49 +142,42 @@ func (c *Client) VerifyGeneratedPlaylist(
 		Payload: &params,
 	})
 	if err != nil {
-		return fmt.Errorf("error requesting youtube playlist verification: %w", err)
+		return nil, fmt.Errorf("error requesting youtube generated track details: %w", err)
 	}
 
 	var response videoResponse
 	err = json.Unmarshal(responseBody, &response)
 	if err != nil {
-		return fmt.Errorf("error unmarshaling youtube playlist verification: %w", err)
+		return nil, fmt.Errorf("error unmarshaling youtube generated track details: %w", err)
 	}
 
-	validTracks := make(map[string]vibe.GeneratedTrack, len(response.Items))
 	for _, item := range response.Items {
 		durationSeconds, durationErr := youtubeDurationSeconds(item.ContentDetails.Duration)
-		if durationErr != nil {
+		if durationErr != nil ||
+			item.Snippet.CategoryID != youtubeMusicCategoryID ||
+			durationSeconds <= 0 ||
+			durationSeconds > generatedTrackMaxDurationSeconds {
 			continue
 		}
-		if item.Snippet.CategoryID == youtubeMusicCategoryID &&
-			durationSeconds > 0 &&
-			durationSeconds <= generatedTrackMaxDurationSeconds {
-			thumbnailURL := item.Snippet.Thumbnails.High.URL
-			if thumbnailURL == "" {
-				thumbnailURL = item.Snippet.Thumbnails.Medium.URL
-			}
-			if thumbnailURL == "" {
-				thumbnailURL = item.Snippet.Thumbnails.Default.URL
-			}
-			validTracks[item.ID] = vibe.GeneratedTrack{
-				YouTubeVideoID: item.ID,
-				Title:          html.UnescapeString(item.Snippet.Title),
-				Artist:         html.UnescapeString(item.Snippet.ChannelTitle),
-				ThumbnailURL:   thumbnailURL,
-				Duration:       durationSeconds,
-			}
+
+		thumbnailURL := item.Snippet.Thumbnails.High.URL
+		if thumbnailURL == "" {
+			thumbnailURL = item.Snippet.Thumbnails.Medium.URL
+		}
+		if thumbnailURL == "" {
+			thumbnailURL = item.Snippet.Thumbnails.Default.URL
+		}
+
+		tracks[item.ID] = vibe.GeneratedTrack{
+			YouTubeID:    item.ID,
+			Title:        html.UnescapeString(item.Snippet.Title),
+			Artist:       html.UnescapeString(item.Snippet.ChannelTitle),
+			ThumbnailURL: thumbnailURL,
+			Duration:     durationSeconds,
 		}
 	}
 
-	for index := range playlist.Tracks {
-		verified, ok := validTracks[ids[index]]
-		if ok {
-			playlist.Tracks[index] = verified
-		}
-	}
-
-	return nil
+	return tracks, nil
 }
 
 func youtubeDurationSeconds(value string) (int, error) {
@@ -131,3 +223,5 @@ func youtubeDurationSeconds(value string) (int, error) {
 const youtubeMusicCategoryID = "10"
 
 const generatedTrackMaxDurationSeconds = 20 * 60
+
+const generatedTrackSearchResults = 5

@@ -55,7 +55,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/tokens/youtube", handler.GetToken(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubeToken")
 
 	// Playlist generation routes
-	api.HandleFunc("/rooms/generations", handler.GenerateRoom(s.AI, s.YouTube, s.DB, s.Config.AIPromptMaxLength)).Methods(http.MethodPost, http.MethodOptions).Name("GenerateRoom")
+	api.HandleFunc("/rooms/generations", handler.GenerateRoom(s.grok, s.YouTube, s.DB, s.Config.AIPromptMaxLength)).Methods(http.MethodPost, http.MethodOptions).Name("GenerateRoom")
 
 	// Authorization routes
 	api.HandleFunc("/authorizations/spotify", handler.Authorize(s.DB, s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")

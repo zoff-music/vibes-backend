@@ -26,7 +26,7 @@ import (
 //	@Router		/api/v1/rooms/generations [post]
 func GenerateRoom(
 	ai vibe.PlaylistGenerator,
-	verifier vibe.GeneratedPlaylistVerifier,
+	searcher vibe.GeneratedPlaylistSearcher,
 	db vibe.GeneratedRoomCreator,
 	maxPromptLength int,
 ) http.HandlerFunc {
@@ -58,9 +58,9 @@ func GenerateRoom(
 			return
 		}
 
-		err = verifier.VerifyGeneratedPlaylist(ctx, playlist)
+		playlist, err = searcher.SearchGeneratedPlaylist(ctx, playlist)
 		if err != nil {
-			handleError(w, fmt.Errorf("error verifying generated playlist: %w", err), http.StatusInternalServerError, true)
+			handleError(w, fmt.Errorf("error searching generated playlist: %w", err), http.StatusInternalServerError, true)
 			return
 		}
 
@@ -81,14 +81,15 @@ func GenerateRoom(
 			return
 		}
 
-		room := &vibe.Room{
+		settings := vibe.DefaultRoomSettings()
+		room := vibe.Room{
 			ID:            helper.Slugify(suggestion.Name),
 			Name:          suggestion.Name,
 			Mode:          vibe.RoomModeServer,
 			HostID:        session.UserID,
-			Settings:      vibe.DefaultRoomSettings(),
+			Settings:      settings,
 			CreatedAt:     time.Now(),
-			ActiveSources: []string{},
+			ActiveSources: settings.EnabledSources,
 		}
 		generatedRoom, err := db.CreateGeneratedRoom(ctx, room, playlist)
 		if err != nil {

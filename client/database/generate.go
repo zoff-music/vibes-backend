@@ -14,8 +14,8 @@ import (
 func (c *Client) prepareCreateGeneratedRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH created_room_q AS (
-			INSERT INTO rooms (id, name, mode, host_id, admin_password_hash, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			INSERT INTO rooms (id, name, mode, host_id, created_at)
+			VALUES ($1, $2, $3, $4, $5)
 			RETURNING id
 		),
 		created_settings_q AS (
@@ -31,75 +31,10 @@ func (c *Client) prepareCreateGeneratedRoomStmt() error {
 				enabled_sources,
 				only_admin_add_songs
 			)
-			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15
+			SELECT id, $6, $7, $8, $9, $10, $11, $12, $13, $14
 			FROM created_room_q
-		),
-		input_songs_q AS (
-			SELECT *
-			FROM UNNEST(
-				$16::text[],
-				$17::text[],
-				$18::text[],
-				$19::text[],
-				$20::text[],
-				$21::integer[]
-			) WITH ORDINALITY AS input_songs(
-				song_id,
-				source_id,
-				title,
-				artist,
-				thumbnail_url,
-				duration,
-				song_order
-			)
-		),
-		inserted_songs_q AS (
-			INSERT INTO songs (
-				id,
-				room_id,
-				source_type,
-				source_id,
-				title,
-				artist,
-				thumbnail_url,
-				duration,
-				added_by,
-				added_at,
-				duplicate_guard
-			)
-			SELECT
-				a.song_id,
-				b.id,
-				'youtube',
-				a.source_id,
-				a.title,
-				a.artist,
-				a.thumbnail_url,
-				a.duration,
-				$22,
-				NOW() + ((a.song_order - 1) * INTERVAL '1 millisecond'),
-				TRUE
-			FROM input_songs_q a
-			CROSS JOIN created_room_q b
-			RETURNING id
-		),
-		created_playback_q AS (
-			INSERT INTO playback_state (
-				room_id,
-				current_song_id,
-				is_playing,
-				position_ms,
-				updated_at
-			)
-			SELECT
-				a.id,
-				($16::text[])[1],
-				TRUE,
-				0,
-				NOW()
-			FROM created_room_q a
 		)
-		SELECT COUNT(*) FROM inserted_songs_q
+		SELECT id FROM created_room_q
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateGeneratedRoomStatement: %w", err)
@@ -111,35 +46,41 @@ func (c *Client) prepareCreateGeneratedRoomStmt() error {
 
 func (c *Client) CreateGeneratedRoom(
 	ctx context.Context,
-	room *vibe.Room,
-	playlist *vibe.GeneratedPlaylist,
+	room vibe.Room,
+	playlist vibe.GeneratedPlaylist,
 ) (*vibe.GeneratedRoom, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "CreateGeneratedRoom")
 	defer span.End()
 
-	cctx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
+	if len(playlist) == 0 {
+		return nil, fmt.Errorf("error generated playlist has no youtube songs")
+	}
 
-	songIDs := []string{}
-	sourceIDs := []string{}
-	titles := []string{}
-	artists := []string{}
-	thumbnailURLs := []string{}
-	durations := []int{}
-	for _, track := range playlist.Tracks {
-		if track.YouTubeVideoID == "" {
-			continue
-		}
-		songIDs = append(songIDs, uuid.New().String())
-		sourceIDs = append(sourceIDs, track.YouTubeVideoID)
-		titles = append(titles, track.Title)
-		artists = append(artists, track.Artist)
-		thumbnailURLs = append(thumbnailURLs, track.ThumbnailURL)
-		durations = append(durations, track.Duration)
+	createdRoom, err := c.createGeneratedRoom(ctx, room)
+	if err != nil {
+		return nil, fmt.Errorf("error creating generated room: %w", err)
 	}
-	if len(songIDs) == 0 {
-		return nil, fmt.Errorf("error generated playlist has no verified youtube songs")
+
+	err = c.addGeneratedSongs(ctx, *createdRoom, playlist)
+	if err != nil {
+		return nil, fmt.Errorf("error adding generated songs: %w", err)
 	}
+
+	return &vibe.GeneratedRoom{
+		Room:   *createdRoom,
+		Tracks: playlist,
+	}, nil
+}
+
+func (c *Client) createGeneratedRoom(
+	ctx context.Context,
+	room vibe.Room,
+) (*vibe.Room, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "createGeneratedRoom")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
 
 	row := c.CreateGeneratedRoomStatement.QueryRowContext(
 		cctx,
@@ -147,7 +88,6 @@ func (c *Client) CreateGeneratedRoom(
 		room.Name,
 		room.Mode,
 		room.HostID,
-		room.AdminPasswordHash,
 		room.CreatedAt,
 		room.Settings.SkipAllowed,
 		room.Settings.DemocraticSkip,
@@ -158,24 +98,62 @@ func (c *Client) CreateGeneratedRoom(
 		room.Settings.AllowDuplicates,
 		strings.Join(room.Settings.EnabledSources, ","),
 		room.Settings.OnlyAdminAddSongs,
-		songIDs,
-		sourceIDs,
-		titles,
-		artists,
-		thumbnailURLs,
-		durations,
-		room.HostID,
 	)
 
-	var addedTrackCount int
-	err := row.Scan(&addedTrackCount)
+	var scanned createRoomRow
+	err := scanned.scan(row)
 	if err != nil {
-		return nil, fmt.Errorf("error creating generated room: %w", err)
+		return nil, fmt.Errorf("error creating generated room row: %w", err)
 	}
 
-	return &vibe.GeneratedRoom{
-		Room:            room,
-		Tracks:          playlist.Tracks,
-		AddedTrackCount: addedTrackCount,
-	}, nil
+	return &room, nil
+}
+
+func (c *Client) addGeneratedSongs(
+	ctx context.Context,
+	room vibe.Room,
+	playlist vibe.GeneratedPlaylist,
+) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "addGeneratedSongs")
+	defer span.End()
+
+	playbackCreated := false
+	for _, track := range playlist {
+		song := &vibe.Song{
+			ID:           uuid.New().String(),
+			RoomID:       room.ID,
+			SourceType:   vibe.SourceTypeYouTube,
+			SourceID:     track.YouTubeID,
+			Title:        track.Title,
+			Artist:       track.Artist,
+			ThumbnailURL: track.ThumbnailURL,
+			Duration:     track.Duration,
+			AddedBy:      room.HostID,
+			AddedAt:      time.Now(),
+		}
+
+		result, err := c.AddSong(ctx, song)
+		if err != nil {
+			return fmt.Errorf("error adding generated song: %w", err)
+		}
+		if playbackCreated || result.Outcome != vibe.AddSongOutcomeAdded {
+			continue
+		}
+
+		state := &vibe.PlaybackState{
+			RoomID:       room.ID,
+			CurrentSong:  &result.Song,
+			IsPlaying:    true,
+			PositionMs:   0,
+			UpdatedAt:    time.Now(),
+			ServerTimeMs: int(time.Now().UnixMilli()),
+		}
+		err = c.UpsertPlaybackState(ctx, state)
+		if err != nil {
+			return fmt.Errorf("error starting generated room playback: %w", err)
+		}
+		playbackCreated = true
+	}
+
+	return nil
 }
