@@ -72,6 +72,27 @@ Production: https://api.vibez.app/api/v1
 
 ---
 
+#### Suggest Room Name
+`GET /rooms/suggestions`
+
+Returns an easy-to-say, currently available room name for the create-room form:
+
+```json
+{
+  "name": "fly-banana-otter"
+}
+```
+
+---
+
+#### Check Whether a Room Exists
+`HEAD /rooms/{id}`
+
+Returns `200 OK` when the room ID exists and `404 Not Found` when it is
+available.
+
+---
+
 #### Get Room
 `GET /rooms/{id}`
 
