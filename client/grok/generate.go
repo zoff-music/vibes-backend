@@ -17,11 +17,49 @@ type chatMessage struct {
 }
 
 type chatCompletionRequest struct {
-	Model           string        `json:"model"`
-	Messages        []chatMessage `json:"messages"`
-	ReasoningEffort string        `json:"reasoning_effort"`
-	Temperature     float64       `json:"temperature"`
-	MaxTokens       int           `json:"max_tokens"`
+	Model           string         `json:"model"`
+	Messages        []chatMessage  `json:"messages"`
+	ReasoningEffort string         `json:"reasoning_effort"`
+	Temperature     float64        `json:"temperature"`
+	MaxTokens       int            `json:"max_tokens"`
+	ResponseFormat  responseFormat `json:"response_format"`
+}
+
+type responseFormat struct {
+	Type       string             `json:"type"`
+	JSONSchema responseJSONSchema `json:"json_schema"`
+}
+
+type responseJSONSchema struct {
+	Name   string         `json:"name"`
+	Strict bool           `json:"strict"`
+	Schema playlistSchema `json:"schema"`
+}
+
+type playlistSchema struct {
+	Type     string             `json:"type"`
+	MinItems int                `json:"minItems"`
+	MaxItems int                `json:"maxItems"`
+	Items    playlistItemSchema `json:"items"`
+}
+
+type playlistItemSchema struct {
+	Type                 string                 `json:"type"`
+	Properties           playlistItemProperties `json:"properties"`
+	Required             []string               `json:"required"`
+	AdditionalProperties bool                   `json:"additionalProperties"`
+}
+
+type playlistItemProperties struct {
+	Title     stringProperty `json:"title"`
+	Artist    stringProperty `json:"artist"`
+	YouTubeID stringProperty `json:"youtubeId"`
+}
+
+type stringProperty struct {
+	Type        string `json:"type"`
+	Description string `json:"description"`
+	Pattern     string `json:"pattern,omitempty"`
 }
 
 type chatCompletionMessage struct {
@@ -58,8 +96,43 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 			},
 		},
 		ReasoningEffort: "low",
-		Temperature:     0.7,
-		MaxTokens:       3000,
+		Temperature:     0.3,
+		MaxTokens:       6000,
+		ResponseFormat: responseFormat{
+			Type: "json_schema",
+			JSONSchema: responseJSONSchema{
+				Name:   "generated_playlist",
+				Strict: true,
+				Schema: playlistSchema{
+					Type:     "array",
+					MinItems: 1,
+					MaxItems: vibe.GeneratedPlaylistTrackCount,
+					Items: playlistItemSchema{
+						Type: "object",
+						Properties: playlistItemProperties{
+							Title: stringProperty{
+								Type:        "string",
+								Description: "Canonical song title",
+							},
+							Artist: stringProperty{
+								Type:        "string",
+								Description: "Canonical artist name",
+							},
+							YouTubeID: stringProperty{
+								Type:        "string",
+								Description: "Exact YouTube video ID when known with high confidence",
+								Pattern:     "^[A-Za-z0-9_-]{11}$",
+							},
+						},
+						Required: []string{
+							"title",
+							"artist",
+						},
+						AdditionalProperties: false,
+					},
+				},
+			},
+		},
 	}
 
 	body, err := json.Marshal(request)

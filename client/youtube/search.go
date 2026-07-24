@@ -3,11 +3,15 @@ package youtube
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
 	"net/http"
 	"net/url"
+	"strings"
+	"time"
 
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 
 	"github.com/zoff-music/vibes-backend/client"
@@ -23,150 +27,145 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		return nil, fmt.Errorf("error youtube api key not configured")
 	}
 
-	const targetResults = 15
-
-	fetchSearch := func(maxResults int, categoryID string) (searchResponse, error) {
-		params := url.Values{}
-		params.Set("part", "snippet")
-		params.Set("q", query)
-		params.Set("type", "video")
-		params.Set("maxResults", fmt.Sprintf("%d", maxResults))
-		params.Set("key", c.apiKey)
-		if categoryID != "" {
-			params.Set("videoCategoryId", categoryID)
-		}
-
-		reqData := client.HTTPRequestData{
-			Method:  http.MethodGet,
-			URL:     fmt.Sprintf("%s/search", c.Endpoint),
-			Payload: &params,
-		}
-
-		resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
-		if err != nil {
-			return searchResponse{}, fmt.Errorf("error requesting youtube search in Search: %w", err)
-		}
-
-		var result searchResponse
-		err = json.Unmarshal(resp, &result)
-		if err != nil {
-			return searchResponse{}, fmt.Errorf("error unmarshaling youtube search response in Search: %w", err)
-		}
-		return result, nil
-	}
-
-	fetchTracksWithDetails := func(items []searchItem) ([]vibe.MusicTrack, error) {
-		if len(items) == 0 {
-			return []vibe.MusicTrack{}, nil
-		}
-
-		ids := ""
-		for i, item := range items {
-			if i > 0 {
-				ids += ","
-			}
-			ids += item.ID.VideoID
-		}
-
-		vparams := url.Values{}
-		vparams.Set("part", "contentDetails,snippet")
-		vparams.Set("id", ids)
-		vparams.Set("key", c.apiKey)
-
-		vreqData := client.HTTPRequestData{
-			Method:  http.MethodGet,
-			URL:     fmt.Sprintf("%s/videos", c.Endpoint),
-			Payload: &vparams,
-		}
-
-		vresp, err := c.HTTPClient.RequestBytes(ctx, vreqData)
-		if err != nil {
-			return nil, fmt.Errorf("error requesting youtube video details in Search: %w", err)
-		}
-
-		var vresult videoResponse
-		err = json.Unmarshal(vresp, &vresult)
-		if err != nil {
-			return nil, fmt.Errorf("error unmarshaling youtube video details in Search: %w", err)
-		}
-
-		durations := make(map[string]string)
-		for _, vitem := range vresult.Items {
-			durations[vitem.ID] = vitem.ContentDetails.Duration
-		}
-
-		tracks := make([]vibe.MusicTrack, 0, len(items))
-		for _, item := range items {
-			if item.ID.VideoID == "" {
-				continue
-			}
-
-			thmb := item.Snippet.Thumbnails.High.URL
-			if thmb == "" {
-				thmb = item.Snippet.Thumbnails.Medium.URL
-			}
-			if thmb == "" {
-				thmb = item.Snippet.Thumbnails.Default.URL
-			}
-
-			tracks = append(tracks, vibe.MusicTrack{
-				ID:           item.ID.VideoID,
-				Source:       vibe.SourceTypeYouTube,
-				Title:        html.UnescapeString(item.Snippet.Title),
-				ChannelTitle: html.UnescapeString(item.Snippet.ChannelTitle),
-				ThumbnailURL: thmb,
-				Duration:     durations[item.ID.VideoID],
-			})
-		}
-
-		return tracks, nil
-	}
-
-	// First: hard filter to music category (id 10)
-	musicResult, err := fetchSearch(targetResults, "10")
+	result, err := c.searchVideos(ctx, query, youtubeSearchResultCount)
 	if err != nil {
-		return nil, fmt.Errorf("error request failed: %w", err)
+		return nil, fmt.Errorf("error searching youtube videos: %w", err)
 	}
 
-	musicTracks, err := fetchTracksWithDetails(musicResult.Items)
-	if err != nil {
-		return nil, fmt.Errorf("error request failed: %w", err)
-	}
-
-	if len(musicTracks) >= targetResults {
-		return musicTracks[:targetResults], nil
-	}
-
-	// Second: normal search, fill remaining slots, dedupe
-	remaining := targetResults - len(musicTracks)
-	mixedResult, err := fetchSearch(remaining, "")
-	if err != nil {
-		return nil, fmt.Errorf("error request failed: %w", err)
-	}
-
-	mixedTracks, err := fetchTracksWithDetails(mixedResult.Items)
-	if err != nil {
-		return nil, fmt.Errorf("error request failed: %w", err)
-	}
-
-	seen := make(map[string]bool, len(musicTracks))
-	for _, track := range musicTracks {
-		seen[track.ID] = true
-	}
-
-	tracks := make([]vibe.MusicTrack, 0, targetResults)
-	tracks = append(tracks, musicTracks...)
-	for _, track := range mixedTracks {
-		if len(tracks) >= targetResults {
-			break
+	youtubeIDs := make([]string, 0, len(result.Items))
+	for _, item := range result.Items {
+		if item.ID.VideoID != "" {
+			youtubeIDs = append(youtubeIDs, item.ID.VideoID)
 		}
-		if seen[track.ID] {
+	}
+	if len(youtubeIDs) == 0 {
+		return []vibe.MusicTrack{}, nil
+	}
+
+	params := url.Values{}
+	params.Set("part", "contentDetails")
+	params.Set("id", strings.Join(youtubeIDs, ","))
+	params.Set("fields", "items(id,contentDetails/duration)")
+	params.Set("key", c.apiKey)
+
+	responseBody, err := c.HTTPClient.RequestBytes(ctx, client.HTTPRequestData{
+		Method:  http.MethodGet,
+		URL:     fmt.Sprintf("%s/videos", c.Endpoint),
+		Payload: &params,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error requesting youtube video details: %w", err)
+	}
+
+	var videoResult videoResponse
+	err = json.Unmarshal(responseBody, &videoResult)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling youtube video details: %w", err)
+	}
+
+	durations := make(map[string]string, len(videoResult.Items))
+	for _, item := range videoResult.Items {
+		durations[item.ID] = item.ContentDetails.Duration
+	}
+
+	tracks := make([]vibe.MusicTrack, 0, len(result.Items))
+	for _, item := range result.Items {
+		if item.ID.VideoID == "" {
 			continue
 		}
-		tracks = append(tracks, track)
+
+		thumbnailURL := item.Snippet.Thumbnails.High.URL
+		if thumbnailURL == "" {
+			thumbnailURL = item.Snippet.Thumbnails.Medium.URL
+		}
+		if thumbnailURL == "" {
+			thumbnailURL = item.Snippet.Thumbnails.Default.URL
+		}
+
+		tracks = append(tracks, vibe.MusicTrack{
+			ID:           item.ID.VideoID,
+			Source:       vibe.SourceTypeYouTube,
+			Title:        html.UnescapeString(item.Snippet.Title),
+			ChannelTitle: html.UnescapeString(item.Snippet.ChannelTitle),
+			ThumbnailURL: thumbnailURL,
+			Duration:     durations[item.ID.VideoID],
+		})
+		if len(tracks) == youtubeSearchDisplayCount {
+			break
+		}
 	}
 
 	return tracks, nil
+}
+
+func (c *Client) searchVideos(
+	ctx context.Context,
+	query string,
+	maxResults int,
+) (*searchResponse, error) {
+	c.searchQuotaMu.RLock()
+	searchQuotaReset := c.searchQuotaReset
+	c.searchQuotaMu.RUnlock()
+	if time.Now().Before(searchQuotaReset) {
+		return nil, internalerror.ErrProviderQuotaExceeded{
+			Err:      fmt.Errorf("error youtube search quota cached until %s", searchQuotaReset.Format(time.RFC3339)),
+			Provider: youtubeProvider,
+		}
+	}
+
+	params := url.Values{}
+	params.Set("part", "snippet")
+	params.Set("q", query)
+	params.Set("type", "video")
+	params.Set("videoCategoryId", youtubeMusicCategoryID)
+	params.Set("maxResults", fmt.Sprintf("%d", maxResults))
+	params.Set("fields", "items(id/videoId,snippet(title,channelTitle,thumbnails))")
+	params.Set("key", c.apiKey)
+
+	responseBody, err := c.HTTPClient.RequestBytes(ctx, client.HTTPRequestData{
+		Method:  http.MethodGet,
+		URL:     fmt.Sprintf("%s/search", c.Endpoint),
+		Payload: &params,
+	})
+	if err != nil {
+		var statusCodeError client.HTTPStatusCodeError
+		if errors.As(err, &statusCodeError) &&
+			(statusCodeError.StatusCode == http.StatusForbidden ||
+				statusCodeError.StatusCode == http.StatusTooManyRequests) &&
+			(strings.Contains(statusCodeError.Message, "youtube.googleapis.com/search_list") ||
+				strings.Contains(statusCodeError.Message, "Search Queries") ||
+				strings.Contains(statusCodeError.Message, "quotaExceeded")) {
+			now := time.Now().In(c.searchQuotaZone)
+			reset := time.Date(
+				now.Year(),
+				now.Month(),
+				now.Day()+1,
+				0,
+				0,
+				0,
+				0,
+				c.searchQuotaZone,
+			)
+			c.searchQuotaMu.Lock()
+			c.searchQuotaReset = reset
+			c.searchQuotaMu.Unlock()
+
+			return nil, internalerror.ErrProviderQuotaExceeded{
+				Err:      fmt.Errorf("error requesting youtube search: %w", err),
+				Provider: youtubeProvider,
+			}
+		}
+
+		return nil, fmt.Errorf("error requesting youtube search: %w", err)
+	}
+
+	var result searchResponse
+	err = json.Unmarshal(responseBody, &result)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshaling youtube search response: %w", err)
+	}
+
+	return &result, nil
 }
 
 type searchResponse struct {
@@ -197,3 +196,11 @@ type searchThumbnails struct {
 type thumbnail struct {
 	URL string `json:"url"`
 }
+
+const youtubeProvider = "youtube"
+
+const youtubeQuotaLocation = "America/Los_Angeles"
+
+const youtubeSearchDisplayCount = 15
+
+const youtubeSearchResultCount = 25

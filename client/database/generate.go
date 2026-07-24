@@ -216,6 +216,7 @@ func (c *Client) prepareProcessNextRoomGenerationStmt() error {
 		failed_generation_q AS (
 			UPDATE room_generations a
 			SET failed_at = NOW(),
+				failure_reason = $2,
 				updated_at = NOW()
 			FROM locked_generation_q b
 			WHERE a.id = b.id
@@ -253,6 +254,7 @@ func (c *Client) ProcessNextRoomGeneration(
 	row := c.ProcessNextRoomGenerationStatement.QueryRowContext(
 		cctx,
 		vibe.RoomGenerationMaxAttempts,
+		vibe.RoomGenerationFailure,
 	)
 
 	var generationRow roomGenerationRow
@@ -327,6 +329,50 @@ func (c *Client) CompleteRoomGeneration(ctx context.Context, roomID string) erro
 	_, err := c.CompleteRoomGenerationStatement.ExecContext(cctx, roomID)
 	if err != nil {
 		return fmt.Errorf("error completing room generation in CompleteRoomGeneration: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) prepareFailRoomGenerationStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE room_generations
+		SET attempt = $2,
+			failed_at = NOW(),
+			failure_reason = $3,
+			updated_at = NOW()
+		WHERE room_id = $1
+		AND completed_at IS NULL
+		AND failed_at IS NULL
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing FailRoomGenerationStatement: %w", err)
+	}
+
+	c.FailRoomGenerationStatement = stmt
+
+	return nil
+}
+
+func (c *Client) FailRoomGeneration(
+	ctx context.Context,
+	roomID string,
+	reason string,
+) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "FailRoomGeneration")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := c.FailRoomGenerationStatement.ExecContext(
+		cctx,
+		roomID,
+		vibe.RoomGenerationMaxAttempts,
+		reason,
+	)
+	if err != nil {
+		return fmt.Errorf("error failing room generation in FailRoomGeneration: %w", err)
 	}
 
 	return nil

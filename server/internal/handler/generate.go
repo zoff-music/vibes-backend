@@ -415,7 +415,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 	if generation.Exhausted {
 		update := vibe.RoomGenerationUpdate{
 			Status: vibe.RoomGenerationFailed,
-			Error:  "Could not finish generating this playlist.",
+			Error:  vibe.RoomGenerationFailure,
 		}
 		payload, err := json.Marshal(update)
 		if err != nil {
@@ -449,6 +449,40 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 
 	playlist, err = h.Searcher.SearchGeneratedPlaylist(generationContext, *playlist)
 	if err != nil {
+		var quotaError internalerror.ErrProviderQuotaExceeded
+		if errors.As(err, &quotaError) {
+			err = h.DB.FailRoomGeneration(
+				generationContext,
+				generation.RoomID,
+				vibe.RoomGenerationYouTubeQuotaFailure,
+			)
+			if err != nil {
+				return fmt.Errorf("error failing room generation after youtube quota exhaustion: %w", err)
+			}
+
+			update := vibe.RoomGenerationUpdate{
+				Status: vibe.RoomGenerationFailed,
+				Error:  vibe.RoomGenerationYouTubeQuotaFailure,
+			}
+			payload, err := json.Marshal(update)
+			if err != nil {
+				return fmt.Errorf("error marshaling youtube quota room generation update: %w", err)
+			}
+			err = h.IPS.NotifyRoomUpdate(generationContext, generation.RoomID, vibe.RoomEvent{
+				Type:    vibe.GenerationUpdate,
+				Payload: payload,
+			})
+			if err != nil {
+				return fmt.Errorf("error notifying youtube quota room generation failure: %w", err)
+			}
+
+			return internalerror.ErrExpected{
+				Err: internalerror.ErrNonRecoverable{
+					Err: fmt.Errorf("error youtube search quota exhausted: %w", quotaError),
+				},
+			}
+		}
+
 		return fmt.Errorf("error searching generated playlist: %w", err)
 	}
 

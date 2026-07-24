@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"sync"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/config"
@@ -19,6 +21,10 @@ type Client struct {
 	redirectURI  string
 	Endpoint     string
 	HTTPClient   client.HTTPClient
+
+	searchQuotaMu    sync.RWMutex
+	searchQuotaZone  *time.Location
+	searchQuotaReset time.Time
 }
 
 // Init initializes the YouTube API client
@@ -37,6 +43,11 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	c.clientID = cfg.YouTubeClientID
 	c.clientSecret = cfg.YouTubeClientSecret
 	c.redirectURI = cfg.YouTubeRedirectURI
+	searchQuotaZone, err := time.LoadLocation(youtubeQuotaLocation)
+	if err != nil {
+		return fmt.Errorf("error loading youtube quota location: %w", err)
+	}
+	c.searchQuotaZone = searchQuotaZone
 	c.HTTPClient = client.HTTPClient{
 		Client: &http.Client{
 			Timeout:   5 * time.Second,
