@@ -57,7 +57,7 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 				Content: prompt,
 			},
 		},
-		ReasoningEffort: "none",
+		ReasoningEffort: "low",
 		Temperature:     0.7,
 		MaxTokens:       3000,
 	}
