@@ -22,6 +22,8 @@ type Client struct {
 	// Room statements
 	GetRoomStatement                  *sql.Stmt
 	GetRoomByNameStatement            *sql.Stmt
+	SuggestRoomNameStatement          *sql.Stmt
+	RoomExistsStatement               *sql.Stmt
 	CreateRoomStatement               *sql.Stmt
 	UpdateRoomStatement               *sql.Stmt
 	ProcessNextAbandonedHostStatement *sql.Stmt
@@ -116,6 +118,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		// Room statements
 		c.prepareGetRoomStmt,
 		c.prepareGetRoomByNameStmt,
+		c.prepareSuggestRoomNameStmt,
+		c.prepareRoomExistsStmt,
 		c.prepareCreateRoomStmt,
 		c.prepareUpdateRoomStmt,
 		c.prepareProcessNextAbandonedHostStmt,
@@ -182,6 +186,8 @@ func (c *Client) Close() error {
 	statements := []*sql.Stmt{
 		c.GetRoomStatement,
 		c.GetRoomByNameStatement,
+		c.SuggestRoomNameStatement,
+		c.RoomExistsStatement,
 		c.CreateRoomStatement,
 		c.UpdateRoomStatement,
 		c.ProcessNextAbandonedHostStatement,

@@ -21,6 +21,8 @@ func (s *Server) setupRoutes() {
 
 	// Room routes
 	api.HandleFunc("/rooms", handler.CreateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
+	api.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
+	api.HandleFunc("/rooms/{id}", handler.RoomExists(s.DB)).Methods(http.MethodHead).Name("RoomExists")
 	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoom")
 	api.HandleFunc("/rooms/{id}/settings", handler.UpdateRoomSettings(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoomSettings")
 	api.HandleFunc("/rooms/{id}/skips", handler.SkipSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("SkipSong")
@@ -94,6 +96,8 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 		Checker: s.Redis,
 		Policies: map[string]vibe.RateLimitPolicy{
 			"CreateRoom":          {Rate: time.Minute, Limit: 10},
+			"SuggestRoomName":     {Rate: time.Minute, Limit: 30},
+			"RoomExists":          {Rate: time.Minute, Limit: 60},
 			"GetRoom":             {Rate: time.Minute, Limit: 120},
 			"UpdateRoomSettings":  {Rate: time.Minute, Limit: 30},
 			"SkipSong":            {Rate: time.Minute, Limit: 60},
