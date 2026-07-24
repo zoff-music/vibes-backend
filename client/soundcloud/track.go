@@ -18,7 +18,9 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	defer span.End()
 
 	if !c.Enabled {
-		return nil, fmt.Errorf("error soundcloud client is not enabled")
+		return nil, fmt.Errorf(
+			"error validating soundcloud client in GetTrack: client is not enabled",
+		)
 	}
 
 	// Ensure valid access token
@@ -32,18 +34,25 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 		URL:    fmt.Sprintf("%s/tracks/%s", c.Endpoint, id),
 		Headers: map[string]string{
 			"Authorization": fmt.Sprintf("OAuth %s", c.accessToken),
+			"Accept":        "application/json; charset=utf-8",
 		},
 	}
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
-		return nil, fmt.Errorf("error request failed: %w", err)
+		return nil, fmt.Errorf(
+			"error requesting soundcloud track in GetTrack: %w",
+			err,
+		)
 	}
 
 	var res trackResponse
 	err = json.Unmarshal(resp, &res)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding response: %w", err)
+		return nil, fmt.Errorf(
+			"error decoding soundcloud response in GetTrack: %w",
+			err,
+		)
 	}
 
 	username := "Unknown"

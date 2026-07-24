@@ -110,11 +110,12 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 
 		session, hasSession := helper.GetSessionFromContext(r.Context())
 		clientIP := rateLimitClientIP(r)
-		deviceIdentity := strings.TrimSpace(r.UserAgent())
+		deviceIdentity := strings.Join(
+			[]string{clientIP, strings.TrimSpace(r.UserAgent())},
+			"\x00",
+		)
 		if hasSession && session.UserID != "" {
 			deviceIdentity = session.UserID
-		} else {
-			deviceIdentity = strings.Join([]string{clientIP, deviceIdentity}, "\x00")
 		}
 
 		request := vibe.RateLimitRequest{
@@ -165,27 +166,35 @@ func rateLimitClientIP(r *http.Request) string {
 		address := strings.TrimSpace(forwardedAddresses[i])
 		parsedAddress, err := netip.ParseAddr(address)
 		if err == nil {
-			return parsedAddress.Unmap().String()
+			clientIP := parsedAddress.Unmap().String()
+
+			return clientIP
 		}
 	}
 
 	realIP := strings.TrimSpace(r.Header.Get("X-Real-Ip"))
 	parsedRealIP, err := netip.ParseAddr(realIP)
 	if err == nil {
-		return parsedRealIP.Unmap().String()
+		clientIP := parsedRealIP.Unmap().String()
+
+		return clientIP
 	}
 
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
 	if err == nil {
-		parsedHost, parseErr := netip.ParseAddr(host)
-		if parseErr == nil {
-			return parsedHost.Unmap().String()
+		parsedHost, err := netip.ParseAddr(host)
+		if err == nil {
+			clientIP := parsedHost.Unmap().String()
+
+			return clientIP
 		}
 	}
 
 	parsedRemoteAddress, err := netip.ParseAddr(r.RemoteAddr)
 	if err == nil {
-		return parsedRemoteAddress.Unmap().String()
+		clientIP := parsedRemoteAddress.Unmap().String()
+
+		return clientIP
 	}
 
 	return "unknown-ip"
@@ -193,7 +202,9 @@ func rateLimitClientIP(r *http.Request) string {
 
 func hashRateLimitIdentity(parts ...string) string {
 	hash := sha256.Sum256([]byte(strings.Join(parts, "\x00")))
-	return hex.EncodeToString(hash[:])
+	identityHash := hex.EncodeToString(hash[:])
+
+	return identityHash
 }
 
 const rateLimitIPMultiplier = 10

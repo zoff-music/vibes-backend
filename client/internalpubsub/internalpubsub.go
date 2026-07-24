@@ -40,7 +40,10 @@ func (c *Client) NotifyRoomUpdate(ctx context.Context, roomID string, event vibe
 
 	data, err := json.Marshal(event)
 	if err != nil {
-		return fmt.Errorf("error marshaling room event: %w", err)
+		return fmt.Errorf(
+			"error marshaling room event in NotifyRoomUpdate: %w",
+			err,
+		)
 	}
 
 	topicName := fmt.Sprintf("room:%s", roomID)
@@ -58,7 +61,10 @@ func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) e
 
 	data, err := json.Marshal(event)
 	if err != nil {
-		return fmt.Errorf("error marshaling admin event: %w", err)
+		return fmt.Errorf(
+			"error marshaling admin event in NotifyAdminUpdate: %w",
+			err,
+		)
 	}
 
 	err = c.NotifyTopic(ctx, adminTopicName, data)
@@ -73,31 +79,24 @@ func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []
 	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdates")
 	defer span.End()
 
-	var err error
 	topicName := fmt.Sprintf("room:%s", roomID)
 
 	for _, event := range events {
-		data, marshalErr := json.Marshal(event)
-		if marshalErr != nil {
-			// Log error and continue? Or return first error?
-			// User request implies batch update, but underlying system is per-message usually.
-			// Let's return first error but try others? No, fail fast usually better or log.
-			// Standard practice: stop on error.
-			if err == nil {
-				err = fmt.Errorf("error marshaling room event: %w", marshalErr)
-			}
-			continue
+		data, err := json.Marshal(event)
+		if err != nil {
+			return fmt.Errorf(
+				"error marshaling room event in NotifyRoomUpdates: %w",
+				err,
+			)
 		}
 
-		if notifyErr := c.NotifyTopic(ctx, topicName, data); notifyErr != nil {
-			if err == nil {
-				err = fmt.Errorf("error notifying topic: %w", notifyErr)
-			}
+		err = c.NotifyTopic(ctx, topicName, data)
+		if err != nil {
+			return fmt.Errorf(
+				"error notifying topic in NotifyRoomUpdates: %w",
+				err,
+			)
 		}
-	}
-
-	if err != nil {
-		return fmt.Errorf("error notifying room updates in NotifyRoomUpdates: %w", err)
 	}
 
 	return nil
@@ -108,7 +107,11 @@ func (c *Client) Subscribe(topicName string) (*vibe.SubscriptionContainer, error
 
 	subscription, err := topic.createSubscription()
 	if err != nil {
-		return nil, fmt.Errorf("error adding subscriber to topic %s: %w", topicName, err)
+		return nil, fmt.Errorf(
+			"error adding subscriber to topic in Subscribe for %s: %w",
+			topicName,
+			err,
+		)
 	}
 
 	return &vibe.SubscriptionContainer{
@@ -196,7 +199,10 @@ func (t *Topic) createSubscription() (*Subscription, error) {
 
 	id, err := generateSubscriptionID()
 	if err != nil {
-		return nil, fmt.Errorf("error creating subscription id: %w", err)
+		return nil, fmt.Errorf(
+			"error creating subscription id in createSubscription: %w",
+			err,
+		)
 	}
 
 	subscription := &Subscription{
@@ -219,10 +225,15 @@ func (t *Topic) removeSubscription(subscriptionID string) {
 func generateSubscriptionID() (string, error) {
 	id, err := uuid.NewRandom()
 	if err != nil {
-		return "", fmt.Errorf("error generating subscription-id: %w", err)
+		return "", fmt.Errorf(
+			"error generating subscription id in generateSubscriptionID: %w",
+			err,
+		)
 	}
 
-	return id.String(), nil
+	subscriptionID := id.String()
+
+	return subscriptionID, nil
 }
 
 const adminTopicName string = "admin"

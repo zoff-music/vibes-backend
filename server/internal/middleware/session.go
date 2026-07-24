@@ -53,8 +53,10 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 			}
 
 			// Prevent a cast token for room A from being used against room B endpoints.
-			if vars := mux.Vars(r); vars != nil {
-				if roomID, ok := vars["id"]; ok && roomID != "" && roomID != payload.CastRoomID {
+			vars := mux.Vars(r)
+			if vars != nil {
+				roomID, ok := vars["id"]
+				if ok && roomID != "" && roomID != payload.CastRoomID {
 					http.Error(w, "forbidden", http.StatusForbidden)
 					return
 				}
