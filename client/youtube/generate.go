@@ -38,7 +38,11 @@ func (c *Client) SearchGeneratedPlaylist(
 		return nil, fmt.Errorf("error getting generated tracks by ID: %w", err)
 	}
 
-	found := make(vibe.GeneratedPlaylist, 0, len(playlist))
+	found := make(
+		vibe.GeneratedPlaylist,
+		0,
+		vibe.GeneratedPlaylistSelectedTrackCount,
+	)
 	seen := make(map[string]bool, len(playlist))
 	for _, candidate := range playlist {
 		track, ok := tracksByID[candidate.YouTubeID]
@@ -55,6 +59,9 @@ func (c *Client) SearchGeneratedPlaylist(
 
 		seen[track.YouTubeID] = true
 		found = append(found, track)
+		if len(found) == vibe.GeneratedPlaylistSelectedTrackCount {
+			break
+		}
 	}
 
 	if len(found) == 0 {

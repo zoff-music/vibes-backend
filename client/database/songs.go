@@ -264,6 +264,7 @@ func (c *Client) prepareAddSongStmt() error {
 			INSERT INTO song_votes (room_id, song_id, user_id)
 			SELECT a.room_id, a.id, $8
 			FROM upserted_song_q a
+			WHERE $11
 			ON CONFLICT (room_id, song_id, user_id) DO NOTHING
 			RETURNING 1
 		)
@@ -336,6 +337,7 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongRes
 		song.AddedBy,
 		song.AddedByNickname,
 		song.ID,
+		true,
 	)
 
 	var row addSongRow

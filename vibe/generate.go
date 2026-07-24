@@ -42,6 +42,10 @@ type GeneratedPlaylistSearcher interface {
 	SearchGeneratedPlaylist(ctx context.Context, playlist GeneratedPlaylist) (*GeneratedPlaylist, error)
 }
 
+type GeneratedSongAdder interface {
+	AddGeneratedSong(ctx context.Context, song *Song) (*Song, error)
+}
+
 type GeneratedRoomCreator interface {
 	RoomNameSuggester
 	RoomCreator
@@ -69,12 +73,14 @@ type RoomGenerationWorker interface {
 	RoomGenerationProcessor
 	RoomGenerationDeleter
 	RoomFetcher
-	SongAdder
+	GeneratedSongAdder
 	PlaybackController
 	PlaybackFetcher
 }
 
 const GeneratedPlaylistTrackCount = 50
+
+const GeneratedPlaylistSelectedTrackCount = 30
 
 const RoomGenerationMaxAttempts = 5
 
