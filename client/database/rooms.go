@@ -305,7 +305,7 @@ func (c *Client) getRoomByName(ctx context.Context, name string, userID string) 
 func (c *Client) prepareSuggestRoomNameStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT candidate_name
-		FROM UNNEST($1::text[]) WITH ORDINALITY AS candidates(candidate_name, candidate_order)
+		FROM UNNEST($1::text[]) WITH ORDINALITY AS CANDIDATES(candidate_name, candidate_order)
 		WHERE NOT EXISTS (
 			SELECT 1
 			FROM rooms
