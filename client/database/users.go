@@ -89,7 +89,10 @@ func (r *userRow) toUser() (*vibe.User, error) {
 func (c *Client) prepareCreateUserStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO room_users (id, room_id, is_admin, is_active_listener, joined_at, last_seen_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		SELECT $1, a.id, $3, $4, $5, $6
+		FROM rooms a
+		WHERE a.id = $2
+		FOR KEY SHARE OF a
 		ON CONFLICT(id, room_id) DO UPDATE SET
 		is_admin = EXCLUDED.is_admin,
 		is_active_listener = EXCLUDED.is_active_listener,

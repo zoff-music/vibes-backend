@@ -382,7 +382,10 @@ func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.Playback
 func (c *Client) prepareUpsertPlaybackStateStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO playback_state (room_id, current_song_id, is_playing, position_ms, updated_at)
-			VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+			SELECT a.id, $2, $3, $4, CURRENT_TIMESTAMP
+			FROM rooms a
+			WHERE a.id = $1
+			FOR KEY SHARE OF a
 			ON CONFLICT(room_id) DO UPDATE SET
 			current_song_id = EXCLUDED.current_song_id,
 			is_playing = EXCLUDED.is_playing,

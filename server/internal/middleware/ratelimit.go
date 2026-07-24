@@ -3,6 +3,7 @@ package middleware
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"log"
 	"net"
 	"net/http"
@@ -12,6 +13,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -86,8 +88,22 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			if !globalResult.Allowed {
 				retryAfter := max(globalResult.RetryAfter, time.Second)
 				retryAfterSeconds := (retryAfter + time.Second - 1) / time.Second
+				body, err := json.Marshal(client.ErrorCodeResponseBody{
+					Namespace: "vibes-backend",
+					Error:     "rate_limit",
+					Message:   "Too many requests. Please wait and try again.",
+					Propagate: true,
+				})
+				if err != nil {
+					log.Printf("RateLimitMiddleware: error marshalling rate limit response for route %s: %v", routeName, err)
+					http.Error(w, "internal server error", http.StatusInternalServerError)
+					return
+				}
 				w.Header().Set("Retry-After", strconv.FormatInt(int64(retryAfterSeconds), 10))
-				http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+				w.Header().Set("Content-Type", "application/json")
+				w.Header().Set("X-preserve-error", "1")
+				w.WriteHeader(http.StatusTooManyRequests)
+				_, _ = w.Write(body)
 				return
 			}
 		}
@@ -119,8 +135,22 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		if !result.Allowed {
 			retryAfter := max(result.RetryAfter, time.Second)
 			retryAfterSeconds := (retryAfter + time.Second - 1) / time.Second
+			body, err := json.Marshal(client.ErrorCodeResponseBody{
+				Namespace: "vibes-backend",
+				Error:     "rate_limit",
+				Message:   "Too many requests. Please wait and try again.",
+				Propagate: true,
+			})
+			if err != nil {
+				log.Printf("RateLimitMiddleware: error marshalling rate limit response for route %s: %v", routeName, err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
 			w.Header().Set("Retry-After", strconv.FormatInt(int64(retryAfterSeconds), 10))
-			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+			w.Header().Set("Content-Type", "application/json")
+			w.Header().Set("X-preserve-error", "1")
+			w.WriteHeader(http.StatusTooManyRequests)
+			_, _ = w.Write(body)
 			return
 		}
 
