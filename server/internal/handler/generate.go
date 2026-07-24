@@ -37,25 +37,23 @@ func CreateGeneratedRoom(
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		var request vibe.GeneratedPlaylistRequest
-		decoder := json.NewDecoder(http.MaxBytesReader(w, r.Body, playlistRequestMaxBytes))
-		decoder.DisallowUnknownFields()
-		err := decoder.Decode(&request)
+		body, err := io.ReadAll(r.Body)
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error decoding playlist request: %w", err),
+				fmt.Errorf("error reading playlist request: %w", err),
 				http.StatusBadRequest,
 				false,
 			)
 			return
 		}
-		var trailingJSON json.RawMessage
-		err = decoder.Decode(&trailingJSON)
-		if !errors.Is(err, io.EOF) {
+
+		var request vibe.GeneratedPlaylistRequest
+		err = json.Unmarshal(body, &request)
+		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error playlist request must contain one JSON object"),
+				fmt.Errorf("error decoding playlist request: %w", err),
 				http.StatusBadRequest,
 				false,
 			)
@@ -204,7 +202,7 @@ func CreateGeneratedRoom(
 		}
 		createdRoom.IsGenerating = true
 
-		body, err := json.Marshal(createdRoom)
+		body, err = json.Marshal(createdRoom)
 		if err != nil {
 			handleError(
 				w,
@@ -365,8 +363,6 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 
 	return nil
 }
-
-const playlistRequestMaxBytes = 4096
 
 const roomGenerationTimeout = 4 * time.Minute
 
