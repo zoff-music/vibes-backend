@@ -75,12 +75,13 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		}
 
 		tracks = append(tracks, vibe.MusicTrack{
-			ID:           fmt.Sprintf("%d", res.ID),
-			Source:       vibe.SourceTypeSoundCloud,
-			Title:        res.Title,
-			ChannelTitle: username,
-			ThumbnailURL: artworkURL,
-			Duration:     fmt.Sprintf("PT%dM%dS", (res.Duration/1000)/60, (res.Duration/1000)%60),
+			ID:              fmt.Sprintf("%d", res.ID),
+			Source:          vibe.SourceTypeSoundCloud,
+			Title:           res.Title,
+			ChannelTitle:    username,
+			ThumbnailURL:    artworkURL,
+			Duration:        fmt.Sprintf("PT%dM%dS", (res.Duration/1000)/60, (res.Duration/1000)%60),
+			DurationSeconds: res.Duration / 1000,
 		})
 	}
 

@@ -28,7 +28,7 @@ type GeneratedPlaylist []GeneratedTrack
 
 type GeneratedPlaylistSearchResult struct {
 	Playlist       GeneratedPlaylist
-	CachedSearches []CachedYouTubeSearch
+	CachedSearches []CachedSearch
 }
 
 type RoomGenerationStatus string
@@ -53,7 +53,7 @@ type GeneratedPlaylistSearcher interface {
 	SearchGeneratedPlaylist(
 		ctx context.Context,
 		playlist GeneratedPlaylist,
-		cachedSearches []CachedYouTubeSearch,
+		cachedSearches []CachedSearch,
 	) (*GeneratedPlaylistSearchResult, error)
 }
 

@@ -48,7 +48,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetMusicTrack")
 
 	// SoundCloud routes
-	api.HandleFunc("/soundcloud/search", handler.SearchSoundCloud(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSoundCloud")
+	api.HandleFunc("/soundcloud/search", handler.SearchSoundCloud(s.SoundCloud, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSoundCloud")
 	api.HandleFunc("/soundcloud/tracks/{id}", handler.GetSoundCloudTrack(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudTrack")
 
 	// Spotify search routes
