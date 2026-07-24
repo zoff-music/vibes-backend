@@ -24,6 +24,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
 	if s.Grok.Enabled {
 		api.HandleFunc("/rooms/generation", handler.CreateGeneratedRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoom")
+		api.HandleFunc("/rooms/{id}/generations", handler.CreateRoomGeneration(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomGeneration")
 	}
 	api.HandleFunc("/rooms/{id}", handler.RoomExists(s.DB)).Methods(http.MethodHead).Name("RoomExists")
 	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoom")
@@ -122,6 +123,15 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"GetSoundCloudToken":  {Rate: time.Minute, Limit: 60},
 			"GetYouTubeToken":     {Rate: time.Minute, Limit: 60},
 			"CreateGeneratedRoom": {
+				Bucket:      "RoomGeneration",
+				Rate:        10 * time.Minute,
+				Limit:       1,
+				IPLimit:     1,
+				GlobalRate:  time.Minute,
+				GlobalLimit: 1,
+			},
+			"CreateRoomGeneration": {
+				Bucket:      "RoomGeneration",
 				Rate:        10 * time.Minute,
 				Limit:       1,
 				IPLimit:     1,
@@ -185,7 +195,8 @@ func (s *Server) addPermissionMiddleware(routers ...*mux.Router) {
 	am := middleware.PermissionMiddleware{
 		DB: s.DB,
 		ProtectedRoutes: map[string]bool{
-			"UpdateRoomSettings": true,
+			"CreateRoomGeneration": true,
+			"UpdateRoomSettings":   true,
 		},
 	}
 
