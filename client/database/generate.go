@@ -60,7 +60,14 @@ func (c *Client) prepareCreateRoomGenerationStmt() error {
 			created_at,
 			updated_at
 		)
-		VALUES ($1, $2, 0, NOW(), NOW())
+		SELECT $1, $2, 0, NOW(), NOW()
+		FROM rooms
+		WHERE id = $1
+		AND (
+			SELECT COUNT(*)
+			FROM songs
+			WHERE room_id = $1
+		) <= $3
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRoomGenerationStatement: %w", err)
@@ -82,17 +89,41 @@ func (c *Client) CreateRoomGeneration(
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.CreateRoomGenerationStatement.ExecContext(cctx, roomID, prompt)
+	result, err := c.CreateRoomGenerationStatement.ExecContext(
+		cctx,
+		roomID,
+		prompt,
+		vibe.RoomGenerationMaxExistingSongs,
+	)
 	if err != nil {
 		var postgresError *pgconn.PgError
 		if errors.As(err, &postgresError) &&
 			postgresError.ConstraintName == roomGenerationSingleActiveConstraint {
 			return internalerror.ErrRoomGenerationBusy{
-				Err: fmt.Errorf("error creating room generation: %w", err),
+				Err: fmt.Errorf(
+					"error creating room generation in CreateRoomGeneration: %w",
+					err,
+				),
 			}
 		}
 
-		return fmt.Errorf("error creating room generation: %w", err)
+		return fmt.Errorf(
+			"error creating room generation in CreateRoomGeneration: %w",
+			err,
+		)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error getting affected rows in CreateRoomGeneration: %w", err)
+	}
+	if rowsAffected == 0 {
+		return internalerror.ErrRoomGenerationSongLimit{
+			Err: fmt.Errorf(
+				"error validating song count in CreateRoomGeneration: room has more than %d songs",
+				vibe.RoomGenerationMaxExistingSongs,
+			),
+		}
 	}
 
 	return nil

@@ -12,6 +12,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/google/uuid"
+	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
@@ -212,6 +213,148 @@ func CreateGeneratedRoom(
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(body)
+	}
+}
+
+// CreateRoomGeneration handles POST /api/v1/rooms/{id}/generations.
+//
+//	@Summary	Queue playlist generation for a room
+//	@Tags		rooms
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string							true	"Room ID"
+//	@Param		request	body		vibe.GeneratedPlaylistRequest	true	"Playlist prompt"
+//	@Success	202		{object}	vibe.RoomGenerationUpdate
+//	@Failure	400		{object}	map[string]string
+//	@Failure	401		{object}	map[string]string
+//	@Failure	403		{object}	map[string]string
+//	@Failure	409		{object}	map[string]string
+//	@Failure	429		{object}	map[string]string
+//	@Failure	500		{object}	map[string]string
+//	@Router		/api/v1/rooms/{id}/generations [post]
+func CreateRoomGeneration(
+	creator vibe.RoomGenerationCreator,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		vars := mux.Vars(r)
+		roomID := vars["id"]
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error reading playlist request in CreateRoomGeneration handler: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		var request vibe.GeneratedPlaylistRequest
+		err = json.Unmarshal(body, &request)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding playlist request in CreateRoomGeneration handler: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		request.Prompt = strings.TrimSpace(request.Prompt)
+		if request.Prompt == "" {
+			handleError(
+				w,
+				fmt.Errorf("error validating playlist request in CreateRoomGeneration handler: prompt is required"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+		if utf8.RuneCountInString(request.Prompt) > generatedPlaylistPromptMaxLength {
+			handleError(
+				w,
+				fmt.Errorf(
+					"error validating playlist request in CreateRoomGeneration handler: prompt exceeds %d characters",
+					generatedPlaylistPromptMaxLength,
+				),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		err = creator.CreateRoomGeneration(ctx, roomID, request.Prompt)
+		if err != nil {
+			var busyError internalerror.ErrRoomGenerationBusy
+			if errors.As(err, &busyError) {
+				w.Header().Set("Retry-After", roomGenerationBusyRetryAfterSeconds)
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: busyError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_generation_busy",
+							Message:   "A playlist is already being generated. Please wait and try again.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusTooManyRequests,
+					},
+					http.StatusTooManyRequests,
+					false,
+				)
+				return
+			}
+
+			var songLimitError internalerror.ErrRoomGenerationSongLimit
+			if errors.As(err, &songLimitError) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: songLimitError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_generation_song_limit",
+							Message:   "Playlists can only be generated when the room has 5 songs or fewer.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusConflict,
+					},
+					http.StatusConflict,
+					false,
+				)
+				return
+			}
+
+			handleError(
+				w,
+				fmt.Errorf("error queueing room generation in CreateRoomGeneration handler: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		update := vibe.RoomGenerationUpdate{
+			Status: vibe.RoomGenerationGenerating,
+		}
+		body, err = json.Marshal(&update)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshalling response in CreateRoomGeneration handler: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write(body)
 	}
 }

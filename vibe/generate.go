@@ -84,6 +84,8 @@ const GeneratedPlaylistSelectedTrackCount = 30
 
 const RoomGenerationMaxAttempts = 5
 
+const RoomGenerationMaxExistingSongs = 5
+
 const RoomGenerationGenerating RoomGenerationStatus = "generating"
 
 const RoomGenerationCompleted RoomGenerationStatus = "completed"
