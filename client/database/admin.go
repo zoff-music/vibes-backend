@@ -174,7 +174,31 @@ func (c *Client) UpdateAdminRoom(ctx context.Context, roomID string, request vib
 
 func (c *Client) prepareDeleteAdminRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH deleted_generation_q AS (
+		WITH deleted_skip_votes_q AS (
+			DELETE FROM skip_votes
+			WHERE room_id = $1
+		),
+		deleted_song_votes_q AS (
+			DELETE FROM song_votes
+			WHERE room_id = $1
+		),
+		deleted_playback_state_q AS (
+			DELETE FROM playback_state
+			WHERE room_id = $1
+		),
+		deleted_room_settings_q AS (
+			DELETE FROM room_settings
+			WHERE room_id = $1
+		),
+		deleted_room_users_q AS (
+			DELETE FROM room_users
+			WHERE room_id = $1
+		),
+		deleted_songs_q AS (
+			DELETE FROM songs
+			WHERE room_id = $1
+		),
+		deleted_generation_q AS (
 			DELETE FROM room_generations
 			WHERE room_id = $1
 		)

@@ -213,6 +213,7 @@ func (c *Client) prepareAddSongStmt() error {
 			FROM rooms a
 			LEFT JOIN room_settings b ON b.room_id = a.id
 			WHERE a.id = $1
+			FOR KEY SHARE OF a
 		),
 		upserted_song_q AS (
 			INSERT INTO songs (
@@ -417,8 +418,19 @@ func (r *addSongRow) toSong() vibe.Song {
 // prepareRemoveSongStmt prepares the RemoveSongStatement.
 func (c *Client) prepareRemoveSongStmt() error {
 	stmt, err := c.DB.Prepare(`
+		WITH deleted_skip_votes_q AS (
+			DELETE FROM skip_votes
+			WHERE room_id = $1
+			AND song_id = $2
+		),
+		deleted_song_votes_q AS (
+			DELETE FROM song_votes
+			WHERE room_id = $1
+			AND song_id = $2
+		)
 		DELETE FROM songs
-		WHERE room_id = $1 AND id = $2
+		WHERE room_id = $1
+		AND id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing RemoveSongStatement: %w", err)
@@ -448,9 +460,27 @@ func (c *Client) RemoveSong(ctx context.Context, roomID, songID string) error {
 // prepareVoteSongStmt prepares the VoteSongStatement.
 func (c *Client) prepareVoteSongStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO song_votes (room_id, song_id, user_id)
-		VALUES ($1, $2, $3)
-		ON CONFLICT(room_id, song_id, user_id) DO NOTHING
+		WITH song_q AS (
+			SELECT a.room_id, a.id
+			FROM songs a
+			WHERE a.room_id = $1
+			AND a.id = $2
+			FOR KEY SHARE OF a
+		),
+		inserted_vote_q AS (
+			INSERT INTO song_votes (room_id, song_id, user_id)
+			SELECT a.room_id, a.id, $3
+			FROM song_q a
+			ON CONFLICT(room_id, song_id, user_id) DO NOTHING
+			RETURNING 1
+		)
+		SELECT CASE
+			WHEN NOT EXISTS (SELECT 1 FROM song_q)
+				THEN 'song_not_found'
+			WHEN EXISTS (SELECT 1 FROM inserted_vote_q)
+				THEN 'created'
+			ELSE 'already_voted'
+		END
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing VoteSongStatement: %w", err)
@@ -469,23 +499,38 @@ func (c *Client) VoteSong(ctx context.Context, roomID, songID, userID string) er
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	res, err := c.VoteSongStatement.ExecContext(cctx, roomID, songID, userID)
+	row := c.VoteSongStatement.QueryRowContext(cctx, roomID, songID, userID)
+
+	var vote voteSongRow
+	err := vote.scan(row)
 	if err != nil {
-		return fmt.Errorf("error voting for song: %w", err)
+		return fmt.Errorf("error scanning vote song outcome: %w", err)
 	}
 
-	rows, err := res.RowsAffected()
-	if err != nil {
-		return fmt.Errorf("error getting rows affected: %w", err)
+	if vote.Outcome.String == voteSongNotFound {
+		return fmt.Errorf("error voting for song: song not found")
 	}
-
-	if rows == 0 {
+	if vote.Outcome.String == voteSongAlreadyVoted {
 		return internalerror.ErrAlreadyVoted{
-			Err: fmt.Errorf("error voting for song: %w", err),
+			Err: fmt.Errorf("error voting for song: vote already exists"),
 		}
+	}
+	if vote.Outcome.String != voteSongCreated {
+		return fmt.Errorf(
+			"error voting for song: unknown outcome %s",
+			vote.Outcome.String,
+		)
 	}
 
 	return nil
+}
+
+type voteSongRow struct {
+	Outcome sql.NullString
+}
+
+func (r *voteSongRow) scan(row *sql.Row) error {
+	return row.Scan(&r.Outcome)
 }
 
 func (c *Client) prepareClearVotesSongStmt() error {
@@ -567,5 +612,11 @@ func (c *Client) updateSongAddedAt(ctx context.Context, roomID, songID string) e
 
 	return nil
 }
+
+const voteSongAlreadyVoted = "already_voted"
+
+const voteSongCreated = "created"
+
+const voteSongNotFound = "song_not_found"
 
 const addSongResultRoomNotFound = "room_not_found"

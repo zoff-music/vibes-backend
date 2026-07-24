@@ -44,7 +44,7 @@ func (m *CORSMiddleware) Middleware(next http.Handler) http.Handler {
 		// Always set these for consistency.
 		w.Header().Set("Access-Control-Allow-Methods", "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Accept, Authorization, Content-Type, X-CSRF-Token, X-Session-Token, X-Zoff-Embed, Cache-Control")
-		w.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Type")
+		w.Header().Set("Access-Control-Expose-Headers", "Content-Length, Content-Type, Retry-After")
 		w.Header().Set("Access-Control-Max-Age", "86400")
 
 		// If the request is a browser CORS request (Origin present), enforce allowlist.
