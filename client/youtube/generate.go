@@ -1,12 +1,14 @@
 package youtube
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"fmt"
 	"html"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -41,7 +43,7 @@ func (c *Client) SearchGeneratedPlaylist(
 	found := make(
 		vibe.GeneratedPlaylist,
 		0,
-		vibe.GeneratedPlaylistSelectedTrackCount,
+		len(playlist),
 	)
 	seen := make(map[string]bool, len(playlist))
 	for _, candidate := range playlist {
@@ -59,13 +61,21 @@ func (c *Client) SearchGeneratedPlaylist(
 
 		seen[track.YouTubeID] = true
 		found = append(found, track)
-		if len(found) == vibe.GeneratedPlaylistSelectedTrackCount {
-			break
-		}
 	}
 
 	if len(found) == 0 {
 		return nil, fmt.Errorf("error no generated songs found on youtube")
+	}
+
+	slices.SortStableFunc(found, func(a, b vibe.GeneratedTrack) int {
+		viewComparison := cmp.Compare(b.ViewCount, a.ViewCount)
+		if viewComparison != 0 {
+			return viewComparison
+		}
+		return cmp.Compare(b.LikeCount, a.LikeCount)
+	})
+	if len(found) > vibe.GeneratedPlaylistSelectedTrackCount {
+		found = found[:vibe.GeneratedPlaylistSelectedTrackCount]
 	}
 
 	return &found, nil
@@ -140,7 +150,7 @@ func (c *Client) getGeneratedTracks(
 	}
 
 	params := url.Values{}
-	params.Set("part", "snippet,contentDetails")
+	params.Set("part", "snippet,contentDetails,statistics")
 	params.Set("id", strings.Join(youtubeIDs, ","))
 	params.Set("key", c.apiKey)
 
@@ -176,12 +186,16 @@ func (c *Client) getGeneratedTracks(
 			thumbnailURL = item.Snippet.Thumbnails.Default.URL
 		}
 
+		viewCount, _ := strconv.ParseUint(item.Statistics.ViewCount, 10, 64)
+		likeCount, _ := strconv.ParseUint(item.Statistics.LikeCount, 10, 64)
 		tracks[item.ID] = vibe.GeneratedTrack{
 			YouTubeID:    item.ID,
 			Title:        html.UnescapeString(item.Snippet.Title),
 			Artist:       html.UnescapeString(item.Snippet.ChannelTitle),
 			ThumbnailURL: thumbnailURL,
 			Duration:     durationSeconds,
+			ViewCount:    viewCount,
+			LikeCount:    likeCount,
 		}
 	}
 

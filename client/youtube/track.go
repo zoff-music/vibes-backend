@@ -68,6 +68,7 @@ type videoItem struct {
 	ID             string              `json:"id"`
 	Snippet        videoSnippet        `json:"snippet"`
 	ContentDetails videoContentDetails `json:"contentDetails"`
+	Statistics     videoStatistics     `json:"statistics"`
 }
 
 type videoSnippet struct {
@@ -79,4 +80,9 @@ type videoSnippet struct {
 
 type videoContentDetails struct {
 	Duration string `json:"duration"`
+}
+
+type videoStatistics struct {
+	ViewCount string `json:"viewCount"`
+	LikeCount string `json:"likeCount"`
 }
