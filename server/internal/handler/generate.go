@@ -106,13 +106,10 @@ func CreateGeneratedRoom(
 		}
 		if hasActiveGeneration {
 			w.Header().Set("Retry-After", roomGenerationBusyRetryAfterSeconds)
-			busyError := internalerror.ErrRoomGenerationBusy{
-				Err: fmt.Errorf("error active room generation already exists"),
-			}
 			handleError(
 				w,
 				client.ErrorCodeWrapper{
-					Err: busyError,
+					Err: fmt.Errorf("error active room generation already exists"),
 					ResponseBody: client.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "room_generation_busy",
