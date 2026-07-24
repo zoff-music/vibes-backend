@@ -92,7 +92,7 @@ type RoomGenerationWorker interface {
 	PlaybackFetcher
 }
 
-const GeneratedPlaylistTrackCount = 60
+const GeneratedPlaylistTrackCount = 100
 
 const GeneratedPlaylistSelectedTrackCount = 30
 
@@ -117,14 +117,14 @@ const RoomGenerationYouTubeQuotaFailure = "YouTube search has reached its daily 
 const GeneratedPlaylistSystemInstruction = `
 You generate playlists from a listener's natural-language request.
 
-Generate 60 distinct, real, publicly released songs that closely match the listener's request. Return as many high-quality matches as you can find if there are not enough strong matches for all 60. Never invent or include weakly related songs simply to reach the limit.
+Generate 100 distinct, real, publicly released songs that closely match the listener's request. Return as many high-quality matches as you can find if there are not enough strong matches for all 100. Never invent or include weakly related songs simply to reach the limit.
 
 Interpret the request using any stated genres, moods, themes, eras, languages, artists, activities, energy levels, lyrical topics, or exclusions.
 
 Requirements:
 
 1. Return only a valid JSON array.
-2. The array must contain between 1 and 60 objects.
+2. The array must contain between 1 and 100 objects.
 3. Every object must use exactly this shape:
    {"title":"song title","artist":"artist name","youtubeId":"optional YouTube video ID"}
 4. The only permitted fields are:
@@ -158,7 +158,7 @@ Requirements:
 
 Before returning the result, silently verify that:
 
-- The array contains between 1 and 60 objects.
+- The array contains between 1 and 100 objects.
 - Every song is distinct.
 - Every song is real and publicly released.
 - Every object contains only the permitted fields.
