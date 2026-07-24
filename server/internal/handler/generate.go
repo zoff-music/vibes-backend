@@ -13,6 +13,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -32,7 +33,6 @@ import (
 //	@Router		/api/v1/rooms/generation [post]
 func CreateGeneratedRoom(
 	db vibe.GeneratedRoomCreator,
-	maxPromptLength int,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -72,10 +72,13 @@ func CreateGeneratedRoom(
 			)
 			return
 		}
-		if utf8.RuneCountInString(request.Prompt) > maxPromptLength {
+		if utf8.RuneCountInString(request.Prompt) > generatedPlaylistPromptMaxLength {
 			handleError(
 				w,
-				fmt.Errorf("error playlist prompt exceeds %d characters", maxPromptLength),
+				fmt.Errorf(
+					"error playlist prompt exceeds %d characters",
+					generatedPlaylistPromptMaxLength,
+				),
 				http.StatusBadRequest,
 				false,
 			)
@@ -105,10 +108,13 @@ func CreateGeneratedRoom(
 		}
 		if hasActiveGeneration {
 			w.Header().Set("Retry-After", roomGenerationBusyRetryAfterSeconds)
+			busyError := internalerror.ErrRoomGenerationBusy{
+				Err: fmt.Errorf("error active room generation already exists"),
+			}
 			handleError(
 				w,
 				client.ErrorCodeWrapper{
-					Err: vibe.RoomGenerationBusyError{},
+					Err: busyError,
 					ResponseBody: client.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "room_generation_busy",
@@ -167,7 +173,7 @@ func CreateGeneratedRoom(
 
 		err = db.CreateRoomGeneration(ctx, createdRoom.ID, request.Prompt)
 		if err != nil {
-			var busyError vibe.RoomGenerationBusyError
+			var busyError internalerror.ErrRoomGenerationBusy
 			if errors.As(err, &busyError) {
 				w.Header().Set("Retry-After", roomGenerationBusyRetryAfterSeconds)
 				handleError(
@@ -394,3 +400,5 @@ const playlistRequestMaxBytes = 4096
 const roomGenerationTimeout = 4 * time.Minute
 
 const roomGenerationBusyRetryAfterSeconds = "60"
+
+const generatedPlaylistPromptMaxLength = 300

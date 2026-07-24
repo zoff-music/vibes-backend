@@ -48,10 +48,9 @@ type Config struct {
 	SpotifyRedirectURI  string `envconfig:"SPOTIFY_REDIRECT_URI" default:"https://127.0.0.1/api/v1/callbacks/spotify"`
 
 	// Grok configuration
-	GrokAPIKey        string `envconfig:"GROK_API_KEY" default:""`
-	GrokEndpoint      string `envconfig:"GROK_ENDPOINT" default:"https://api.x.ai/v1"`
-	AIModel           string `envconfig:"AI_MODEL" default:"grok-4.3"`
-	AIPromptMaxLength int    `envconfig:"AI_PROMPT_MAX_LENGTH" default:"300"`
+	GrokAPIKey   string `envconfig:"GROK_API_KEY" default:""`
+	GrokEndpoint string `envconfig:"GROK_ENDPOINT" default:"https://api.x.ai/v1"`
+	AIModel      string `envconfig:"AI_MODEL" default:"grok-4.3"`
 
 	// User session settings
 	UserInactivityTimeout time.Duration `envconfig:"USER_INACTIVITY_TIMEOUT" default:"30m"`

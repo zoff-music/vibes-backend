@@ -34,12 +34,6 @@ type RoomGeneration struct {
 	Exhausted bool
 }
 
-type RoomGenerationBusyError struct{}
-
-func (e RoomGenerationBusyError) Error() string {
-	return "error room generation is busy"
-}
-
 type PlaylistGenerator interface {
 	GeneratePlaylist(ctx context.Context, prompt string) (*GeneratedPlaylist, error)
 }

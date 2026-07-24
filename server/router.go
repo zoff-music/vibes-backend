@@ -23,7 +23,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms", handler.CreateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
 	api.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
 	if s.Grok.Enabled {
-		api.HandleFunc("/rooms/generation", handler.CreateGeneratedRoom(s.DB, s.Config.AIPromptMaxLength)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoom")
+		api.HandleFunc("/rooms/generation", handler.CreateGeneratedRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoom")
 	}
 	api.HandleFunc("/rooms/{id}", handler.RoomExists(s.DB)).Methods(http.MethodHead).Name("RoomExists")
 	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoom")

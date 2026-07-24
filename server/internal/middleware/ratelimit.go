@@ -63,6 +63,29 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
+		if policy.GlobalLimit > 0 {
+			globalRequest := vibe.RateLimitRequest{
+				RouteName:      routeName,
+				IdentityHash:   rateLimitGlobalIdentity,
+				IPIdentityHash: rateLimitGlobalIdentity,
+				Rate:           policy.GlobalRate,
+				Limit:          policy.GlobalLimit,
+				IPLimit:        policy.GlobalLimit,
+			}
+			globalResult, err := m.Checker.CheckRateLimit(r.Context(), globalRequest)
+			if err != nil {
+				log.Printf("RateLimitMiddleware: error checking global limit for route %s: %v", routeName, err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
+			if !globalResult.Allowed {
+				retryAfter := max(globalResult.RetryAfter, time.Second)
+				retryAfterSeconds := (retryAfter + time.Second - 1) / time.Second
+				w.Header().Set("Retry-After", strconv.FormatInt(int64(retryAfterSeconds), 10))
+				http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
+				return
+			}
+		}
 
 		session, hasSession := helper.GetSessionFromContext(r.Context())
 		clientIP := rateLimitClientIP(r)
@@ -80,8 +103,6 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			Rate:           policy.Rate,
 			Limit:          policy.Limit,
 			IPLimit:        ipLimit,
-			GlobalRate:     policy.GlobalRate,
-			GlobalLimit:    policy.GlobalLimit,
 		}
 		result, err := m.Checker.CheckRateLimit(r.Context(), request)
 		if err != nil {
@@ -149,3 +170,5 @@ const rateLimitDefaultLimit = 60
 const rateLimitRequestOriginHeader = "X-Vibes-Request-Origin"
 
 const rateLimitExternalRequestOrigin = "external"
+
+const rateLimitGlobalIdentity = "ZOFF:GLOBAL"

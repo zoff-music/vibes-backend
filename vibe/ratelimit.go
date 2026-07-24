@@ -20,8 +20,6 @@ type RateLimitRequest struct {
 	Rate           time.Duration
 	Limit          int
 	IPLimit        int
-	GlobalRate     time.Duration
-	GlobalLimit    int
 }
 
 type RateLimitResult struct {

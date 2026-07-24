@@ -84,7 +84,9 @@ func (c *Client) CreateRoomGeneration(
 		var postgresError *pgconn.PgError
 		if errors.As(err, &postgresError) &&
 			postgresError.ConstraintName == roomGenerationSingleActiveConstraint {
-			return fmt.Errorf("error active room generation already exists: %w", vibe.RoomGenerationBusyError{})
+			return internalerror.ErrRoomGenerationBusy{
+				Err: fmt.Errorf("error creating room generation: %w", err),
+			}
 		}
 
 		return fmt.Errorf("error creating room generation: %w", err)
@@ -159,13 +161,8 @@ func (c *Client) ProcessNextRoomGeneration(
 
 	row := c.ProcessNextRoomGenerationStatement.QueryRowContext(cctx)
 
-	var generation vibe.RoomGeneration
-	err := row.Scan(
-		&generation.RoomID,
-		&generation.Prompt,
-		&generation.Attempt,
-		&generation.Exhausted,
-	)
+	var generationRow roomGenerationRow
+	err := generationRow.scan(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, internalerror.ErrExpected{
@@ -178,7 +175,32 @@ func (c *Client) ProcessNextRoomGeneration(
 		return nil, fmt.Errorf("error scanning room generation: %w", err)
 	}
 
-	return &generation, nil
+	return generationRow.toRoomGeneration(), nil
+}
+
+type roomGenerationRow struct {
+	RoomID    sql.NullString
+	Prompt    sql.NullString
+	Attempt   sql.NullInt64
+	Exhausted sql.NullBool
+}
+
+func (r *roomGenerationRow) scan(row *sql.Row) error {
+	return row.Scan(
+		&r.RoomID,
+		&r.Prompt,
+		&r.Attempt,
+		&r.Exhausted,
+	)
+}
+
+func (r *roomGenerationRow) toRoomGeneration() *vibe.RoomGeneration {
+	return &vibe.RoomGeneration{
+		RoomID:    r.RoomID.String,
+		Prompt:    r.Prompt.String,
+		Attempt:   int(r.Attempt.Int64),
+		Exhausted: r.Exhausted.Bool,
+	}
 }
 
 func (c *Client) prepareDeleteRoomGenerationStmt() error {

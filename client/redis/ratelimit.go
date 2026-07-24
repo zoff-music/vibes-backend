@@ -26,57 +26,57 @@ func (c *Client) CheckRateLimit(ctx context.Context, request vibe.RateLimitReque
 
 	identityKey := c.getKeyWithPrefix(fmt.Sprintf("ratelimit:identity:{%s}:%s", request.IdentityHash, request.RouteName))
 	ipKey := c.getKeyWithPrefix(fmt.Sprintf("ratelimit:ip:{%s}:%s", request.IPIdentityHash, request.RouteName))
-	globalKey := c.getKeyWithPrefix(fmt.Sprintf("ratelimit:global:%s", request.RouteName))
-	member := uuid.NewString()
-	expirationMilliseconds := max(request.Rate.Milliseconds(), int64(1))
-	globalExpirationMilliseconds := max(request.GlobalRate.Milliseconds(), int64(1))
-	allowed, err := redis.Int(redis.DoContext(
-		connection,
-		cctx,
-		"EVAL",
-		rateLimitScript,
-		3,
-		identityKey,
-		ipKey,
-		globalKey,
-		member,
-		expirationMilliseconds,
-		request.Limit,
-		request.IPLimit,
-		globalExpirationMilliseconds,
-		request.GlobalLimit,
-	))
+
+	identityCount, err := getRateLimitCount(cctx, connection, identityKey)
 	if err != nil {
-		return nil, fmt.Errorf("error checking and setting rate limit: %w", err)
+		return nil, fmt.Errorf("error counting identity rate limits: %w", err)
 	}
-	if allowed == rateLimitDenied {
+	if identityCount >= int64(request.Limit) {
 		return &vibe.RateLimitResult{RetryAfter: request.Rate}, nil
 	}
-	if allowed == rateLimitGlobalDenied {
-		return &vibe.RateLimitResult{RetryAfter: request.GlobalRate}, nil
+
+	ipCount, err := getRateLimitCount(cctx, connection, ipKey)
+	if err != nil {
+		return nil, fmt.Errorf("error counting IP rate limits: %w", err)
+	}
+	if ipCount >= int64(request.IPLimit) {
+		return &vibe.RateLimitResult{RetryAfter: request.Rate}, nil
+	}
+
+	member := uuid.NewString()
+	err = setRateLimit(cctx, connection, identityKey, member, request.Rate)
+	if err != nil {
+		return nil, fmt.Errorf("error setting identity rate limit: %w", err)
+	}
+	err = setRateLimit(cctx, connection, ipKey, member, request.Rate)
+	if err != nil {
+		return nil, fmt.Errorf("error setting IP rate limit: %w", err)
 	}
 
 	return &vibe.RateLimitResult{Allowed: true}, nil
 }
 
-const rateLimitScript = `
-if redis.call("HLEN", KEYS[1]) >= tonumber(ARGV[3]) then
-	return 0
-end
-if redis.call("HLEN", KEYS[2]) >= tonumber(ARGV[4]) then
-	return 0
-end
-if tonumber(ARGV[6]) > 0 and redis.call("HLEN", KEYS[3]) >= tonumber(ARGV[6]) then
-	return 2
-end
-redis.call("HSETEX", KEYS[1], "PX", ARGV[2], "FIELDS", 1, ARGV[1], 1)
-redis.call("HSETEX", KEYS[2], "PX", ARGV[2], "FIELDS", 1, ARGV[1], 1)
-if tonumber(ARGV[6]) > 0 then
-	redis.call("HSETEX", KEYS[3], "PX", ARGV[5], "FIELDS", 1, ARGV[1], 1)
-end
-return 1
-`
+func getRateLimitCount(ctx context.Context, connection redis.Conn, key string) (int64, error) {
+	count, err := redis.Int64(redis.DoContext(connection, ctx, "HLEN", key))
+	if err != nil {
+		return 0, fmt.Errorf("error getting redis hash length: %w", err)
+	}
 
-const rateLimitDenied = 0
+	return count, nil
+}
 
-const rateLimitGlobalDenied = 2
+func setRateLimit(
+	ctx context.Context,
+	connection redis.Conn,
+	key string,
+	member string,
+	expiration time.Duration,
+) error {
+	expirationMilliseconds := max(expiration.Milliseconds(), int64(1))
+	_, err := redis.DoContext(connection, ctx, "HSETEX", key, "PX", expirationMilliseconds, "FIELDS", 1, member, 1)
+	if err != nil {
+		return fmt.Errorf("error setting expiring redis hash field: %w", err)
+	}
+
+	return nil
+}
