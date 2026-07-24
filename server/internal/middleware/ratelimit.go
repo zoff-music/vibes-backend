@@ -28,6 +28,11 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
+		if r.Header.Get(rateLimitRequestOriginHeader) != rateLimitExternalRequestOrigin {
+			next.ServeHTTP(w, r)
+			return
+		}
+
 		routeName := mux.CurrentRoute(r).GetName()
 		policy, ok := m.Policies[routeName]
 		if !ok {
@@ -132,3 +137,7 @@ const rateLimitIPMultiplier = 10
 const rateLimitDefaultRate = time.Minute
 
 const rateLimitDefaultLimit = 60
+
+const rateLimitRequestOriginHeader = "X-Vibes-Request-Origin"
+
+const rateLimitExternalRequestOrigin = "external"
