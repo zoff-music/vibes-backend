@@ -47,7 +47,7 @@ func (s *CachedYouTubeSearch) GetMusicTracks() []MusicTrack {
 	return tracks
 }
 
-func (s CachedYouTubeSearch) SetMusicTracks(tracks []MusicTrack) CachedYouTubeSearch {
+func (s CachedYouTubeSearch) FromMusicTracks(tracks []MusicTrack) CachedYouTubeSearch {
 	s.Tracks = make([]CachedYouTubeTrack, 0, len(tracks))
 	for index := range tracks {
 		s.Tracks = append(
