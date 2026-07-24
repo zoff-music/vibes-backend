@@ -133,13 +133,20 @@ func (c *Client) prepareGetRoomStmt() error {
 			b.allow_duplicates,
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
-			b.only_admin_add_songs
+			b.only_admin_add_songs,
+			d.room_id IS NOT NULL AND (
+				SELECT COUNT(*)
+				FROM songs e
+				WHERE e.room_id = a.id
+			) <= 2 AS is_generating
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
 		LEFT JOIN room_users c
 		ON c.room_id = a.id
 		AND c.id = $2
+		LEFT JOIN room_generations d
+		ON d.room_id = a.id
 		WHERE a.id = $1
 	`)
 	if err != nil {
@@ -238,13 +245,20 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 			b.allow_duplicates,
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
-			b.only_admin_add_songs
+			b.only_admin_add_songs,
+			d.room_id IS NOT NULL AND (
+				SELECT COUNT(*)
+				FROM songs e
+				WHERE e.room_id = a.id
+			) <= 2 AS is_generating
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
 		LEFT JOIN room_users c
 		ON c.room_id = a.id
 		AND c.id = $2
+		LEFT JOIN room_generations d
+		ON d.room_id = a.id
 		WHERE a.name = $1
 	`)
 	if err != nil {
@@ -410,6 +424,7 @@ type roomRow struct {
 	IsRequesterAdmin  sql.NullBool
 	EnabledSources    sql.NullString
 	OnlyAdminAddSongs sql.NullBool
+	IsGenerating      sql.NullBool
 }
 
 func (r *roomRow) scanRow(row *sql.Row) error {
@@ -430,6 +445,7 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.IsRequesterAdmin,
 		&r.EnabledSources,
 		&r.OnlyAdminAddSongs,
+		&r.IsGenerating,
 	)
 }
 
@@ -449,6 +465,7 @@ func (r *roomRow) toRoom() (*vibe.Room, error) {
 		IsAdmin:           r.IsRequesterAdmin.Bool,
 		Settings:          *settings,
 		CreatedAt:         r.CreatedAt.Time,
+		IsGenerating:      r.IsGenerating.Bool,
 	}, nil
 }
 

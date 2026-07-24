@@ -37,6 +37,8 @@ Copy and configure the environment file:
 # - RATE_LIMIT_ENABLED (optional, defaults to false)
 # - REDIS_URL (required when rate limiting is enabled)
 # - YOUTUBE_API_KEY (required)
+# - GROK_API_KEY (required for AI-generated rooms)
+# - AI_MODEL (optional, defaults to grok-4.3)
 # - SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET (optional)
 # - SOUNDCLOUD_CLIENT_ID, SOUNDCLOUD_CLIENT_SECRET (optional)
 ```

@@ -174,6 +174,10 @@ func (c *Client) UpdateAdminRoom(ctx context.Context, roomID string, request vib
 
 func (c *Client) prepareDeleteAdminRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
+		WITH deleted_generation_q AS (
+			DELETE FROM room_generations
+			WHERE room_id = $1
+		)
 		DELETE FROM rooms a
 		WHERE a.id = $1
 	`)

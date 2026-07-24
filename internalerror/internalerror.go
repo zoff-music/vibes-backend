@@ -110,6 +110,19 @@ func (e ErrMissingAdminPassword) Unwrap() error {
 	return e.Err
 }
 
+// ErrRoomGenerationBusy is an error type for when another room generation is active.
+type ErrRoomGenerationBusy struct {
+	Err error
+}
+
+func (e ErrRoomGenerationBusy) Error() string {
+	return fmt.Sprintf("error room generation busy: %v", e.Err)
+}
+
+func (e ErrRoomGenerationBusy) Unwrap() error {
+	return e.Err
+}
+
 // ErrCastTokenInvalid is an error type for errors where a cast token is malformed or has an invalid signature.
 type ErrCastTokenInvalid struct {
 	Err error
