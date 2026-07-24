@@ -43,7 +43,10 @@ func CreateGeneratedRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error reading playlist request: %w", err),
+				fmt.Errorf(
+					"error reading playlist request in CreateGeneratedRoom handler: %w",
+					err,
+				),
 				http.StatusBadRequest,
 				false,
 			)
@@ -55,7 +58,10 @@ func CreateGeneratedRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error decoding playlist request: %w", err),
+				fmt.Errorf(
+					"error decoding playlist request in CreateGeneratedRoom handler: %w",
+					err,
+				),
 				http.StatusBadRequest,
 				false,
 			)
@@ -66,7 +72,9 @@ func CreateGeneratedRoom(
 		if request.Prompt == "" {
 			handleError(
 				w,
-				fmt.Errorf("error playlist prompt is required"),
+				fmt.Errorf(
+					"error validating playlist request in CreateGeneratedRoom handler: prompt is required",
+				),
 				http.StatusBadRequest,
 				false,
 			)
@@ -76,7 +84,7 @@ func CreateGeneratedRoom(
 			handleError(
 				w,
 				fmt.Errorf(
-					"error playlist prompt exceeds %d characters",
+					"error validating playlist request in CreateGeneratedRoom handler: prompt exceeds %d characters",
 					generatedPlaylistPromptMaxLength,
 				),
 				http.StatusBadRequest,
@@ -89,7 +97,9 @@ func CreateGeneratedRoom(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("error generated room session is missing"),
+				fmt.Errorf(
+					"error getting session in CreateGeneratedRoom handler: session is missing",
+				),
 				http.StatusUnauthorized,
 				false,
 			)
@@ -100,7 +110,10 @@ func CreateGeneratedRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error checking active room generation: %w", err),
+				fmt.Errorf(
+					"error checking active room generation in CreateGeneratedRoom handler: %w",
+					err,
+				),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -111,7 +124,9 @@ func CreateGeneratedRoom(
 			handleError(
 				w,
 				client.ErrorCodeWrapper{
-					Err: fmt.Errorf("error active room generation already exists"),
+					Err: fmt.Errorf(
+						"error validating room generation in CreateGeneratedRoom handler: active generation already exists",
+					),
 					ResponseBody: client.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "room_generation_busy",
@@ -130,7 +145,10 @@ func CreateGeneratedRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error generating room name candidates: %w", err),
+				fmt.Errorf(
+					"error generating room name candidates in CreateGeneratedRoom handler: %w",
+					err,
+				),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -140,7 +158,10 @@ func CreateGeneratedRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error suggesting generated room name: %w", err),
+				fmt.Errorf(
+					"error suggesting generated room name in CreateGeneratedRoom handler: %w",
+					err,
+				),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -161,7 +182,10 @@ func CreateGeneratedRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error creating generated room: %w", err),
+				fmt.Errorf(
+					"error creating generated room in CreateGeneratedRoom handler: %w",
+					err,
+				),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -213,7 +237,10 @@ func CreateGeneratedRoom(
 
 			handleError(
 				w,
-				fmt.Errorf("error queueing room generation: %w", err),
+				fmt.Errorf(
+					"error queueing room generation in CreateGeneratedRoom handler: %w",
+					err,
+				),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -226,7 +253,10 @@ func CreateGeneratedRoom(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error marshaling generated room: %w", err),
+				fmt.Errorf(
+					"error marshaling generated room in CreateGeneratedRoom handler: %w",
+					err,
+				),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -412,7 +442,10 @@ type GenerateRoomPlaylist struct {
 func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 	generation, err := h.DB.ProcessNextRoomGeneration(ctx)
 	if err != nil {
-		return fmt.Errorf("error processing next room generation: %w", err)
+		return fmt.Errorf(
+			"error processing next room generation in Handle: %w",
+			err,
+		)
 	}
 	if generation.Exhausted {
 		update := vibe.RoomGenerationUpdate{
@@ -421,29 +454,40 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		}
 		payload, err := json.Marshal(update)
 		if err != nil {
-			return fmt.Errorf("error marshaling failed room generation update: %w", err)
+			return fmt.Errorf(
+				"error marshaling failed room generation update in Handle: %w",
+				err,
+			)
 		}
 		err = h.IPS.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
 			Type:    vibe.GenerationUpdate,
 			Payload: payload,
 		})
 		if err != nil {
-			return fmt.Errorf("error notifying exhausted room generation: %w", err)
+			return fmt.Errorf(
+				"error notifying exhausted room generation in Handle: %w",
+				err,
+			)
 		}
 		return nil
 	}
 
 	room, err := h.DB.GetRoom(ctx, generation.RoomID, "")
 	if err != nil {
-		return fmt.Errorf("error getting room for generation: %w", err)
+		return fmt.Errorf(
+			"error getting room for generation in Handle: %w",
+			err,
+		)
 	}
 	if room.IsEmpty() {
-		return fmt.Errorf("error room for generation is empty")
+		return fmt.Errorf(
+			"error getting room for generation in Handle: room is empty",
+		)
 	}
 
 	playlist, err := h.AI.GeneratePlaylist(ctx, generation.Prompt)
 	if err != nil {
-		return fmt.Errorf("error generating playlist: %w", err)
+		return fmt.Errorf("error generating playlist in Handle: %w", err)
 	}
 
 	queries := make([]string, 0, len(*playlist))
@@ -477,7 +521,10 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 				vibe.RoomGenerationYouTubeQuotaFailure,
 			)
 			if err != nil {
-				return fmt.Errorf("error failing room generation after youtube quota exhaustion: %w", err)
+				return fmt.Errorf(
+					"error failing room generation after youtube quota exhaustion in Handle: %w",
+					err,
+				)
 			}
 
 			update := vibe.RoomGenerationUpdate{
@@ -486,24 +533,36 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 			}
 			payload, err := json.Marshal(update)
 			if err != nil {
-				return fmt.Errorf("error marshaling youtube quota room generation update: %w", err)
+				return fmt.Errorf(
+					"error marshaling youtube quota room generation update in Handle: %w",
+					err,
+				)
 			}
 			err = h.IPS.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
 				Type:    vibe.GenerationUpdate,
 				Payload: payload,
 			})
 			if err != nil {
-				return fmt.Errorf("error notifying youtube quota room generation failure: %w", err)
+				return fmt.Errorf(
+					"error notifying youtube quota room generation failure in Handle: %w",
+					err,
+				)
 			}
 
 			return internalerror.ErrExpected{
 				Err: internalerror.ErrNonRecoverable{
-					Err: fmt.Errorf("error youtube search quota exhausted: %w", quotaError),
+					Err: fmt.Errorf(
+						"error checking youtube search quota in Handle: %w",
+						quotaError,
+					),
 				},
 			}
 		}
 
-		return fmt.Errorf("error searching generated playlist: %w", err)
+		return fmt.Errorf(
+			"error searching generated playlist in Handle: %w",
+			err,
+		)
 	}
 	err = h.Cache.CacheSearches(
 		ctx,
@@ -517,7 +576,10 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 
 	playbackState, err := h.DB.GetPlaybackState(ctx, room.ID)
 	if err != nil {
-		return fmt.Errorf("error getting generated room playback: %w", err)
+		return fmt.Errorf(
+			"error getting generated room playback in Handle: %w",
+			err,
+		)
 	}
 	shouldStartPlayback := playbackState.CurrentSong == nil
 
@@ -537,7 +599,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 
 		addedSong, err := h.DB.AddGeneratedSong(ctx, song)
 		if err != nil {
-			return fmt.Errorf("error adding generated song: %w", err)
+			return fmt.Errorf("error adding generated song in Handle: %w", err)
 		}
 		if addedSong.IsEmpty() {
 			continue
@@ -545,7 +607,10 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 
 		songPayload, err := json.Marshal(addedSong)
 		if err != nil {
-			return fmt.Errorf("error marshaling generated song: %w", err)
+			return fmt.Errorf(
+				"error marshaling generated song in Handle: %w",
+				err,
+			)
 		}
 
 		err = h.IPS.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
@@ -553,7 +618,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 			Payload: songPayload,
 		})
 		if err != nil {
-			return fmt.Errorf("error notifying generated song: %w", err)
+			return fmt.Errorf("error notifying generated song in Handle: %w", err)
 		}
 
 		if shouldStartPlayback {
@@ -567,19 +632,28 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 			}
 			err = h.DB.UpsertPlaybackState(ctx, playbackState)
 			if err != nil {
-				return fmt.Errorf("error starting generated room playback: %w", err)
+				return fmt.Errorf(
+					"error starting generated room playback in Handle: %w",
+					err,
+				)
 			}
 
 			playbackPayload, err := json.Marshal(playbackState)
 			if err != nil {
-				return fmt.Errorf("error marshaling generated room playback: %w", err)
+				return fmt.Errorf(
+					"error marshaling generated room playback in Handle: %w",
+					err,
+				)
 			}
 			err = h.IPS.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
 			})
 			if err != nil {
-				return fmt.Errorf("error notifying generated room playback: %w", err)
+				return fmt.Errorf(
+					"error notifying generated room playback in Handle: %w",
+					err,
+				)
 			}
 			shouldStartPlayback = false
 		}
@@ -587,7 +661,10 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 
 	err = h.DB.CompleteRoomGeneration(ctx, generation.RoomID)
 	if err != nil {
-		return fmt.Errorf("error completing room generation: %w", err)
+		return fmt.Errorf(
+			"error completing room generation in Handle: %w",
+			err,
+		)
 	}
 
 	update := vibe.RoomGenerationUpdate{
@@ -595,14 +672,20 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 	}
 	payload, err := json.Marshal(update)
 	if err != nil {
-		return fmt.Errorf("error marshaling completed room generation update: %w", err)
+		return fmt.Errorf(
+			"error marshaling completed room generation update in Handle: %w",
+			err,
+		)
 	}
 	err = h.IPS.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
 		Type:    vibe.GenerationUpdate,
 		Payload: payload,
 	})
 	if err != nil {
-		return fmt.Errorf("error notifying completed room generation: %w", err)
+		return fmt.Errorf(
+			"error notifying completed room generation in Handle: %w",
+			err,
+		)
 	}
 
 	return nil

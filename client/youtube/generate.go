@@ -28,7 +28,9 @@ func (c *Client) SearchGeneratedPlaylist(
 	defer span.End()
 
 	if c.apiKey == "" {
-		return nil, fmt.Errorf("error youtube api key not configured")
+		return nil, fmt.Errorf(
+			"error validating youtube API key in SearchGeneratedPlaylist: not configured",
+		)
 	}
 
 	cachedSearchesByQuery := make(
@@ -56,7 +58,10 @@ func (c *Client) SearchGeneratedPlaylist(
 
 	tracksByID, err := c.getGeneratedTracks(ctx, youtubeIDs)
 	if err != nil {
-		return nil, fmt.Errorf("error getting generated tracks by ID: %w", err)
+		return nil, fmt.Errorf(
+			"error getting generated tracks by ID in SearchGeneratedPlaylist: %w",
+			err,
+		)
 	}
 
 	found := make(
@@ -143,7 +148,10 @@ func (c *Client) SearchGeneratedPlaylist(
 				fallbackSearchErr = err
 				break
 			}
-			return nil, fmt.Errorf("error searching generated track: %w", err)
+			return nil, fmt.Errorf(
+				"error searching generated track in SearchGeneratedPlaylist: %w",
+				err,
+			)
 		}
 		candidateIDs := make([]string, 0, len(result.Items))
 		for _, item := range result.Items {
@@ -160,7 +168,10 @@ func (c *Client) SearchGeneratedPlaylist(
 
 	fallbackTracksByID, err := c.getGeneratedTracks(ctx, fallbackIDs)
 	if err != nil {
-		return nil, fmt.Errorf("error getting fallback generated tracks: %w", err)
+		return nil, fmt.Errorf(
+			"error getting fallback generated tracks in SearchGeneratedPlaylist: %w",
+			err,
+		)
 	}
 	for _, search := range fallbackSearches {
 		cachedTracks := make(
@@ -196,9 +207,14 @@ func (c *Client) SearchGeneratedPlaylist(
 
 	if len(found) == 0 {
 		if fallbackSearchErr != nil {
-			return nil, fmt.Errorf("error searching generated playlist: %w", fallbackSearchErr)
+			return nil, fmt.Errorf(
+				"error searching generated playlist in SearchGeneratedPlaylist: %w",
+				fallbackSearchErr,
+			)
 		}
-		return nil, fmt.Errorf("error no generated songs found on youtube")
+		return nil, fmt.Errorf(
+			"error finding generated songs in SearchGeneratedPlaylist: no songs found on youtube",
+		)
 	}
 
 	slices.SortStableFunc(found, func(a, b vibe.GeneratedTrack) int {
@@ -254,13 +270,19 @@ func (c *Client) getGeneratedTracks(
 			Payload: &params,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("error requesting youtube generated track details: %w", err)
+			return nil, fmt.Errorf(
+				"error requesting youtube generated track details in getGeneratedTracks: %w",
+				err,
+			)
 		}
 
 		var response videoResponse
 		err = json.Unmarshal(responseBody, &response)
 		if err != nil {
-			return nil, fmt.Errorf("error unmarshaling youtube generated track details: %w", err)
+			return nil, fmt.Errorf(
+				"error unmarshaling youtube generated track details in getGeneratedTracks: %w",
+				err,
+			)
 		}
 
 		for _, item := range response.Items {
@@ -299,7 +321,10 @@ func (c *Client) getGeneratedTracks(
 
 func youtubeDurationSeconds(value string) (int, error) {
 	if !strings.HasPrefix(value, "PT") {
-		return 0, fmt.Errorf("error unsupported youtube duration %q", value)
+		return 0, fmt.Errorf(
+			"error validating youtube duration in youtubeDurationSeconds: unsupported value %q",
+			value,
+		)
 	}
 
 	duration := strings.TrimPrefix(value, "PT")
@@ -311,12 +336,19 @@ func youtubeDurationSeconds(value string) (int, error) {
 			continue
 		}
 		if number == "" {
-			return 0, fmt.Errorf("error invalid youtube duration %q", value)
+			return 0, fmt.Errorf(
+				"error validating youtube duration in youtubeDurationSeconds: invalid value %q",
+				value,
+			)
 		}
 
 		amount, err := strconv.Atoi(number)
 		if err != nil {
-			return 0, fmt.Errorf("error parsing youtube duration %q: %w", value, err)
+			return 0, fmt.Errorf(
+				"error parsing youtube duration in youtubeDurationSeconds for %q: %w",
+				value,
+				err,
+			)
 		}
 		switch character {
 		case 'H':
@@ -326,12 +358,18 @@ func youtubeDurationSeconds(value string) (int, error) {
 		case 'S':
 			totalSeconds += amount
 		default:
-			return 0, fmt.Errorf("error unsupported youtube duration unit %q", character)
+			return 0, fmt.Errorf(
+				"error validating youtube duration in youtubeDurationSeconds: unsupported unit %q",
+				character,
+			)
 		}
 		number = ""
 	}
 	if number != "" {
-		return 0, fmt.Errorf("error incomplete youtube duration %q", value)
+		return 0, fmt.Errorf(
+			"error validating youtube duration in youtubeDurationSeconds: incomplete value %q",
+			value,
+		)
 	}
 
 	return totalSeconds, nil

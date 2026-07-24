@@ -461,8 +461,8 @@ func AdminEvents(
 
 		rooms, err := db.ListAdminRooms(ctx)
 		if err == nil {
-			payload, marshalErr := json.Marshal(rooms)
-			if marshalErr == nil {
+			payload, err := json.Marshal(rooms)
+			if err == nil {
 				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.AdminRoomsUpdate, payload)
 				flusher.Flush()
 			}

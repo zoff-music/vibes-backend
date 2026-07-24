@@ -19,20 +19,15 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	defer span.End()
 
 	if !c.Enabled {
-		return nil, fmt.Errorf("error soundcloud client is not enabled")
+		return nil, fmt.Errorf(
+			"error validating soundcloud client in Search: client is not enabled",
+		)
 	}
 
 	// Ensure valid access token
 	err := c.EnsureToken(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error ensuring token in Search: %w", err)
-	}
-
-	if len(c.accessToken) > 5 {
-		fmt.Printf("DEBUG: Access key is valid: %s...\n", c.accessToken[:5])
-	}
-	if len(c.accessToken) <= 5 {
-		fmt.Printf("DEBUG: Access key is invalid/short: %s\n", c.accessToken)
 	}
 
 	params := url.Values{}
@@ -46,20 +41,25 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		Payload: &params,
 		Headers: map[string]string{
 			"Authorization": fmt.Sprintf("OAuth %s", c.accessToken),
+			"Accept":        "application/json; charset=utf-8",
 		},
 	}
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
-		return nil, fmt.Errorf("error request failed: %w", err)
+		return nil, fmt.Errorf(
+			"error requesting soundcloud tracks in Search: %w",
+			err,
+		)
 	}
 
 	var results []trackResponse
 	err = json.Unmarshal(resp, &results)
 	if err != nil {
-		// Log error and raw response for debugging
-		fmt.Printf("ERROR: SoundCloud search failed to decode: %v\nResponse: %s\n", err, string(resp))
-		return nil, fmt.Errorf("error decoding response: %w", err)
+		return nil, fmt.Errorf(
+			"error decoding soundcloud response in Search: %w",
+			err,
+		)
 	}
 
 	tracks := make([]vibe.MusicTrack, 0, len(results))
