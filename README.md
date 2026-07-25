@@ -38,6 +38,7 @@ Copy and configure the environment file:
 # - REDIS_URL (required when rate limiting is enabled)
 # - YOUTUBE_API_KEY (required)
 # - GROK_API_KEY (required for AI-generated rooms)
+# - GEMINI_API_KEY (optional; Gemini client is initialized but not active)
 # - AI_MODEL (optional, defaults to grok-4.3)
 # - SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET (optional)
 # - SOUNDCLOUD_CLIENT_ID, SOUNDCLOUD_CLIENT_SECRET (optional)

@@ -52,6 +52,10 @@ type Config struct {
 	GrokEndpoint string `envconfig:"GROK_ENDPOINT" default:"https://api.x.ai/v1"`
 	AIModel      string `envconfig:"AI_MODEL" default:"grok-4.3"`
 
+	// Gemini configuration
+	GeminiAPIKey   string `envconfig:"GEMINI_API_KEY" default:""`
+	GeminiEndpoint string `envconfig:"GEMINI_ENDPOINT" default:"https://generativelanguage.googleapis.com/v1beta/openai"`
+
 	// User session settings
 	UserInactivityTimeout time.Duration `envconfig:"USER_INACTIVITY_TIMEOUT" default:"30m"`
 	CookieSecret          string        `envconfig:"COOKIE_SECRET" default:"vibes-default-secret-change-me"`

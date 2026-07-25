@@ -17,6 +17,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/client/database"
+	"github.com/zoff-music/vibes-backend/client/gemini"
 	"github.com/zoff-music/vibes-backend/client/grok"
 	"github.com/zoff-music/vibes-backend/client/internalpubsub"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
@@ -40,6 +41,7 @@ type Server struct {
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
 	Spotify        *spotify.Client
+	Gemini         *gemini.Client
 	Grok           *grok.Client
 	Router         *mux.Router
 	InternalRouter *mux.Router
@@ -89,6 +91,12 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("error initializing grok client: %w", err)
 	}
 
+	var geminiClient gemini.Client
+	err = geminiClient.Init(ctx, config)
+	if err != nil {
+		return fmt.Errorf("error initializing gemini client: %w", err)
+	}
+
 	var redisClient redisclient.Client
 	if config.RateLimitEnabled || config.RedisURL != "" {
 		err = redisClient.Init(ctx, config)
@@ -104,6 +112,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
 	s.Spotify = &spotifyClient
+	s.Gemini = &geminiClient
 	s.Grok = &grokClient
 	s.Router = mux.NewRouter()
 	s.InternalRouter = mux.NewRouter()
