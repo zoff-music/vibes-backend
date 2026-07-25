@@ -230,9 +230,11 @@ func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
 		s.DB,
 		s.Redis,
 		s.InternalPubSub,
+		s.SoundCloud,
 		s.Spotify,
 		s.YouTube,
 		s.Grok,
+		s.Config.EnabledProviders(),
 	) {
 		go func(e event.AppEvent) {
 			e.SubscribeAndListen(ctx)

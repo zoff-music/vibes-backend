@@ -46,6 +46,19 @@ func (e ErrProviderQuotaExceeded) Unwrap() error {
 	return e.Err
 }
 
+// ErrMusicTrackNotFound indicates that a provider no longer returns a track.
+type ErrMusicTrackNotFound struct {
+	Err error
+}
+
+func (e ErrMusicTrackNotFound) Error() string {
+	return fmt.Sprintf("error music track not found: %v", e.Err)
+}
+
+func (e ErrMusicTrackNotFound) Unwrap() error {
+	return e.Err
+}
+
 // ErrAlreadyVoted is an error type for errors where a user has already voted on a song.
 type ErrAlreadyVoted struct {
 	Err error

@@ -3,11 +3,13 @@ package spotify
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -39,6 +41,27 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
+		var statusCodeError client.HTTPStatusCodeError
+		if errors.As(err, &statusCodeError) {
+			if statusCodeError.StatusCode == http.StatusNotFound {
+				return nil, internalerror.ErrMusicTrackNotFound{
+					Err: fmt.Errorf(
+						"error getting spotify track in GetTrack: track %s not found",
+						id,
+					),
+				}
+			}
+			if statusCodeError.StatusCode == http.StatusTooManyRequests {
+				return nil, internalerror.ErrProviderQuotaExceeded{
+					Err: fmt.Errorf(
+						"error requesting spotify track in GetTrack: %w",
+						err,
+					),
+					Provider: string(vibe.SourceTypeSpotify),
+				}
+			}
+		}
+
 		return nil, fmt.Errorf("error requesting spotify track in GetTrack: %w", err)
 	}
 
@@ -59,11 +82,12 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	}
 
 	return &vibe.MusicTrack{
-		ID:           item.ID,
-		Source:       vibe.SourceTypeSpotify,
-		Title:        item.Name,
-		ChannelTitle: strings.Join(artists, ", "),
-		ThumbnailURL: thumbnail,
-		Duration:     fmt.Sprintf("PT%dM%dS", (item.DurationMS/1000)/60, (item.DurationMS/1000)%60),
+		ID:              item.ID,
+		Source:          vibe.SourceTypeSpotify,
+		Title:           item.Name,
+		ChannelTitle:    strings.Join(artists, ", "),
+		ThumbnailURL:    thumbnail,
+		Duration:        fmt.Sprintf("PT%dM%dS", (item.DurationMS/1000)/60, (item.DurationMS/1000)%60),
+		DurationSeconds: item.DurationMS / 1000,
 	}, nil
 }

@@ -88,6 +88,10 @@ func durationISO8601(seconds int) string {
 // MusicSearcher searches for music
 type MusicSearcher interface {
 	Search(ctx context.Context, query string) ([]MusicTrack, error)
+	MusicTrackFetcher
+}
+
+type MusicTrackFetcher interface {
 	GetTrack(ctx context.Context, id string) (*MusicTrack, error)
 }
 

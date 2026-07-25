@@ -40,6 +40,12 @@ type AddSongResult struct {
 	Outcome AddSongOutcome `json:"outcome"`
 }
 
+type SongMetadataRefresh struct {
+	SongID   string
+	RoomID   string
+	SourceID string
+}
+
 // IsEmpty returns true if the song is empty/not found
 func (s *Song) IsEmpty() bool {
 	return s.ID == ""
@@ -58,6 +64,27 @@ type SongAdder interface {
 // SongRemover removes songs from the queue
 type SongRemover interface {
 	RemoveSong(ctx context.Context, roomID, songID string) error
+}
+
+type SongMetadataRefreshStorage interface {
+	ClaimSongMetadataRefresh(
+		ctx context.Context,
+		provider SourceType,
+		retryAfter time.Duration,
+	) (*SongMetadataRefresh, error)
+	RefreshSongMetadata(
+		ctx context.Context,
+		refresh SongMetadataRefresh,
+		track MusicTrack,
+		refreshInterval time.Duration,
+	) error
+	DeferSongMetadataRefresh(
+		ctx context.Context,
+		songID string,
+		retryAfter time.Duration,
+	) error
+	SongRemover
+	SongsFetcher
 }
 
 // SongVoter votes for a song
