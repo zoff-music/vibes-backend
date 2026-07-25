@@ -138,7 +138,7 @@ func (r *songRow) toSong() vibe.Song {
 	return vibe.Song{
 		ID:              r.ID.String,
 		RoomID:          r.RoomID.String,
-		SourceType:      vibe.SourceType(r.SourceType.String),
+		SourceType:      r.SourceType.String,
 		SourceID:        r.SourceID.String,
 		Title:           r.Title.String,
 		Artist:          r.Artist.String,
@@ -248,7 +248,7 @@ func (c *Client) prepareClaimSongMetadataRefreshStmt() error {
 
 func (c *Client) ClaimSongMetadataRefresh(
 	ctx context.Context,
-	provider vibe.SourceType,
+	provider string,
 	retryAfter time.Duration,
 ) (*vibe.SongMetadataRefresh, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ClaimSongMetadataRefresh")
@@ -531,7 +531,7 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongRes
 
 	r := c.AddSongStatement.QueryRowContext(cctx,
 		song.RoomID,
-		string(song.SourceType),
+		song.SourceType,
 		song.SourceID,
 		song.Title,
 		song.Artist,
@@ -557,7 +557,7 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongRes
 		return nil, fmt.Errorf("error adding song in AddSong: provider %s is disabled", song.SourceType)
 	}
 
-	outcome := vibe.AddSongOutcome(row.Result.String)
+	outcome := row.Result.String
 	if outcome != vibe.AddSongOutcomeAdded &&
 		outcome != vibe.AddSongOutcomeDuplicateVoted &&
 		outcome != vibe.AddSongOutcomeDuplicateAlreadyVoted {
@@ -608,7 +608,7 @@ func (r *addSongRow) toSong() vibe.Song {
 	return vibe.Song{
 		ID:              r.ID.String,
 		RoomID:          r.RoomID.String,
-		SourceType:      vibe.SourceType(r.SourceType.String),
+		SourceType:      r.SourceType.String,
 		SourceID:        r.SourceID.String,
 		Title:           r.Title.String,
 		Artist:          r.Artist.String,

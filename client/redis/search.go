@@ -19,7 +19,7 @@ import (
 
 func (c *Client) GetCachedSearches(
 	ctx context.Context,
-	source vibe.SourceType,
+	source string,
 	queries []string,
 ) ([]vibe.CachedSearch, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedSearches")
@@ -82,7 +82,7 @@ func (c *Client) GetCachedSearches(
 
 func (c *Client) CacheSearches(
 	ctx context.Context,
-	source vibe.SourceType,
+	source string,
 	searches []vibe.CachedSearch,
 ) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "CacheSearches")
@@ -143,7 +143,7 @@ func (c *Client) CacheSearches(
 	return nil
 }
 
-func (c *Client) searchCacheKey(source vibe.SourceType, query string) string {
+func (c *Client) searchCacheKey(source string, query string) string {
 	normalizedQuery := normalizeSearch(query)
 	if source == "" || normalizedQuery == "" {
 		return ""

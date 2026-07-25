@@ -5,20 +5,17 @@ import (
 	"fmt"
 )
 
-// SourceType represents the type of music source
-type SourceType string
-
 // MusicTrack represents a generic music track
 type MusicTrack struct {
-	ID              string     `json:"id"`
-	Source          SourceType `json:"source"`
-	Title           string     `json:"title"`
-	ChannelTitle    string     `json:"channelTitle,omitempty"`
-	ThumbnailURL    string     `json:"thumbnailUrl"`
-	Duration        string     `json:"duration,omitempty"` // ISO 8601 duration
-	DurationSeconds int        `json:"durationSeconds,omitempty"`
-	ViewCount       uint64     `json:"viewCount,omitempty"`
-	LikeCount       uint64     `json:"likeCount,omitempty"`
+	ID              string `json:"id"`
+	Source          string `json:"source"`
+	Title           string `json:"title"`
+	ChannelTitle    string `json:"channelTitle,omitempty"`
+	ThumbnailURL    string `json:"thumbnailUrl"`
+	Duration        string `json:"duration,omitempty"` // ISO 8601 duration
+	DurationSeconds int    `json:"durationSeconds,omitempty"`
+	ViewCount       uint64 `json:"viewCount,omitempty"`
+	LikeCount       uint64 `json:"likeCount,omitempty"`
 }
 
 type CachedSearch struct {
@@ -97,7 +94,7 @@ type MusicTrackFetcher interface {
 type CachedSearchFetcher interface {
 	GetCachedSearches(
 		ctx context.Context,
-		source SourceType,
+		source string,
 		queries []string,
 	) ([]CachedSearch, error)
 }
@@ -105,7 +102,7 @@ type CachedSearchFetcher interface {
 type CachedSearchCreator interface {
 	CacheSearches(
 		ctx context.Context,
-		source SourceType,
+		source string,
 		searches []CachedSearch,
 	) error
 }
@@ -115,6 +112,6 @@ type CachedSearchFetcherCreator interface {
 	CachedSearchCreator
 }
 
-const SourceTypeYouTube SourceType = "youtube"
-const SourceTypeSpotify SourceType = "spotify"
-const SourceTypeSoundCloud SourceType = "soundcloud"
+const SourceTypeYouTube = "youtube"
+const SourceTypeSpotify = "spotify"
+const SourceTypeSoundCloud = "soundcloud"

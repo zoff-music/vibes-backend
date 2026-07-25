@@ -15,13 +15,10 @@ type PlaybackState struct {
 	ServerTimeMs int       `json:"serverTimeMs"`
 }
 
-// RoomAction represents a playback action
-type RoomAction string
-
 // RoomActionRequest is the request payload for room actions.
 type RoomActionRequest struct {
-	Action     RoomAction `json:"action"`
-	PositionMs int        `json:"positionMs,omitempty"`
+	Action     string `json:"action"`
+	PositionMs int    `json:"positionMs,omitempty"`
 }
 
 // PlaybackFetcher fetches playback state
@@ -33,7 +30,7 @@ type PlaybackFetcher interface {
 type RoomGetterPlaybackUpdater interface {
 	PlaybackFetcher
 	GetRoom(ctx context.Context, roomID string, userID string) (*Room, error)
-	UpdatePlayback(ctx context.Context, roomID string, userID string, action RoomAction, positionMs int) (*PlaybackState, error)
+	UpdatePlayback(ctx context.Context, roomID string, userID string, action string, positionMs int) (*PlaybackState, error)
 }
 
 // PlaybackController controls playback
