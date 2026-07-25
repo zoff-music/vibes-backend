@@ -30,7 +30,7 @@ func GetAppEvents(
 	soundcloudClient *soundcloud.Client,
 	spotifyClient *spotify.Client,
 	youtubeClient *youtube.Client,
-	playlistGenerator vibe.PlaylistGenerator,
+	ai vibe.PlaylistGenerator,
 	enabledProviders []string,
 ) AppEvents {
 	events := AppEvents{
@@ -38,7 +38,7 @@ func GetAppEvents(
 			Name: "GenerateRoomPlaylist",
 			Rate: 5 * time.Second,
 			Handler: &handler.GenerateRoomPlaylist{
-				AI:       playlistGenerator,
+				AI:       ai,
 				Cache:    redisClient,
 				DB:       db,
 				IPS:      ips,
