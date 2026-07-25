@@ -33,21 +33,18 @@ import (
 
 // Server holds the HTTP server, router, config and all clients.
 type Server struct {
-	Config                    *config.Config
-	HTTP                      *http.Server
-	InternalHTTP              *http.Server
-	DB                        *database.Client
-	Redis                     *redisclient.Client
-	InternalPubSub            *internalpubsub.Client
-	YouTube                   *youtube.Client
-	SoundCloud                *soundcloud.Client
-	Spotify                   *spotify.Client
-	Gemini                    *gemini.Client
-	Grok                      *grok.Client
-	PlaylistGenerator         vibe.PlaylistGenerator
-	PlaylistGenerationEnabled bool
-	Router                    *mux.Router
-	InternalRouter            *mux.Router
+	Config         *config.Config
+	HTTP           *http.Server
+	InternalHTTP   *http.Server
+	DB             *database.Client
+	Redis          *redisclient.Client
+	InternalPubSub *internalpubsub.Client
+	YouTube        *youtube.Client
+	SoundCloud     *soundcloud.Client
+	Spotify        *spotify.Client
+	AI             vibe.PlaylistGenerator
+	Router         *mux.Router
+	InternalRouter *mux.Router
 }
 
 // Create sets up the HTTP server, router and all clients.
@@ -105,15 +102,12 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("error parsing configured AI model: %w", err)
 	}
 
-	var playlistGenerator vibe.PlaylistGenerator
-	var playlistGenerationEnabled bool
+	var ai vibe.PlaylistGenerator
 	switch aiModel.Provider {
 	case vibe.AIProviderGrok:
-		playlistGenerator = &grokClient
-		playlistGenerationEnabled = grokClient.Enabled
+		ai = &grokClient
 	case vibe.AIProviderGemini:
-		playlistGenerator = &geminiClient
-		playlistGenerationEnabled = geminiClient.Enabled
+		ai = &geminiClient
 	}
 
 	var redisClient redisclient.Client
@@ -131,10 +125,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
 	s.Spotify = &spotifyClient
-	s.Gemini = &geminiClient
-	s.Grok = &grokClient
-	s.PlaylistGenerator = playlistGenerator
-	s.PlaylistGenerationEnabled = playlistGenerationEnabled
+	s.AI = ai
 	s.Router = mux.NewRouter()
 	s.InternalRouter = mux.NewRouter()
 	s.HTTP = &http.Server{
@@ -263,7 +254,7 @@ func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
 		s.SoundCloud,
 		s.Spotify,
 		s.YouTube,
-		s.PlaylistGenerator,
+		s.AI,
 		s.Config.EnabledProviders(),
 	) {
 		go func(e event.AppEvent) {
