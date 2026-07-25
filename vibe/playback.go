@@ -51,12 +51,6 @@ type ExpiredPlaybackSongFetcher interface {
 	SongsFetcher
 }
 
-type ExpiredPlaybackSongFetcherAdminRoomLister interface {
-	ExpiredPlaybackProcessor
-	SongsFetcher
-	AdminRoomLister
-}
-
 // AbandonedHostProcessor defines interfaces needed for background host management
 type AbandonedHostProcessor interface {
 	ProcessNextAbandonedHost(ctx context.Context) (*RoomHostInfo, error)

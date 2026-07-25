@@ -28,17 +28,6 @@ type SkipVoteUpdate struct {
 	RequiredVotes int    `json:"requiredVotes"`
 }
 
-// SkipVoteFetcher fetches skip votes
-type SkipVoteFetcher interface {
-	GetSkipVotes(ctx context.Context, roomID, songID string) ([]SkipVote, error)
-	HasUserVoted(ctx context.Context, roomID, songID, userID string) (bool, error)
-}
-
-// SkipVoteAdder adds skip votes.
-type SkipVoteAdder interface {
-	AddSkipVote(ctx context.Context, roomID, songID, userID string) error
-}
-
 // RoomSkipper defines actions related to skipping tracks
 type RoomSkipper interface {
 	GetSongs(ctx context.Context, roomID string) ([]Song, error)

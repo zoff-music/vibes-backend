@@ -119,7 +119,7 @@ type GeneratedSongAdder interface {
 }
 
 type GeneratedRoomCreator interface {
-	RoomNameReserver
+	RoomNameSuggester
 	RoomCreator
 	RoomGenerationCreator
 	RoomGenerationAvailabilityChecker

@@ -17,23 +17,14 @@ type SessionResponse struct {
 	Room      *Room   `json:"room"`
 }
 
-// SessionCreator creates sessions for rooms.
-type SessionCreator interface {
-	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
-	CreateUser(ctx context.Context, user *User) (*User, error)
-}
-
 // AdminAuthResult represents the result of an admin authentication attempt
 type AdminAuthResult struct {
 	IsAdmin          bool
 	IsFirstTimeSetup bool
 }
 
-// SessionCreatorGetter creates sessions for rooms and can get rooms and users.
-type SessionCreatorGetter interface {
+// AdminSessionCreator authenticates an admin and fetches its room.
+type AdminSessionCreator interface {
 	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
-	UpdateRoom(ctx context.Context, room *Room) (*Room, error)
-	CreateUser(ctx context.Context, user *User) (*User, error)
-	GetUser(ctx context.Context, roomID, userID string) (*User, error)
 	AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (*AdminAuthResult, error)
 }
