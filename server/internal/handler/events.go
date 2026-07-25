@@ -35,10 +35,12 @@ func RoomEvents(
 		userID := ""
 		isCastReceiver := false
 		castOwnerID := ""
+		isNewSession := false
 		session, ok := helper.GetSessionFromContext(ctx)
 		if ok {
 			userID = session.UserID
 			isCastReceiver = session.AuthType == "cast"
+			isNewSession = session.IsNew
 			if isCastReceiver {
 				castOwnerID = session.UserID
 			}
@@ -114,11 +116,28 @@ func RoomEvents(
 		fmt.Fprintf(w, "event: connected\ndata: {\"time\": %d}\n\n", time.Now().UnixMilli())
 		flusher.Flush()
 
-		// Update presence on connect and cleanup on disconnect
+		participantRegistered := false
+
+		// Reconnects reuse the participant row from the signed session cookie.
+		// New cookie-less connections must survive one heartbeat before they
+		// become listeners so short probes cannot manufacture participant rows.
 		if userID != "" {
-			_ = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
-			notifyUsers(ctx)
-			defer notifyUsers(context.Background())
+			if !isNewSession {
+				err = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
+				if err != nil {
+					log.Printf("failed to update participant on connect: %v", err)
+				}
+				if err == nil {
+					participantRegistered = true
+					notifyUsers(ctx)
+				}
+			}
+
+			defer func() {
+				if participantRegistered {
+					notifyUsers(context.Background())
+				}
+			}()
 		}
 
 		// Send initial playback state
@@ -162,7 +181,14 @@ func RoomEvents(
 			case <-ticker.C:
 				// Keep-alive heartbeat AND update participant status
 				if userID != "" {
-					_ = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
+					err = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
+					if err != nil {
+						log.Printf("failed to update participant on heartbeat: %v", err)
+					}
+					if err == nil && !participantRegistered {
+						participantRegistered = true
+						notifyUsers(ctx)
+					}
 				}
 
 				fmt.Fprintf(w, ": heartbeat\n\n")
