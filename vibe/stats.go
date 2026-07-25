@@ -5,6 +5,8 @@ import "context"
 // Stats contains public, service-wide usage statistics.
 type Stats struct {
 	TotalListeners int `json:"totalListeners"`
+	TotalSongs     int `json:"totalSongs"`
+	TotalRooms     int `json:"totalRooms"`
 }
 
 // CachedStats contains a stats cache lookup result.
