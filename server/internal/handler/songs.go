@@ -142,7 +142,7 @@ func AddSong(
 
 		sourceEnabled := false
 		for _, source := range room.Settings.EnabledSources {
-			if string(req.SourceType) == source {
+			if req.SourceType == source {
 				sourceEnabled = true
 				break
 			}
@@ -475,7 +475,7 @@ type MetaRefresh struct {
 	DB           vibe.SongMetadataRefreshStorage
 	IPS          vibe.RoomEventNotifier
 	Provider     vibe.MusicTrackFetcher
-	ProviderName vibe.SourceType
+	ProviderName string
 }
 
 func (h *MetaRefresh) Handle(

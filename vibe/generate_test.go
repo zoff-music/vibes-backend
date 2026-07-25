@@ -5,7 +5,7 @@ import "testing"
 type parseAIModelTest struct {
 	name             string
 	value            string
-	expectedProvider AIProvider
+	expectedProvider string
 	expectedModel    string
 	expectedError    string
 }

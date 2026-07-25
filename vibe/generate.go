@@ -28,11 +28,8 @@ func (g *GeneratedTrack) IsEmpty() bool {
 
 type GeneratedPlaylist []GeneratedTrack
 
-// AIProvider identifies the provider selected from AI_MODEL.
-type AIProvider string
-
 type AIModel struct {
-	Provider AIProvider
+	Provider string
 	Name     string
 }
 
@@ -61,7 +58,7 @@ func ParseAIModel(value string) (*AIModel, error) {
 		)
 	}
 
-	provider := AIProvider(strings.ToUpper(strings.TrimSpace(parts[0])))
+	provider := strings.ToUpper(strings.TrimSpace(parts[0]))
 	name := strings.TrimSpace(parts[1])
 	if name == "" {
 		return nil, fmt.Errorf("error parsing AI model %q: model is required", value)
@@ -87,12 +84,9 @@ type GeneratedPlaylistSearchResult struct {
 	CachedSearches []CachedSearch
 }
 
-// RoomGenerationStatus is the generation state sent to frontend clients.
-type RoomGenerationStatus string
-
 type RoomGenerationUpdate struct {
-	Status RoomGenerationStatus `json:"status"`
-	Error  string               `json:"error,omitempty"`
+	Status string `json:"status"`
+	Error  string `json:"error,omitempty"`
 }
 
 type RoomGeneration struct {
@@ -161,15 +155,15 @@ type RoomGenerationWorker interface {
 
 const GeneratedPlaylistTrackCount = 30
 const GeneratedPlaylistSelectedTrackCount = 30
-const AIProviderGrok AIProvider = "GROK"
-const AIProviderGemini AIProvider = "GEMINI"
+const AIProviderGrok = "GROK"
+const AIProviderGemini = "GEMINI"
 const RoomGenerationMaxAttempts = 5
 const RoomGenerationMaxDailyCount = 2
 const RoomGenerationMaxExistingSongs = 5
 const RoomGenerationRetention = 24 * time.Hour
-const RoomGenerationGenerating RoomGenerationStatus = "generating"
-const RoomGenerationCompleted RoomGenerationStatus = "completed"
-const RoomGenerationFailed RoomGenerationStatus = "failed"
+const RoomGenerationGenerating = "generating"
+const RoomGenerationCompleted = "completed"
+const RoomGenerationFailed = "failed"
 const RoomGenerationFailure = "Could not finish generating this playlist. You can try again."
 const RoomGenerationYouTubeQuotaFailure = "YouTube search has reached its daily limit. Try again after midnight Pacific time."
 const GeneratedPlaylistSystemInstruction = `
