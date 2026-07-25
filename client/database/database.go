@@ -95,6 +95,7 @@ type Client struct {
 	SetRoomHostStatement                *sql.Stmt
 	RemoveParticipantStatement          *sql.Stmt
 	DeleteInactiveParticipantsStatement *sql.Stmt
+	GetStatsStatement                   *sql.Stmt
 
 	// Additional room statements
 	GetActiveSourcesStatement *sql.Stmt
@@ -202,6 +203,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareSetRoomHostStmt,
 		c.prepareRemoveParticipantStmt,
 		c.prepareDeleteInactiveParticipantsStmt,
+		c.prepareGetStatsStmt,
 	}
 
 	for _, prepareStmt := range prepareStatements {
@@ -270,6 +272,7 @@ func (c *Client) Close() error {
 		c.SetRoomHostStatement,
 		c.RemoveParticipantStatement,
 		c.DeleteInactiveParticipantsStatement,
+		c.GetStatsStatement,
 		c.GetActiveSourcesStatement,
 		c.GetAdminRoomsStatement,
 		c.UpdateAdminRoomStatement,
