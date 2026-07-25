@@ -68,6 +68,7 @@ func (c *Client) prepareCreateRoomGenerationStmt() error {
 					SELECT COUNT(*)
 					FROM songs b
 					WHERE b.room_id = a.id
+					AND b.source_type = ANY($5::text[])
 				) AS song_count,
 				(
 					SELECT COUNT(*)
@@ -134,6 +135,7 @@ func (c *Client) CreateRoomGeneration(
 		prompt,
 		vibe.RoomGenerationMaxExistingSongs,
 		vibe.RoomGenerationMaxDailyCount,
+		c.enabledProviders,
 	)
 
 	var outcome string
@@ -470,6 +472,7 @@ func (c *Client) AddGeneratedSong(
 		song.AddedByNickname,
 		song.ID,
 		false,
+		c.enabledProviders,
 	)
 
 	var rowData addSongRow
@@ -485,6 +488,12 @@ func (c *Client) AddGeneratedSong(
 		return nil, fmt.Errorf(
 			"error adding generated song in AddGeneratedSong: room %s not found",
 			song.RoomID,
+		)
+	}
+	if rowData.Result.String == addSongResultProviderDisabled {
+		return nil, fmt.Errorf(
+			"error adding generated song in AddGeneratedSong: provider %s is disabled",
+			song.SourceType,
 		)
 	}
 	if vibe.AddSongOutcome(rowData.Result.String) != vibe.AddSongOutcomeAdded {

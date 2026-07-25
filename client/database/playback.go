@@ -289,6 +289,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			ON a.id = b.song_id
 			AND a.room_id = b.room_id
 			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
+			AND a.source_type = ANY($1::text[])
 			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
 			LIMIT 1
@@ -341,7 +342,10 @@ func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.Playback
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.ProcessNextExpiredPlaybackStatement.QueryRowContext(cctx)
+	r := c.ProcessNextExpiredPlaybackStatement.QueryRowContext(
+		cctx,
+		c.enabledProviders,
+	)
 
 	var row playbackSongRow
 	err := row.scan(r)
@@ -495,6 +499,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 			ON a.id = b.song_id
 			AND a.room_id = b.room_id
 			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
+			AND a.source_type = ANY($2::text[])
 			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
 			LIMIT 1
@@ -548,7 +553,11 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.SkipTrackStatement.QueryRowContext(cctx, roomID)
+	r := c.SkipTrackStatement.QueryRowContext(
+		cctx,
+		roomID,
+		c.enabledProviders,
+	)
 
 	var row playbackSongRow
 	err := row.scan(r)
@@ -631,7 +640,16 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			SELECT a.room_id
 			FROM playback_state a
 			WHERE a.room_id = $1
-			AND a.current_song_id IS NULL
+			AND (
+				a.current_song_id IS NULL
+				OR NOT EXISTS (
+					SELECT 1
+					FROM songs b
+					WHERE b.room_id = a.room_id
+					AND b.id = a.current_song_id
+					AND b.source_type = ANY($2::text[])
+				)
+			)
 			FOR UPDATE OF a SKIP LOCKED
 		),
 		next_song_q AS (
@@ -653,6 +671,7 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			LEFT JOIN song_votes b
 			ON a.id = b.song_id
 			AND a.room_id = b.room_id
+			WHERE a.source_type = ANY($2::text[])
 			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 			LIMIT 1
@@ -660,11 +679,11 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 		updated_playback_q AS (
 			UPDATE playback_state a
 			SET current_song_id = b.id,
-			is_playing = TRUE,
+			is_playing = b.id IS NOT NULL,
 			position_ms = 0,
 			updated_at = NOW()
 			FROM locked_playback_q c
-			JOIN next_song_q b ON b.room_id = c.room_id
+			LEFT JOIN next_song_q b ON b.room_id = c.room_id
 			WHERE a.room_id = c.room_id
 			RETURNING a.room_id, a.current_song_id, a.is_playing, a.position_ms, a.updated_at
 		)
@@ -705,7 +724,11 @@ func (c *Client) startPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.StartPlaybackIfIdleStatement.QueryRowContext(cctx, roomID)
+	r := c.StartPlaybackIfIdleStatement.QueryRowContext(
+		cctx,
+		roomID,
+		c.enabledProviders,
+	)
 
 	var row playbackSongRow
 	err := row.scan(r)

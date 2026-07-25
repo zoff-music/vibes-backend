@@ -65,6 +65,23 @@ type Config struct {
 	CORSAllowedOrigins string `envconfig:"CORS_ALLOWED_ORIGINS" default:""`
 }
 
+// EnabledProviders returns the music providers configured for use.
+func (c *Config) EnabledProviders() []string {
+	providers := []string{}
+
+	if c.SpotifyClientID != "" && c.SpotifyClientSecret != "" {
+		providers = append(providers, "spotify")
+	}
+	if c.YouTubeAPIKey != "" {
+		providers = append(providers, "youtube")
+	}
+	if c.SoundCloudClientID != "" {
+		providers = append(providers, "soundcloud")
+	}
+
+	return providers
+}
+
 // LoadConfig reads environment variables and populates Config.
 func LoadConfig() (*Config, error) {
 	// Try loading from current directory and parent directory (monorepo root)

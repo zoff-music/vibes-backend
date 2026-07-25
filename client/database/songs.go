@@ -34,6 +34,7 @@ func (c *Client) prepareGetSongsStmt() error {
 		ON a.id = b.song_id
 		AND a.room_id = b.room_id
 		WHERE a.room_id = $1
+		AND a.source_type = ANY($2::text[])
 		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 		ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 	`)
@@ -54,7 +55,11 @@ func (c *Client) GetSongs(ctx context.Context, roomID string) ([]vibe.Song, erro
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	rows, err := c.GetSongsStatement.QueryContext(cctx, roomID)
+	rows, err := c.GetSongsStatement.QueryContext(
+		cctx,
+		roomID,
+		c.enabledProviders,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching songs: %w", err)
 	}
@@ -168,6 +173,7 @@ func (c *Client) prepareGetSongStmt() error {
 		AND a.room_id = b.room_id
 		WHERE a.room_id = $1
 		AND a.id = $2
+		AND a.source_type = ANY($3::text[])
 		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 	`)
 	if err != nil {
@@ -187,7 +193,12 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.GetSongStatement.QueryRowContext(cctx, roomID, songID)
+	r := c.GetSongStatement.QueryRowContext(
+		cctx,
+		roomID,
+		songID,
+		c.enabledProviders,
+	)
 
 	var row songRow
 	err := row.scan(r)
@@ -213,6 +224,7 @@ func (c *Client) prepareAddSongStmt() error {
 			FROM rooms a
 			LEFT JOIN room_settings b ON b.room_id = a.id
 			WHERE a.id = $1
+			AND $2 = ANY($12::text[])
 			FOR KEY SHARE OF a
 		),
 		upserted_song_q AS (
@@ -295,7 +307,10 @@ func (c *Client) prepareAddSongStmt() error {
 		FROM upserted_song_q a
 		UNION ALL
 		SELECT
-			'room_not_found' AS result,
+			CASE
+				WHEN $2 = ANY($12::text[]) THEN 'room_not_found'
+				ELSE 'provider_disabled'
+			END AS result,
 			NULL::TEXT AS id,
 			NULL::TEXT AS room_id,
 			NULL::TEXT AS source_type,
@@ -339,6 +354,7 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongRes
 		song.AddedByNickname,
 		song.ID,
 		true,
+		c.enabledProviders,
 	)
 
 	var row addSongRow
@@ -349,6 +365,9 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongRes
 
 	if row.Result.String == addSongResultRoomNotFound {
 		return nil, fmt.Errorf("error adding song in AddSong: room %s not found", song.RoomID)
+	}
+	if row.Result.String == addSongResultProviderDisabled {
+		return nil, fmt.Errorf("error adding song in AddSong: provider %s is disabled", song.SourceType)
 	}
 
 	outcome := vibe.AddSongOutcome(row.Result.String)
@@ -620,3 +639,5 @@ const voteSongCreated = "created"
 const voteSongNotFound = "song_not_found"
 
 const addSongResultRoomNotFound = "room_not_found"
+
+const addSongResultProviderDisabled = "provider_disabled"
