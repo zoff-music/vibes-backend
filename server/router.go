@@ -112,12 +112,10 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"VoteSong":            {Rate: time.Minute, Limit: 120},
 			"RoomEvents":          {Rate: time.Minute, Limit: 30},
 			"SearchMusic": {
-				Bucket:      "YouTubeSearch",
-				Rate:        time.Second,
-				Limit:       1,
-				IPLimit:     3,
-				GlobalRate:  24 * time.Hour,
-				GlobalLimit: 80,
+				Bucket:  "YouTubeSearch",
+				Rate:    time.Second,
+				Limit:   1,
+				IPLimit: 3,
 			},
 			"GetMusicTrack": {Rate: time.Minute, Limit: 120},
 			"SearchSoundCloud": {
