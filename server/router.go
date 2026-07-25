@@ -69,6 +69,9 @@ func (s *Server) setupRoutes() {
 	// Config routes
 	api.HandleFunc("/providers", handler.GetProviders(s.Config)).Methods(http.MethodGet, http.MethodOptions).Name("GetProviders")
 
+	// Stats routes
+	api.HandleFunc("/stats", handler.GetStats(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("GetStats")
+
 	// Cast token endpoint (cookie-auth only)
 	api.HandleFunc("/tokens/casting", handler.CreateCastingToken(s.DB, s.Config.CastTokenSecret)).Methods(http.MethodPost, http.MethodOptions).Name("CreateCastingToken")
 
@@ -166,6 +169,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"SoundCloudCallback": {Rate: 10 * time.Minute, Limit: 30},
 			"YouTubeCallback":    {Rate: 10 * time.Minute, Limit: 30},
 			"GetProviders":       {Rate: time.Minute, Limit: 120},
+			"GetStats":           {Rate: time.Minute, Limit: 600},
 			"CreateCastingToken": {Rate: time.Minute, Limit: 30},
 			"AdminLogin":         {Rate: 10 * time.Minute, Limit: 5},
 			"AdminLogout":        {Rate: time.Minute, Limit: 20},
