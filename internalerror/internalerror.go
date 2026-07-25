@@ -137,6 +137,19 @@ func (e ErrMissingAdminPassword) Unwrap() error {
 	return e.Err
 }
 
+// ErrRoomNameUnavailable is an error type for unavailable or expired room names.
+type ErrRoomNameUnavailable struct {
+	Err error
+}
+
+func (e ErrRoomNameUnavailable) Error() string {
+	return fmt.Sprintf("error room name unavailable: %v", e.Err)
+}
+
+func (e ErrRoomNameUnavailable) Unwrap() error {
+	return e.Err
+}
+
 // ErrRoomGenerationBusy is an error type for when another room generation is active.
 type ErrRoomGenerationBusy struct {
 	Err error

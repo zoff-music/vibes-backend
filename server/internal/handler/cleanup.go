@@ -150,6 +150,30 @@ func (h *CleanupRoomGenerations) Handle(ctx context.Context, _ []byte) error {
 	return nil
 }
 
+// CleanupRoomNameReservations cleans up expired room name reservations.
+type CleanupRoomNameReservations struct {
+	DB vibe.RoomNameReservationDeleter
+}
+
+func (h *CleanupRoomNameReservations) Handle(
+	ctx context.Context,
+	_ []byte,
+) error {
+	deleted, err := h.DB.DeleteExpiredRoomNameReservations(ctx)
+	if err != nil {
+		return fmt.Errorf(
+			"error deleting expired room name reservations in CleanupRoomNameReservations.Handle: %w",
+			err,
+		)
+	}
+
+	if deleted > 0 {
+		log.Printf("Cleaned up %d expired room name reservations", deleted)
+	}
+
+	return nil
+}
+
 // Handle deletes expired pending OAuth states
 func (h *CleanupExpiredPendingOAuthStates) Handle(ctx context.Context, _ []byte) error {
 	deleted, err := h.DB.DeleteExpiredPendingOAuthStates(ctx)

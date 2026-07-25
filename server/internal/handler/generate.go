@@ -141,25 +141,16 @@ func CreateGeneratedRoom(
 			return
 		}
 
-		candidates, err := vibe.GenerateRoomNameCandidates()
+		reservation, err := db.ReserveSuggestedRoomName(ctx, session.UserID)
 		if err != nil {
+			if handleRoomNameUnavailable(w, err) {
+				return
+			}
+
 			handleError(
 				w,
 				fmt.Errorf(
-					"error generating room name candidates in CreateGeneratedRoom handler: %w",
-					err,
-				),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
-		}
-		suggestion, err := db.SuggestRoomName(ctx, candidates)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf(
-					"error suggesting generated room name in CreateGeneratedRoom handler: %w",
+					"error reserving generated room name in CreateGeneratedRoom handler: %w",
 					err,
 				),
 				http.StatusInternalServerError,
@@ -170,16 +161,20 @@ func CreateGeneratedRoom(
 
 		settings := vibe.DefaultRoomSettings()
 		room := vibe.Room{
-			ID:            helper.Slugify(suggestion.Name),
-			Name:          suggestion.Name,
+			ID:            helper.Slugify(reservation.Name),
+			Name:          reservation.Name,
 			Mode:          vibe.RoomModeServer,
 			HostID:        session.UserID,
 			Settings:      settings,
 			CreatedAt:     time.Now(),
 			ActiveSources: settings.EnabledSources,
 		}
-		createdRoom, err := db.CreateRoom(ctx, &room)
+		createdRoom, err := db.CreateRoom(ctx, &room, reservation.Token)
 		if err != nil {
+			if handleRoomNameUnavailable(w, err) {
+				return
+			}
+
 			handleError(
 				w,
 				fmt.Errorf(
