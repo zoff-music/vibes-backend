@@ -10,7 +10,7 @@ type SkipVote struct {
 
 // SkipSongResult describes the result of a skip request.
 type SkipSongResult struct {
-	Action        RoomAction     `json:"action"`
+	Action        string         `json:"action"`
 	Skipped       bool           `json:"skipped"`
 	Voted         bool           `json:"voted"`
 	AlreadyVoted  bool           `json:"alreadyVoted"`

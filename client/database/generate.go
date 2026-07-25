@@ -462,7 +462,7 @@ func (c *Client) AddGeneratedSong(
 	row := c.AddSongStatement.QueryRowContext(
 		cctx,
 		song.RoomID,
-		string(song.SourceType),
+		song.SourceType,
 		song.SourceID,
 		song.Title,
 		song.Artist,
@@ -496,7 +496,7 @@ func (c *Client) AddGeneratedSong(
 			song.SourceType,
 		)
 	}
-	if vibe.AddSongOutcome(rowData.Result.String) != vibe.AddSongOutcomeAdded {
+	if rowData.Result.String != vibe.AddSongOutcomeAdded {
 		return &vibe.Song{}, nil
 	}
 
