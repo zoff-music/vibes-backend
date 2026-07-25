@@ -11,7 +11,7 @@ import (
 
 // CleanupInactiveParticipants cleans up inactive participants
 type CleanupInactiveParticipants struct {
-	DB vibe.ParticipantStorage
+	DB vibe.InactiveParticipantDeleter
 }
 
 // Handle deletes participants who haven't been seen in 1 hour

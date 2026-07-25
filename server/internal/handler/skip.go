@@ -28,7 +28,7 @@ import (
 //	@Router		/api/v1/rooms/{id}/skips [post]
 func SkipSong(
 	db vibe.RoomSkipper,
-	ips vibe.RoomBatchEventAdminNotifier,
+	ips vibe.RoomBatchEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
