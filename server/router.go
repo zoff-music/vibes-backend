@@ -114,8 +114,8 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"SearchMusic": {
 				Bucket:      "YouTubeSearch",
 				Rate:        time.Minute,
-				Limit:       5,
-				IPLimit:     10,
+				Limit:       10,
+				IPLimit:     20,
 				GlobalRate:  24 * time.Hour,
 				GlobalLimit: 80,
 			},
