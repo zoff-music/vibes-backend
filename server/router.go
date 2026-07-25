@@ -22,10 +22,8 @@ func (s *Server) setupRoutes() {
 	// Room routes
 	api.HandleFunc("/rooms", handler.CreateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
 	api.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
-	if s.PlaylistGenerationEnabled {
-		api.HandleFunc("/rooms/generation", handler.CreateGeneratedRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoom")
-		api.HandleFunc("/rooms/{id}/generations", handler.CreateRoomGeneration(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomGeneration")
-	}
+	api.HandleFunc("/rooms/generation", handler.CreateGeneratedRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoom")
+	api.HandleFunc("/rooms/{id}/generations", handler.CreateRoomGeneration(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomGeneration")
 	api.HandleFunc("/rooms/{id}", handler.RoomExists(s.DB)).Methods(http.MethodHead).Name("RoomExists")
 	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoom")
 	api.HandleFunc("/rooms/{id}/settings", handler.UpdateRoomSettings(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoomSettings")
