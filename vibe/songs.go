@@ -7,37 +7,34 @@ import (
 
 // Song represents a song in the queue
 type Song struct {
-	ID              string     `json:"id"`
-	RoomID          string     `json:"-"`
-	SourceType      SourceType `json:"sourceType"`
-	SourceID        string     `json:"sourceId"`
-	Title           string     `json:"title"`
-	Artist          string     `json:"artist,omitempty"`
-	ThumbnailURL    string     `json:"thumbnailUrl"`
-	Duration        int        `json:"duration"`
-	AddedBy         string     `json:"addedBy"`
-	AddedByNickname string     `json:"addedByNickname,omitempty"`
-	AddedAt         time.Time  `json:"addedAt"`
-	VoteCount       int        `json:"voteCount"`
+	ID              string    `json:"id"`
+	RoomID          string    `json:"-"`
+	SourceType      string    `json:"sourceType"`
+	SourceID        string    `json:"sourceId"`
+	Title           string    `json:"title"`
+	Artist          string    `json:"artist,omitempty"`
+	ThumbnailURL    string    `json:"thumbnailUrl"`
+	Duration        int       `json:"duration"`
+	AddedBy         string    `json:"addedBy"`
+	AddedByNickname string    `json:"addedByNickname,omitempty"`
+	AddedAt         time.Time `json:"addedAt"`
+	VoteCount       int       `json:"voteCount"`
 }
 
 // AddSongRequest is the request payload for adding a song.
 type AddSongRequest struct {
-	SourceType SourceType `json:"sourceType"`
-	SourceID   string     `json:"sourceId"`
-	Title      string     `json:"title"`
-	Artist     string     `json:"artist,omitempty"`
-	Thumbnail  string     `json:"thumbnailUrl"`
-	Duration   int        `json:"duration"`
+	SourceType string `json:"sourceType"`
+	SourceID   string `json:"sourceId"`
+	Title      string `json:"title"`
+	Artist     string `json:"artist,omitempty"`
+	Thumbnail  string `json:"thumbnailUrl"`
+	Duration   int    `json:"duration"`
 }
-
-// AddSongOutcome describes whether a song was added or an existing song was voted on.
-type AddSongOutcome string
 
 // AddSongResult is the result of adding a song or voting on an existing duplicate.
 type AddSongResult struct {
-	Song    Song           `json:"song"`
-	Outcome AddSongOutcome `json:"outcome"`
+	Song    Song   `json:"song"`
+	Outcome string `json:"outcome"`
 }
 
 type SongMetadataRefresh struct {
@@ -69,7 +66,7 @@ type SongRemover interface {
 type SongMetadataRefreshStorage interface {
 	ClaimSongMetadataRefresh(
 		ctx context.Context,
-		provider SourceType,
+		provider string,
 		retryAfter time.Duration,
 	) (*SongMetadataRefresh, error)
 	RefreshSongMetadata(
@@ -113,6 +110,6 @@ type SongQueueVoter interface {
 	SongsFetcher
 }
 
-const AddSongOutcomeAdded AddSongOutcome = "added"
-const AddSongOutcomeDuplicateVoted AddSongOutcome = "duplicate_voted"
-const AddSongOutcomeDuplicateAlreadyVoted AddSongOutcome = "duplicate_already_voted"
+const AddSongOutcomeAdded = "added"
+const AddSongOutcomeDuplicateVoted = "duplicate_voted"
+const AddSongOutcomeDuplicateAlreadyVoted = "duplicate_already_voted"

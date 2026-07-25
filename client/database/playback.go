@@ -581,7 +581,7 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 }
 
 // UpdatePlayback updates the playback state based on the action (play/pause/seek).
-func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID string, action vibe.RoomAction, positionMs int) (*vibe.PlaybackState, error) {
+func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID string, action string, positionMs int) (*vibe.PlaybackState, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "UpdatePlayback")
 	defer span.End()
 

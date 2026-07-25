@@ -123,7 +123,7 @@ func GetAppEvents(
 	}
 
 	for _, provider := range enabledProviders {
-		switch vibe.SourceType(provider) {
+		switch provider {
 		case vibe.SourceTypeYouTube:
 			events = append(events, AppEvent{
 				Name: "MetaRefreshYouTube",
