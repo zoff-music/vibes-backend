@@ -28,6 +28,7 @@ func (c *Client) prepareGetAdminRoomsStmt() error {
 				COUNT(*) AS song_count,
 				STRING_AGG(DISTINCT a.source_type, ',') AS active_sources
 			FROM songs a
+			WHERE a.source_type = ANY($2::text[])
 			GROUP BY a.room_id
 		)
 		SELECT
@@ -58,7 +59,11 @@ func (c *Client) ListAdminRooms(ctx context.Context) ([]vibe.AdminRoomSummary, e
 	defer cancel()
 
 	cutoff := time.Now().Add(-15 * time.Second)
-	rows, err := c.GetAdminRoomsStatement.QueryContext(cctx, cutoff)
+	rows, err := c.GetAdminRoomsStatement.QueryContext(
+		cctx,
+		cutoff,
+		c.enabledProviders,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching admin rooms: %w", err)
 	}
