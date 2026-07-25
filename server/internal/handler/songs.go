@@ -588,7 +588,5 @@ func (h *MetaRefresh) Handle(
 }
 
 const metadataRefreshInterval = 21 * 24 * time.Hour
-
 const metadataRefreshRetry = 5 * time.Minute
-
 const metadataQuotaRetry = 24 * time.Hour

@@ -103,7 +103,5 @@ type SongController interface {
 }
 
 const AddSongOutcomeAdded AddSongOutcome = "added"
-
 const AddSongOutcomeDuplicateVoted AddSongOutcome = "duplicate_voted"
-
 const AddSongOutcomeDuplicateAlreadyVoted AddSongOutcome = "duplicate_already_voted"

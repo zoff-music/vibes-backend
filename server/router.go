@@ -246,5 +246,4 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 }
 
 const v1API string = "/api/v1"
-
 const swaggerAPI string = "/api/swagger"

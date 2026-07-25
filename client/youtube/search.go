@@ -249,9 +249,6 @@ type thumbnail struct {
 }
 
 const youtubeProvider = "youtube"
-
 const youtubeQuotaLocation = "America/Los_Angeles"
-
 const youtubeSearchDisplayCount = 15
-
 const youtubeSearchResultCount = 25
