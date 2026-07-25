@@ -38,13 +38,16 @@ type Client struct {
 	DeleteExpiredRoomGenerationsStatement *sql.Stmt
 
 	// Song statements
-	GetSongsStatement          *sql.Stmt
-	GetSongStatement           *sql.Stmt
-	AddSongStatement           *sql.Stmt
-	RemoveSongStatement        *sql.Stmt
-	VoteSongStatement          *sql.Stmt
-	ClearVotesSongStatement    *sql.Stmt
-	UpdateSongAddedAtStatement *sql.Stmt
+	GetSongsStatement                 *sql.Stmt
+	GetSongStatement                  *sql.Stmt
+	AddSongStatement                  *sql.Stmt
+	RemoveSongStatement               *sql.Stmt
+	VoteSongStatement                 *sql.Stmt
+	ClearVotesSongStatement           *sql.Stmt
+	UpdateSongAddedAtStatement        *sql.Stmt
+	ClaimSongMetadataRefreshStatement *sql.Stmt
+	RefreshSongMetadataStatement      *sql.Stmt
+	DeferSongMetadataRefreshStatement *sql.Stmt
 
 	// Playback statements
 	GetPlaybackStateStatement           *sql.Stmt
@@ -153,6 +156,9 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareVoteSongStmt,
 		c.prepareClearVotesSongStmt,
 		c.prepareUpdateSongAddedAtStmt,
+		c.prepareClaimSongMetadataRefreshStmt,
+		c.prepareRefreshSongMetadataStmt,
+		c.prepareDeferSongMetadataRefreshStmt,
 		// Playback statements
 		c.prepareGetPlaybackStateStmt,
 		c.prepareUpsertPlaybackStateStmt,
@@ -222,6 +228,9 @@ func (c *Client) Close() error {
 		c.VoteSongStatement,
 		c.ClearVotesSongStatement,
 		c.UpdateSongAddedAtStatement,
+		c.ClaimSongMetadataRefreshStatement,
+		c.RefreshSongMetadataStatement,
+		c.DeferSongMetadataRefreshStatement,
 		c.GetPlaybackStateStatement,
 		c.UpsertPlaybackStateStatement,
 		c.SkipTrackStatement,
