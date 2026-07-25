@@ -820,11 +820,7 @@ func (c *Client) updateSongAddedAt(ctx context.Context, roomID, songID string) e
 }
 
 const voteSongAlreadyVoted = "already_voted"
-
 const voteSongCreated = "created"
-
 const voteSongNotFound = "song_not_found"
-
 const addSongResultRoomNotFound = "room_not_found"
-
 const addSongResultProviderDisabled = "provider_disabled"

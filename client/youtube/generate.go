@@ -379,13 +379,8 @@ func youtubeDurationSeconds(value string) (int, error) {
 }
 
 const youtubeMusicCategoryID = "10"
-
 const youtubeZeroDuration = "P0D"
-
 const generatedTrackMaxDurationSeconds = 20 * 60
-
 const generatedTrackSearchResults = 5
-
 const generatedPlaylistFallbackSearchLimit = 5
-
 const youtubeVideoBatchSize = 50

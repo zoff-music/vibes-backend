@@ -28,6 +28,7 @@ func (g *GeneratedTrack) IsEmpty() bool {
 
 type GeneratedPlaylist []GeneratedTrack
 
+// AIProvider identifies the provider selected from AI_MODEL.
 type AIProvider string
 
 type AIModel struct {
@@ -86,6 +87,7 @@ type GeneratedPlaylistSearchResult struct {
 	CachedSearches []CachedSearch
 }
 
+// RoomGenerationStatus is the generation state sent to frontend clients.
 type RoomGenerationStatus string
 
 type RoomGenerationUpdate struct {
@@ -158,31 +160,18 @@ type RoomGenerationWorker interface {
 }
 
 const GeneratedPlaylistTrackCount = 30
-
 const GeneratedPlaylistSelectedTrackCount = 30
-
 const AIProviderGrok AIProvider = "GROK"
-
 const AIProviderGemini AIProvider = "GEMINI"
-
 const RoomGenerationMaxAttempts = 5
-
 const RoomGenerationMaxDailyCount = 2
-
 const RoomGenerationMaxExistingSongs = 5
-
 const RoomGenerationRetention = 24 * time.Hour
-
 const RoomGenerationGenerating RoomGenerationStatus = "generating"
-
 const RoomGenerationCompleted RoomGenerationStatus = "completed"
-
 const RoomGenerationFailed RoomGenerationStatus = "failed"
-
 const RoomGenerationFailure = "Could not finish generating this playlist. You can try again."
-
 const RoomGenerationYouTubeQuotaFailure = "YouTube search has reached its daily limit. Try again after midnight Pacific time."
-
 const GeneratedPlaylistSystemInstruction = `
 You generate playlists from a listener's natural-language request.
 

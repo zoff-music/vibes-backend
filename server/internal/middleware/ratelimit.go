@@ -208,13 +208,8 @@ func hashRateLimitIdentity(parts ...string) string {
 }
 
 const rateLimitIPMultiplier = 10
-
 const rateLimitDefaultRate = time.Minute
-
 const rateLimitDefaultLimit = 60
-
 const rateLimitRequestOriginHeader = "X-Vibes-Request-Origin"
-
 const rateLimitExternalRequestOrigin = "external"
-
 const rateLimitGlobalIdentity = "ZOFF:GLOBAL"

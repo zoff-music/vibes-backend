@@ -196,9 +196,6 @@ func (m *SessionMiddleware) unsign(value string) (string, bool) {
 }
 
 const sessionCookieName = "session"
-
 const embedSessionCookieName = "embed_session"
-
 const embedRequestHeader = "X-Zoff-Embed"
-
 const embedRequestHeaderValue = "true"

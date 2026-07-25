@@ -506,9 +506,6 @@ func (c *Client) AddGeneratedSong(
 }
 
 const createRoomGenerationCreated = "created"
-
 const createRoomGenerationDailyLimit = "daily_limit"
-
 const createRoomGenerationSongLimit = "song_limit"
-
 const roomGenerationSingleActiveConstraint = "room_generations_single_active_idx"
