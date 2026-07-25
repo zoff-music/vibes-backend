@@ -115,6 +115,11 @@ type RoomNameReserver interface {
 		name string,
 		ownerID string,
 	) (*RoomNameReservation, error)
+	RoomNameSuggester
+}
+
+// RoomNameSuggester reserves a generated room name.
+type RoomNameSuggester interface {
 	ReserveSuggestedRoomName(
 		ctx context.Context,
 		ownerID string,
@@ -140,10 +145,10 @@ type RoomCreator interface {
 	) (*Room, error)
 }
 
-type RoomCreatorAdminRoomLister interface {
+// RoomCreatorExistenceChecker checks availability and creates a room.
+type RoomCreatorExistenceChecker interface {
 	RoomCreator
 	RoomExistenceChecker
-	AdminRoomLister
 }
 
 // RoomUpdater updates room data

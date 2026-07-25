@@ -245,7 +245,7 @@ func AdminRooms(
 //	@Failure	500		{object}	map[string]string
 //	@Router		/api/v1/admin/rooms/{id} [patch]
 func AdminUpdateRoom(
-	db vibe.AdminRoomManager,
+	db vibe.AdminRoomUpdaterLister,
 	ips vibe.AdminEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -326,7 +326,7 @@ func AdminUpdateRoom(
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/admin/rooms/{id} [delete]
 func AdminDeleteRoom(
-	db vibe.AdminRoomManager,
+	db vibe.AdminRoomDeleterLister,
 	ips vibe.AdminEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -422,7 +422,7 @@ func writeAndNotifyAdminRooms(
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/admin/events [get]
 func AdminEvents(
-	ips vibe.AdminSubscriberPublisher,
+	ips vibe.Subscriber,
 	db vibe.AdminRoomLister,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

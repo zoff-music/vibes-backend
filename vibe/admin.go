@@ -41,19 +41,20 @@ type AdminRoomDeleter interface {
 	DeleteAdminRoom(ctx context.Context, roomID string) (bool, error)
 }
 
-type AdminRoomManager interface {
+// AdminRoomUpdaterLister updates a room and lists the resulting room state.
+type AdminRoomUpdaterLister interface {
 	AdminRoomLister
 	AdminRoomUpdater
+}
+
+// AdminRoomDeleterLister deletes a room and lists the resulting room state.
+type AdminRoomDeleterLister interface {
+	AdminRoomLister
 	AdminRoomDeleter
 }
 
 type AdminEventNotifier interface {
 	NotifyAdminUpdate(ctx context.Context, event AdminEvent) error
-}
-
-type AdminSubscriberPublisher interface {
-	Subscriber
-	AdminEventNotifier
 }
 
 const AdminRoomsUpdate = "admin_rooms_update"

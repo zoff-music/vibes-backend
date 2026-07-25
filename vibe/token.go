@@ -20,19 +20,7 @@ type ProviderTokenResponse struct {
 	ExpiresAt   time.Time `json:"expiresAt"`
 }
 
-// TokenExchanger handles exchanging auth codes for tokens
-type TokenExchanger interface {
-	ExchangeCode(ctx context.Context, code string) (*TokenResponse, error)
-}
-
 // TokenRefresher handles refreshing access tokens
 type TokenRefresher interface {
 	RefreshToken(ctx context.Context, refreshToken string) (*TokenResponse, error)
-}
-
-// OAuthProvider combines all OAuth capabilities
-type OAuthProvider interface {
-	OAuthAuthorizer
-	TokenExchanger
-	TokenRefresher
 }

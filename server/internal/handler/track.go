@@ -20,7 +20,7 @@ import (
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/youtube/videos/{id} [get]
 func GetMusicTrack(
-	ms vibe.MusicSearcher,
+	ms vibe.MusicTrackFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -76,7 +76,7 @@ func GetMusicTrack(
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/soundcloud/tracks/{id} [get]
 func GetSoundCloudTrack(
-	ms vibe.MusicSearcher,
+	ms vibe.MusicTrackFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -132,7 +132,7 @@ func GetSoundCloudTrack(
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/spotify/tracks/{id} [get]
 func GetSpotifyTrack(
-	ms vibe.MusicSearcher,
+	ms vibe.MusicTrackFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

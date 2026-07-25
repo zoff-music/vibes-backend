@@ -30,8 +30,7 @@ import (
 //	@Failure		500		{object}	map[string]string
 //	@Router			/api/v1/rooms [post]
 func CreateRoom(
-	db vibe.RoomCreatorAdminRoomLister,
-	ips vibe.AdminEventNotifier,
+	db vibe.RoomCreatorExistenceChecker,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -273,7 +272,7 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 //	@Success		200	{object}	vibe.RoomNameReservation
 //	@Failure		500	{object}	map[string]string
 //	@Router			/api/v1/rooms/suggestions [get]
-func SuggestRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
+func SuggestRoomName(db vibe.RoomNameSuggester) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
@@ -567,7 +566,7 @@ func UpdateRoomSettings(
 //	@Failure	500		{object}	map[string]string
 //	@Router		/api/v1/rooms/{id}/sessions [post]
 func CreateSession(
-	db vibe.SessionCreatorGetter,
+	db vibe.AdminSessionCreator,
 	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

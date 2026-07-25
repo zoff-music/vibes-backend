@@ -21,24 +21,14 @@ type ListenerCounts struct {
 	ActiveCastReceivers int
 }
 
-// ParticipantStorage defines methods for managing room participants
-type ParticipantStorage interface {
-	// UpdateParticipant updates the last seen time for a participant
-	UpdateParticipant(ctx context.Context, roomID, userID string, isActiveListener bool, isCastReceiver bool, castOwnerID string) error
-	// GetActiveParticipants returns a list of participants active in the room within the duration
-	GetActiveParticipants(ctx context.Context, roomID string, activeWithin time.Duration) ([]Participant, error)
-	// GetActiveListenerCounts returns listener and cast receiver counts within the duration
-	GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (ListenerCounts, error)
-	// SetRoomHost updates the host for a room
-	SetRoomHost(ctx context.Context, roomID, userID string) error
-	// RemoveParticipant removes a participant from a room
-	RemoveParticipant(ctx context.Context, roomID, userID string) error
-	// DeleteInactiveParticipants removes participants who haven't been seen within the duration
+// InactiveParticipantDeleter removes inactive room participants.
+type InactiveParticipantDeleter interface {
 	DeleteInactiveParticipants(ctx context.Context, olderThan time.Duration) (int, error)
 }
 
-// RoomEventParticipantStorage defines the requirements for the SSE event handler
+// RoomEventParticipantStorage defines the exact storage used by the room event handler.
 type RoomEventParticipantStorage interface {
-	PlaybackFetcher
-	ParticipantStorage
+	UpdateParticipant(ctx context.Context, roomID, userID string, isActiveListener bool, isCastReceiver bool, castOwnerID string) error
+	GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (ListenerCounts, error)
+	GetPlaybackState(ctx context.Context, roomID string) (*PlaybackState, error)
 }
