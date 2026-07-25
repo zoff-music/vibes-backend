@@ -214,6 +214,193 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 	return &song, nil
 }
 
+func (c *Client) prepareClaimSongMetadataRefreshStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH stale_song_q AS (
+			SELECT a.id
+			FROM songs a
+			WHERE a.source_type = $1
+			AND a.metadata_refresh_after <= NOW()
+			AND NOT EXISTS (
+				SELECT 1
+				FROM playback_state b
+				WHERE b.room_id = a.room_id
+				AND b.current_song_id = a.id
+			)
+			ORDER BY a.metadata_refresh_after ASC, a.id ASC
+			LIMIT 1
+			FOR UPDATE OF a SKIP LOCKED
+		)
+		UPDATE songs a
+		SET metadata_refresh_after = NOW() + make_interval(secs => $2)
+		FROM stale_song_q b
+		WHERE a.id = b.id
+		RETURNING a.id, a.room_id, a.source_id
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ClaimSongMetadataRefreshStatement: %w", err)
+	}
+
+	c.ClaimSongMetadataRefreshStatement = stmt
+
+	return nil
+}
+
+func (c *Client) ClaimSongMetadataRefresh(
+	ctx context.Context,
+	provider vibe.SourceType,
+	retryAfter time.Duration,
+) (*vibe.SongMetadataRefresh, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ClaimSongMetadataRefresh")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	row := c.ClaimSongMetadataRefreshStatement.QueryRowContext(
+		cctx,
+		string(provider),
+		int64(retryAfter/time.Second),
+	)
+
+	var refreshRow songMetadataRefreshRow
+	err := refreshRow.scan(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, internalerror.ErrExpected{
+				Err: internalerror.ErrNonRecoverable{
+					Err: fmt.Errorf(
+						"error claiming song metadata refresh in ClaimSongMetadataRefresh: none ready for processing",
+					),
+				},
+			}
+		}
+
+		return nil, fmt.Errorf(
+			"error scanning song metadata refresh in ClaimSongMetadataRefresh: %w",
+			err,
+		)
+	}
+
+	return refreshRow.toSongMetadataRefresh(), nil
+}
+
+type songMetadataRefreshRow struct {
+	SongID   sql.NullString
+	RoomID   sql.NullString
+	SourceID sql.NullString
+}
+
+func (r *songMetadataRefreshRow) scan(row *sql.Row) error {
+	err := row.Scan(
+		&r.SongID,
+		&r.RoomID,
+		&r.SourceID,
+	)
+	if err != nil {
+		return fmt.Errorf("error scanning song metadata refresh in scan: %w", err)
+	}
+
+	return nil
+}
+
+func (r *songMetadataRefreshRow) toSongMetadataRefresh() *vibe.SongMetadataRefresh {
+	return &vibe.SongMetadataRefresh{
+		SongID:   r.SongID.String,
+		RoomID:   r.RoomID.String,
+		SourceID: r.SourceID.String,
+	}
+}
+
+func (c *Client) prepareRefreshSongMetadataStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE songs
+		SET title = $2,
+			artist = $3,
+			thumbnail_url = $4,
+			duration = $5,
+			metadata_updated_at = NOW(),
+			metadata_refresh_after = NOW() + make_interval(secs => $6)
+		WHERE id = $1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing RefreshSongMetadataStatement: %w", err)
+	}
+
+	c.RefreshSongMetadataStatement = stmt
+
+	return nil
+}
+
+func (c *Client) RefreshSongMetadata(
+	ctx context.Context,
+	refresh vibe.SongMetadataRefresh,
+	track vibe.MusicTrack,
+	refreshInterval time.Duration,
+) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "RefreshSongMetadata")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := c.RefreshSongMetadataStatement.ExecContext(
+		cctx,
+		refresh.SongID,
+		track.Title,
+		track.ChannelTitle,
+		track.ThumbnailURL,
+		track.DurationSeconds,
+		int64(refreshInterval/time.Second),
+	)
+	if err != nil {
+		return fmt.Errorf("error refreshing song metadata in RefreshSongMetadata: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) prepareDeferSongMetadataRefreshStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE songs
+		SET metadata_refresh_after = NOW() + make_interval(secs => $2)
+		WHERE id = $1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing DeferSongMetadataRefreshStatement: %w", err)
+	}
+
+	c.DeferSongMetadataRefreshStatement = stmt
+
+	return nil
+}
+
+func (c *Client) DeferSongMetadataRefresh(
+	ctx context.Context,
+	songID string,
+	retryAfter time.Duration,
+) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "DeferSongMetadataRefresh")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := c.DeferSongMetadataRefreshStatement.ExecContext(
+		cctx,
+		songID,
+		int64(retryAfter/time.Second),
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"error deferring song metadata refresh in DeferSongMetadataRefresh: %w",
+			err,
+		)
+	}
+
+	return nil
+}
+
 // prepareAddSongStmt prepares the AddSongStatement.
 func (c *Client) prepareAddSongStmt() error {
 	stmt, err := c.DB.Prepare(`

@@ -11,9 +11,11 @@ import (
 	"github.com/zoff-music/vibes-backend/client/grok"
 	"github.com/zoff-music/vibes-backend/client/internalpubsub"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
+	"github.com/zoff-music/vibes-backend/client/soundcloud"
 	"github.com/zoff-music/vibes-backend/client/spotify"
 	"github.com/zoff-music/vibes-backend/client/youtube"
 	"github.com/zoff-music/vibes-backend/server/internal/handler"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // Handler is an interface that all event handles must implement.
@@ -26,11 +28,13 @@ func GetAppEvents(
 	db *database.Client,
 	redisClient *redisclient.Client,
 	ips *internalpubsub.Client,
+	soundcloudClient *soundcloud.Client,
 	spotifyClient *spotify.Client,
 	youtubeClient *youtube.Client,
 	grokClient *grok.Client,
+	enabledProviders []string,
 ) AppEvents {
-	return AppEvents{
+	events := AppEvents{
 		{
 			Name: "GenerateRoomPlaylist",
 			Rate: 5 * time.Second,
@@ -111,4 +115,44 @@ func GetAppEvents(
 			},
 		},
 	}
+
+	for _, provider := range enabledProviders {
+		switch vibe.SourceType(provider) {
+		case vibe.SourceTypeYouTube:
+			events = append(events, AppEvent{
+				Name: "MetaRefreshYouTube",
+				Rate: 2 * time.Minute,
+				Handler: &handler.MetaRefresh{
+					DB:           db,
+					IPS:          ips,
+					Provider:     youtubeClient,
+					ProviderName: vibe.SourceTypeYouTube,
+				},
+			})
+		case vibe.SourceTypeSoundCloud:
+			events = append(events, AppEvent{
+				Name: "MetaRefreshSoundCloud",
+				Rate: 2 * time.Minute,
+				Handler: &handler.MetaRefresh{
+					DB:           db,
+					IPS:          ips,
+					Provider:     soundcloudClient,
+					ProviderName: vibe.SourceTypeSoundCloud,
+				},
+			})
+		case vibe.SourceTypeSpotify:
+			events = append(events, AppEvent{
+				Name: "MetaRefreshSpotify",
+				Rate: 2 * time.Minute,
+				Handler: &handler.MetaRefresh{
+					DB:           db,
+					IPS:          ips,
+					Provider:     spotifyClient,
+					ProviderName: vibe.SourceTypeSpotify,
+				},
+			})
+		}
+	}
+
+	return events
 }
