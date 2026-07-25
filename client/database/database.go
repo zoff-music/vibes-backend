@@ -16,8 +16,9 @@ import (
 type Client struct {
 	DB *sql.DB
 
-	maxNameLength  int
-	maxQueueLength int
+	maxNameLength    int
+	maxQueueLength   int
+	enabledProviders []string
 
 	// Room statements
 	GetRoomStatement                  *sql.Stmt
@@ -110,6 +111,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	if c.maxQueueLength == 0 {
 		c.maxQueueLength = 200
 	}
+
+	c.enabledProviders = cfg.EnabledProviders()
 
 	db, err := sql.Open("pgx", cfg.DatabaseURL)
 	if err != nil {
