@@ -121,7 +121,7 @@ func GetAppEvents(
 		case vibe.SourceTypeYouTube:
 			events = append(events, AppEvent{
 				Name: "MetaRefreshYouTube",
-				Rate: 2 * time.Minute,
+				Rate: time.Second,
 				Handler: &handler.MetaRefresh{
 					DB:           db,
 					IPS:          ips,
@@ -132,7 +132,7 @@ func GetAppEvents(
 		case vibe.SourceTypeSoundCloud:
 			events = append(events, AppEvent{
 				Name: "MetaRefreshSoundCloud",
-				Rate: 2 * time.Minute,
+				Rate: time.Second,
 				Handler: &handler.MetaRefresh{
 					DB:           db,
 					IPS:          ips,
@@ -143,7 +143,7 @@ func GetAppEvents(
 		case vibe.SourceTypeSpotify:
 			events = append(events, AppEvent{
 				Name: "MetaRefreshSpotify",
-				Rate: 2 * time.Minute,
+				Rate: time.Second,
 				Handler: &handler.MetaRefresh{
 					DB:           db,
 					IPS:          ips,
