@@ -687,5 +687,4 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 }
 
 const roomGenerationBusyRetryAfterSeconds = "60"
-
 const generatedPlaylistPromptMaxLength = 300

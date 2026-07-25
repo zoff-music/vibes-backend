@@ -117,7 +117,5 @@ type CachedSearchFetcherCreator interface {
 }
 
 const SourceTypeYouTube SourceType = "youtube"
-
 const SourceTypeSpotify SourceType = "spotify"
-
 const SourceTypeSoundCloud SourceType = "soundcloud"
