@@ -320,6 +320,9 @@ func (c *Client) getGeneratedTracks(
 }
 
 func youtubeDurationSeconds(value string) (int, error) {
+	if value == youtubeZeroDuration {
+		return 0, nil
+	}
 	if !strings.HasPrefix(value, "PT") {
 		return 0, fmt.Errorf(
 			"error validating youtube duration in youtubeDurationSeconds: unsupported value %q",
@@ -376,6 +379,8 @@ func youtubeDurationSeconds(value string) (int, error) {
 }
 
 const youtubeMusicCategoryID = "10"
+
+const youtubeZeroDuration = "P0D"
 
 const generatedTrackMaxDurationSeconds = 20 * 60
 
