@@ -16,18 +16,21 @@ import (
 type Client struct {
 	DB *sql.DB
 
-	maxNameLength    int
-	maxQueueLength   int
-	enabledProviders []string
+	maxNameLength          int
+	maxQueueLength         int
+	enabledProviders       []string
+	roomNameReservationTTL time.Duration
 
 	// Room statements
-	GetRoomStatement                  *sql.Stmt
-	GetRoomByNameStatement            *sql.Stmt
-	SuggestRoomNameStatement          *sql.Stmt
-	RoomExistsStatement               *sql.Stmt
-	CreateRoomStatement               *sql.Stmt
-	UpdateRoomStatement               *sql.Stmt
-	ProcessNextAbandonedHostStatement *sql.Stmt
+	GetRoomStatement                           *sql.Stmt
+	GetRoomByNameStatement                     *sql.Stmt
+	ReserveRoomNameStatement                   *sql.Stmt
+	ReserveSuggestedRoomNameStatement          *sql.Stmt
+	DeleteExpiredRoomNameReservationsStatement *sql.Stmt
+	RoomExistsStatement                        *sql.Stmt
+	CreateRoomStatement                        *sql.Stmt
+	UpdateRoomStatement                        *sql.Stmt
+	ProcessNextAbandonedHostStatement          *sql.Stmt
 
 	// Room generation statements
 	HasActiveRoomGenerationStatement      *sql.Stmt
@@ -116,6 +119,10 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	}
 
 	c.enabledProviders = cfg.EnabledProviders()
+	c.roomNameReservationTTL = cfg.RoomNameReservationTTL
+	if c.roomNameReservationTTL == 0 {
+		c.roomNameReservationTTL = 2 * time.Minute
+	}
 
 	db, err := sql.Open("pgx", cfg.DatabaseURL)
 	if err != nil {
@@ -132,7 +139,9 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		// Room statements
 		c.prepareGetRoomStmt,
 		c.prepareGetRoomByNameStmt,
-		c.prepareSuggestRoomNameStmt,
+		c.prepareReserveRoomNameStmt,
+		c.prepareReserveSuggestedRoomNameStmt,
+		c.prepareDeleteExpiredRoomNameReservationsStmt,
 		c.prepareRoomExistsStmt,
 		c.prepareCreateRoomStmt,
 		c.prepareUpdateRoomStmt,
@@ -210,7 +219,9 @@ func (c *Client) Close() error {
 	statements := []*sql.Stmt{
 		c.GetRoomStatement,
 		c.GetRoomByNameStatement,
-		c.SuggestRoomNameStatement,
+		c.ReserveRoomNameStatement,
+		c.ReserveSuggestedRoomNameStatement,
+		c.DeleteExpiredRoomNameReservationsStatement,
 		c.RoomExistsStatement,
 		c.CreateRoomStatement,
 		c.UpdateRoomStatement,

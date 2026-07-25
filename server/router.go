@@ -21,6 +21,7 @@ func (s *Server) setupRoutes() {
 
 	// Room routes
 	api.HandleFunc("/rooms", handler.CreateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
+	api.HandleFunc("/rooms/reservations", handler.ReserveRoomName(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("ReserveRoomName")
 	api.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
 	api.HandleFunc("/rooms/generation", handler.CreateGeneratedRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoom")
 	api.HandleFunc("/rooms/{id}/generations", handler.CreateRoomGeneration(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomGeneration")
@@ -97,8 +98,19 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 	rm := middleware.RateLimitMiddleware{
 		Checker: s.Redis,
 		Policies: map[string]vibe.RateLimitPolicy{
-			"CreateRoom":          {Rate: time.Minute, Limit: 10},
-			"SuggestRoomName":     {Rate: time.Minute, Limit: 30},
+			"CreateRoom": {Rate: time.Minute, Limit: 10},
+			"ReserveRoomName": {
+				Bucket:  "RoomNameReservations",
+				Rate:    time.Minute,
+				Limit:   12,
+				IPLimit: 30,
+			},
+			"SuggestRoomName": {
+				Bucket:  "RoomNameReservations",
+				Rate:    time.Minute,
+				Limit:   12,
+				IPLimit: 30,
+			},
 			"RoomExists":          {Rate: time.Minute, Limit: 60},
 			"GetRoom":             {Rate: time.Minute, Limit: 120},
 			"UpdateRoomSettings":  {Rate: time.Minute, Limit: 30},
