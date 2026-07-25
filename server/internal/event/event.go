@@ -12,7 +12,6 @@ import (
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
 	"github.com/zoff-music/vibes-backend/client/spotify"
-	"github.com/zoff-music/vibes-backend/client/sse"
 	"github.com/zoff-music/vibes-backend/client/youtube"
 	"github.com/zoff-music/vibes-backend/server/internal/handler"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -23,32 +22,24 @@ type Handler interface {
 	Handle(ctx context.Context, data []byte) error
 }
 
-// GetRoomSSEEvents wires the room SSE stream dependencies.
-func GetRoomSSEEvents(
-	db *database.Client,
-	ips *internalpubsub.Client,
-	sseClient *sse.Client,
-) RoomSSEEvents {
-	events := RoomSSEEvents{
-		Participants: db,
-		Notifier:     ips,
-		Subscriber:   ips,
-		Client:       sseClient,
-	}
-
-	return events
-}
-
-// GetAdminSSEEvents wires the admin SSE stream dependencies.
-func GetAdminSSEEvents(
-	db *database.Client,
-	ips *internalpubsub.Client,
-	sseClient *sse.Client,
-) AdminSSEEvents {
-	events := AdminSSEEvents{
-		Rooms:      db,
-		Subscriber: ips,
-		Client:     sseClient,
+// GetSSEEvents describes all named SSE events.
+func GetSSEEvents(db *database.Client, ips *internalpubsub.Client) SSEEvents {
+	events := SSEEvents{
+		{
+			Name:       RoomEvents,
+			Subscriber: ips,
+			Handler: handler.RoomEventStream{
+				Participants: db,
+				Notifier:     ips,
+			},
+		},
+		{
+			Name:       AdminEvents,
+			Subscriber: ips,
+			Handler: handler.AdminEventStream{
+				Rooms: db,
+			},
+		},
 	}
 
 	return events
@@ -194,3 +185,6 @@ func GetAppEvents(
 
 	return events
 }
+
+const RoomEvents = "RoomEvents"
+const AdminEvents = "AdminEvents"

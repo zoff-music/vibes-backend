@@ -17,6 +17,7 @@ import (
 // setupRoutes - the root route function.
 func (s *Server) setupRoutes() {
 	api := s.Router.PathPrefix(v1API).Subrouter()
+	sseEvents := event.GetSSEEvents(s.DB, s.InternalPubSub)
 	s.Router.Handle(swaggerAPI, http.RedirectHandler(swaggerAPI+"/", http.StatusPermanentRedirect)).Methods(http.MethodGet)
 	s.Router.PathPrefix(swaggerAPI + "/").Handler(httpSwagger.WrapHandler)
 
@@ -43,8 +44,8 @@ func (s *Server) setupRoutes() {
 	// SSE route
 	api.HandleFunc(
 		"/rooms/{id}/events",
-		event.GetRoomSSEEvents(s.DB, s.InternalPubSub, s.SSE).Events(),
-	).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
+		sseEvents.Events(s.SSE),
+	).Methods(http.MethodGet, http.MethodOptions).Name(event.RoomEvents)
 
 	// YouTube routes
 	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
@@ -88,8 +89,8 @@ func (s *Server) setupRoutes() {
 		api.HandleFunc("/admin/rooms/{id}", handler.AdminDeleteRoom(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteRoom")
 		api.HandleFunc(
 			"/admin/events",
-			event.GetAdminSSEEvents(s.DB, s.InternalPubSub, s.SSE).Events(),
-		).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
+			sseEvents.Events(s.SSE),
+		).Methods(http.MethodGet, http.MethodOptions).Name(event.AdminEvents)
 	}
 
 	s.addSessionMiddleware(api)

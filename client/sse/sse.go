@@ -34,7 +34,7 @@ func (c *Client) Close() error {
 }
 
 // Write writes and flushes an SSE event.
-func (c *Client) Write(w http.ResponseWriter, flusher http.Flusher, event vibe.RoomEvent) error {
+func (c *Client) Write(w http.ResponseWriter, flusher http.Flusher, event vibe.StreamEvent) error {
 	_, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, event.Payload)
 	if err != nil {
 		return fmt.Errorf("error writing event in Write: %w", err)

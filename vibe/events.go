@@ -23,9 +23,36 @@ type Subscriber interface {
 
 // SSEClient defines the transport operations used by SSE event routes.
 type SSEClient interface {
-	Write(w http.ResponseWriter, flusher http.Flusher, event RoomEvent) error
+	Write(w http.ResponseWriter, flusher http.Flusher, event StreamEvent) error
 	Heartbeat(w http.ResponseWriter, flusher http.Flusher)
 	HeartbeatRate() time.Duration
+}
+
+// SSEHandler creates a request-scoped SSE stream.
+type SSEHandler interface {
+	Open(r *http.Request) (*SSEStream, error)
+}
+
+// SSEStream contains a topic and its connection lifecycle.
+type SSEStream struct {
+	Topic      string
+	Connection SSEConnection
+}
+
+// SSEConnection handles stream-specific lifecycle and event behavior.
+type SSEConnection interface {
+	Connect(ctx context.Context) error
+	Disconnect(ctx context.Context)
+	Heartbeat(ctx context.Context) error
+	InitialEvent(ctx context.Context) (*StreamEvent, error)
+	ShouldSend(event StreamEvent) bool
+}
+
+// StreamEvent is the transport envelope written to an SSE stream.
+type StreamEvent struct {
+	Type    string `json:"type"`
+	Payload []byte `json:"payload"`
+	UserID  string `json:"userId,omitempty"`
 }
 
 // RoomEvent represents an SSE event for a room
