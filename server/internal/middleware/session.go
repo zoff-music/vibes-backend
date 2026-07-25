@@ -145,7 +145,11 @@ func (m *SessionMiddleware) extractSession(r *http.Request, cookieName string) (
 
 func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, cookieName string, sameSite http.SameSite) (*helper.SessionPayload, error) {
 	userID := uuid.New().String()
-	payload := helper.SessionPayload{UserID: userID, AuthType: "cookie"}
+	payload := helper.SessionPayload{
+		UserID:   userID,
+		IsNew:    true,
+		AuthType: "cookie",
+	}
 
 	sessionJSON, err := json.Marshal(payload)
 	if err != nil {
