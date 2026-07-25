@@ -353,58 +353,6 @@ func (c *Client) getRoomByName(ctx context.Context, name string, userID string) 
 	return room, nil
 }
 
-// prepareSuggestRoomNameStmt prepares the SuggestRoomNameStatement.
-func (c *Client) prepareSuggestRoomNameStmt() error {
-	stmt, err := c.DB.Prepare(`
-		SELECT candidate_name
-		FROM UNNEST($1::text[]) WITH ORDINALITY AS CANDIDATES(candidate_name, candidate_order)
-		WHERE NOT EXISTS (
-			SELECT 1
-			FROM rooms
-			WHERE rooms.id = candidate_name
-		)
-		ORDER BY candidate_order
-		LIMIT 1
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing SuggestRoomNameStatement: %w", err)
-	}
-
-	c.SuggestRoomNameStatement = stmt
-
-	return nil
-}
-
-// SuggestRoomName returns the first candidate whose room ID is not already in use.
-func (c *Client) SuggestRoomName(
-	ctx context.Context,
-	candidates []string,
-) (*vibe.RoomNameSuggestion, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "SuggestRoomName")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	row := c.SuggestRoomNameStatement.QueryRowContext(cctx, candidates)
-
-	var suggestion vibe.RoomNameSuggestion
-	err := row.Scan(&suggestion.Name)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, internalerror.ErrExpected{
-				Err: internalerror.ErrNonRecoverable{
-					Err: fmt.Errorf("error no available room name"),
-				},
-			}
-		}
-
-		return nil, fmt.Errorf("error scanning room name suggestion: %w", err)
-	}
-
-	return &suggestion, nil
-}
-
 // prepareRoomExistsStmt prepares the RoomExistsStatement.
 func (c *Client) prepareRoomExistsStmt() error {
 	stmt, err := c.DB.Prepare(`
@@ -614,9 +562,43 @@ func (a *activeSourceRow) toSource() string {
 // prepareCreateRoomStmt prepares the CreateRoomStatement.
 func (c *Client) prepareCreateRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH created_room_q AS (
+		WITH valid_name_q AS (
+			SELECT $1::TEXT AS id
+			WHERE NOT EXISTS (
+				SELECT 1
+				FROM rooms
+				WHERE rooms.id = $1
+			)
+			AND (
+				(
+					$16 != ''
+					AND EXISTS (
+						SELECT 1
+						FROM room_name_reservations
+						WHERE room_name_reservations.name = $1
+						AND room_name_reservations.token::TEXT = $16
+						AND room_name_reservations.owner_id = $4
+						AND room_name_reservations.expires_at >
+							CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+					)
+				)
+				OR (
+					$16 = ''
+					AND NOT EXISTS (
+						SELECT 1
+						FROM room_name_reservations
+						WHERE room_name_reservations.name = $1
+						AND room_name_reservations.expires_at >
+							CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+					)
+				)
+			)
+		),
+		created_room_q AS (
 			INSERT INTO rooms (id, name, mode, host_id, admin_password_hash, created_at)
-			VALUES ($1, $2, $3, $4, $5, $6)
+			SELECT id, $2, $3, $4, $5, $6
+			FROM valid_name_q
+			ON CONFLICT (id) DO NOTHING
 			RETURNING id
 		),
 		created_settings_q AS (
@@ -633,6 +615,25 @@ func (c *Client) prepareCreateRoomStmt() error {
 				only_admin_add_songs
 			)
 			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15 FROM created_room_q
+		),
+		consumed_name_q AS (
+			INSERT INTO room_name_pool (name, generated, consumed_at)
+			SELECT
+				id,
+				FALSE,
+				CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+			FROM created_room_q
+			ON CONFLICT (name) DO UPDATE
+			SET consumed_at = EXCLUDED.consumed_at
+		),
+		deleted_reservation_q AS (
+			DELETE FROM room_name_reservations
+			USING created_room_q
+			WHERE room_name_reservations.name = created_room_q.id
+			AND (
+				$16 = ''
+				OR room_name_reservations.token::TEXT = $16
+			)
 		)
 		SELECT id FROM created_room_q
 	`)
@@ -645,8 +646,12 @@ func (c *Client) prepareCreateRoomStmt() error {
 	return nil
 }
 
-// CreateRoom creates a new room.
-func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, error) {
+// CreateRoom creates a new room and consumes its name reservation.
+func (c *Client) CreateRoom(
+	ctx context.Context,
+	room *vibe.Room,
+	reservationToken string,
+) (*vibe.Room, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "CreateRoom")
 	defer span.End()
 
@@ -669,11 +674,18 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		room.Settings.AllowDuplicates,
 		strings.Join(room.Settings.EnabledSources, ","),
 		room.Settings.OnlyAdminAddSongs,
+		reservationToken,
 	)
 
 	var scanned createRoomRow
 	err := scanned.scan(row)
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, internalerror.ErrRoomNameUnavailable{
+				Err: fmt.Errorf("error room name reservation is unavailable or expired"),
+			}
+		}
+
 		return nil, fmt.Errorf("error creating room: %w", err)
 	}
 

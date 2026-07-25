@@ -3,12 +3,14 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -137,8 +139,12 @@ func CreateRoom(
 			ActiveSources:     []string{},
 		}
 
-		created, err := db.CreateRoom(ctx, room)
+		created, err := db.CreateRoom(ctx, room, req.ReservationToken)
 		if err != nil {
+			if handleRoomNameUnavailable(w, err) {
+				return
+			}
+
 			handleError(
 				w,
 				fmt.Errorf("error creating room: %w", err),
@@ -165,31 +171,129 @@ func CreateRoom(
 	}
 }
 
-// SuggestRoomName handles GET /api/v1/rooms/suggestions.
+// ReserveRoomName handles POST /api/v1/rooms/reservations.
 //
-//	@Summary		Suggest an available, memorable room name
+//	@Summary		Reserve a custom or generated room name
 //	@Tags			rooms
+//	@Accept			json
 //	@Produce		json
-//	@Success		200	{object}	vibe.RoomNameSuggestion
-//	@Failure		500	{object}	map[string]string
-//	@Router			/api/v1/rooms/suggestions [get]
-func SuggestRoomName(db vibe.RoomNameSuggester) http.HandlerFunc {
+//	@Param			request	body		vibe.RoomNameReservationRequest	true	"Room name reservation request"
+//	@Success		201		{object}	vibe.RoomNameReservation
+//	@Failure		400		{object}	map[string]string
+//	@Failure		409		{object}	map[string]string
+//	@Failure		500		{object}	map[string]string
+//	@Router			/api/v1/rooms/reservations [post]
+func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		candidates, err := vibe.GenerateRoomNameCandidates()
+		var req vibe.RoomNameReservationRequest
+		err := json.NewDecoder(r.Body).Decode(&req)
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error generating room name candidates: %w", err),
+				fmt.Errorf("error decoding room name reservation request: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		session, ok := helper.GetSessionFromContext(ctx)
+		if !ok || session.UserID == "" {
+			handleError(
+				w,
+				fmt.Errorf("error getting room name reservation session"),
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+
+		var reservation *vibe.RoomNameReservation
+		if req.Name == "" {
+			reservation, err = db.ReserveSuggestedRoomName(
+				ctx,
+				session.UserID,
+			)
+		} else {
+			roomID := helper.Slugify(req.Name)
+			if roomID == "" {
+				handleError(
+					w,
+					fmt.Errorf("error invalid room name"),
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+
+			reservation, err = db.ReserveRoomName(
+				ctx,
+				roomID,
+				session.UserID,
+			)
+		}
+		if err != nil {
+			if handleRoomNameUnavailable(w, err) {
+				return
+			}
+
+			handleError(
+				w,
+				fmt.Errorf("error reserving room name: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
 			return
 		}
 
-		suggestion, err := db.SuggestRoomName(ctx, candidates)
+		body, err := json.Marshal(reservation)
 		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling room name reservation: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusCreated)
+		_, _ = w.Write(body)
+	}
+}
+
+// SuggestRoomName handles GET /api/v1/rooms/suggestions.
+//
+//	@Summary		Suggest an available, memorable room name
+//	@Tags			rooms
+//	@Produce		json
+//	@Success		200	{object}	vibe.RoomNameReservation
+//	@Failure		500	{object}	map[string]string
+//	@Router			/api/v1/rooms/suggestions [get]
+func SuggestRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		session, ok := helper.GetSessionFromContext(ctx)
+		if !ok || session.UserID == "" {
+			handleError(
+				w,
+				fmt.Errorf("error getting room name suggestion session"),
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+
+		suggestion, err := db.ReserveSuggestedRoomName(ctx, session.UserID)
+		if err != nil {
+			if handleRoomNameUnavailable(w, err) {
+				return
+			}
+
 			handleError(
 				w,
 				fmt.Errorf("error suggesting room name: %w", err),
@@ -214,6 +318,31 @@ func SuggestRoomName(db vibe.RoomNameSuggester) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
 	}
+}
+
+func handleRoomNameUnavailable(w http.ResponseWriter, err error) bool {
+	var unavailableError internalerror.ErrRoomNameUnavailable
+	if !errors.As(err, &unavailableError) {
+		return false
+	}
+
+	handleError(
+		w,
+		client.ErrorCodeWrapper{
+			Err: unavailableError,
+			ResponseBody: client.ErrorCodeResponseBody{
+				Namespace: "vibes-backend",
+				Error:     "room_name_unavailable",
+				Message:   "This room name is unavailable or its reservation expired.",
+				Propagate: true,
+			},
+			StatusCode: http.StatusConflict,
+		},
+		http.StatusConflict,
+		false,
+	)
+
+	return true
 }
 
 // RoomExists handles HEAD /api/v1/rooms/{id}.

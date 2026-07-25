@@ -2,10 +2,6 @@ package vibe
 
 import (
 	"context"
-	"crypto/rand"
-	"fmt"
-	"math/big"
-	"slices"
 	"time"
 )
 
@@ -69,9 +65,16 @@ type Room struct {
 	StoredEnabledSources []string     `json:"-"`
 }
 
-// RoomNameSuggestion is an available, memorable name for a new room.
-type RoomNameSuggestion struct {
-	Name string `json:"name"`
+// RoomNameReservation is a temporarily reserved room name.
+type RoomNameReservation struct {
+	Name      string    `json:"name"`
+	Token     string    `json:"token"`
+	ExpiresAt time.Time `json:"expiresAt"`
+}
+
+// RoomNameReservationRequest requests a custom or generated room name.
+type RoomNameReservationRequest struct {
+	Name string `json:"name,omitempty"`
 }
 
 // RoomHostInfo holds info about a host update
@@ -82,10 +85,11 @@ type RoomHostInfo struct {
 
 // CreateRoomRequest is the request payload for creating a room.
 type CreateRoomRequest struct {
-	Name     string        `json:"name"`
-	Mode     string        `json:"mode,omitempty"`
-	Password string        `json:"password,omitempty"`
-	Settings *RoomSettings `json:"settings,omitempty"`
+	Name             string        `json:"name"`
+	Mode             string        `json:"mode,omitempty"`
+	Password         string        `json:"password,omitempty"`
+	ReservationToken string        `json:"reservationToken,omitempty"`
+	Settings         *RoomSettings `json:"settings,omitempty"`
 }
 
 // UpdateRoomRequest is the request payload for updating a room.
@@ -104,9 +108,22 @@ type RoomFetcher interface {
 	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
 }
 
-// RoomNameSuggester finds an available room name from a set of candidates.
-type RoomNameSuggester interface {
-	SuggestRoomName(ctx context.Context, candidates []string) (*RoomNameSuggestion, error)
+// RoomNameReserver reserves custom or generated room names.
+type RoomNameReserver interface {
+	ReserveRoomName(
+		ctx context.Context,
+		name string,
+		ownerID string,
+	) (*RoomNameReservation, error)
+	ReserveSuggestedRoomName(
+		ctx context.Context,
+		ownerID string,
+	) (*RoomNameReservation, error)
+}
+
+// RoomNameReservationDeleter deletes expired room name reservations.
+type RoomNameReservationDeleter interface {
+	DeleteExpiredRoomNameReservations(ctx context.Context) (int64, error)
 }
 
 // RoomExistenceChecker checks whether a room ID is already in use.
@@ -116,7 +133,11 @@ type RoomExistenceChecker interface {
 
 // RoomCreator creates rooms
 type RoomCreator interface {
-	CreateRoom(ctx context.Context, room *Room) (*Room, error)
+	CreateRoom(
+		ctx context.Context,
+		room *Room,
+		reservationToken string,
+	) (*Room, error)
 }
 
 type RoomCreatorAdminRoomLister interface {
@@ -134,593 +155,6 @@ type RoomUpdater interface {
 type RoomSettingsUpdater interface {
 	RoomFetcher
 	RoomUpdater
-}
-
-// GenerateRoomNameCandidates generates random three-word room names.
-func GenerateRoomNameCandidates() ([]string, error) {
-	words := []string{
-		"amber",
-		"apple",
-		"bake",
-		"blue",
-		"bold",
-		"brave",
-		"bright",
-		"calm",
-		"chase",
-		"cheer",
-		"clever",
-		"cloud",
-		"cozy",
-		"dance",
-		"dream",
-		"drift",
-		"eager",
-		"easy",
-		"echo",
-		"fast",
-		"fire",
-		"float",
-		"fly",
-		"fresh",
-		"frost",
-		"gentle",
-		"glad",
-		"glow",
-		"gold",
-		"green",
-		"happy",
-		"hike",
-		"honey",
-		"hope",
-		"jolly",
-		"jump",
-		"kind",
-		"laugh",
-		"light",
-		"lucky",
-		"magic",
-		"mint",
-		"moon",
-		"neat",
-		"north",
-		"orange",
-		"peach",
-		"play",
-		"quick",
-		"quiet",
-		"river",
-		"roam",
-		"round",
-		"shine",
-		"silver",
-		"sing",
-		"sky",
-		"soft",
-		"spark",
-		"star",
-		"sunny",
-		"swift",
-		"tall",
-		"tidy",
-		"tiny",
-		"travel",
-		"warm",
-		"wave",
-		"wild",
-		"wise",
-		"yellow",
-		"young",
-		"acorn",
-		"air",
-		"alpine",
-		"aqua",
-		"arrow",
-		"aspen",
-		"aurora",
-		"autumn",
-		"badger",
-		"bamboo",
-		"banana",
-		"basil",
-		"beach",
-		"bear",
-		"beacon",
-		"berry",
-		"birch",
-		"bird",
-		"bloom",
-		"boat",
-		"brick",
-		"breeze",
-		"brook",
-		"bubble",
-		"bunny",
-		"butter",
-		"cabin",
-		"camel",
-		"candle",
-		"canoe",
-		"canyon",
-		"cedar",
-		"cherry",
-		"cocoa",
-		"comet",
-		"copper",
-		"coral",
-		"creek",
-		"crystal",
-		"daisy",
-		"dawn",
-		"deer",
-		"delta",
-		"dolphin",
-		"dove",
-		"dune",
-		"eagle",
-		"elm",
-		"ember",
-		"falcon",
-		"feather",
-		"fern",
-		"finch",
-		"fjord",
-		"flame",
-		"flower",
-		"flute",
-		"forest",
-		"fox",
-		"garden",
-		"gem",
-		"ginger",
-		"grape",
-		"grove",
-		"harbor",
-		"hazel",
-		"heron",
-		"hill",
-		"island",
-		"ivy",
-		"jade",
-		"jazz",
-		"juniper",
-		"kiwi",
-		"kite",
-		"lagoon",
-		"lake",
-		"leaf",
-		"lemon",
-		"lighthouse",
-		"lime",
-		"lion",
-		"lotus",
-		"mango",
-		"maple",
-		"marsh",
-		"meadow",
-		"melon",
-		"mist",
-		"moose",
-		"morning",
-		"moss",
-		"mountain",
-		"oak",
-		"ocean",
-		"olive",
-		"orchid",
-		"otter",
-		"owl",
-		"palm",
-		"panda",
-		"pebble",
-		"penguin",
-		"pearl",
-		"pepper",
-		"pine",
-		"planet",
-		"plum",
-		"pond",
-		"poppy",
-		"puffin",
-		"rabbit",
-		"rain",
-		"raven",
-		"reef",
-		"robin",
-		"rocket",
-		"rose",
-		"ruby",
-		"salmon",
-		"sand",
-		"seal",
-		"shell",
-		"snow",
-		"sparrow",
-		"spring",
-		"spruce",
-		"stone",
-		"storm",
-		"sun",
-		"sunset",
-		"surf",
-		"thunder",
-		"tiger",
-		"tulip",
-		"valley",
-		"violet",
-		"walnut",
-		"waterfall",
-		"whale",
-		"wheat",
-		"willow",
-		"wind",
-		"winter",
-		"wolf",
-		"wood",
-		"zebra",
-		"adventure",
-		"agate",
-		"alder",
-		"almond",
-		"amethyst",
-		"anchor",
-		"angel",
-		"anise",
-		"antler",
-		"apricot",
-		"arctic",
-		"armadillo",
-		"ash",
-		"atlas",
-		"avocado",
-		"azalea",
-		"badlands",
-		"bay",
-		"beaver",
-		"bell",
-		"blossom",
-		"boathouse",
-		"boulder",
-		"branch",
-		"bronco",
-		"butterfly",
-		"cactus",
-		"cardinal",
-		"cascade",
-		"castle",
-		"catfish",
-		"cave",
-		"cayenne",
-		"chalet",
-		"chestnut",
-		"cliff",
-		"clover",
-		"coast",
-		"compass",
-		"conifer",
-		"cosmos",
-		"cove",
-		"coyote",
-		"cricket",
-		"crocus",
-		"crown",
-		"currant",
-		"cyclone",
-		"dahlia",
-		"dandelion",
-		"daylight",
-		"dogwood",
-		"dragon",
-		"dragonfly",
-		"drizzle",
-		"dusk",
-		"earth",
-		"eclipse",
-		"edelweiss",
-		"egret",
-		"elder",
-		"emerald",
-		"evergreen",
-		"fawn",
-		"fennel",
-		"firefly",
-		"flamingo",
-		"flax",
-		"fog",
-		"foothill",
-		"freesia",
-		"galaxy",
-		"garnet",
-		"gecko",
-		"glacier",
-		"glade",
-		"granite",
-		"gull",
-		"hamlet",
-		"hawk",
-		"hawthorn",
-		"heather",
-		"hibiscus",
-		"horizon",
-		"hummingbird",
-		"iceberg",
-		"indigo",
-		"inlet",
-		"iris",
-		"jaguar",
-		"jasmine",
-		"jet",
-		"journey",
-		"kingfisher",
-		"larch",
-		"lavender",
-		"lilac",
-		"lynx",
-		"magnolia",
-		"mahogany",
-		"marigold",
-		"marmot",
-		"mesa",
-		"meteor",
-		"monarch",
-		"monsoon",
-		"mulberry",
-		"mushroom",
-		"nectar",
-		"night",
-		"nightingale",
-		"nova",
-		"oasis",
-		"obsidian",
-		"opal",
-		"orca",
-		"osprey",
-		"papaya",
-		"paradise",
-		"parrot",
-		"pasture",
-		"pelican",
-		"petal",
-		"phoenix",
-		"picnic",
-		"plateau",
-		"polar",
-		"prairie",
-		"prism",
-		"quail",
-		"quartz",
-		"rainbow",
-		"rapids",
-		"redwood",
-		"ripple",
-		"rosemary",
-		"saffron",
-		"sage",
-		"sail",
-		"sapphire",
-		"savanna",
-		"sequoia",
-		"shadow",
-		"shoreline",
-		"skylark",
-		"sleet",
-		"solstice",
-		"sorrel",
-		"starlight",
-		"summit",
-		"swallow",
-		"sycamore",
-		"tangerine",
-		"tempest",
-		"thistle",
-		"tide",
-		"toucan",
-		"trail",
-		"treetop",
-		"twilight",
-		"vanilla",
-		"volcano",
-		"wander",
-		"warbler",
-		"wasabi",
-		"whisper",
-		"woodland",
-		"wren",
-		"yarrow",
-		"zephyr",
-		"alive",
-		"ancient",
-		"airy",
-		"alert",
-		"balmy",
-		"bashful",
-		"bliss",
-		"breezy",
-		"brisk",
-		"bronze",
-		"carefree",
-		"charming",
-		"chill",
-		"crisp",
-		"curious",
-		"daring",
-		"dazzling",
-		"deep",
-		"electric",
-		"endless",
-		"epic",
-		"fair",
-		"fancy",
-		"free",
-		"funky",
-		"giddy",
-		"grand",
-		"groovy",
-		"hazy",
-		"hearty",
-		"icy",
-		"jazzy",
-		"keen",
-		"lively",
-		"lucid",
-		"lush",
-		"mellow",
-		"merry",
-		"nimble",
-		"noble",
-		"peaceful",
-		"playful",
-		"proud",
-		"radiant",
-		"rapid",
-		"serene",
-		"sleepy",
-		"smooth",
-		"soulful",
-		"spirited",
-		"stellar",
-		"sweet",
-		"tranquil",
-		"upbeat",
-		"vivid",
-		"wavy",
-		"whimsical",
-		"zesty",
-		"amble",
-		"arise",
-		"beam",
-		"blend",
-		"bounce",
-		"breathe",
-		"cruise",
-		"explore",
-		"flicker",
-		"flow",
-		"hum",
-		"imagine",
-		"listen",
-		"loop",
-		"pause",
-		"pulse",
-		"ramble",
-		"soar",
-		"stroll",
-		"sway",
-		"trek",
-		"anthem",
-		"banjo",
-		"bass",
-		"beat",
-		"cello",
-		"chord",
-		"chorus",
-		"cymbal",
-		"disco",
-		"drum",
-		"groove",
-		"harmony",
-		"melody",
-		"piano",
-		"rhythm",
-		"tempo",
-		"trumpet",
-		"vinyl",
-		"alpaca",
-		"antelope",
-		"beetle",
-		"bobcat",
-		"buffalo",
-		"caribou",
-		"cheetah",
-		"chipmunk",
-		"crane",
-		"gazelle",
-		"gibbon",
-		"goldfinch",
-		"hedgehog",
-		"ibis",
-		"koala",
-		"lemur",
-		"leopard",
-		"magpie",
-		"mallard",
-		"manta",
-		"narwhal",
-		"oriole",
-		"panther",
-		"porpoise",
-		"reindeer",
-		"seahorse",
-		"starling",
-		"tamarin",
-		"tortoise",
-		"walrus",
-		"weasel",
-		"yak",
-		"zebu",
-	}
-
-	const candidateCount = 512
-
-	var maximum big.Int
-	maximum.SetInt64(int64(len(words)))
-
-	pickWord := func(selectedWords []string) (string, error) {
-		for {
-			randomIndex, err := rand.Int(rand.Reader, &maximum)
-			if err != nil {
-				return "", fmt.Errorf("error generating random room name index: %w", err)
-			}
-
-			word := words[int(randomIndex.Int64())]
-			if slices.Contains(selectedWords, word) {
-				continue
-			}
-
-			return word, nil
-		}
-	}
-
-	generateCandidate := func() (string, error) {
-		selectedWords := make([]string, 0, 3)
-
-		firstWord, err := pickWord(selectedWords)
-		if err != nil {
-			return "", fmt.Errorf("error selecting first room name word: %w", err)
-		}
-		selectedWords = append(selectedWords, firstWord)
-
-		secondWord, err := pickWord(selectedWords)
-		if err != nil {
-			return "", fmt.Errorf("error selecting second room name word: %w", err)
-		}
-		selectedWords = append(selectedWords, secondWord)
-
-		thirdWord, err := pickWord(selectedWords)
-		if err != nil {
-			return "", fmt.Errorf("error selecting third room name word: %w", err)
-		}
-
-		return firstWord + "-" + secondWord + "-" + thirdWord, nil
-	}
-
-	candidates := make([]string, 0, candidateCount)
-	seenCandidates := make(map[string]bool, candidateCount)
-	for len(candidates) < candidateCount {
-		candidate, err := generateCandidate()
-		if err != nil {
-			return nil, fmt.Errorf("error generating room name candidate: %w", err)
-		}
-
-		if seenCandidates[candidate] {
-			continue
-		}
-
-		seenCandidates[candidate] = true
-		candidates = append(candidates, candidate)
-	}
-
-	return candidates, nil
 }
 
 // RoomModeServer is the mode where the server controls playback
