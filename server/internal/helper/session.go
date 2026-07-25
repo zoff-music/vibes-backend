@@ -6,6 +6,7 @@ import (
 
 type SessionPayload struct {
 	UserID string `json:"user_id"`
+	IsNew  bool   `json:"-"`
 	// AuthType indicates how this session was authenticated.
 	// Values: "cookie" | "cast"
 	AuthType string `json:"auth_type"`
