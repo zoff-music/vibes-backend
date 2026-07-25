@@ -32,7 +32,9 @@ func (c *Client) prepareGetStatsStmt() error {
 				END
 			),
 			0
-		)
+		) AS total_listeners,
+		(SELECT COUNT(*) FROM songs) AS total_songs,
+		(SELECT COUNT(*) FROM rooms) AS total_rooms
 		FROM room_listener_counts
 	`)
 	if err != nil {
@@ -65,10 +67,16 @@ func (c *Client) GetStats(ctx context.Context) (*vibe.Stats, error) {
 
 type statsRow struct {
 	TotalListeners sql.NullInt64
+	TotalSongs     sql.NullInt64
+	TotalRooms     sql.NullInt64
 }
 
 func (s *statsRow) scan(row *sql.Row) error {
-	err := row.Scan(&s.TotalListeners)
+	err := row.Scan(
+		&s.TotalListeners,
+		&s.TotalSongs,
+		&s.TotalRooms,
+	)
 	if err != nil {
 		return fmt.Errorf("error scanning stats in scan: %w", err)
 	}
@@ -79,5 +87,7 @@ func (s *statsRow) scan(row *sql.Row) error {
 func (s *statsRow) toStats() *vibe.Stats {
 	return &vibe.Stats{
 		TotalListeners: int(s.TotalListeners.Int64),
+		TotalSongs:     int(s.TotalSongs.Int64),
+		TotalRooms:     int(s.TotalRooms.Int64),
 	}
 }

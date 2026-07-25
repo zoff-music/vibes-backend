@@ -88,7 +88,7 @@ func (c *Client) CacheStats(ctx context.Context, stats vibe.Stats) error {
 }
 
 func (c *Client) statsCacheKey() string {
-	key := c.getKeyWithPrefix("stats:listeners")
+	key := c.getKeyWithPrefix("stats")
 
 	return key
 }
