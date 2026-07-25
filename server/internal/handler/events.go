@@ -24,7 +24,7 @@ import (
 //	@Router		/api/v1/rooms/{id}/events [get]
 func RoomEvents(
 	ips vibe.SubscriberPublisher,
-	db vibe.ParticipantGetterUpdaterPlaybackGetter,
+	db vibe.RoomEventParticipantStorage,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

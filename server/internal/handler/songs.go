@@ -78,8 +78,8 @@ func GetSongs(
 //	@Failure	500		{object}	map[string]string
 //	@Router		/api/v1/rooms/{id}/songs [post]
 func AddSong(
-	db vibe.SongController,
-	ips vibe.RoomEventAdminNotifier,
+	db vibe.SongQueueAdder,
+	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -288,8 +288,8 @@ func AddSong(
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/rooms/{id}/songs/{songId} [delete]
 func RemoveSong(
-	db vibe.SongController,
-	ips vibe.RoomEventAdminNotifier,
+	db vibe.SongQueueRemover,
+	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -394,7 +394,7 @@ func RemoveSong(
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/rooms/{id}/songs/{songId} [post]
 func VoteSong(
-	db vibe.SongController,
+	db vibe.SongQueueVoter,
 	ips vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

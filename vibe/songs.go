@@ -92,14 +92,25 @@ type SongVoter interface {
 	VoteSong(ctx context.Context, roomID, songID, userID string) error
 }
 
-// SongController combines interfaces needed for managing songs
-type SongController interface {
+// SongQueueAdder defines the exact operations used when adding a song.
+type SongQueueAdder interface {
 	SongAdder
-	SongRemover
-	SongVoter
 	SongsFetcher
 	RoomFetcher
 	PlaybackController
+}
+
+// SongQueueRemover defines the exact operations used when removing a song.
+type SongQueueRemover interface {
+	SongRemover
+	SongsFetcher
+	RoomFetcher
+}
+
+// SongQueueVoter defines the exact operations used when voting for a song.
+type SongQueueVoter interface {
+	SongVoter
+	SongsFetcher
 }
 
 const AddSongOutcomeAdded AddSongOutcome = "added"
