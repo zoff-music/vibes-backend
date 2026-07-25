@@ -1,6 +1,6 @@
 // Package event handles configuration and setup for receiving events.
 //
-// Events to subscribe to should be defined in GetPubSubEvents
+// SSE and scheduled app events are wired in this file.
 package event
 
 import (
@@ -12,6 +12,7 @@ import (
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
 	"github.com/zoff-music/vibes-backend/client/spotify"
+	"github.com/zoff-music/vibes-backend/client/sse"
 	"github.com/zoff-music/vibes-backend/client/youtube"
 	"github.com/zoff-music/vibes-backend/server/internal/handler"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -20,6 +21,37 @@ import (
 // Handler is an interface that all event handles must implement.
 type Handler interface {
 	Handle(ctx context.Context, data []byte) error
+}
+
+// GetRoomSSEEvents wires the room SSE stream dependencies.
+func GetRoomSSEEvents(
+	db *database.Client,
+	ips *internalpubsub.Client,
+	sseClient *sse.Client,
+) RoomSSEEvents {
+	events := RoomSSEEvents{
+		Participants: db,
+		Notifier:     ips,
+		Subscriber:   ips,
+		Client:       sseClient,
+	}
+
+	return events
+}
+
+// GetAdminSSEEvents wires the admin SSE stream dependencies.
+func GetAdminSSEEvents(
+	db *database.Client,
+	ips *internalpubsub.Client,
+	sseClient *sse.Client,
+) AdminSSEEvents {
+	events := AdminSSEEvents{
+		Rooms:      db,
+		Subscriber: ips,
+		Client:     sseClient,
+	}
+
+	return events
 }
 
 // GetAppEvents describes all the app events to listen to.

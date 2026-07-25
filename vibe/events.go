@@ -2,6 +2,8 @@ package vibe
 
 import (
 	"context"
+	"net/http"
+	"time"
 )
 
 // Subscription defines interface to use the internalpubsub client
@@ -16,12 +18,14 @@ type SubscriptionContainer struct {
 
 // Subscriber subscribes to listen for room events
 type Subscriber interface {
-	Subscribe(topic string) (*SubscriptionContainer, error)
+	Subscribe(ctx context.Context, topic string) (*SubscriptionContainer, error)
 }
 
-type SubscriberPublisher interface {
-	Subscriber
-	RoomEventNotifier
+// SSEClient defines the transport operations used by SSE event routes.
+type SSEClient interface {
+	Write(w http.ResponseWriter, flusher http.Flusher, event RoomEvent) error
+	Heartbeat(w http.ResponseWriter, flusher http.Flusher)
+	HeartbeatRate() time.Duration
 }
 
 // RoomEvent represents an SSE event for a room
@@ -41,6 +45,13 @@ type RoomBatchEventNotifier interface {
 	NotifyRoomUpdates(ctx context.Context, roomID string, events []RoomEvent) error
 }
 
+// RoomTopic returns the internal event topic for a room.
+func RoomTopic(roomID string) string {
+	topic := RoomTopicPrefix + roomID
+
+	return topic
+}
+
 const PlaybackUpdate = "playback_update"
 const SongAdded = "song_added"
 const SongRemoved = "song_removed"
@@ -52,3 +63,6 @@ const UserLeft = "user_left"
 const UsersUpdate = "users_update"
 const SettingsUpdate = "settings_update"
 const GenerationUpdate = "generation_update"
+const AdminTopic = "admin"
+const RoomTopicPrefix = "room:"
+const ConnectedEvent = "connected"

@@ -7,6 +7,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	httpSwagger "github.com/swaggo/http-swagger"
+	"github.com/zoff-music/vibes-backend/server/internal/event"
 	"github.com/zoff-music/vibes-backend/server/internal/handler"
 	"github.com/zoff-music/vibes-backend/server/internal/middleware"
 	_ "github.com/zoff-music/vibes-backend/swaggerdocs"
@@ -40,7 +41,10 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.VoteSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("VoteSong")
 
 	// SSE route
-	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
+	api.HandleFunc(
+		"/rooms/{id}/events",
+		event.GetRoomSSEEvents(s.DB, s.InternalPubSub, s.SSE).Events(),
+	).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
 
 	// YouTube routes
 	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
@@ -82,7 +86,10 @@ func (s *Server) setupRoutes() {
 		api.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
 		api.HandleFunc("/admin/rooms/{id}", handler.AdminUpdateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateRoom")
 		api.HandleFunc("/admin/rooms/{id}", handler.AdminDeleteRoom(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteRoom")
-		api.HandleFunc("/admin/events", handler.AdminEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
+		api.HandleFunc(
+			"/admin/events",
+			event.GetAdminSSEEvents(s.DB, s.InternalPubSub, s.SSE).Events(),
+		).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
 	}
 
 	s.addSessionMiddleware(api)

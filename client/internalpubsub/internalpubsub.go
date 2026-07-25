@@ -46,7 +46,7 @@ func (c *Client) NotifyRoomUpdate(ctx context.Context, roomID string, event vibe
 		)
 	}
 
-	topicName := fmt.Sprintf("room:%s", roomID)
+	topicName := vibe.RoomTopic(roomID)
 	err = c.NotifyTopic(ctx, topicName, data)
 	if err != nil {
 		return fmt.Errorf("error notifying topic in NotifyRoomUpdate: %w", err)
@@ -67,7 +67,7 @@ func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) e
 		)
 	}
 
-	err = c.NotifyTopic(ctx, adminTopicName, data)
+	err = c.NotifyTopic(ctx, vibe.AdminTopic, data)
 	if err != nil {
 		return fmt.Errorf("error notifying topic in NotifyAdminUpdate: %w", err)
 	}
@@ -79,7 +79,7 @@ func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []
 	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdates")
 	defer span.End()
 
-	topicName := fmt.Sprintf("room:%s", roomID)
+	topicName := vibe.RoomTopic(roomID)
 
 	for _, event := range events {
 		data, err := json.Marshal(event)
@@ -102,7 +102,10 @@ func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []
 	return nil
 }
 
-func (c *Client) Subscribe(topicName string) (*vibe.SubscriptionContainer, error) {
+func (c *Client) Subscribe(ctx context.Context, topicName string) (*vibe.SubscriptionContainer, error) {
+	span, _ := tracing.StartSpanFromContext(ctx, "Subscribe")
+	defer span.End()
+
 	topic := c.getTopic(topicName)
 
 	subscription, err := topic.createSubscription()
@@ -235,5 +238,3 @@ func generateSubscriptionID() (string, error) {
 
 	return subscriptionID, nil
 }
-
-const adminTopicName string = "admin"

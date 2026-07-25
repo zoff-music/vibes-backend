@@ -23,6 +23,7 @@ import (
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
 	"github.com/zoff-music/vibes-backend/client/spotify"
+	"github.com/zoff-music/vibes-backend/client/sse"
 	"github.com/zoff-music/vibes-backend/client/youtube"
 	"github.com/zoff-music/vibes-backend/config"
 	"github.com/zoff-music/vibes-backend/monitoring/metrics"
@@ -39,6 +40,7 @@ type Server struct {
 	DB             *database.Client
 	Redis          *redisclient.Client
 	InternalPubSub *internalpubsub.Client
+	SSE            *sse.Client
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
 	Spotify        *spotify.Client
@@ -59,6 +61,12 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	err := internalpubsubClient.Init()
 	if err != nil {
 		return fmt.Errorf("error initializing internalpubsub client: %w", err)
+	}
+
+	var sseClient sse.Client
+	err = sseClient.Init(ctx)
+	if err != nil {
+		return fmt.Errorf("error initializing SSE client in Create: %w", err)
 	}
 
 	var dbClient database.Client
@@ -122,6 +130,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.DB = &dbClient
 	s.Redis = &redisClient
 	s.InternalPubSub = &internalpubsubClient
+	s.SSE = &sseClient
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
 	s.Spotify = &spotifyClient
@@ -278,6 +287,13 @@ func (s *Server) shutdown(ctx context.Context) {
 		err := s.Redis.Close()
 		if err != nil {
 			log.Printf("error closing redis: %v", err)
+		}
+	}
+
+	if s.SSE != nil {
+		err := s.SSE.Close()
+		if err != nil {
+			log.Printf("error closing SSE client: %v", err)
 		}
 	}
 

@@ -35,7 +35,7 @@ test: docs
 
 ## docs: generates Swagger documentation
 docs:
-	GOFLAGS=-mod=mod go run github.com/swaggo/swag/cmd/swag init -d cmd/server,server,server/internal/handler,vibe -g main.go -o swaggerdocs --parseInternal
+	GOFLAGS=-mod=mod go run github.com/swaggo/swag/cmd/swag init -d cmd/server,server,server/internal/handler,server/internal/event,vibe -g main.go -o swaggerdocs --parseInternal
 
 ## help: prints help message
 help:
