@@ -70,7 +70,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/providers", handler.GetProviders(s.Config)).Methods(http.MethodGet, http.MethodOptions).Name("GetProviders")
 
 	// Stats routes
-	api.HandleFunc("/stats", handler.GetStats(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetStats")
+	api.HandleFunc("/stats", handler.GetStats(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("GetStats")
 
 	// Cast token endpoint (cookie-auth only)
 	api.HandleFunc("/tokens/casting", handler.CreateCastingToken(s.DB, s.Config.CastTokenSecret)).Methods(http.MethodPost, http.MethodOptions).Name("CreateCastingToken")
