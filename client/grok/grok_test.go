@@ -40,9 +40,18 @@ func TestInit(t *testing.T) {
 			expectedEnabled: false,
 		},
 		{
+			name: "rejects selected provider without API key",
+			config: config.Config{
+				GrokEndpoint: "https://api.x.ai/v1",
+				AIModel:      "GROK:grok-4.5",
+			},
+			expectedError: "error grok API key is required",
+		},
+		{
 			name: "rejects empty endpoint for selected provider",
 			config: config.Config{
-				AIModel: "GROK:grok-4.5",
+				GrokAPIKey: "grok-key",
+				AIModel:    "GROK:grok-4.5",
 			},
 			expectedError: "error grok endpoint is required",
 		},

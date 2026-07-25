@@ -37,10 +37,13 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	c.Endpoint = strings.TrimRight(cfg.GeminiEndpoint, "/")
 	c.Model = aiModel.Name
 	c.apiKey = cfg.GeminiAPIKey
-	c.Enabled = c.apiKey != ""
 	if c.Endpoint == "" {
 		return fmt.Errorf("error gemini endpoint is required")
 	}
+	if c.apiKey == "" {
+		return fmt.Errorf("error gemini API key is required")
+	}
+	c.Enabled = true
 
 	c.HTTPClient = client.HTTPClient{
 		Client: &http.Client{

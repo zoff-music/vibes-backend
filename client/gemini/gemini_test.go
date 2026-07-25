@@ -32,15 +32,12 @@ func TestInit(t *testing.T) {
 			expectedHTTP:     true,
 		},
 		{
-			name: "initializes disabled client without api key",
+			name: "rejects selected provider without API key",
 			config: config.Config{
 				GeminiEndpoint: "https://generativelanguage.googleapis.com/v1beta/openai",
 				AIModel:        "GEMINI:gemini-3.6-flash",
 			},
-			expectedEnabled:  false,
-			expectedEndpoint: "https://generativelanguage.googleapis.com/v1beta/openai",
-			expectedModel:    "gemini-3.6-flash",
-			expectedHTTP:     true,
+			expectedError: "error gemini API key is required",
 		},
 		{
 			name: "ignores configuration for another provider",
@@ -53,7 +50,8 @@ func TestInit(t *testing.T) {
 		{
 			name: "rejects empty endpoint",
 			config: config.Config{
-				AIModel: "GEMINI:gemini-3.6-flash",
+				GeminiAPIKey: "gemini-key",
+				AIModel:      "GEMINI:gemini-3.6-flash",
 			},
 			expectedError: "error gemini endpoint is required",
 		},
