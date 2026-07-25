@@ -22,6 +22,7 @@ func (c *Client) prepareGetStatsStmt() error {
 					WHERE is_cast_receiver
 				) AS active_cast_receivers
 			FROM room_users
+			WHERE last_seen_at > NOW() - INTERVAL '15 seconds'
 			GROUP BY room_id
 		)
 		SELECT COALESCE(
