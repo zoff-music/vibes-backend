@@ -38,6 +38,22 @@ type AIModel struct {
 func ParseAIModel(value string) (*AIModel, error) {
 	parts := strings.SplitN(value, ":", 2)
 	if len(parts) != 2 {
+		name := strings.TrimSpace(value)
+		lowerName := strings.ToLower(name)
+		if strings.HasPrefix(lowerName, "grok-") {
+			model := AIModel{
+				Provider: AIProviderGrok,
+				Name:     name,
+			}
+			return &model, nil
+		}
+		if strings.HasPrefix(lowerName, "gemini-") {
+			model := AIModel{
+				Provider: AIProviderGemini,
+				Name:     name,
+			}
+			return &model, nil
+		}
 		return nil, fmt.Errorf(
 			"error parsing AI model %q: expected PROVIDER:model",
 			value,
