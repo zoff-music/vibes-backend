@@ -8,10 +8,13 @@ import (
 )
 
 type initTest struct {
-	name            string
-	config          config.Config
-	expectedEnabled bool
-	expectedError   string
+	name             string
+	config           config.Config
+	expectedEnabled  bool
+	expectedEndpoint string
+	expectedModel    string
+	expectedHTTP     bool
+	expectedError    string
 }
 
 func TestInit(t *testing.T) {
@@ -21,22 +24,36 @@ func TestInit(t *testing.T) {
 			config: config.Config{
 				GeminiAPIKey:   "gemini-key",
 				GeminiEndpoint: "https://generativelanguage.googleapis.com/v1beta/openai/",
-				AIModel:        "gemini-3.6-flash",
+				AIModel:        "GEMINI:gemini-3.6-flash",
 			},
-			expectedEnabled: true,
+			expectedEnabled:  true,
+			expectedEndpoint: "https://generativelanguage.googleapis.com/v1beta/openai",
+			expectedModel:    "gemini-3.6-flash",
+			expectedHTTP:     true,
 		},
 		{
 			name: "initializes disabled client without api key",
 			config: config.Config{
 				GeminiEndpoint: "https://generativelanguage.googleapis.com/v1beta/openai",
-				AIModel:        "gemini-3.6-flash",
+				AIModel:        "GEMINI:gemini-3.6-flash",
+			},
+			expectedEnabled:  false,
+			expectedEndpoint: "https://generativelanguage.googleapis.com/v1beta/openai",
+			expectedModel:    "gemini-3.6-flash",
+			expectedHTTP:     true,
+		},
+		{
+			name: "ignores configuration for another provider",
+			config: config.Config{
+				GeminiAPIKey: "gemini-key",
+				AIModel:      "GROK:grok-4.5",
 			},
 			expectedEnabled: false,
 		},
 		{
 			name: "rejects empty endpoint",
 			config: config.Config{
-				AIModel: "gemini-3.6-flash",
+				AIModel: "GEMINI:gemini-3.6-flash",
 			},
 			expectedError: "error gemini endpoint is required",
 		},
@@ -44,8 +61,9 @@ func TestInit(t *testing.T) {
 			name: "rejects empty model",
 			config: config.Config{
 				GeminiEndpoint: "https://generativelanguage.googleapis.com/v1beta/openai",
+				AIModel:        "GEMINI:",
 			},
-			expectedError: "error gemini model is required",
+			expectedError: "error parsing configured AI model in Init: error parsing AI model \"GEMINI:\": model is required",
 		},
 	}
 
@@ -68,14 +86,15 @@ func TestInit(t *testing.T) {
 			if geminiClient.Enabled != tt.expectedEnabled {
 				t.Fatalf("expected enabled %t, got %t", tt.expectedEnabled, geminiClient.Enabled)
 			}
-			if geminiClient.Endpoint != "https://generativelanguage.googleapis.com/v1beta/openai" {
-				t.Fatalf("unexpected endpoint %q", geminiClient.Endpoint)
+			if geminiClient.Endpoint != tt.expectedEndpoint {
+				t.Fatalf("expected endpoint %q, got %q", tt.expectedEndpoint, geminiClient.Endpoint)
 			}
-			if geminiClient.Model != "gemini-3.6-flash" {
-				t.Fatalf("unexpected model %q", geminiClient.Model)
+			if geminiClient.Model != tt.expectedModel {
+				t.Fatalf("expected model %q, got %q", tt.expectedModel, geminiClient.Model)
 			}
-			if geminiClient.HTTPClient.Client == nil {
-				t.Fatal("expected HTTP client to be initialized")
+			httpInitialized := geminiClient.HTTPClient.Client != nil
+			if httpInitialized != tt.expectedHTTP {
+				t.Fatalf("expected HTTP initialized %t, got %t", tt.expectedHTTP, httpInitialized)
 			}
 		})
 	}
