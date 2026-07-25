@@ -49,8 +49,10 @@ func (c *Client) GetStats(ctx context.Context) (*vibe.Stats, error) {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	row := c.GetStatsStatement.QueryRowContext(cctx)
+
 	var stats vibe.Stats
-	err := c.GetStatsStatement.QueryRowContext(cctx).Scan(&stats.TotalListeners)
+	err := row.Scan(&stats.TotalListeners)
 	if err != nil {
 		return nil, fmt.Errorf("error scanning stats in GetStats: %w", err)
 	}
