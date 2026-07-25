@@ -215,7 +215,7 @@ func (c *Client) getRoom(ctx context.Context, id string, userID string) (*vibe.R
 		return nil, fmt.Errorf("error fetching room: %w", err)
 	}
 
-	room, err := row.toRoom()
+	room, err := row.toRoom(c.enabledProviders)
 	if err != nil {
 		return nil, fmt.Errorf("error converting room row: %w", err)
 	}
@@ -345,7 +345,7 @@ func (c *Client) getRoomByName(ctx context.Context, name string, userID string) 
 		return nil, fmt.Errorf("error fetching room by name: %w", err)
 	}
 
-	room, err := scanned.toRoom()
+	room, err := scanned.toRoom(c.enabledProviders)
 	if err != nil {
 		return nil, fmt.Errorf("error converting room row: %w", err)
 	}
@@ -491,38 +491,49 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 	)
 }
 
-func (r *roomRow) toRoom() (*vibe.Room, error) {
-	settings, err := r.toRoomSettings()
+func (r *roomRow) toRoom(enabledProviders []string) (*vibe.Room, error) {
+	storedSources := vibe.DefaultRoomSettings().EnabledSources
+	if r.EnabledSources.Valid {
+		storedSources = []string{}
+		if r.EnabledSources.String != "" {
+			storedSources = strings.Split(r.EnabledSources.String, ",")
+		}
+	}
+
+	settings, err := r.toRoomSettings(storedSources, enabledProviders)
 	if err != nil {
 		return nil, fmt.Errorf("error converting room settings: %w", err)
 	}
 
 	return &vibe.Room{
-		ID:                r.ID.String,
-		Name:              r.Name.String,
-		Mode:              r.Mode.String,
-		HostID:            r.HostID.String,
-		AdminPasswordHash: r.AdminPasswordHash.String,
-		HasPassword:       r.AdminPasswordHash.Valid && r.AdminPasswordHash.String != "",
-		IsAdmin:           r.IsRequesterAdmin.Bool,
-		Settings:          *settings,
-		CreatedAt:         r.CreatedAt.Time,
-		IsGenerating:      r.IsGenerating.Bool,
-		GenerationCount:   int(r.GenerationCount.Int64),
-		GenerationError:   r.GenerationError.String,
+		ID:                   r.ID.String,
+		Name:                 r.Name.String,
+		Mode:                 r.Mode.String,
+		HostID:               r.HostID.String,
+		AdminPasswordHash:    r.AdminPasswordHash.String,
+		HasPassword:          r.AdminPasswordHash.Valid && r.AdminPasswordHash.String != "",
+		IsAdmin:              r.IsRequesterAdmin.Bool,
+		Settings:             *settings,
+		CreatedAt:            r.CreatedAt.Time,
+		IsGenerating:         r.IsGenerating.Bool,
+		GenerationCount:      int(r.GenerationCount.Int64),
+		GenerationError:      r.GenerationError.String,
+		StoredEnabledSources: storedSources,
 	}, nil
 }
 
-func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
+func (r *roomRow) toRoomSettings(
+	storedSources []string,
+	enabledProviders []string,
+) (*vibe.RoomSettings, error) {
 	sources := []string{}
-	if r.EnabledSources.Valid && r.EnabledSources.String != "" {
-		sources = strings.Split(r.EnabledSources.String, ",")
-	}
-	if r.EnabledSources.Valid && r.EnabledSources.String == "" {
-		sources = []string{}
-	}
-	if !r.EnabledSources.Valid {
-		sources = []string{"youtube", "spotify", "soundcloud"}
+	for _, source := range storedSources {
+		for _, provider := range enabledProviders {
+			if source == provider {
+				sources = append(sources, source)
+				break
+			}
+		}
 	}
 
 	return &vibe.RoomSettings{
@@ -540,7 +551,10 @@ func (r *roomRow) toRoomSettings() (*vibe.RoomSettings, error) {
 
 func (c *Client) prepareGetActiveSourcesStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT DISTINCT source_type FROM songs WHERE room_id = $1
+		SELECT DISTINCT source_type
+		FROM songs
+		WHERE room_id = $1
+		AND source_type = ANY($2::text[])
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetActiveSourcesStatement: %w", err)
@@ -556,7 +570,11 @@ func (c *Client) fillActiveSources(ctx context.Context, room vibe.Room) (*vibe.R
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	rows, err := c.GetActiveSourcesStatement.QueryContext(cctx, room.ID)
+	rows, err := c.GetActiveSourcesStatement.QueryContext(
+		cctx,
+		room.ID,
+		c.enabledProviders,
+	)
 	if err != nil {
 		return nil, fmt.Errorf("error in db: get active sources: %w", err)
 	}
@@ -659,7 +677,28 @@ func (c *Client) CreateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		return nil, fmt.Errorf("error creating room: %w", err)
 	}
 
-	return room, nil
+	createdRoom := *room
+	createdSettings := room.Settings
+	createdSettings.EnabledSources = []string{}
+	for _, source := range room.Settings.EnabledSources {
+		for _, provider := range c.enabledProviders {
+			if source == provider {
+				createdSettings.EnabledSources = append(
+					createdSettings.EnabledSources,
+					source,
+				)
+				break
+			}
+		}
+	}
+	createdRoom.Settings = createdSettings
+	createdRoom.ActiveSources = []string{}
+	createdRoom.StoredEnabledSources = append(
+		[]string{},
+		room.Settings.EnabledSources...,
+	)
+
+	return &createdRoom, nil
 }
 
 type createRoomRow struct {
@@ -712,6 +751,28 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
+	enabledSources := []string{}
+	for _, source := range room.Settings.EnabledSources {
+		for _, provider := range c.enabledProviders {
+			if source == provider {
+				enabledSources = append(enabledSources, source)
+				break
+			}
+		}
+	}
+	for _, source := range room.StoredEnabledSources {
+		providerEnabled := false
+		for _, provider := range c.enabledProviders {
+			if source == provider {
+				providerEnabled = true
+				break
+			}
+		}
+		if !providerEnabled {
+			enabledSources = append(enabledSources, source)
+		}
+	}
+
 	_, err := c.UpdateRoomStatement.ExecContext(cctx,
 		room.Name,
 		room.ID,
@@ -725,7 +786,7 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		room.Mode,
 		room.HostID,
 		room.AdminPasswordHash,
-		strings.Join(room.Settings.EnabledSources, ","),
+		strings.Join(enabledSources, ","),
 		room.Settings.OnlyAdminAddSongs,
 	)
 	if err != nil {
