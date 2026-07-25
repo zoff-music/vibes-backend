@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -51,11 +52,32 @@ func (c *Client) GetStats(ctx context.Context) (*vibe.Stats, error) {
 
 	row := c.GetStatsStatement.QueryRowContext(cctx)
 
-	var stats vibe.Stats
-	err := row.Scan(&stats.TotalListeners)
+	var statsRow statsRow
+	err := statsRow.scan(row)
 	if err != nil {
 		return nil, fmt.Errorf("error scanning stats in GetStats: %w", err)
 	}
 
-	return &stats, nil
+	stats := statsRow.toStats()
+
+	return stats, nil
+}
+
+type statsRow struct {
+	TotalListeners sql.NullInt64
+}
+
+func (s *statsRow) scan(row *sql.Row) error {
+	err := row.Scan(&s.TotalListeners)
+	if err != nil {
+		return fmt.Errorf("error scanning stats in scan: %w", err)
+	}
+
+	return nil
+}
+
+func (s *statsRow) toStats() *vibe.Stats {
+	return &vibe.Stats{
+		TotalListeners: int(s.TotalListeners.Int64),
+	}
 }
