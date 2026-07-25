@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/client/database"
-	"github.com/zoff-music/vibes-backend/client/grok"
 	"github.com/zoff-music/vibes-backend/client/internalpubsub"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
@@ -31,7 +30,7 @@ func GetAppEvents(
 	soundcloudClient *soundcloud.Client,
 	spotifyClient *spotify.Client,
 	youtubeClient *youtube.Client,
-	grokClient *grok.Client,
+	playlistGenerator vibe.PlaylistGenerator,
 	enabledProviders []string,
 ) AppEvents {
 	events := AppEvents{
@@ -39,7 +38,7 @@ func GetAppEvents(
 			Name: "GenerateRoomPlaylist",
 			Rate: 5 * time.Second,
 			Handler: &handler.GenerateRoomPlaylist{
-				AI:       grokClient,
+				AI:       playlistGenerator,
 				Cache:    redisClient,
 				DB:       db,
 				IPS:      ips,

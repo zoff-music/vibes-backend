@@ -2,6 +2,8 @@ package vibe
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
 )
 
@@ -25,6 +27,59 @@ func (g *GeneratedTrack) IsEmpty() bool {
 }
 
 type GeneratedPlaylist []GeneratedTrack
+
+type AIProvider string
+
+type AIModel struct {
+	Provider AIProvider
+	Name     string
+}
+
+func ParseAIModel(value string) (*AIModel, error) {
+	parts := strings.SplitN(value, ":", 2)
+	if len(parts) != 2 {
+		name := strings.TrimSpace(value)
+		lowerName := strings.ToLower(name)
+		if strings.HasPrefix(lowerName, "grok-") {
+			model := AIModel{
+				Provider: AIProviderGrok,
+				Name:     name,
+			}
+			return &model, nil
+		}
+		if strings.HasPrefix(lowerName, "gemini-") {
+			model := AIModel{
+				Provider: AIProviderGemini,
+				Name:     name,
+			}
+			return &model, nil
+		}
+		return nil, fmt.Errorf(
+			"error parsing AI model %q: expected PROVIDER:model",
+			value,
+		)
+	}
+
+	provider := AIProvider(strings.ToUpper(strings.TrimSpace(parts[0])))
+	name := strings.TrimSpace(parts[1])
+	if name == "" {
+		return nil, fmt.Errorf("error parsing AI model %q: model is required", value)
+	}
+
+	if provider != AIProviderGrok && provider != AIProviderGemini {
+		return nil, fmt.Errorf(
+			"error parsing AI model %q: provider must be GROK or GEMINI",
+			value,
+		)
+	}
+
+	model := AIModel{
+		Provider: provider,
+		Name:     name,
+	}
+
+	return &model, nil
+}
 
 type GeneratedPlaylistSearchResult struct {
 	Playlist       GeneratedPlaylist
@@ -105,6 +160,10 @@ type RoomGenerationWorker interface {
 const GeneratedPlaylistTrackCount = 100
 
 const GeneratedPlaylistSelectedTrackCount = 30
+
+const AIProviderGrok AIProvider = "GROK"
+
+const AIProviderGemini AIProvider = "GEMINI"
 
 const RoomGenerationMaxAttempts = 5
 

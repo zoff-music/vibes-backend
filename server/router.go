@@ -22,7 +22,7 @@ func (s *Server) setupRoutes() {
 	// Room routes
 	api.HandleFunc("/rooms", handler.CreateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
 	api.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
-	if s.Grok.Enabled {
+	if s.PlaylistGenerationEnabled {
 		api.HandleFunc("/rooms/generation", handler.CreateGeneratedRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoom")
 		api.HandleFunc("/rooms/{id}/generations", handler.CreateRoomGeneration(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomGeneration")
 	}
