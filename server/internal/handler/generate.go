@@ -559,6 +559,10 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 			err,
 		)
 	}
+	err = h.DB.CreateSearchUsages(ctx, searchResult.SearchUsages)
+	if err != nil {
+		log.Printf("error creating generated playlist search usage: %v", err)
+	}
 	err = h.Cache.CacheSearches(
 		ctx,
 		vibe.SourceTypeYouTube,

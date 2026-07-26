@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -27,16 +28,18 @@ import (
 func SearchMusic(
 	ms vibe.MusicSearcher,
 	cache vibe.CachedSearchFetcherCreator,
+	usageCreator vibe.SearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
 
-		if query == "" {
+		if utf8.RuneCountInString(query) < minimumSearchQueryLength {
 			handleError(
 				w,
 				fmt.Errorf(
-					"error validating query in SearchMusic handler: parameter 'q' is required",
+					"error validating query in SearchMusic handler: parameter 'q' must contain at least %d characters",
+					minimumSearchQueryLength,
 				),
 				http.StatusBadRequest,
 				true,
@@ -58,6 +61,15 @@ func SearchMusic(
 		cacheHit := len(cachedSearches) > 0
 		if cacheHit {
 			tracks = cachedSearches[0].GetMusicTracks()
+		}
+		usage := vibe.GenerateSearchUsage(
+			vibe.SourceTypeYouTube,
+			query,
+			cacheHit,
+		)
+		err = usageCreator.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
+		if err != nil {
+			log.Printf("error creating youtube search usage: %v", err)
 		}
 		if !cacheHit {
 			tracks, err = ms.Search(ctx, query)
@@ -135,16 +147,18 @@ func SearchMusic(
 func SearchSoundCloud(
 	ms vibe.MusicSearcher,
 	cache vibe.CachedSearchFetcherCreator,
+	usageCreator vibe.SearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
 
-		if query == "" {
+		if utf8.RuneCountInString(query) < minimumSearchQueryLength {
 			handleError(
 				w,
 				fmt.Errorf(
-					"error validating query in SearchSoundCloud handler: parameter 'q' is required",
+					"error validating query in SearchSoundCloud handler: parameter 'q' must contain at least %d characters",
+					minimumSearchQueryLength,
 				),
 				http.StatusBadRequest,
 				true,
@@ -166,6 +180,15 @@ func SearchSoundCloud(
 		cacheHit := len(cachedSearches) > 0
 		if cacheHit {
 			tracks = cachedSearches[0].GetMusicTracks()
+		}
+		usage := vibe.GenerateSearchUsage(
+			vibe.SourceTypeSoundCloud,
+			query,
+			cacheHit,
+		)
+		err = usageCreator.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
+		if err != nil {
+			log.Printf("error creating soundcloud search usage: %v", err)
 		}
 		if !cacheHit {
 			tracks, err = ms.Search(ctx, query)
@@ -228,16 +251,19 @@ func SearchSoundCloud(
 //	@Router		/api/v1/spotify/search [get]
 func SearchSpotify(
 	ms vibe.MusicSearcher,
+	cache vibe.CachedSearchFetcherCreator,
+	usageCreator vibe.SearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		query := r.URL.Query().Get("q")
+		query := strings.TrimSpace(r.URL.Query().Get("q"))
 
-		if query == "" {
+		if utf8.RuneCountInString(query) < minimumSearchQueryLength {
 			handleError(
 				w,
 				fmt.Errorf(
-					"error validating query in SearchSpotify handler: parameter 'q' is required",
+					"error validating query in SearchSpotify handler: parameter 'q' must contain at least %d characters",
+					minimumSearchQueryLength,
 				),
 				http.StatusBadRequest,
 				true,
@@ -245,7 +271,33 @@ func SearchSpotify(
 			return
 		}
 
-		tracks, err := ms.Search(ctx, query)
+		cachedSearches, err := cache.GetCachedSearches(
+			ctx,
+			vibe.SourceTypeSpotify,
+			[]string{query},
+		)
+		if err != nil {
+			log.Printf("error getting cached spotify search: %v", err)
+			cachedSearches = []vibe.CachedSearch{}
+		}
+
+		tracks := make([]vibe.MusicTrack, 0)
+		cacheHit := len(cachedSearches) > 0
+		if cacheHit {
+			tracks = cachedSearches[0].GetMusicTracks()
+		}
+		usage := vibe.GenerateSearchUsage(
+			vibe.SourceTypeSpotify,
+			query,
+			cacheHit,
+		)
+		err = usageCreator.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
+		if err != nil {
+			log.Printf("error creating spotify search usage: %v", err)
+		}
+		if !cacheHit {
+			tracks, err = ms.Search(ctx, query)
+		}
 		if err != nil {
 			handleError(
 				w,
@@ -254,6 +306,19 @@ func SearchSpotify(
 				true,
 			)
 			return
+		}
+		if !cacheHit {
+			search := vibe.GenerateCachedSearch(query, tracks)
+			err = cache.CacheSearches(
+				ctx,
+				vibe.SourceTypeSpotify,
+				[]vibe.CachedSearch{
+					search,
+				},
+			)
+			if err != nil {
+				log.Printf("error caching spotify search: %v", err)
+			}
 		}
 
 		body, err := json.Marshal(tracks)
@@ -272,3 +337,5 @@ func SearchSpotify(
 		_, _ = w.Write(body)
 	}
 }
+
+const minimumSearchQueryLength = 3

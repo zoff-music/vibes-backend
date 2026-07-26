@@ -2,7 +2,13 @@ package vibe
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"html"
+	"sort"
+	"strings"
+	"unicode"
 )
 
 // MusicTrack represents a generic music track
@@ -24,6 +30,12 @@ type CachedSearch struct {
 	Tracks []MusicTrack `json:"tracks"`
 }
 
+type SearchUsage struct {
+	Provider  string
+	QueryHash string
+	Cached    bool
+}
+
 func (s CachedSearch) GetMusicTracks() []MusicTrack {
 	return append([]MusicTrack{}, s.Tracks...)
 }
@@ -35,6 +47,76 @@ func GenerateCachedSearch(
 	return CachedSearch{
 		Query:  query,
 		Tracks: append([]MusicTrack{}, tracks...),
+	}
+}
+
+func GenerateSearchUsage(
+	provider string,
+	query string,
+	cached bool,
+) SearchUsage {
+	normalizedQuery := NormalizeSearch(query)
+	hash := sha256.Sum256([]byte(normalizedQuery))
+
+	return SearchUsage{
+		Provider:  provider,
+		QueryHash: hex.EncodeToString(hash[:]),
+		Cached:    cached,
+	}
+}
+
+func NormalizeSearch(query string) string {
+	value := strings.ToLower(html.UnescapeString(query))
+	allTokens := make([]string, 0)
+	tokens := make([]string, 0)
+	var token strings.Builder
+	for _, character := range value {
+		if unicode.IsLetter(character) || unicode.IsNumber(character) {
+			token.WriteRune(character)
+			continue
+		}
+		if token.Len() == 0 {
+			continue
+		}
+
+		word := token.String()
+		allTokens = append(allTokens, word)
+		if !isSearchNoise(word) {
+			tokens = append(tokens, word)
+		}
+		token.Reset()
+	}
+	if token.Len() > 0 {
+		word := token.String()
+		allTokens = append(allTokens, word)
+		if !isSearchNoise(word) {
+			tokens = append(tokens, word)
+		}
+	}
+	if len(tokens) == 0 {
+		tokens = allTokens
+	}
+
+	sort.Strings(tokens)
+	normalizedTokens := make([]string, 0, len(tokens))
+	for _, current := range tokens {
+		if len(normalizedTokens) > 0 &&
+			normalizedTokens[len(normalizedTokens)-1] == current {
+			continue
+		}
+		normalizedTokens = append(normalizedTokens, current)
+	}
+
+	return strings.Join(normalizedTokens, " ")
+}
+
+func isSearchNoise(value string) bool {
+	switch value {
+	case "4k", "a", "an", "and", "audio", "feat", "featuring", "ft", "hd",
+		"lyric", "lyrics", "music", "official", "the", "video", "visualizer":
+		return true
+	default:
+		return false
 	}
 }
 
@@ -93,6 +175,10 @@ type MusicTrackFetcher interface {
 	GetTrack(ctx context.Context, id string) (*MusicTrack, error)
 }
 
+type MusicTrackResolver interface {
+	ResolveTrack(ctx context.Context, providerURL string) (*MusicTrack, error)
+}
+
 type CachedSearchFetcher interface {
 	GetCachedSearches(
 		ctx context.Context,
@@ -112,6 +198,10 @@ type CachedSearchCreator interface {
 type CachedSearchFetcherCreator interface {
 	CachedSearchFetcher
 	CachedSearchCreator
+}
+
+type SearchUsageCreator interface {
+	CreateSearchUsages(ctx context.Context, usages []SearchUsage) error
 }
 
 const SourceTypeYouTube = "youtube"
