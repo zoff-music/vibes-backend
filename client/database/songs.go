@@ -21,6 +21,7 @@ func (c *Client) prepareGetSongsStmt() error {
 			a.room_id,
 			a.source_type,
 			a.source_id,
+			a.provider_url,
 			a.title,
 			a.artist,
 			a.thumbnail_url,
@@ -35,7 +36,7 @@ func (c *Client) prepareGetSongsStmt() error {
 		AND a.room_id = b.room_id
 		WHERE a.room_id = $1
 		AND a.source_type = ANY($2::text[])
-		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
+		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 		ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 	`)
 	if err != nil {
@@ -90,6 +91,7 @@ type songRow struct {
 	RoomID          sql.NullString
 	SourceType      sql.NullString
 	SourceID        sql.NullString
+	ProviderURL     sql.NullString
 	Title           sql.NullString
 	Artist          sql.NullString
 	ThumbnailURL    sql.NullString
@@ -106,6 +108,7 @@ func (r *songRow) scanRows(rows *sql.Rows) error {
 		&r.RoomID,
 		&r.SourceType,
 		&r.SourceID,
+		&r.ProviderURL,
 		&r.Title,
 		&r.Artist,
 		&r.ThumbnailURL,
@@ -123,6 +126,7 @@ func (r *songRow) scan(row *sql.Row) error {
 		&r.RoomID,
 		&r.SourceType,
 		&r.SourceID,
+		&r.ProviderURL,
 		&r.Title,
 		&r.Artist,
 		&r.ThumbnailURL,
@@ -140,6 +144,7 @@ func (r *songRow) toSong() vibe.Song {
 		RoomID:          r.RoomID.String,
 		SourceType:      r.SourceType.String,
 		SourceID:        r.SourceID.String,
+		ProviderURL:     r.ProviderURL.String,
 		Title:           r.Title.String,
 		Artist:          r.Artist.String,
 		ThumbnailURL:    r.ThumbnailURL.String,
@@ -159,6 +164,7 @@ func (c *Client) prepareGetSongStmt() error {
 			a.room_id,
 			a.source_type,
 			a.source_id,
+			a.provider_url,
 			a.title,
 			a.artist,
 			a.thumbnail_url,
@@ -174,7 +180,7 @@ func (c *Client) prepareGetSongStmt() error {
 		WHERE a.room_id = $1
 		AND a.id = $2
 		AND a.source_type = ANY($3::text[])
-		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
+		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSongStatement: %w", err)
@@ -319,8 +325,9 @@ func (c *Client) prepareRefreshSongMetadataStmt() error {
 			artist = $3,
 			thumbnail_url = $4,
 			duration = $5,
+			provider_url = $6,
 			metadata_updated_at = NOW(),
-			metadata_refresh_after = NOW() + make_interval(secs => $6)
+			metadata_refresh_after = NOW() + make_interval(secs => $7)
 		WHERE id = $1
 	`)
 	if err != nil {
@@ -351,6 +358,7 @@ func (c *Client) RefreshSongMetadata(
 		track.ChannelTitle,
 		track.ThumbnailURL,
 		track.DurationSeconds,
+		track.ProviderURL,
 		int64(refreshInterval/time.Second),
 	)
 	if err != nil {
@@ -420,6 +428,7 @@ func (c *Client) prepareAddSongStmt() error {
 				room_id,
 				source_type,
 				source_id,
+				provider_url,
 				title,
 				artist,
 				thumbnail_url,
@@ -434,6 +443,7 @@ func (c *Client) prepareAddSongStmt() error {
 				a.room_id,
 				$2,
 				$3,
+				$13,
 				$4,
 				$5,
 				$6,
@@ -451,6 +461,7 @@ func (c *Client) prepareAddSongStmt() error {
 				room_id,
 				source_type,
 				source_id,
+				provider_url,
 				title,
 				artist,
 				thumbnail_url,
@@ -478,6 +489,7 @@ func (c *Client) prepareAddSongStmt() error {
 			a.room_id,
 			a.source_type,
 			a.source_id,
+			a.provider_url,
 			a.title,
 			a.artist,
 			a.thumbnail_url,
@@ -502,6 +514,7 @@ func (c *Client) prepareAddSongStmt() error {
 			NULL::TEXT AS room_id,
 			NULL::TEXT AS source_type,
 			NULL::TEXT AS source_id,
+			NULL::TEXT AS provider_url,
 			NULL::TEXT AS title,
 			NULL::TEXT AS artist,
 			NULL::TEXT AS thumbnail_url,
@@ -542,6 +555,7 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongRes
 		song.ID,
 		true,
 		c.enabledProviders,
+		song.ProviderURL,
 	)
 
 	var row addSongRow
@@ -576,6 +590,7 @@ type addSongRow struct {
 	RoomID          sql.NullString
 	SourceType      sql.NullString
 	SourceID        sql.NullString
+	ProviderURL     sql.NullString
 	Title           sql.NullString
 	Artist          sql.NullString
 	ThumbnailURL    sql.NullString
@@ -593,6 +608,7 @@ func (r *addSongRow) scan(row *sql.Row) error {
 		&r.RoomID,
 		&r.SourceType,
 		&r.SourceID,
+		&r.ProviderURL,
 		&r.Title,
 		&r.Artist,
 		&r.ThumbnailURL,
@@ -610,6 +626,7 @@ func (r *addSongRow) toSong() vibe.Song {
 		RoomID:          r.RoomID.String,
 		SourceType:      r.SourceType.String,
 		SourceID:        r.SourceID.String,
+		ProviderURL:     r.ProviderURL.String,
 		Title:           r.Title.String,
 		Artist:          r.Artist.String,
 		ThumbnailURL:    r.ThumbnailURL.String,

@@ -91,6 +91,7 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	return &vibe.MusicTrack{
 		ID:              fmt.Sprintf("%d", res.ID),
 		Source:          vibe.SourceTypeSoundCloud,
+		ProviderURL:     res.PermalinkURL,
 		Title:           res.Title,
 		ChannelTitle:    username,
 		ThumbnailURL:    artworkURL,

@@ -186,6 +186,7 @@ func (r *playbackSongRow) scan(row *sql.Row) error {
 		&r.Song.RoomID,
 		&r.Song.SourceType,
 		&r.Song.SourceID,
+		&r.Song.ProviderURL,
 		&r.Song.Title,
 		&r.Song.Artist,
 		&r.Song.ThumbnailURL,
@@ -272,6 +273,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 				a.room_id,
 				a.source_type,
 				a.source_id,
+				a.provider_url,
 				a.title,
 				a.artist,
 				a.thumbnail_url,
@@ -290,7 +292,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			AND a.room_id = b.room_id
 			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
 			AND a.source_type = ANY($1::text[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
 			LIMIT 1
 		),
@@ -315,6 +317,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			b.room_id,
 			b.source_type,
 			b.source_id,
+			b.provider_url,
 			b.title,
 			b.artist,
 			b.thumbnail_url,
@@ -482,6 +485,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 				a.room_id,
 				a.source_type,
 				a.source_id,
+				a.provider_url,
 				a.title,
 				a.artist,
 				a.thumbnail_url,
@@ -500,7 +504,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 			AND a.room_id = b.room_id
 			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
 			AND a.source_type = ANY($2::text[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
 			LIMIT 1
 		),
@@ -525,6 +529,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 			b.room_id,
 			b.source_type,
 			b.source_id,
+			b.provider_url,
 			b.title,
 			b.artist,
 			b.thumbnail_url,
@@ -658,6 +663,7 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 				a.room_id,
 				a.source_type,
 				a.source_id,
+				a.provider_url,
 				a.title,
 				a.artist,
 				a.thumbnail_url,
@@ -672,7 +678,7 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			ON a.id = b.song_id
 			AND a.room_id = b.room_id
 			WHERE a.source_type = ANY($2::text[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 			LIMIT 1
 		),
@@ -697,6 +703,7 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			b.room_id,
 			b.source_type,
 			b.source_id,
+			b.provider_url,
 			b.title,
 			b.artist,
 			b.thumbnail_url,
