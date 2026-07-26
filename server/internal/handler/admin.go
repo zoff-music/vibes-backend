@@ -230,6 +230,47 @@ func AdminRooms(
 	}
 }
 
+// AdminSearchUsage handles GET /api/v1/admin/search-usage
+//
+//	@Summary	List search usage summaries
+//	@Tags		admin
+//	@Produce	json
+//	@Success	200	{array}		vibe.AdminSearchUsageSummary
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/admin/search-usage [get]
+func AdminSearchUsage(
+	db vibe.AdminSearchUsageLister,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		summaries, err := db.ListAdminSearchUsage(ctx)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching admin search usage: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		body, err := json.Marshal(summaries)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling admin search usage: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}
+}
+
 // AdminUpdateRoom handles PATCH /api/v1/admin/rooms/{id}
 //
 //	@Summary		Update a room

@@ -75,6 +75,11 @@ func (c *Client) SearchGeneratedPlaylist(
 		0,
 		len(playlist),
 	)
+	searchUsages := make(
+		[]vibe.SearchUsage,
+		0,
+		len(playlist),
+	)
 	unresolvedCandidates := make(
 		vibe.GeneratedPlaylist,
 		0,
@@ -84,6 +89,14 @@ func (c *Client) SearchGeneratedPlaylist(
 		query := candidate.Artist + " " + candidate.Title
 		cachedSearch, cached := cachedSearchesByQuery[query]
 		if cached {
+			searchUsages = append(
+				searchUsages,
+				vibe.GenerateSearchUsage(
+					vibe.SourceTypeYouTube,
+					query,
+					true,
+				),
+			)
 			for _, cachedTrack := range cachedSearch.Tracks {
 				track := cachedTrack.GeneratedTrack(query)
 				if track.Duration <= 0 ||
@@ -136,6 +149,14 @@ func (c *Client) SearchGeneratedPlaylist(
 	var fallbackSearchErr error
 	for _, candidate := range unresolvedCandidates {
 		query := candidate.Artist + " " + candidate.Title
+		searchUsages = append(
+			searchUsages,
+			vibe.GenerateSearchUsage(
+				vibe.SourceTypeYouTube,
+				query,
+				false,
+			),
+		)
 		var result *searchResponse
 		result, err = c.searchVideos(
 			ctx,
@@ -231,6 +252,7 @@ func (c *Client) SearchGeneratedPlaylist(
 	result := vibe.GeneratedPlaylistSearchResult{
 		Playlist:       found,
 		CachedSearches: searchesToCache,
+		SearchUsages:   searchUsages,
 	}
 
 	return &result, nil

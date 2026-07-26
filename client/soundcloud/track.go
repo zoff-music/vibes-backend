@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 
@@ -77,25 +78,92 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 			err,
 		)
 	}
-
-	username := "Unknown"
-	if res.User != nil {
-		username = res.User.Username
+	if res.ID == 0 || res.Title == "" || res.PermalinkURL == "" {
+		return nil, internalerror.ErrMusicTrackNotFound{
+			Err: fmt.Errorf(
+				"error getting soundcloud track in GetTrack: response did not contain a track",
+			),
+		}
 	}
 
-	artworkURL := ""
-	if res.ArtworkURL != nil {
-		artworkURL = *res.ArtworkURL
+	track := res.MusicTrack()
+	return &track, nil
+}
+
+func (c *Client) ResolveTrack(
+	ctx context.Context,
+	providerURL string,
+) (*vibe.MusicTrack, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ResolveTrack")
+	defer span.End()
+
+	if !c.Enabled {
+		return nil, fmt.Errorf(
+			"error validating soundcloud client in ResolveTrack: client is not enabled",
+		)
 	}
 
-	return &vibe.MusicTrack{
-		ID:              fmt.Sprintf("%d", res.ID),
-		Source:          vibe.SourceTypeSoundCloud,
-		ProviderURL:     res.PermalinkURL,
-		Title:           res.Title,
-		ChannelTitle:    username,
-		ThumbnailURL:    artworkURL,
-		Duration:        fmt.Sprintf("PT%dM%dS", (res.Duration/1000)/60, (res.Duration/1000)%60),
-		DurationSeconds: res.Duration / 1000,
-	}, nil
+	err := c.EnsureToken(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("error ensuring token in ResolveTrack: %w", err)
+	}
+
+	params := url.Values{}
+	params.Set("url", providerURL)
+	reqData := client.HTTPRequestData{
+		Method:  http.MethodGet,
+		URL:     fmt.Sprintf("%s/resolve", c.Endpoint),
+		Payload: &params,
+		Headers: map[string]string{
+			"Authorization": fmt.Sprintf("OAuth %s", c.accessToken),
+			"Accept":        "application/json; charset=utf-8",
+		},
+	}
+
+	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
+	if err != nil {
+		var statusCodeError client.HTTPStatusCodeError
+		if errors.As(err, &statusCodeError) {
+			if statusCodeError.StatusCode == http.StatusNotFound {
+				return nil, internalerror.ErrMusicTrackNotFound{
+					Err: fmt.Errorf(
+						"error resolving soundcloud track in ResolveTrack: track not found",
+					),
+				}
+			}
+			if statusCodeError.StatusCode == http.StatusTooManyRequests {
+				return nil, internalerror.ErrProviderQuotaExceeded{
+					Err: fmt.Errorf(
+						"error requesting soundcloud track in ResolveTrack: %w",
+						err,
+					),
+					Provider: string(vibe.SourceTypeSoundCloud),
+				}
+			}
+		}
+
+		return nil, fmt.Errorf(
+			"error requesting soundcloud track in ResolveTrack: %w",
+			err,
+		)
+	}
+
+	var res trackResponse
+	err = json.Unmarshal(resp, &res)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error decoding soundcloud response in ResolveTrack: %w",
+			err,
+		)
+	}
+	if res.ID == 0 || res.Title == "" || res.PermalinkURL == "" {
+		return nil, internalerror.ErrMusicTrackNotFound{
+			Err: fmt.Errorf(
+				"error resolving soundcloud track in ResolveTrack: URL did not resolve to a track",
+			),
+		}
+	}
+
+	track := res.MusicTrack()
+	return &track, nil
 }

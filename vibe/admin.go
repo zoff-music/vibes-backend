@@ -24,6 +24,15 @@ type AdminSessionResponse struct {
 	Authorized bool `json:"authorized"`
 }
 
+type AdminSearchUsageSummary struct {
+	Window   string `json:"window"`
+	Provider string `json:"provider"`
+	Total    int64  `json:"total"`
+	Unique   int64  `json:"unique"`
+	Cached   int64  `json:"cached"`
+	Live     int64  `json:"live"`
+}
+
 type AdminEvent struct {
 	Type    string `json:"type"`
 	Payload []byte `json:"payload"`
@@ -31,6 +40,10 @@ type AdminEvent struct {
 
 type AdminRoomLister interface {
 	ListAdminRooms(ctx context.Context) ([]AdminRoomSummary, error)
+}
+
+type AdminSearchUsageLister interface {
+	ListAdminSearchUsage(ctx context.Context) ([]AdminSearchUsageSummary, error)
 }
 
 type AdminRoomUpdater interface {
