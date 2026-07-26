@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title description">
+  <title id="title">2oFF application architecture</title>
+  <desc id="description">
+    High-level architecture showing the four frontend applications, shared frontend packages,
+    Go backend, PostgreSQL, Redis, migrator, and external music and AI providers.
+  </desc>
+
+  <defs>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --background: #ffffff;
+        --foreground: #20202a;
+        --muted: #676779;
+        --border: #9b9baa;
+        --frontend: #e9f1ff;
+        --backend: #e8f7ef;
+        --storage: #f4eafa;
+        --external: #fff1e8;
+        --shared: #f1f1f5;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --background: #15151c;
+          --foreground: #f1f1f5;
+          --muted: #b5b5c1;
+          --border: #666675;
+          --frontend: #1f3049;
+          --backend: #1d3b2d;
+          --storage: #362641;
+          --external: #463025;
+          --shared: #292933;
+        }
+      }
+
+      .canvas { fill: var(--background); }
+      .boundary { fill: none; stroke: var(--border); stroke-width: 1.5; }
+      .node { stroke: var(--border); stroke-width: 1.5; }
+      .frontend { fill: var(--frontend); }
+      .backend { fill: var(--backend); }
+      .storage { fill: var(--storage); }
+      .external { fill: var(--external); }
+      .shared { fill: var(--shared); }
+      .connector {
+        fill: none;
+        stroke: var(--muted);
+        stroke-width: 1.5;
+        marker-end: url(#arrow);
+      }
+      .connector-both {
+        fill: none;
+        stroke: var(--muted);
+        stroke-width: 1.5;
+        marker-start: url(#arrow-start);
+        marker-end: url(#arrow);
+      }
+      text {
+        fill: var(--foreground);
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      }
+      .group-title { font-size: 15px; font-weight: 600; letter-spacing: 0.06em; }
+      .title { font-size: 15px; font-weight: 600; text-anchor: middle; }
+      .detail { fill: var(--muted); font-size: 11px; text-anchor: middle; }
+      .edge-label { fill: var(--muted); font-size: 10px; text-anchor: middle; }
+    </style>
+
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="var(--muted)"/>
+    </marker>
+    <marker id="arrow-start" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 10 0 L 0 5 L 10 10 z" fill="var(--muted)"/>
+    </marker>
+  </defs>
+
+  <rect class="canvas" width="1200" height="760"/>
+
+  <!-- Frontend applications -->
+  <rect class="boundary" x="25" y="25" width="340" height="540" rx="14"/>
+  <text class="group-title" x="47" y="56">FRONTEND APPLICATIONS</text>
+  <text class="detail" x="195" y="80">React Router · Node SSR</text>
+
+  <rect class="node frontend" x="58" y="105" width="274" height="70" rx="9"/>
+  <text class="title" x="195" y="134">Platform</text>
+  <text class="detail" x="195" y="157">Rooms · search · playback</text>
+
+  <rect class="node frontend" x="58" y="205" width="274" height="70" rx="9"/>
+  <text class="title" x="195" y="234">Admin</text>
+  <text class="detail" x="195" y="257">Administration and operations</text>
+
+  <rect class="node frontend" x="58" y="305" width="274" height="70" rx="9"/>
+  <text class="title" x="195" y="334">Embed</text>
+  <text class="detail" x="195" y="357">Embeddable room player</text>
+
+  <rect class="node frontend" x="58" y="405" width="274" height="70" rx="9"/>
+  <text class="title" x="195" y="434">Cast receiver</text>
+  <text class="detail" x="195" y="457">Chromecast playback application</text>
+
+  <rect class="node shared" x="58" y="505" width="274" height="38" rx="9"/>
+  <text class="title" x="195" y="529">Shared UI · API · models · state</text>
+
+  <!-- Go backend -->
+  <rect class="boundary" x="435" y="25" width="330" height="540" rx="14"/>
+  <text class="group-title" x="457" y="56">VIBES BACKEND</text>
+  <text class="detail" x="600" y="80">Single Go application</text>
+
+  <rect class="node backend" x="475" y="105" width="250" height="170" rx="10"/>
+  <text class="title" x="600" y="137">Public API</text>
+  <text class="detail" x="600" y="163">Rooms · playlists · search</text>
+  <text class="detail" x="600" y="184">playback · settings · authorization</text>
+  <text class="detail" x="600" y="220">HTTP endpoints and SSE updates</text>
+  <text class="detail" x="600" y="241">for every frontend application</text>
+
+  <rect class="node backend" x="475" y="305" width="250" height="90" rx="10"/>
+  <text class="title" x="600" y="338">Background processing</text>
+  <text class="detail" x="600" y="363">Generation · playback · maintenance</text>
+
+  <rect class="node backend" x="475" y="425" width="250" height="90" rx="10"/>
+  <text class="title" x="600" y="458">External integrations</text>
+  <text class="detail" x="600" y="483">Music and playlist providers</text>
+
+  <!-- External providers -->
+  <rect class="boundary" x="835" y="25" width="340" height="540" rx="14"/>
+  <text class="group-title" x="857" y="56">EXTERNAL PROVIDERS</text>
+
+  <rect class="node external" x="868" y="105" width="274" height="70" rx="9"/>
+  <text class="title" x="1005" y="134">YouTube</text>
+  <text class="detail" x="1005" y="157">Search · metadata · embedded player</text>
+
+  <rect class="node external" x="868" y="205" width="274" height="70" rx="9"/>
+  <text class="title" x="1005" y="234">SoundCloud</text>
+  <text class="detail" x="1005" y="257">Search · metadata · playback</text>
+
+  <rect class="node external" x="868" y="305" width="274" height="70" rx="9"/>
+  <text class="title" x="1005" y="334">Spotify</text>
+  <text class="detail" x="1005" y="357">Search · metadata · playback</text>
+
+  <rect class="node external" x="868" y="405" width="274" height="70" rx="9"/>
+  <text class="title" x="1005" y="434">Playlist-generation providers</text>
+  <text class="detail" x="1005" y="457">xAI Grok · Google Gemini</text>
+
+  <!-- Parallel, non-crossing application connections -->
+  <path class="connector" d="M 332 140 L 435 140"/>
+  <path class="connector" d="M 332 240 L 435 240"/>
+  <path class="connector" d="M 332 340 L 435 340"/>
+  <path class="connector" d="M 332 440 L 435 440"/>
+  <text class="edge-label" x="383" y="129">HTTPS + SSE</text>
+
+  <!-- Parallel, non-crossing provider connections -->
+  <path class="connector-both" d="M 765 140 L 868 140"/>
+  <path class="connector-both" d="M 765 240 L 868 240"/>
+  <path class="connector-both" d="M 765 340 L 868 340"/>
+  <path class="connector-both" d="M 765 440 L 868 440"/>
+  <text class="edge-label" x="816" y="129">Provider APIs</text>
+
+  <!-- Data stores -->
+  <text class="group-title" x="25" y="620">DATA AND SCHEMA</text>
+
+  <rect class="node backend" x="58" y="655" width="210" height="64" rx="9"/>
+  <text class="title" x="163" y="682">Vibes migrator</text>
+  <text class="detail" x="163" y="704">Database schema migrations</text>
+
+  <path class="node storage" d="M 425 651 C 425 633, 625 633, 625 651 L 625 707 C 625 725, 425 725, 425 707 Z"/>
+  <ellipse class="node storage" cx="525" cy="651" rx="100" ry="18"/>
+  <path class="boundary" d="M 425 707 C 425 725, 625 725, 625 707"/>
+  <text class="title" x="525" y="680">PostgreSQL</text>
+  <text class="detail" x="525" y="702">Rooms · songs · playback · users</text>
+
+  <path class="node storage" d="M 790 651 C 790 633, 990 633, 990 651 L 990 707 C 990 725, 790 725, 790 707 Z"/>
+  <ellipse class="node storage" cx="890" cy="651" rx="100" ry="18"/>
+  <path class="boundary" d="M 790 707 C 790 725, 990 725, 990 707"/>
+  <text class="title" x="890" y="680">Redis</text>
+  <text class="detail" x="890" y="702">Rate limits · search cache · statistics</text>
+
+  <path class="connector" d="M 268 687 L 425 687"/>
+  <path class="connector-both" d="M 550 565 L 550 633"/>
+  <path class="connector-both" d="M 690 565 L 690 610 L 890 610 L 890 633"/>
+  <text class="edge-label" x="346" y="677">schema</text>
+</svg>
