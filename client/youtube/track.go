@@ -73,6 +73,7 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	return &vibe.MusicTrack{
 		ID:              item.ID,
 		Source:          vibe.SourceTypeYouTube,
+		ProviderURL:     fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID),
 		Title:           html.UnescapeString(item.Snippet.Title),
 		ChannelTitle:    html.UnescapeString(item.Snippet.ChannelTitle),
 		ThumbnailURL:    item.Snippet.Thumbnails.Medium.URL,

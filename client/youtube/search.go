@@ -121,6 +121,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		tracks = append(tracks, vibe.MusicTrack{
 			ID:              item.ID.VideoID,
 			Source:          vibe.SourceTypeYouTube,
+			ProviderURL:     fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID.VideoID),
 			Title:           html.UnescapeString(item.Snippet.Title),
 			ChannelTitle:    html.UnescapeString(item.Snippet.ChannelTitle),
 			ThumbnailURL:    thumbnailURL,
