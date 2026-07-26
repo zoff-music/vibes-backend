@@ -473,6 +473,7 @@ func (c *Client) AddGeneratedSong(
 		song.ID,
 		false,
 		c.enabledProviders,
+		song.ProviderURL,
 	)
 
 	var rowData addSongRow

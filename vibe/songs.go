@@ -2,6 +2,9 @@ package vibe
 
 import (
 	"context"
+	"fmt"
+	"net/url"
+	"strings"
 	"time"
 )
 
@@ -11,6 +14,7 @@ type Song struct {
 	RoomID          string    `json:"-"`
 	SourceType      string    `json:"sourceType"`
 	SourceID        string    `json:"sourceId"`
+	ProviderURL     string    `json:"providerUrl,omitempty"`
 	Title           string    `json:"title"`
 	Artist          string    `json:"artist,omitempty"`
 	ThumbnailURL    string    `json:"thumbnailUrl"`
@@ -23,12 +27,45 @@ type Song struct {
 
 // AddSongRequest is the request payload for adding a song.
 type AddSongRequest struct {
-	SourceType string `json:"sourceType"`
-	SourceID   string `json:"sourceId"`
-	Title      string `json:"title"`
-	Artist     string `json:"artist,omitempty"`
-	Thumbnail  string `json:"thumbnailUrl"`
-	Duration   int    `json:"duration"`
+	SourceType  string `json:"sourceType"`
+	SourceID    string `json:"sourceId"`
+	ProviderURL string `json:"providerUrl,omitempty"`
+	Title       string `json:"title"`
+	Artist      string `json:"artist,omitempty"`
+	Thumbnail   string `json:"thumbnailUrl"`
+	Duration    int    `json:"duration"`
+}
+
+func (r AddSongRequest) CanonicalProviderURL() (string, error) {
+	if r.SourceType == SourceTypeYouTube {
+		return fmt.Sprintf("https://www.youtube.com/watch?v=%s", r.SourceID), nil
+	}
+
+	if r.SourceType == SourceTypeSpotify {
+		return fmt.Sprintf("https://open.spotify.com/track/%s", r.SourceID), nil
+	}
+
+	if r.SourceType != SourceTypeSoundCloud || r.ProviderURL == "" {
+		return "", nil
+	}
+
+	providerURL, err := url.Parse(r.ProviderURL)
+	if err != nil {
+		return "", fmt.Errorf("error parsing soundcloud provider URL: %w", err)
+	}
+
+	hostname := strings.ToLower(providerURL.Hostname())
+	isSoundCloudHost := hostname == "soundcloud.com" ||
+		strings.HasSuffix(hostname, ".soundcloud.com")
+	pathSegments := strings.Split(strings.Trim(providerURL.Path, "/"), "/")
+	if providerURL.Scheme != "https" ||
+		!isSoundCloudHost ||
+		providerURL.User != nil ||
+		len(pathSegments) < 2 {
+		return "", fmt.Errorf("error validating soundcloud provider URL")
+	}
+
+	return providerURL.String(), nil
 }
 
 // AddSongResult is the result of adding a song or voting on an existing duplicate.

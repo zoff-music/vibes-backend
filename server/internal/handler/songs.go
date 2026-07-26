@@ -158,12 +158,24 @@ func AddSong(
 			return
 		}
 
+		providerURL, err := req.CanonicalProviderURL()
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error getting canonical provider URL: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
 		artist := req.Artist
 		song := &vibe.Song{
 			ID:           uuid.New().String(),
 			RoomID:       roomID,
 			SourceType:   req.SourceType,
 			SourceID:     req.SourceID,
+			ProviderURL:  providerURL,
 			Title:        req.Title,
 			Artist:       artist,
 			ThumbnailURL: req.Thumbnail,

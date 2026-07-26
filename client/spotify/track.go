@@ -84,6 +84,7 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	return &vibe.MusicTrack{
 		ID:              item.ID,
 		Source:          vibe.SourceTypeSpotify,
+		ProviderURL:     fmt.Sprintf("https://open.spotify.com/track/%s", item.ID),
 		Title:           item.Name,
 		ChannelTitle:    strings.Join(artists, ", "),
 		ThumbnailURL:    thumbnail,
