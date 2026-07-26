@@ -9,6 +9,7 @@ import (
 type MusicTrack struct {
 	ID              string `json:"id"`
 	Source          string `json:"source"`
+	ProviderURL     string `json:"providerUrl,omitempty"`
 	Title           string `json:"title"`
 	ChannelTitle    string `json:"channelTitle,omitempty"`
 	ThumbnailURL    string `json:"thumbnailUrl"`
@@ -41,6 +42,7 @@ func (t GeneratedTrack) MusicTrack() MusicTrack {
 	return MusicTrack{
 		ID:              t.YouTubeID,
 		Source:          SourceTypeYouTube,
+		ProviderURL:     fmt.Sprintf("https://www.youtube.com/watch?v=%s", t.YouTubeID),
 		Title:           t.Title,
 		ChannelTitle:    t.Artist,
 		ThumbnailURL:    t.ThumbnailURL,

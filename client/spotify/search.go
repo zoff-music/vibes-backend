@@ -71,6 +71,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		tracks = append(tracks, vibe.MusicTrack{
 			ID:           item.ID,
 			Source:       vibe.SourceTypeSpotify,
+			ProviderURL:  fmt.Sprintf("https://open.spotify.com/track/%s", item.ID),
 			Title:        item.Name,
 			ChannelTitle: strings.Join(artists, ", "),
 			ThumbnailURL: thumbnail,
