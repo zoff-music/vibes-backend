@@ -55,6 +55,9 @@ Copy and configure the environment file:
 - **`config/`**: Configuration management and environment variables
 - **`monitoring/`**: OpenTelemetry tracing, metrics, and telemetry
 
+See the [architecture diagram](docs/ARCHITECTURE.md) and
+[application flow diagrams](docs/FLOWS.md) for a visual overview.
+
 ## Key Conventions
 
 - **No service layers**: Direct client usage via interfaces
