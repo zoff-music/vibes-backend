@@ -1,4 +1,4 @@
-# 2oFF Backend Documentation
+# Zoff Backend Documentation
 
 - [Architecture](ARCHITECTURE.md)
 - [Application flows](FLOWS.md)
