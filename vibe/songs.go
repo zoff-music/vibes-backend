@@ -68,6 +68,30 @@ func (r AddSongRequest) CanonicalProviderURL() (string, error) {
 	return providerURL.String(), nil
 }
 
+func ResolveSoundCloudTrackURL(value string) (string, error) {
+	providerURL, err := url.Parse(value)
+	if err != nil {
+		return "", fmt.Errorf("error parsing soundcloud track URL: %w", err)
+	}
+
+	hostname := strings.ToLower(providerURL.Hostname())
+	isSoundCloudHost := hostname == "soundcloud.com" ||
+		strings.HasSuffix(hostname, ".soundcloud.com")
+	pathSegments := strings.Split(strings.Trim(providerURL.Path, "/"), "/")
+	isShortLink := hostname == "on.soundcloud.com" && len(pathSegments) >= 1
+	if providerURL.Scheme != "https" ||
+		!isSoundCloudHost ||
+		providerURL.User != nil ||
+		(!isShortLink && len(pathSegments) < 2) {
+		return "", fmt.Errorf("error validating soundcloud track URL")
+	}
+
+	providerURL.RawQuery = ""
+	providerURL.Fragment = ""
+
+	return providerURL.String(), nil
+}
+
 // AddSongResult is the result of adding a song or voting on an existing duplicate.
 type AddSongResult struct {
 	Song    Song   `json:"song"`

@@ -82,6 +82,7 @@ func ParseAIModel(value string) (*AIModel, error) {
 type GeneratedPlaylistSearchResult struct {
 	Playlist       GeneratedPlaylist
 	CachedSearches []CachedSearch
+	SearchUsages   []SearchUsage
 }
 
 type RoomGenerationUpdate struct {
@@ -151,6 +152,7 @@ type RoomGenerationWorker interface {
 	GeneratedSongAdder
 	PlaybackController
 	PlaybackFetcher
+	SearchUsageCreator
 }
 
 const GeneratedPlaylistTrackCount = 30
