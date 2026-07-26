@@ -1,10 +1,10 @@
-# 2oFF Architecture
+# Zoff Architecture
 
 This document describes the high-level application architecture. It intentionally
 focuses on deployed applications, data stores, and external providers rather than
 implementation-level worker details.
 
-![2oFF application architecture](architecture.svg)
+![Zoff application architecture](architecture.svg)
 
 ## Components
 

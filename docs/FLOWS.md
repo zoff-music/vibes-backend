@@ -1,4 +1,4 @@
-# 2oFF Application Flows
+# Zoff Application Flows
 
 The sequence diagrams are grouped by product domain:
 
