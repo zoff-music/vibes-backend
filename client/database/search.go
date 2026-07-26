@@ -14,22 +14,38 @@ func (c *Client) prepareCreateSearchUsagesStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH deleted_q AS (
 			DELETE FROM search_usage
-			WHERE created_at < NOW() - INTERVAL '13 months'
+			WHERE created_at < NOW() - INTERVAL '32 days'
 		)
 		INSERT INTO search_usage (
 			provider,
 			query_hash,
-			cached
+			cached,
+			search_count,
+			created_at
 		)
 		SELECT
 			a.provider,
 			a.query_hash,
-			a.cached
+			a.cached,
+			COUNT(*),
+			DATE_TRUNC('hour', NOW())
 		FROM UNNEST(
 			$1::text[],
 			$2::text[],
 			$3::boolean[]
 		) AS a(provider, query_hash, cached)
+		GROUP BY
+			a.provider,
+			a.query_hash,
+			a.cached
+		ON CONFLICT (
+			provider,
+			query_hash,
+			cached,
+			created_at
+		)
+		DO UPDATE SET
+			search_count = search_usage.search_count + EXCLUDED.search_count
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateSearchUsagesStatement: %w", err)
@@ -81,19 +97,19 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 			SELECT *
 			FROM (
 				VALUES
-					('hour'::text, NOW() - INTERVAL '1 hour', 1),
-					('day'::text, NOW() - INTERVAL '1 day', 2),
-					('week'::text, NOW() - INTERVAL '1 week', 3),
-					('month'::text, NOW() - INTERVAL '1 month', 4)
+					('hour'::text, DATE_TRUNC('hour', NOW()), 1),
+					('day'::text, DATE_TRUNC('day', NOW()), 2),
+					('week'::text, DATE_TRUNC('week', NOW()), 3),
+					('month'::text, DATE_TRUNC('month', NOW()), 4)
 			) AS a(period, starts_at, window_order)
 		)
 		SELECT
 			a.period,
 			b.provider,
-			COUNT(*) AS total,
+			SUM(b.search_count) AS total,
 			COUNT(DISTINCT b.query_hash) AS unique_count,
-			COUNT(*) FILTER (WHERE b.cached) AS cached_count,
-			COUNT(*) FILTER (WHERE NOT b.cached) AS live_count
+			COALESCE(SUM(b.search_count) FILTER (WHERE b.cached), 0) AS cached_count,
+			COALESCE(SUM(b.search_count) FILTER (WHERE NOT b.cached), 0) AS live_count
 		FROM windows_q a
 		JOIN search_usage b ON b.created_at >= a.starts_at
 		GROUP BY a.period, a.window_order, b.provider
