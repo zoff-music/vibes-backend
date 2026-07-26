@@ -121,6 +121,71 @@ func GetSoundCloudTrack(
 	}
 }
 
+// ResolveSoundCloudTrack handles GET /api/v1/soundcloud/tracks
+//
+//	@Summary	Resolve a SoundCloud track URL
+//	@Tags		providers
+//	@Produce	json
+//	@Param		url	query		string	true	"SoundCloud track URL"
+//	@Success	200	{object}	vibe.MusicTrack
+//	@Failure	400	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/soundcloud/tracks [get]
+func ResolveSoundCloudTrack(
+	resolver vibe.MusicTrackResolver,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		providerURL, err := vibe.ResolveSoundCloudTrackURL(
+			r.URL.Query().Get("url"),
+		)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf(
+					"error validating soundcloud URL in ResolveSoundCloudTrack handler: %w",
+					err,
+				),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		track, err := resolver.ResolveTrack(ctx, providerURL)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf(
+					"error resolving soundcloud track in ResolveSoundCloudTrack handler: %w",
+					err,
+				),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		body, err := json.Marshal(track)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf(
+					"error marshaling response in ResolveSoundCloudTrack handler: %w",
+					err,
+				),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}
+}
+
 // GetSpotifyTrack handles GET /api/v1/spotify/tracks/{id}
 //
 //	@Summary	Get a Spotify track

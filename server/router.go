@@ -43,15 +43,16 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
 
 	// YouTube routes
-	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
+	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
 	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetMusicTrack")
 
 	// SoundCloud routes
-	api.HandleFunc("/soundcloud/search", handler.SearchSoundCloud(s.SoundCloud, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSoundCloud")
+	api.HandleFunc("/soundcloud/search", handler.SearchSoundCloud(s.SoundCloud, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSoundCloud")
+	api.HandleFunc("/soundcloud/tracks", handler.ResolveSoundCloudTrack(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudTrack")
 	api.HandleFunc("/soundcloud/tracks/{id}", handler.GetSoundCloudTrack(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudTrack")
 
 	// Spotify search routes
-	api.HandleFunc("/spotify/search", handler.SearchSpotify(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSpotify")
+	api.HandleFunc("/spotify/search", handler.SearchSpotify(s.Spotify, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSpotify")
 	api.HandleFunc("/spotify/tracks/{id}", handler.GetSpotifyTrack(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyTrack")
 	api.HandleFunc("/tokens/spotify", handler.GetToken(s.DB, s.Spotify, "spotify")).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyToken")
 	api.HandleFunc("/tokens/soundcloud", handler.GetToken(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudToken")
@@ -80,6 +81,7 @@ func (s *Server) setupRoutes() {
 		api.HandleFunc("/admin/sessions", handler.AdminLogin(&s.Config.AdminPassword, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
 		api.HandleFunc("/admin/sessions", handler.AdminLogout()).Methods(http.MethodDelete, http.MethodOptions).Name("AdminLogout")
 		api.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
+		api.HandleFunc("/admin/search-usage", handler.AdminSearchUsage(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminSearchUsage")
 		api.HandleFunc("/admin/rooms/{id}", handler.AdminUpdateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateRoom")
 		api.HandleFunc("/admin/rooms/{id}", handler.AdminDeleteRoom(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteRoom")
 		api.HandleFunc("/admin/events", handler.AdminEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
@@ -139,6 +141,11 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 				IPLimit: 3,
 			},
 			"GetSoundCloudTrack": {Rate: time.Minute, Limit: 120},
+			"ResolveSoundCloudTrack": {
+				Rate:    time.Second,
+				Limit:   3,
+				IPLimit: 30,
+			},
 			"SearchSpotify": {
 				Rate:    time.Second,
 				Limit:   1,
@@ -174,6 +181,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"AdminLogin":         {Rate: 10 * time.Minute, Limit: 5},
 			"AdminLogout":        {Rate: time.Minute, Limit: 20},
 			"AdminRooms":         {Rate: time.Minute, Limit: 120},
+			"AdminSearchUsage":   {Rate: time.Minute, Limit: 120},
 			"AdminUpdateRoom":    {Rate: time.Minute, Limit: 30},
 			"AdminDeleteRoom":    {Rate: time.Minute, Limit: 30},
 			"AdminEvents":        {Rate: time.Minute, Limit: 20},
@@ -237,10 +245,11 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 		AdminPassword: &s.Config.AdminPassword,
 		CookieSecret:  s.Config.CookieSecret,
 		ProtectedRoutes: map[string]bool{
-			"AdminRooms":      true,
-			"AdminUpdateRoom": true,
-			"AdminDeleteRoom": true,
-			"AdminEvents":     true,
+			"AdminRooms":       true,
+			"AdminSearchUsage": true,
+			"AdminUpdateRoom":  true,
+			"AdminDeleteRoom":  true,
+			"AdminEvents":      true,
 		},
 	}
 

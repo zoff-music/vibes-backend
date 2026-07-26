@@ -64,26 +64,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 
 	tracks := make([]vibe.MusicTrack, 0, len(results))
 	for _, res := range results {
-		username := "Unknown"
-		if res.User != nil {
-			username = res.User.Username
-		}
-
-		artworkURL := ""
-		if res.ArtworkURL != nil {
-			artworkURL = *res.ArtworkURL
-		}
-
-		tracks = append(tracks, vibe.MusicTrack{
-			ID:              fmt.Sprintf("%d", res.ID),
-			Source:          vibe.SourceTypeSoundCloud,
-			ProviderURL:     res.PermalinkURL,
-			Title:           res.Title,
-			ChannelTitle:    username,
-			ThumbnailURL:    artworkURL,
-			Duration:        fmt.Sprintf("PT%dM%dS", (res.Duration/1000)/60, (res.Duration/1000)%60),
-			DurationSeconds: res.Duration / 1000,
-		})
+		tracks = append(tracks, res.MusicTrack())
 	}
 
 	return tracks, nil
@@ -102,4 +83,27 @@ type trackResponse struct {
 
 type user struct {
 	Username string `json:"username"`
+}
+
+func (r trackResponse) MusicTrack() vibe.MusicTrack {
+	username := "Unknown"
+	if r.User != nil {
+		username = r.User.Username
+	}
+
+	artworkURL := ""
+	if r.ArtworkURL != nil {
+		artworkURL = *r.ArtworkURL
+	}
+
+	return vibe.MusicTrack{
+		ID:              fmt.Sprintf("%d", r.ID),
+		Source:          vibe.SourceTypeSoundCloud,
+		ProviderURL:     r.PermalinkURL,
+		Title:           r.Title,
+		ChannelTitle:    username,
+		ThumbnailURL:    artworkURL,
+		Duration:        fmt.Sprintf("PT%dM%dS", (r.Duration/1000)/60, (r.Duration/1000)%60),
+		DurationSeconds: r.Duration / 1000,
+	}
 }
