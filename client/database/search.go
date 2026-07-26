@@ -85,10 +85,10 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 					('day'::text, NOW() - INTERVAL '1 day', 2),
 					('week'::text, NOW() - INTERVAL '1 week', 3),
 					('month'::text, NOW() - INTERVAL '1 month', 4)
-			) AS a(window, starts_at, window_order)
+			) AS a(period, starts_at, window_order)
 		)
 		SELECT
-			a.window,
+			a.period,
 			b.provider,
 			COUNT(*) AS total,
 			COUNT(DISTINCT b.query_hash) AS unique_count,
@@ -96,7 +96,7 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 			COUNT(*) FILTER (WHERE NOT b.cached) AS live_count
 		FROM windows_q a
 		JOIN search_usage b ON b.created_at >= a.starts_at
-		GROUP BY a.window, a.window_order, b.provider
+		GROUP BY a.period, a.window_order, b.provider
 		ORDER BY a.window_order, b.provider
 	`)
 	if err != nil {
