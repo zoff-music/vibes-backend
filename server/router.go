@@ -76,10 +76,15 @@ func (s *Server) setupRoutes() {
 	// Cast token endpoint (cookie-auth only)
 	api.HandleFunc("/tokens/casting", handler.CreateCastingToken(s.DB, s.Config.CastTokenSecret)).Methods(http.MethodPost, http.MethodOptions).Name("CreateCastingToken")
 
-	// Admin routes (disabled when ADMIN_PASSWORD is not configured)
-	if s.Config.AdminPassword != "" {
-		api.HandleFunc("/admin/sessions", handler.AdminLogin(&s.Config.AdminPassword, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
+	// Admin routes
+	if s.Config.AdminPasswordPepper != "" {
+		api.HandleFunc("/admin/sessions", handler.AdminLogin(s.DB, s.Config.AdminPasswordPepper, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
+		api.HandleFunc("/admin/sessions", handler.AdminSession()).Methods(http.MethodGet, http.MethodOptions).Name("AdminSession")
 		api.HandleFunc("/admin/sessions", handler.AdminLogout()).Methods(http.MethodDelete, http.MethodOptions).Name("AdminLogout")
+		api.HandleFunc("/admin/users", handler.AdminUsers(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminUsers")
+		api.HandleFunc("/admin/users", handler.AdminCreateUser(s.DB, s.Config.AdminPasswordPepper)).Methods(http.MethodPost, http.MethodOptions).Name("AdminCreateUser")
+		api.HandleFunc("/admin/users/{id}", handler.AdminUpdateUser(s.DB, s.Config.AdminPasswordPepper)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateUser")
+		api.HandleFunc("/admin/users/{id}", handler.AdminDeleteUser(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteUser")
 		api.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
 		api.HandleFunc("/admin/searches/usage", handler.AdminSearchUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminSearchUsage")
 		api.HandleFunc("/admin/listeners/usage", handler.AdminListenerUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminListenerUsage")
@@ -93,7 +98,7 @@ func (s *Server) setupRoutes() {
 		s.addRateLimitMiddleware(api)
 	}
 	s.addPermissionMiddleware(api)
-	if s.Config.AdminPassword != "" {
+	if s.Config.AdminPasswordPepper != "" {
 		s.addAdminMiddleware(api)
 	}
 	s.addTracingAndMetrics(api)
@@ -180,7 +185,12 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"GetStats":           {Rate: time.Minute, Limit: 600},
 			"CreateCastingToken": {Rate: time.Minute, Limit: 30},
 			"AdminLogin":         {Rate: 10 * time.Minute, Limit: 5},
+			"AdminSession":       {Rate: time.Minute, Limit: 120},
 			"AdminLogout":        {Rate: time.Minute, Limit: 20},
+			"AdminUsers":         {Rate: time.Minute, Limit: 60},
+			"AdminCreateUser":    {Rate: 10 * time.Minute, Limit: 10},
+			"AdminUpdateUser":    {Rate: 10 * time.Minute, Limit: 10},
+			"AdminDeleteUser":    {Rate: 10 * time.Minute, Limit: 10},
 			"AdminRooms":         {Rate: time.Minute, Limit: 120},
 			"AdminSearchUsage":   {Rate: time.Minute, Limit: 120},
 			"AdminListenerUsage": {Rate: time.Minute, Limit: 120},
@@ -244,9 +254,14 @@ func (s *Server) addPermissionMiddleware(routers ...*mux.Router) {
 
 func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 	am := middleware.AdminMiddleware{
-		AdminPassword: &s.Config.AdminPassword,
-		CookieSecret:  s.Config.CookieSecret,
+		DB:           s.DB,
+		CookieSecret: s.Config.CookieSecret,
 		ProtectedRoutes: map[string]bool{
+			"AdminSession":       true,
+			"AdminUsers":         true,
+			"AdminCreateUser":    true,
+			"AdminUpdateUser":    true,
+			"AdminDeleteUser":    true,
 			"AdminRooms":         true,
 			"AdminSearchUsage":   true,
 			"AdminListenerUsage": true,

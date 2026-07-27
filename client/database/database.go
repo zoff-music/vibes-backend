@@ -103,6 +103,14 @@ type Client struct {
 	UpdateAdminRoomStatement  *sql.Stmt
 	DeleteAdminRoomStatement  *sql.Stmt
 
+	// Admin user statements
+	GetAdminUserStatement            *sql.Stmt
+	GetAdminUserByUsernameStatement  *sql.Stmt
+	ListAdminUsersStatement          *sql.Stmt
+	CreateAdminUserStatement         *sql.Stmt
+	UpdateAdminUserPasswordStatement *sql.Stmt
+	DeleteAdminUserStatement         *sql.Stmt
+
 	// Search usage statements
 	CreateSearchUsagesStatement   *sql.Stmt
 	ListAdminSearchUsageStatement *sql.Stmt
@@ -159,6 +167,13 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareGetAdminRoomsStmt,
 		c.prepareUpdateAdminRoomStmt,
 		c.prepareDeleteAdminRoomStmt,
+		// Admin user statements
+		c.prepareGetAdminUserStmt,
+		c.prepareGetAdminUserByUsernameStmt,
+		c.prepareListAdminUsersStmt,
+		c.prepareCreateAdminUserStmt,
+		c.prepareUpdateAdminUserPasswordStmt,
+		c.prepareDeleteAdminUserStmt,
 		// Search usage statements
 		c.prepareCreateSearchUsagesStmt,
 		c.prepareListAdminSearchUsageStmt,
@@ -291,6 +306,12 @@ func (c *Client) Close() error {
 		c.GetAdminRoomsStatement,
 		c.UpdateAdminRoomStatement,
 		c.DeleteAdminRoomStatement,
+		c.GetAdminUserStatement,
+		c.GetAdminUserByUsernameStatement,
+		c.ListAdminUsersStatement,
+		c.CreateAdminUserStatement,
+		c.UpdateAdminUserPasswordStatement,
+		c.DeleteAdminUserStatement,
 		c.CreateSearchUsagesStatement,
 		c.ListAdminSearchUsageStatement,
 		c.CreateListenerUsageStatement,

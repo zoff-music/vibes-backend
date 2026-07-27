@@ -1,16 +1,19 @@
 package middleware
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-// AdminMiddleware enforces admin session access based on the global admin password.
+// AdminMiddleware enforces access to authenticated admin users.
 type AdminMiddleware struct {
-	AdminPassword   *string
+	DB              vibe.AdminUserFetcher
 	CookieSecret    string
 	ProtectedRoutes map[string]bool
 }
@@ -46,30 +49,37 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		password := ""
-		if m.AdminPassword != nil {
-			password = *m.AdminPassword
-		}
-
-		if password == "" {
-			log.Printf("AdminMiddleware: admin password not configured")
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
-			return
-		}
-
 		if session.UserID != payload.UserID {
 			log.Printf("AdminMiddleware: session/user mismatch")
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
 		}
 
-		expectedHash := helper.HashAdminPassword(password)
-		if payload.PasswordHash != expectedHash {
-			log.Printf("AdminMiddleware: admin password hash mismatch")
+		issuedAt := time.Unix(payload.IssuedAt, 0)
+		if issuedAt.After(time.Now().Add(adminSessionClockSkew)) ||
+			time.Since(issuedAt) > adminSessionDuration {
+			log.Printf("AdminMiddleware: expired admin session")
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		next.ServeHTTP(w, r)
+		admin, err := m.DB.GetAdminUser(ctx, payload.AdminID)
+		if err != nil {
+			log.Printf("AdminMiddleware: error getting admin user: %v", err)
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+		if admin.IsEmpty() || admin.SessionVersion != payload.SessionVersion {
+			log.Printf("AdminMiddleware: invalid admin user session")
+			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		ctx = context.WithValue(ctx, helper.AdminUserKey, admin)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
+
+const adminSessionDuration = 24 * time.Hour
+
+const adminSessionClockSkew = time.Minute
