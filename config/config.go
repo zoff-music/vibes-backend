@@ -62,7 +62,7 @@ type Config struct {
 	// User session settings
 	UserInactivityTimeout time.Duration `envconfig:"USER_INACTIVITY_TIMEOUT" default:"30m"`
 	CookieSecret          string        `envconfig:"COOKIE_SECRET" default:"vibes-default-secret-change-me"`
-	AdminPassword         string        `envconfig:"ADMIN_PASSWORD" default:""`
+	AdminPasswordPepper   string        `envconfig:"ADMIN_PASSWORD_PEPPER" default:""`
 	EmbedBasePath         string        `envconfig:"EMBED_BASE_PATH" default:"/embed"`
 
 	// Cast auth

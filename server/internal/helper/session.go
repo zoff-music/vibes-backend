@@ -2,6 +2,8 @@ package helper
 
 import (
 	"context"
+
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 type SessionPayload struct {
@@ -21,4 +23,11 @@ func GetSessionFromContext(ctx context.Context) (SessionPayload, bool) {
 	return session, ok
 }
 
+func GetAdminUserFromContext(ctx context.Context) (*vibe.AdminUser, bool) {
+	user, ok := ctx.Value(AdminUserKey).(*vibe.AdminUser)
+	return user, ok
+}
+
 const SessionKey = "session"
+
+const AdminUserKey = "admin_user"
