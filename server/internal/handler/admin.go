@@ -684,7 +684,7 @@ func (h *ReviewAdminRooms) Handle(ctx context.Context, data []byte) error {
 
 const adminSessionDuration = 24 * time.Hour
 
-const adminRoomPageSize = 12
+const adminRoomPageSize = 10
 
 const adminRoomMaximumPageSize = 50
 

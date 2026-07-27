@@ -90,6 +90,13 @@ func GetAppEvents(
 			},
 		},
 		{
+			Name: "TrackListenerUsage",
+			Rate: time.Minute,
+			Handler: &handler.TrackListenerUsage{
+				DB: db,
+			},
+		},
+		{
 			Name: "RefreshSpotifyTokens",
 			Rate: 10 * time.Second,
 			Handler: &handler.RefreshSpotifyTokens{

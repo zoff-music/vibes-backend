@@ -106,6 +106,10 @@ type Client struct {
 	// Search usage statements
 	CreateSearchUsagesStatement   *sql.Stmt
 	ListAdminSearchUsageStatement *sql.Stmt
+
+	// Listener usage statements
+	CreateListenerUsageStatement    *sql.Stmt
+	ListAdminListenerUsageStatement *sql.Stmt
 }
 
 // Init sets up a new database client.
@@ -158,6 +162,9 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		// Search usage statements
 		c.prepareCreateSearchUsagesStmt,
 		c.prepareListAdminSearchUsageStmt,
+		// Listener usage statements
+		c.prepareCreateListenerUsageStmt,
+		c.prepareListAdminListenerUsageStmt,
 		// Room generation statements
 		c.prepareHasActiveRoomGenerationStmt,
 		c.prepareCreateRoomGenerationStmt,
@@ -286,6 +293,8 @@ func (c *Client) Close() error {
 		c.DeleteAdminRoomStatement,
 		c.CreateSearchUsagesStatement,
 		c.ListAdminSearchUsageStatement,
+		c.CreateListenerUsageStatement,
+		c.ListAdminListenerUsageStatement,
 	}
 
 	for _, stmt := range statements {
