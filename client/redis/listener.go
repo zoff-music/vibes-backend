@@ -12,13 +12,13 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) GetCachedAdminSearchUsage(
+func (c *Client) GetCachedAdminListenerUsage(
 	ctx context.Context,
-) (*vibe.CachedAdminSearchUsage, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedAdminSearchUsage")
+) (*vibe.CachedAdminListenerUsage, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedAdminListenerUsage")
 	defer span.End()
 
-	cachedUsage := &vibe.CachedAdminSearchUsage{}
+	cachedUsage := &vibe.CachedAdminListenerUsage{}
 	if c.Redis == nil {
 		return cachedUsage, nil
 	}
@@ -29,7 +29,7 @@ func (c *Client) GetCachedAdminSearchUsage(
 	connection, err := c.Redis.GetContext(cctx)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error getting redis connection in GetCachedAdminSearchUsage: %w",
+			"error getting redis connection in GetCachedAdminListenerUsage: %w",
 			err,
 		)
 	}
@@ -40,7 +40,7 @@ func (c *Client) GetCachedAdminSearchUsage(
 			connection,
 			cctx,
 			"GET",
-			c.adminSearchUsageCacheKey(),
+			c.adminListenerUsageCacheKey(),
 		),
 	)
 	if errors.Is(err, redis.ErrNil) {
@@ -48,7 +48,7 @@ func (c *Client) GetCachedAdminSearchUsage(
 	}
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error getting cached admin search usage in GetCachedAdminSearchUsage: %w",
+			"error getting cached admin listener usage in GetCachedAdminListenerUsage: %w",
 			err,
 		)
 	}
@@ -56,7 +56,7 @@ func (c *Client) GetCachedAdminSearchUsage(
 	err = json.Unmarshal(body, &cachedUsage.Usage)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error unmarshaling cached admin search usage in GetCachedAdminSearchUsage: %w",
+			"error unmarshaling cached admin listener usage in GetCachedAdminListenerUsage: %w",
 			err,
 		)
 	}
@@ -65,11 +65,11 @@ func (c *Client) GetCachedAdminSearchUsage(
 	return cachedUsage, nil
 }
 
-func (c *Client) CacheAdminSearchUsage(
+func (c *Client) CacheAdminListenerUsage(
 	ctx context.Context,
-	usage vibe.AdminSearchUsage,
+	usage vibe.AdminListenerUsage,
 ) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "CacheAdminSearchUsage")
+	span, ctx := tracing.StartSpanFromContext(ctx, "CacheAdminListenerUsage")
 	defer span.End()
 
 	if c.Redis == nil {
@@ -82,7 +82,7 @@ func (c *Client) CacheAdminSearchUsage(
 	connection, err := c.Redis.GetContext(cctx)
 	if err != nil {
 		return fmt.Errorf(
-			"error getting redis connection in CacheAdminSearchUsage: %w",
+			"error getting redis connection in CacheAdminListenerUsage: %w",
 			err,
 		)
 	}
@@ -91,7 +91,7 @@ func (c *Client) CacheAdminSearchUsage(
 	body, err := json.Marshal(usage)
 	if err != nil {
 		return fmt.Errorf(
-			"error marshaling cached admin search usage in CacheAdminSearchUsage: %w",
+			"error marshaling cached admin listener usage in CacheAdminListenerUsage: %w",
 			err,
 		)
 	}
@@ -100,14 +100,14 @@ func (c *Client) CacheAdminSearchUsage(
 		connection,
 		cctx,
 		"SET",
-		c.adminSearchUsageCacheKey(),
+		c.adminListenerUsageCacheKey(),
 		body,
 		"EX",
 		int(adminUsageCacheExpiration.Seconds()),
 	)
 	if err != nil {
 		return fmt.Errorf(
-			"error storing cached admin search usage in CacheAdminSearchUsage: %w",
+			"error storing cached admin listener usage in CacheAdminListenerUsage: %w",
 			err,
 		)
 	}
@@ -115,8 +115,6 @@ func (c *Client) CacheAdminSearchUsage(
 	return nil
 }
 
-func (c *Client) adminSearchUsageCacheKey() string {
-	return c.getKeyWithPrefix("admin:searches:usage")
+func (c *Client) adminListenerUsageCacheKey() string {
+	return c.getKeyWithPrefix("admin:listeners:usage")
 }
-
-const adminUsageCacheExpiration = 30 * time.Second
