@@ -30,18 +30,48 @@ func (c *Client) prepareGetAdminRoomsStmt() error {
 			FROM songs a
 			WHERE a.source_type = ANY($2::text[])
 			GROUP BY a.room_id
+		),
+		data_q AS (
+			SELECT
+				a.id,
+				a.name,
+				COALESCE(b.user_count, 0) AS user_count,
+				COALESCE(c.song_count, 0) AS song_count,
+				COALESCE(c.active_sources, '') AS active_sources,
+				(a.admin_password_hash IS NOT NULL AND a.admin_password_hash != '') AS has_admin_password
+			FROM rooms a
+			LEFT JOIN active_users_q b ON b.room_id = a.id
+			LEFT JOIN song_counts_q c ON c.room_id = a.id
+			WHERE $3 = ''
+			OR a.name ILIKE '%' || $3 || '%'
+		),
+		numbered_q AS (
+			SELECT
+				a.*,
+				COUNT(*) OVER() AS total_count,
+				ROW_NUMBER() OVER (
+					ORDER BY
+						CASE WHEN $4 = 'listeners' AND $5 THEN a.user_count END DESC,
+						CASE WHEN $4 = 'listeners' AND NOT $5 THEN a.user_count END ASC,
+						CASE WHEN $4 = 'songs' AND $5 THEN a.song_count END DESC,
+						CASE WHEN $4 = 'songs' AND NOT $5 THEN a.song_count END ASC,
+						a.name ASC,
+						a.id ASC
+				) AS row_number
+			FROM data_q a
 		)
 		SELECT
 			a.id,
 			a.name,
-			COALESCE(b.user_count, 0) AS user_count,
-			COALESCE(c.song_count, 0) AS song_count,
-			COALESCE(c.active_sources, '') AS active_sources,
-			(a.admin_password_hash IS NOT NULL AND a.admin_password_hash != '') AS has_admin_password
-		FROM rooms a
-		LEFT JOIN active_users_q b ON b.room_id = a.id
-		LEFT JOIN song_counts_q c ON c.room_id = a.id
-		ORDER BY user_count DESC, song_count DESC
+			a.user_count,
+			a.song_count,
+			a.active_sources,
+			a.has_admin_password,
+			a.total_count
+		FROM numbered_q a
+		WHERE a.row_number >= $6
+		AND a.row_number <= $7
+		ORDER BY a.row_number
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetAdminRoomsStatement: %w", err)
@@ -55,6 +85,26 @@ func (c *Client) ListAdminRooms(ctx context.Context) ([]vibe.AdminRoomSummary, e
 	span, ctx := tracing.StartSpanFromContext(ctx, "ListAdminRooms")
 	defer span.End()
 
+	result, err := c.SearchAdminRooms(ctx, vibe.AdminRoomSearch{
+		SortBy:     vibe.AdminRoomSortListeners,
+		Descending: true,
+		From:       0,
+		To:         adminRoomsMaximumRow,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error listing admin rooms in ListAdminRooms: %w", err)
+	}
+
+	return result.Rooms, nil
+}
+
+func (c *Client) SearchAdminRooms(
+	ctx context.Context,
+	search vibe.AdminRoomSearch,
+) (*vibe.AdminRoomResult, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SearchAdminRooms")
+	defer span.End()
+
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -63,20 +113,27 @@ func (c *Client) ListAdminRooms(ctx context.Context) ([]vibe.AdminRoomSummary, e
 		cctx,
 		cutoff,
 		c.enabledProviders,
+		search.Query,
+		search.SortBy,
+		search.Descending,
+		search.From+1,
+		search.To+1,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching admin rooms: %w", err)
+		return nil, fmt.Errorf("error searching admin rooms: %w", err)
 	}
 	defer rows.Close()
 
 	rooms := []vibe.AdminRoomSummary{}
+	total := 0
 	for rows.Next() {
 		var row adminRoomRow
-		err := row.scanRows(rows)
+		err = row.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning admin room: %w", err)
 		}
 
+		total = int(row.TotalCount.Int64)
 		rooms = append(rooms, row.toSummary())
 	}
 
@@ -85,7 +142,19 @@ func (c *Client) ListAdminRooms(ctx context.Context) ([]vibe.AdminRoomSummary, e
 		return nil, fmt.Errorf("error iterating admin rooms: %w", err)
 	}
 
-	return rooms, nil
+	count := len(rooms)
+	actualTo := search.From
+	if count > 0 {
+		actualTo = search.From + count - 1
+	}
+
+	return &vibe.AdminRoomResult{
+		Rooms: rooms,
+		From:  search.From,
+		To:    actualTo,
+		Total: total,
+		Count: count,
+	}, nil
 }
 
 type adminRoomRow struct {
@@ -95,6 +164,7 @@ type adminRoomRow struct {
 	SongCount        sql.NullInt64
 	ActiveSources    sql.NullString
 	HasAdminPassword sql.NullBool
+	TotalCount       sql.NullInt64
 }
 
 func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
@@ -105,6 +175,7 @@ func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
 		&r.SongCount,
 		&r.ActiveSources,
 		&r.HasAdminPassword,
+		&r.TotalCount,
 	)
 }
 
@@ -237,3 +308,5 @@ func (c *Client) DeleteAdminRoom(ctx context.Context, roomID string) (bool, erro
 
 	return rowsAffected > 0, nil
 }
+
+const adminRoomsMaximumRow = 2147483647

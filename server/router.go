@@ -81,7 +81,7 @@ func (s *Server) setupRoutes() {
 		api.HandleFunc("/admin/sessions", handler.AdminLogin(&s.Config.AdminPassword, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
 		api.HandleFunc("/admin/sessions", handler.AdminLogout()).Methods(http.MethodDelete, http.MethodOptions).Name("AdminLogout")
 		api.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
-		api.HandleFunc("/admin/search-usage", handler.AdminSearchUsage(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminSearchUsage")
+		api.HandleFunc("/admin/searches/usage", handler.AdminSearchUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminSearchUsage")
 		api.HandleFunc("/admin/rooms/{id}", handler.AdminUpdateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateRoom")
 		api.HandleFunc("/admin/rooms/{id}", handler.AdminDeleteRoom(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteRoom")
 		api.HandleFunc("/admin/events", handler.AdminEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")

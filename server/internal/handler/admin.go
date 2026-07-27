@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -176,15 +177,21 @@ func AdminLogout() http.HandlerFunc {
 
 // AdminRooms handles GET /api/v1/admin/rooms
 //
-//	@Summary		List all rooms
-//	@Description	Returns room summaries with listener counts, queued song counts, active sources, and room password status.
+//	@Summary		Search rooms
+//	@Description	Returns filtered, sorted, row-number-paginated room summaries with listener counts, queued song counts, active sources, and room password status.
 //	@Tags		admin
 //	@Produce	json
-//	@Success	200	{array}		vibe.AdminRoomSummary
+//	@Param		q		query		string	false	"Room name search"
+//	@Param		sortBy	query		string	false	"Sort field: listeners or songs"
+//	@Param		order	query		string	false	"Sort order: asc or desc"
+//	@Param		from	query		int		false	"Zero-based first row"
+//	@Param		to		query		int		false	"Zero-based last row"
+//	@Success	200	{object}	vibe.AdminRoomResult
+//	@Failure	400	{object}	map[string]string
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/admin/rooms [get]
 func AdminRooms(
-	db vibe.AdminRoomLister,
+	db vibe.AdminRoomSearcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -202,7 +209,94 @@ func AdminRooms(
 			log.Printf("AdminRooms: request has admin_session cookie")
 		}
 
-		rooms, err := db.ListAdminRooms(ctx)
+		query := strings.TrimSpace(r.URL.Query().Get("q"))
+		if len(query) > adminRoomQueryMaximumLength {
+			handleError(
+				w,
+				fmt.Errorf("error room search query too long"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		sortBy := vibe.AdminRoomSort(r.URL.Query().Get("sortBy"))
+		if sortBy == "" {
+			sortBy = vibe.AdminRoomSortListeners
+		}
+		if sortBy != vibe.AdminRoomSortListeners &&
+			sortBy != vibe.AdminRoomSortSongs {
+			handleError(
+				w,
+				fmt.Errorf("error invalid room sort"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		order := r.URL.Query().Get("order")
+		if order == "" {
+			order = adminRoomOrderDescending
+		}
+		if order != adminRoomOrderAscending &&
+			order != adminRoomOrderDescending {
+			handleError(
+				w,
+				fmt.Errorf("error invalid room sort order"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		from := 0
+		var err error
+		fromValue := r.URL.Query().Get("from")
+		if fromValue != "" {
+			from, err = strconv.Atoi(fromValue)
+			if err != nil || from < 0 {
+				handleError(
+					w,
+					fmt.Errorf("error invalid first room row"),
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+		}
+
+		to := from + adminRoomPageSize - 1
+		toValue := r.URL.Query().Get("to")
+		if toValue != "" {
+			to, err = strconv.Atoi(toValue)
+			if err != nil || to < from {
+				handleError(
+					w,
+					fmt.Errorf("error invalid last room row"),
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+		}
+		if to-from+1 > adminRoomMaximumPageSize {
+			handleError(
+				w,
+				fmt.Errorf("error room page too large"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		result, err := db.SearchAdminRooms(ctx, vibe.AdminRoomSearch{
+			Query:      query,
+			SortBy:     sortBy,
+			Descending: order == adminRoomOrderDescending,
+			From:       from,
+			To:         to,
+		})
 		if err != nil {
 			handleError(
 				w,
@@ -213,7 +307,7 @@ func AdminRooms(
 			return
 		}
 
-		body, err := json.Marshal(rooms)
+		body, err := json.Marshal(result)
 		if err != nil {
 			handleError(
 				w,
@@ -230,31 +324,51 @@ func AdminRooms(
 	}
 }
 
-// AdminSearchUsage handles GET /api/v1/admin/search-usage
+// AdminSearchUsage handles GET /api/v1/admin/searches/usage
 //
 //	@Summary	List search usage summaries
 //	@Tags		admin
 //	@Produce	json
-//	@Success	200	{array}		vibe.AdminSearchUsageSummary
+//	@Success	200	{object}	vibe.AdminSearchUsage
 //	@Failure	500	{object}	map[string]string
-//	@Router		/api/v1/admin/search-usage [get]
+//	@Router		/api/v1/admin/searches/usage [get]
 func AdminSearchUsage(
 	db vibe.AdminSearchUsageLister,
+	cache vibe.CachedAdminSearchUsageFetcherCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		summaries, err := db.ListAdminSearchUsage(ctx)
+
+		cachedUsage, err := cache.GetCachedAdminSearchUsage(ctx)
 		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error fetching admin search usage: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
+			log.Printf("error getting cached admin search usage: %v", err)
+			cachedUsage = &vibe.CachedAdminSearchUsage{}
 		}
 
-		body, err := json.Marshal(summaries)
+		usage := &cachedUsage.Usage
+		if cachedUsage.IsEmpty() {
+			summaries, err := db.ListAdminSearchUsage(ctx)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error fetching admin search usage: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			usage = &vibe.AdminSearchUsage{
+				Summaries:   summaries,
+				GeneratedAt: time.Now().UTC(),
+			}
+			err = cache.CacheAdminSearchUsage(ctx, *usage)
+			if err != nil {
+				log.Printf("error caching admin search usage: %v", err)
+			}
+		}
+
+		body, err := json.Marshal(usage)
 		if err != nil {
 			handleError(
 				w,
@@ -569,3 +683,13 @@ func (h *ReviewAdminRooms) Handle(ctx context.Context, data []byte) error {
 }
 
 const adminSessionDuration = 24 * time.Hour
+
+const adminRoomPageSize = 12
+
+const adminRoomMaximumPageSize = 50
+
+const adminRoomQueryMaximumLength = 100
+
+const adminRoomOrderAscending = "asc"
+
+const adminRoomOrderDescending = "desc"
