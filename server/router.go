@@ -82,6 +82,7 @@ func (s *Server) setupRoutes() {
 		api.HandleFunc("/admin/sessions", handler.AdminLogout()).Methods(http.MethodDelete, http.MethodOptions).Name("AdminLogout")
 		api.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
 		api.HandleFunc("/admin/searches/usage", handler.AdminSearchUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminSearchUsage")
+		api.HandleFunc("/admin/listeners/usage", handler.AdminListenerUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminListenerUsage")
 		api.HandleFunc("/admin/rooms/{id}", handler.AdminUpdateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateRoom")
 		api.HandleFunc("/admin/rooms/{id}", handler.AdminDeleteRoom(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteRoom")
 		api.HandleFunc("/admin/events", handler.AdminEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
@@ -182,6 +183,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"AdminLogout":        {Rate: time.Minute, Limit: 20},
 			"AdminRooms":         {Rate: time.Minute, Limit: 120},
 			"AdminSearchUsage":   {Rate: time.Minute, Limit: 120},
+			"AdminListenerUsage": {Rate: time.Minute, Limit: 120},
 			"AdminUpdateRoom":    {Rate: time.Minute, Limit: 30},
 			"AdminDeleteRoom":    {Rate: time.Minute, Limit: 30},
 			"AdminEvents":        {Rate: time.Minute, Limit: 20},
@@ -245,11 +247,12 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 		AdminPassword: &s.Config.AdminPassword,
 		CookieSecret:  s.Config.CookieSecret,
 		ProtectedRoutes: map[string]bool{
-			"AdminRooms":       true,
-			"AdminSearchUsage": true,
-			"AdminUpdateRoom":  true,
-			"AdminDeleteRoom":  true,
-			"AdminEvents":      true,
+			"AdminRooms":         true,
+			"AdminSearchUsage":   true,
+			"AdminListenerUsage": true,
+			"AdminUpdateRoom":    true,
+			"AdminDeleteRoom":    true,
+			"AdminEvents":        true,
 		},
 	}
 

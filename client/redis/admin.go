@@ -103,7 +103,7 @@ func (c *Client) CacheAdminSearchUsage(
 		c.adminSearchUsageCacheKey(),
 		body,
 		"EX",
-		int(adminSearchUsageCacheExpiration.Seconds()),
+		int(adminUsageCacheExpiration.Seconds()),
 	)
 	if err != nil {
 		return fmt.Errorf(
@@ -119,4 +119,4 @@ func (c *Client) adminSearchUsageCacheKey() string {
 	return c.getKeyWithPrefix("admin:searches:usage")
 }
 
-const adminSearchUsageCacheExpiration = 30 * time.Second
+const adminUsageCacheExpiration = 30 * time.Second
