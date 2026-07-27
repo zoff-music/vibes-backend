@@ -19,7 +19,7 @@ import (
 // AdminLogin handles POST /api/v1/admin/sessions
 //
 //	@Summary		Sign in to room administration
-//	@Description	Validates the admin password and creates an authenticated admin session for the current user.
+//	@Description	Validates an admin username and password and creates an authenticated admin session for the current user.
 //	@Tags		admin
 //	@Accept		json
 //	@Produce	json
@@ -31,7 +31,8 @@ import (
 //	@Failure	500		{object}	map[string]string
 //	@Router		/api/v1/admin/sessions [post]
 func AdminLogin(
-	adminPassword *string,
+	fetcher vibe.AdminUserByUsernameFetcher,
+	passwordPepper string,
 	cookieSecret string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -49,10 +50,22 @@ func AdminLogin(
 			return
 		}
 
-		if req.Password == "" {
+		username, err := vibe.NormalizeAdminUsername(req.Username)
+		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error password required"),
+				fmt.Errorf("error validating admin username: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		err = vibe.ValidateAdminPassword(req.Password)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error validating admin password: %w", err),
 				http.StatusBadRequest,
 				false,
 			)
@@ -70,15 +83,44 @@ func AdminLogin(
 			return
 		}
 
-		password := ""
-		if adminPassword != nil {
-			password = *adminPassword
-		}
-
-		if password == "" || req.Password != password {
+		admin, err := fetcher.GetAdminUserByUsername(ctx, username)
+		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error incorrect password"),
+				fmt.Errorf("error getting admin user in AdminLogin handler: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+		if admin.IsEmpty() {
+			handleError(
+				w,
+				fmt.Errorf("error invalid admin credentials"),
+				http.StatusForbidden,
+				false,
+			)
+			return
+		}
+
+		passwordMatches, err := helper.VerifyAdminPassword(
+			req.Password,
+			passwordPepper,
+			admin.PasswordHash,
+		)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error verifying admin password in AdminLogin handler: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+		if !passwordMatches {
+			handleError(
+				w,
+				fmt.Errorf("error invalid admin credentials"),
 				http.StatusForbidden,
 				false,
 			)
@@ -86,9 +128,10 @@ func AdminLogin(
 		}
 
 		payload := helper.AdminAuthPayload{
-			UserID:       session.UserID,
-			PasswordHash: helper.HashAdminPassword(password),
-			IssuedAt:     time.Now().Unix(),
+			UserID:         session.UserID,
+			AdminID:        admin.ID,
+			SessionVersion: admin.SessionVersion,
+			IssuedAt:       time.Now().Unix(),
 		}
 
 		signed, err := helper.SignAdminAuthPayload(payload, cookieSecret)
@@ -114,6 +157,7 @@ func AdminLogin(
 
 		resp := vibe.AdminSessionResponse{
 			Authorized: true,
+			User:       admin,
 		}
 
 		body, err := json.Marshal(resp)
@@ -121,6 +165,48 @@ func AdminLogin(
 			handleError(
 				w,
 				fmt.Errorf("error marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}
+}
+
+// AdminSession handles GET /api/v1/admin/sessions
+//
+//	@Summary	Get the current admin session
+//	@Tags		admin
+//	@Produce	json
+//	@Success	200	{object}	vibe.AdminSessionResponse
+//	@Failure	401	{object}	map[string]string
+//	@Router		/api/v1/admin/sessions [get]
+func AdminSession() http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		admin, ok := helper.GetAdminUserFromContext(r.Context())
+		if !ok || admin.IsEmpty() {
+			handleError(
+				w,
+				fmt.Errorf("error unauthorized"),
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+
+		response := vibe.AdminSessionResponse{
+			Authorized: true,
+			User:       admin,
+		}
+		body, err := json.Marshal(response)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling admin session response: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

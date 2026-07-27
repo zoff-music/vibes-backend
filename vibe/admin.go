@@ -2,7 +2,10 @@ package vibe
 
 import (
 	"context"
+	"fmt"
+	"strings"
 	"time"
+	"unicode/utf8"
 )
 
 type AdminRoomSummary struct {
@@ -38,11 +41,74 @@ type AdminUpdateRoomRequest struct {
 }
 
 type AdminLoginRequest struct {
+	Username string `json:"username"`
 	Password string `json:"password"`
 }
 
 type AdminSessionResponse struct {
-	Authorized bool `json:"authorized"`
+	Authorized bool       `json:"authorized"`
+	User       *AdminUser `json:"user,omitempty"`
+}
+
+type AdminUser struct {
+	ID             string    `json:"id"`
+	Username       string    `json:"username"`
+	PasswordHash   string    `json:"-"`
+	SessionVersion int64     `json:"-"`
+	CreatedAt      time.Time `json:"createdAt"`
+	UpdatedAt      time.Time `json:"updatedAt"`
+}
+
+func (u *AdminUser) IsEmpty() bool {
+	return u.ID == ""
+}
+
+type AdminCreateUserRequest struct {
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type AdminUpdateUserRequest struct {
+	Password string `json:"password"`
+}
+
+func NormalizeAdminUsername(username string) (string, error) {
+	normalized := strings.ToLower(strings.TrimSpace(username))
+	if len(normalized) < AdminUsernameMinimumLength ||
+		len(normalized) > AdminUsernameMaximumLength {
+		return "", fmt.Errorf(
+			"error admin username must contain between %d and %d characters",
+			AdminUsernameMinimumLength,
+			AdminUsernameMaximumLength,
+		)
+	}
+
+	for _, character := range normalized {
+		valid := character >= 'a' && character <= 'z'
+		valid = valid || character >= '0' && character <= '9'
+		valid = valid || character == '-' || character == '_'
+		if !valid {
+			return "", fmt.Errorf(
+				"error admin username contains an unsupported character",
+			)
+		}
+	}
+
+	return normalized, nil
+}
+
+func ValidateAdminPassword(password string) error {
+	length := utf8.RuneCountInString(password)
+	if length < AdminPasswordMinimumLength ||
+		length > AdminPasswordMaximumLength {
+		return fmt.Errorf(
+			"error admin password must contain between %d and %d characters",
+			AdminPasswordMinimumLength,
+			AdminPasswordMaximumLength,
+		)
+	}
+
+	return nil
 }
 
 type AdminSearchUsageSummary struct {
@@ -79,6 +145,34 @@ type AdminRoomLister interface {
 
 type AdminRoomSearcher interface {
 	SearchAdminRooms(ctx context.Context, search AdminRoomSearch) (*AdminRoomResult, error)
+}
+
+type AdminUserFetcher interface {
+	GetAdminUser(ctx context.Context, adminID string) (*AdminUser, error)
+}
+
+type AdminUserByUsernameFetcher interface {
+	GetAdminUserByUsername(ctx context.Context, username string) (*AdminUser, error)
+}
+
+type AdminUserLister interface {
+	ListAdminUsers(ctx context.Context) ([]AdminUser, error)
+}
+
+type AdminUserCreator interface {
+	CreateAdminUser(ctx context.Context, user AdminUser) (*AdminUser, error)
+}
+
+type AdminUserPasswordUpdater interface {
+	UpdateAdminUserPassword(
+		ctx context.Context,
+		adminID string,
+		passwordHash string,
+	) (bool, error)
+}
+
+type AdminUserDeleter interface {
+	DeleteAdminUser(ctx context.Context, adminID string) (bool, error)
 }
 
 type AdminSearchUsageLister interface {
@@ -127,3 +221,11 @@ const AdminRoomsUpdate = "admin_rooms_update"
 const AdminRoomSortListeners AdminRoomSort = "listeners"
 
 const AdminRoomSortSongs AdminRoomSort = "songs"
+
+const AdminUsernameMinimumLength = 3
+
+const AdminUsernameMaximumLength = 64
+
+const AdminPasswordMinimumLength = 16
+
+const AdminPasswordMaximumLength = 128

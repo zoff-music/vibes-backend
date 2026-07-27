@@ -137,6 +137,19 @@ func (e ErrMissingAdminPassword) Unwrap() error {
 	return e.Err
 }
 
+// ErrAdminUsernameUnavailable indicates that an admin username is already used.
+type ErrAdminUsernameUnavailable struct {
+	Err error
+}
+
+func (e ErrAdminUsernameUnavailable) Error() string {
+	return fmt.Sprintf("error admin username unavailable: %v", e.Err)
+}
+
+func (e ErrAdminUsernameUnavailable) Unwrap() error {
+	return e.Err
+}
+
 // ErrRoomNameUnavailable is an error type for unavailable or expired room names.
 type ErrRoomNameUnavailable struct {
 	Err error
