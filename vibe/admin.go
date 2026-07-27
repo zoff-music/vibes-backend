@@ -1,6 +1,9 @@
 package vibe
 
-import "context"
+import (
+	"context"
+	"time"
+)
 
 type AdminRoomSummary struct {
 	ID               string   `json:"id"`
@@ -10,6 +13,24 @@ type AdminRoomSummary struct {
 	ActiveSources    []string `json:"activeSources"`
 	HasAdminPassword bool     `json:"hasAdminPassword"`
 }
+
+type AdminRoomSearch struct {
+	Query      string
+	SortBy     AdminRoomSort
+	Descending bool
+	From       int
+	To         int
+}
+
+type AdminRoomResult struct {
+	Rooms []AdminRoomSummary `json:"rooms"`
+	From  int                `json:"from"`
+	To    int                `json:"to"`
+	Total int                `json:"total"`
+	Count int                `json:"count"`
+}
+
+type AdminRoomSort string
 
 type AdminUpdateRoomRequest struct {
 	Name               *string `json:"name,omitempty"`
@@ -33,6 +54,20 @@ type AdminSearchUsageSummary struct {
 	Live     int64  `json:"live"`
 }
 
+type AdminSearchUsage struct {
+	Summaries   []AdminSearchUsageSummary `json:"summaries"`
+	GeneratedAt time.Time                 `json:"generatedAt"`
+}
+
+type CachedAdminSearchUsage struct {
+	Usage AdminSearchUsage
+	Found bool
+}
+
+func (u *CachedAdminSearchUsage) IsEmpty() bool {
+	return !u.Found
+}
+
 type AdminEvent struct {
 	Type    string `json:"type"`
 	Payload []byte `json:"payload"`
@@ -42,8 +77,25 @@ type AdminRoomLister interface {
 	ListAdminRooms(ctx context.Context) ([]AdminRoomSummary, error)
 }
 
+type AdminRoomSearcher interface {
+	SearchAdminRooms(ctx context.Context, search AdminRoomSearch) (*AdminRoomResult, error)
+}
+
 type AdminSearchUsageLister interface {
 	ListAdminSearchUsage(ctx context.Context) ([]AdminSearchUsageSummary, error)
+}
+
+type CachedAdminSearchUsageFetcher interface {
+	GetCachedAdminSearchUsage(ctx context.Context) (*CachedAdminSearchUsage, error)
+}
+
+type CachedAdminSearchUsageCreator interface {
+	CacheAdminSearchUsage(ctx context.Context, usage AdminSearchUsage) error
+}
+
+type CachedAdminSearchUsageFetcherCreator interface {
+	CachedAdminSearchUsageFetcher
+	CachedAdminSearchUsageCreator
 }
 
 type AdminRoomUpdater interface {
@@ -71,3 +123,7 @@ type AdminEventNotifier interface {
 }
 
 const AdminRoomsUpdate = "admin_rooms_update"
+
+const AdminRoomSortListeners AdminRoomSort = "listeners"
+
+const AdminRoomSortSongs AdminRoomSort = "songs"
