@@ -4,7 +4,6 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -14,9 +13,10 @@ import (
 )
 
 type AdminAuthPayload struct {
-	UserID       string `json:"user_id"`
-	PasswordHash string `json:"password_hash"`
-	IssuedAt     int64  `json:"issued_at"`
+	UserID         string `json:"user_id"`
+	AdminID        string `json:"admin_id"`
+	SessionVersion int64  `json:"session_version"`
+	IssuedAt       int64  `json:"issued_at"`
 }
 
 type CastTokenPayload struct {
@@ -26,11 +26,6 @@ type CastTokenPayload struct {
 	UserID string `json:"userId"`
 	Iat    int64  `json:"iat"`
 	Exp    int64  `json:"exp"`
-}
-
-func HashAdminPassword(password string) string {
-	hash := sha256.Sum256([]byte(password))
-	return hex.EncodeToString(hash[:])
 }
 
 func SignAdminAuthPayload(payload AdminAuthPayload, secret string) (string, error) {
@@ -67,7 +62,10 @@ func ParseAdminAuthPayload(value string, secret string) (AdminAuthPayload, error
 		return AdminAuthPayload{}, fmt.Errorf("error unmarshaling admin payload: %w", err)
 	}
 
-	if payload.UserID == "" || payload.PasswordHash == "" {
+	if payload.UserID == "" ||
+		payload.AdminID == "" ||
+		payload.SessionVersion < 1 ||
+		payload.IssuedAt < 1 {
 		return AdminAuthPayload{}, fmt.Errorf("error invalid admin payload")
 	}
 
