@@ -132,10 +132,10 @@ func (c *Client) SearchGeneratedPlaylist(
 			},
 		})
 	}
-	if len(found) >= vibe.GeneratedPlaylistSelectedTrackCount {
+	if len(found) >= c.generatedPlaylistSelectedCount {
 		unresolvedCandidates = unresolvedCandidates[:0]
 	}
-	remainingTrackCount := vibe.GeneratedPlaylistSelectedTrackCount - len(found)
+	remainingTrackCount := c.generatedPlaylistSelectedCount - len(found)
 	if remainingTrackCount > 0 && len(unresolvedCandidates) > remainingTrackCount {
 		unresolvedCandidates = unresolvedCandidates[:remainingTrackCount]
 	}
@@ -245,8 +245,8 @@ func (c *Client) SearchGeneratedPlaylist(
 		}
 		return cmp.Compare(b.LikeCount, a.LikeCount)
 	})
-	if len(found) > vibe.GeneratedPlaylistSelectedTrackCount {
-		found = found[:vibe.GeneratedPlaylistSelectedTrackCount]
+	if len(found) > c.generatedPlaylistSelectedCount {
+		found = found[:c.generatedPlaylistSelectedCount]
 	}
 
 	result := vibe.GeneratedPlaylistSearchResult{

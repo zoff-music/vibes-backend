@@ -49,7 +49,12 @@ type Config struct {
 	SpotifyRedirectURI  string `envconfig:"SPOTIFY_REDIRECT_URI" default:"https://127.0.0.1/api/v1/callbacks/spotify"`
 
 	// AI configuration
-	AIModel string `envconfig:"AI_MODEL" default:"GROK:grok-4.3"`
+	AIModel                             string `envconfig:"AI_MODEL" default:"GROK:grok-4.3"`
+	GeneratedPlaylistTrackCount         int    `envconfig:"GENERATED_PLAYLIST_TRACK_COUNT" default:"60"`
+	GeneratedPlaylistSelectedTrackCount int    `envconfig:"GENERATED_PLAYLIST_SELECTED_TRACK_COUNT" default:"30"`
+	RoomGenerationMaxAttempts           int    `envconfig:"ROOM_GENERATION_MAX_ATTEMPTS" default:"5"`
+	RoomGenerationMaxDailyCount         int    `envconfig:"ROOM_GENERATION_MAX_DAILY_COUNT" default:"2"`
+	RoomGenerationMaxExistingSongs      int    `envconfig:"ROOM_GENERATION_MAX_EXISTING_SONGS" default:"10"`
 
 	// Grok configuration
 	GrokAPIKey   string `envconfig:"GROK_API_KEY" default:""`
@@ -100,6 +105,26 @@ func LoadConfig() (*Config, error) {
 	err := envconfig.Process("", &c)
 	if err != nil {
 		return nil, fmt.Errorf("error processing env: %w", err)
+	}
+	if c.GeneratedPlaylistTrackCount < 1 {
+		return nil, fmt.Errorf("error validating generated playlist track count: must be greater than zero")
+	}
+	if c.GeneratedPlaylistSelectedTrackCount < 1 {
+		return nil, fmt.Errorf("error validating generated playlist selected track count: must be greater than zero")
+	}
+	if c.GeneratedPlaylistSelectedTrackCount > c.GeneratedPlaylistTrackCount {
+		return nil, fmt.Errorf(
+			"error validating generated playlist selected track count: must not exceed generated playlist track count",
+		)
+	}
+	if c.RoomGenerationMaxAttempts < 1 {
+		return nil, fmt.Errorf("error validating room generation max attempts: must be greater than zero")
+	}
+	if c.RoomGenerationMaxDailyCount < 1 {
+		return nil, fmt.Errorf("error validating room generation max daily count: must be greater than zero")
+	}
+	if c.RoomGenerationMaxExistingSongs < 0 {
+		return nil, fmt.Errorf("error validating room generation max existing songs: must not be negative")
 	}
 
 	return &c, nil
