@@ -36,7 +36,7 @@ func (m *PermissionMiddleware) Middleware(next http.Handler) http.Handler {
 
 		room, err := m.DB.GetRoom(ctx, roomID, session.UserID)
 		if err != nil {
-			log.Printf("PermissionMiddleware: failed to fetch room %s: %v", roomID, err)
+			log.Printf("PermissionMiddleware: failed to fetch room: %v", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -61,7 +61,7 @@ func (m *PermissionMiddleware) Middleware(next http.Handler) http.Handler {
 		// Fetch the user
 		user, err := m.DB.GetUser(ctx, roomID, session.UserID)
 		if err != nil {
-			log.Printf("PermissionMiddleware: failed to fetch user %s in room %s: %v", session.UserID, roomID, err)
+			log.Printf("PermissionMiddleware: failed to fetch user: %v", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
