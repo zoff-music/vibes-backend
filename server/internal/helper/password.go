@@ -84,7 +84,7 @@ func VerifyAdminPassword(
 		parsed.Parameters.Iterations,
 		parsed.Parameters.Memory,
 		parsed.Parameters.Parallelism,
-		uint32(len(parsed.Hash)),
+		adminPasswordHashLength,
 	)
 	matches := subtle.ConstantTimeCompare(actualHash, parsed.Hash) == 1
 

@@ -158,6 +158,7 @@ func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, cookieName s
 	sessionEncoded := base64.StdEncoding.EncodeToString(sessionJSON)
 	signed := m.sign(sessionEncoded)
 
+	// #nosec G124 -- all session cookies are Secure and HttpOnly; SameSite is restricted to Lax or None above.
 	http.SetCookie(w, &http.Cookie{
 		Name:        cookieName,
 		Value:       signed,

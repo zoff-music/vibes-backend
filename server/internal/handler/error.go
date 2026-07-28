@@ -36,5 +36,5 @@ func handleError(
 	}
 
 	w.WriteHeader(statusCode)
-	w.Write(errorBody)
+	_, _ = w.Write(errorBody)
 }
