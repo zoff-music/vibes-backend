@@ -90,7 +90,7 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 		Messages: []chatMessage{
 			{
 				Role:    "system",
-				Content: vibe.GeneratedPlaylistSystemInstruction,
+				Content: c.systemInstruction,
 			},
 			{
 				Role:    "user",
@@ -108,7 +108,7 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 				Schema: playlistSchema{
 					Type:     "array",
 					MinItems: 1,
-					MaxItems: vibe.GeneratedPlaylistTrackCount,
+					MaxItems: c.trackCount,
 					Items: playlistItemSchema{
 						Type: "object",
 						Properties: playlistItemProperties{
@@ -193,8 +193,8 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 			"error validating generated playlist in GeneratePlaylist: playlist has no tracks",
 		)
 	}
-	if len(playlist) > vibe.GeneratedPlaylistTrackCount {
-		playlist = playlist[:vibe.GeneratedPlaylistTrackCount]
+	if len(playlist) > c.trackCount {
+		playlist = playlist[:c.trackCount]
 	}
 
 	return &playlist, nil

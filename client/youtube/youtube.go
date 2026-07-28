@@ -15,12 +15,13 @@ import (
 
 // Client implements vibe.MusicSearcher
 type Client struct {
-	apiKey       string
-	clientID     string
-	clientSecret string
-	redirectURI  string
-	Endpoint     string
-	HTTPClient   client.HTTPClient
+	apiKey                         string
+	clientID                       string
+	clientSecret                   string
+	redirectURI                    string
+	generatedPlaylistSelectedCount int
+	Endpoint                       string
+	HTTPClient                     client.HTTPClient
 
 	searchQuotaMu    sync.RWMutex
 	searchQuotaZone  *time.Location
@@ -43,6 +44,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	c.clientID = cfg.YouTubeClientID
 	c.clientSecret = cfg.YouTubeClientSecret
 	c.redirectURI = cfg.YouTubeRedirectURI
+	c.generatedPlaylistSelectedCount = cfg.GeneratedPlaylistSelectedTrackCount
 	searchQuotaZone, err := time.LoadLocation(youtubeQuotaLocation)
 	if err != nil {
 		return fmt.Errorf("error loading youtube quota location: %w", err)

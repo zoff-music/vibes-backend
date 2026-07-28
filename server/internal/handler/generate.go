@@ -282,6 +282,7 @@ func CreateGeneratedRoom(
 //	@Router		/api/v1/rooms/{id}/generations [post]
 func CreateRoomGeneration(
 	creator vibe.RoomGenerationCreator,
+	maxExistingSongs int,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -366,7 +367,10 @@ func CreateRoomGeneration(
 						ResponseBody: client.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_generation_song_limit",
-							Message:   "Playlists can only be generated when the room has 10 songs or fewer.",
+							Message: fmt.Sprintf(
+								"Playlists can only be generated when the room has %d songs or fewer.",
+								maxExistingSongs,
+							),
 							Propagate: true,
 						},
 						StatusCode: http.StatusConflict,

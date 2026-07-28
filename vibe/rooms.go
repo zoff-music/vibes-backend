@@ -47,22 +47,24 @@ func DefaultRoomSettings() RoomSettings {
 
 // Room represents a music room
 type Room struct {
-	ID                   string       `json:"id"`
-	Name                 string       `json:"name"`
-	Mode                 string       `json:"mode"`
-	HostID               string       `json:"hostId,omitempty"`
-	AdminPasswordHash    string       `json:"-"`
-	HasPassword          bool         `json:"hasPassword"`
-	Settings             RoomSettings `json:"settings"`
-	CreatedAt            time.Time    `json:"createdAt"`
-	UserCount            int          `json:"userCount,omitempty"`
-	IsAdmin              bool         `json:"isAdmin"`
-	UserID               string       `json:"userId,omitempty"`
-	ActiveSources        []string     `json:"activeSources"`
-	IsGenerating         bool         `json:"isGenerating"`
-	GenerationCount      int          `json:"generationCount"`
-	GenerationError      string       `json:"generationError,omitempty"`
-	StoredEnabledSources []string     `json:"-"`
+	ID                             string       `json:"id"`
+	Name                           string       `json:"name"`
+	Mode                           string       `json:"mode"`
+	HostID                         string       `json:"hostId,omitempty"`
+	AdminPasswordHash              string       `json:"-"`
+	HasPassword                    bool         `json:"hasPassword"`
+	Settings                       RoomSettings `json:"settings"`
+	CreatedAt                      time.Time    `json:"createdAt"`
+	UserCount                      int          `json:"userCount,omitempty"`
+	IsAdmin                        bool         `json:"isAdmin"`
+	UserID                         string       `json:"userId,omitempty"`
+	ActiveSources                  []string     `json:"activeSources"`
+	IsGenerating                   bool         `json:"isGenerating"`
+	GenerationCount                int          `json:"generationCount"`
+	RoomGenerationMaxDailyCount    int          `json:"roomGenerationMaxDailyCount"`
+	RoomGenerationMaxExistingSongs int          `json:"roomGenerationMaxExistingSongs"`
+	GenerationError                string       `json:"generationError,omitempty"`
+	StoredEnabledSources           []string     `json:"-"`
 }
 
 // RoomNameReservation is a temporarily reserved room name.

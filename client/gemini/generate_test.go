@@ -80,10 +80,12 @@ func TestGeneratePlaylist(t *testing.T) {
 			defer server.Close()
 
 			geminiClient := Client{
-				Enabled:  tt.enabled,
-				Endpoint: server.URL,
-				Model:    "gemini-3.6-flash",
-				apiKey:   "gemini-key",
+				Enabled:           tt.enabled,
+				Endpoint:          server.URL,
+				Model:             "gemini-3.6-flash",
+				apiKey:            "gemini-key",
+				trackCount:        30,
+				systemInstruction: vibe.GeneratedPlaylistSystemInstruction(30),
 				HTTPClient: client.HTTPClient{
 					Client: server.Client(),
 				},
@@ -123,7 +125,7 @@ func TestGeneratePlaylist(t *testing.T) {
 			if receivedRequest.Messages[0].Role != "system" {
 				t.Fatalf("unexpected first message role %q", receivedRequest.Messages[0].Role)
 			}
-			if receivedRequest.Messages[0].Content != vibe.GeneratedPlaylistSystemInstruction {
+			if receivedRequest.Messages[0].Content != vibe.GeneratedPlaylistSystemInstruction(30) {
 				t.Fatal("expected generated playlist system instruction")
 			}
 			if receivedRequest.Messages[1].Content != "songs for a night drive" {
