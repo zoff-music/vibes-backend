@@ -185,8 +185,10 @@ func RoomEvents(
 					if err != nil {
 						log.Printf("failed to update participant on heartbeat: %v", err)
 					}
-					if err == nil && !participantRegistered {
-						participantRegistered = true
+					if err == nil {
+						if !participantRegistered {
+							participantRegistered = true
+						}
 						notifyUsers(ctx)
 					}
 				}
