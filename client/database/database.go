@@ -16,10 +16,13 @@ import (
 type Client struct {
 	DB *sql.DB
 
-	maxNameLength          int
-	maxQueueLength         int
-	enabledProviders       []string
-	roomNameReservationTTL time.Duration
+	maxNameLength                  int
+	maxQueueLength                 int
+	enabledProviders               []string
+	roomNameReservationTTL         time.Duration
+	roomGenerationMaxAttempts      int
+	roomGenerationMaxDailyCount    int
+	roomGenerationMaxExistingSongs int
 
 	// Room statements
 	GetRoomStatement                           *sql.Stmt
@@ -137,6 +140,9 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 
 	c.enabledProviders = cfg.EnabledProviders()
 	c.roomNameReservationTTL = cfg.RoomNameReservationTTL
+	c.roomGenerationMaxAttempts = cfg.RoomGenerationMaxAttempts
+	c.roomGenerationMaxDailyCount = cfg.RoomGenerationMaxDailyCount
+	c.roomGenerationMaxExistingSongs = cfg.RoomGenerationMaxExistingSongs
 	if c.roomNameReservationTTL == 0 {
 		c.roomNameReservationTTL = 2 * time.Minute
 	}

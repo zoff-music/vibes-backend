@@ -202,7 +202,7 @@ func (c *Client) getRoom(ctx context.Context, id string, userID string) (*vibe.R
 		cctx,
 		id,
 		userID,
-		vibe.RoomGenerationMaxAttempts,
+		c.roomGenerationMaxAttempts,
 	)
 
 	var row roomRow
@@ -233,6 +233,8 @@ func (c *Client) fillRoomDetails(ctx context.Context, room vibe.Room, userID str
 	}
 
 	filledRoom.UserID = userID
+	filledRoom.RoomGenerationMaxDailyCount = c.roomGenerationMaxDailyCount
+	filledRoom.RoomGenerationMaxExistingSongs = c.roomGenerationMaxExistingSongs
 
 	counts, err := c.GetActiveListenerCounts(ctx, filledRoom.ID, 15*time.Second)
 	if err == nil {
@@ -332,7 +334,7 @@ func (c *Client) getRoomByName(ctx context.Context, name string, userID string) 
 		cctx,
 		name,
 		userID,
-		vibe.RoomGenerationMaxAttempts,
+		c.roomGenerationMaxAttempts,
 	)
 
 	var scanned roomRow

@@ -44,7 +44,7 @@ func (c *Client) HasActiveRoomGeneration(ctx context.Context) (bool, error) {
 
 	row := c.HasActiveRoomGenerationStatement.QueryRowContext(
 		cctx,
-		vibe.RoomGenerationMaxAttempts,
+		c.roomGenerationMaxAttempts,
 	)
 
 	var hasActiveGeneration bool
@@ -133,8 +133,8 @@ func (c *Client) CreateRoomGeneration(
 		cctx,
 		roomID,
 		prompt,
-		vibe.RoomGenerationMaxExistingSongs,
-		vibe.RoomGenerationMaxDailyCount,
+		c.roomGenerationMaxExistingSongs,
+		c.roomGenerationMaxDailyCount,
 		c.enabledProviders,
 	)
 
@@ -162,7 +162,7 @@ func (c *Client) CreateRoomGeneration(
 		return internalerror.ErrRoomGenerationSongLimit{
 			Err: fmt.Errorf(
 				"error validating song count in CreateRoomGeneration: room has more than %d songs",
-				vibe.RoomGenerationMaxExistingSongs,
+				c.roomGenerationMaxExistingSongs,
 			),
 		}
 	}
@@ -170,7 +170,7 @@ func (c *Client) CreateRoomGeneration(
 		return internalerror.ErrRoomGenerationDailyLimit{
 			Err: fmt.Errorf(
 				"error validating daily limit in CreateRoomGeneration: room has reached %d generations",
-				vibe.RoomGenerationMaxDailyCount,
+				c.roomGenerationMaxDailyCount,
 			),
 		}
 	}
@@ -260,7 +260,7 @@ func (c *Client) ProcessNextRoomGeneration(
 
 	row := c.ProcessNextRoomGenerationStatement.QueryRowContext(
 		cctx,
-		vibe.RoomGenerationMaxAttempts,
+		c.roomGenerationMaxAttempts,
 		vibe.RoomGenerationFailure,
 	)
 
@@ -391,7 +391,7 @@ func (c *Client) FailRoomGeneration(
 	_, err := c.FailRoomGenerationStatement.ExecContext(
 		cctx,
 		roomID,
-		vibe.RoomGenerationMaxAttempts,
+		c.roomGenerationMaxAttempts,
 		reason,
 	)
 	if err != nil {
