@@ -141,8 +141,6 @@ func UpdatePlaybackState(
 			return
 		}
 
-		log.Printf("Room %s: User %s attempting %s", roomID, userID, req.Action)
-
 		var state *vibe.PlaybackState
 
 		if room.Mode == vibe.RoomModeServer {
@@ -229,7 +227,7 @@ func UpdatePlaybackState(
 				Payload: statePayload,
 			})
 			if err != nil {
-				log.Printf("error notifying room %s of playback update: %v", roomID, err)
+				log.Printf("error notifying room of playback update: %v", err)
 			}
 		}
 

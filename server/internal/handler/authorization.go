@@ -205,6 +205,7 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 				ExpiresAt:   token.ExpiresAt,
 			}
 
+			// #nosec G117 -- the authorized client requires its provider token for SDK playback.
 			body, err := json.Marshal(resp)
 			if err != nil {
 				handleError(
@@ -266,6 +267,7 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 			ExpiresAt:   newExpiresAt,
 		}
 
+		// #nosec G117 -- the authorized client requires its provider token for SDK playback.
 		body, err := json.Marshal(resp)
 		if err != nil {
 			handleError(
