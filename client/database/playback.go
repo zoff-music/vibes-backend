@@ -301,6 +301,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			LEFT JOIN song_votes b
 			ON a.id = b.song_id
 			AND a.room_id = b.room_id
+			AND a.id IS DISTINCT FROM c.current_song_id
 			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
 			AND a.source_type = ANY($1::text[])
 			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
@@ -513,6 +514,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 			LEFT JOIN song_votes b
 			ON a.id = b.song_id
 			AND a.room_id = b.room_id
+			AND a.id IS DISTINCT FROM c.current_song_id
 			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
 			AND a.source_type = ANY($2::text[])
 			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
