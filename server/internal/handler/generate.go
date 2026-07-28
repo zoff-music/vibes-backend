@@ -484,7 +484,35 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		)
 	}
 
-	playlist, err := h.AI.GeneratePlaylist(ctx, generation.Prompt)
+	playbackState, err := h.DB.GetPlaybackState(ctx, room.ID)
+	if err != nil {
+		return fmt.Errorf(
+			"error getting generated room playback in Handle: %w",
+			err,
+		)
+	}
+
+	songs, err := h.DB.GetSongs(ctx, room.ID)
+	if err != nil {
+		return fmt.Errorf(
+			"error getting generated room songs in Handle: %w",
+			err,
+		)
+	}
+
+	prompt, err := vibe.GeneratePlaylistPrompt(
+		generation.Prompt,
+		playbackState.CurrentSong,
+		songs,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"error generating playlist prompt in Handle: %w",
+			err,
+		)
+	}
+
+	playlist, err := h.AI.GeneratePlaylist(ctx, prompt)
 	if err != nil {
 		return fmt.Errorf("error generating playlist in Handle: %w", err)
 	}
@@ -577,13 +605,6 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 	}
 	playlist = &searchResult.Playlist
 
-	playbackState, err := h.DB.GetPlaybackState(ctx, room.ID)
-	if err != nil {
-		return fmt.Errorf(
-			"error getting generated room playback in Handle: %w",
-			err,
-		)
-	}
 	shouldStartPlayback := playbackState.CurrentSong == nil
 
 	for _, track := range *playlist {
