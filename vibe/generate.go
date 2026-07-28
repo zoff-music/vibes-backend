@@ -2,6 +2,7 @@ package vibe
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -27,6 +28,17 @@ func (g *GeneratedTrack) IsEmpty() bool {
 }
 
 type GeneratedPlaylist []GeneratedTrack
+
+type generatedPlaylistPromptTrack struct {
+	Artist string `json:"artist,omitempty"`
+	Title  string `json:"title"`
+}
+
+type generatedPlaylistPrompt struct {
+	CurrentSong *generatedPlaylistPromptTrack  `json:"currentlyPlaying,omitempty"`
+	Prompt      string                         `json:"listenerRequest"`
+	Songs       []generatedPlaylistPromptTrack `json:"existingSongs,omitempty"`
+}
 
 type AIModel struct {
 	Provider string
@@ -149,10 +161,48 @@ type RoomGenerationWorker interface {
 	RoomGenerationCompleter
 	RoomGenerationFailer
 	RoomFetcher
+	SongsFetcher
 	GeneratedSongAdder
 	PlaybackController
 	PlaybackFetcher
 	SearchUsageCreator
+}
+
+func GeneratePlaylistPrompt(
+	prompt string,
+	currentSong *Song,
+	songs []Song,
+) (string, error) {
+	if currentSong == nil && len(songs) == 0 {
+		return prompt, nil
+	}
+
+	generatedPrompt := generatedPlaylistPrompt{
+		Prompt: prompt,
+		Songs:  make([]generatedPlaylistPromptTrack, 0, len(songs)),
+	}
+	if currentSong != nil {
+		generatedPrompt.CurrentSong = &generatedPlaylistPromptTrack{
+			Artist: currentSong.Artist,
+			Title:  currentSong.Title,
+		}
+	}
+	for _, song := range songs {
+		generatedPrompt.Songs = append(
+			generatedPrompt.Songs,
+			generatedPlaylistPromptTrack{
+				Artist: song.Artist,
+				Title:  song.Title,
+			},
+		)
+	}
+
+	body, err := json.Marshal(generatedPrompt)
+	if err != nil {
+		return "", fmt.Errorf("error marshaling generated playlist prompt: %w", err)
+	}
+
+	return string(body), nil
 }
 
 func GeneratedPlaylistSystemInstruction(trackCount int) string {
@@ -177,6 +227,8 @@ You generate playlists from a listener's natural-language request.
 Generate up to {trackCount} distinct, real, publicly released songs that closely match the listener's request. Return as many high-quality matches as you can find if there are not enough strong matches for all {trackCount}. Never invent or include weakly related songs simply to reach the limit.
 
 Interpret the request using any stated genres, moods, themes, eras, languages, artists, activities, energy levels, lyrical topics, or exclusions.
+
+The listener message may be a JSON object containing "listenerRequest", "currentlyPlaying", and "existingSongs". When that context is present, never suggest the currently playing song or any song already in the room. Treat alternate releases or versions of an existing song as the same song unless the listener explicitly requests them.
 
 Requirements:
 
