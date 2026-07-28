@@ -111,18 +111,19 @@ func ValidateAdminPassword(password string) error {
 	return nil
 }
 
-type AdminSearchUsageSummary struct {
-	Window   string `json:"window"`
-	Provider string `json:"provider"`
-	Total    int64  `json:"total"`
-	Unique   int64  `json:"unique"`
-	Cached   int64  `json:"cached"`
-	Live     int64  `json:"live"`
+type AdminSearchUsagePoint struct {
+	Window    string    `json:"window"`
+	Timestamp time.Time `json:"timestamp"`
+	Provider  string    `json:"provider"`
+	Total     int64     `json:"total"`
+	Unique    int64     `json:"unique"`
+	Cached    int64     `json:"cached"`
+	Live      int64     `json:"live"`
 }
 
 type AdminSearchUsage struct {
-	Summaries   []AdminSearchUsageSummary `json:"summaries"`
-	GeneratedAt time.Time                 `json:"generatedAt"`
+	Points      []AdminSearchUsagePoint `json:"points"`
+	GeneratedAt time.Time               `json:"generatedAt"`
 }
 
 type CachedAdminSearchUsage struct {
@@ -176,7 +177,7 @@ type AdminUserDeleter interface {
 }
 
 type AdminSearchUsageLister interface {
-	ListAdminSearchUsage(ctx context.Context) ([]AdminSearchUsageSummary, error)
+	ListAdminSearchUsage(ctx context.Context) ([]AdminSearchUsagePoint, error)
 }
 
 type CachedAdminSearchUsageFetcher interface {
