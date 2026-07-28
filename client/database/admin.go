@@ -52,9 +52,13 @@ func (c *Client) prepareGetAdminRoomsStmt() error {
 				ROW_NUMBER() OVER (
 					ORDER BY
 						CASE WHEN $4 = 'listeners' AND $5 THEN a.user_count END DESC,
+						CASE WHEN $4 = 'listeners' AND $5 THEN a.song_count END DESC,
 						CASE WHEN $4 = 'listeners' AND NOT $5 THEN a.user_count END ASC,
+						CASE WHEN $4 = 'listeners' AND NOT $5 THEN a.song_count END ASC,
 						CASE WHEN $4 = 'songs' AND $5 THEN a.song_count END DESC,
+						CASE WHEN $4 = 'songs' AND $5 THEN a.user_count END DESC,
 						CASE WHEN $4 = 'songs' AND NOT $5 THEN a.song_count END ASC,
+						CASE WHEN $4 = 'songs' AND NOT $5 THEN a.user_count END ASC,
 						a.name ASC,
 						a.id ASC
 				) AS row_number
