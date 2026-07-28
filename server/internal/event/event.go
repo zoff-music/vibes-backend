@@ -47,7 +47,7 @@ func GetAppEvents(
 		},
 		{
 			Name: "ReviewRoomPlayback",
-			Rate: 500 * time.Millisecond,
+			Rate: 100 * time.Millisecond,
 			Handler: &handler.ReviewRoomPlayback{
 				DB:  db,
 				IPS: ips,
