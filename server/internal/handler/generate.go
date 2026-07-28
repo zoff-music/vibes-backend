@@ -366,7 +366,7 @@ func CreateRoomGeneration(
 						ResponseBody: client.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_generation_song_limit",
-							Message:   "Playlists can only be generated when the room has 5 songs or fewer.",
+							Message:   "Playlists can only be generated when the room has 10 songs or fewer.",
 							Propagate: true,
 						},
 						StatusCode: http.StatusConflict,
