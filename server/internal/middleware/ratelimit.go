@@ -50,7 +50,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		}
 
 		if policy.Rate <= 0 || policy.Limit <= 0 || policy.Rate/time.Duration(policy.Limit) < time.Microsecond {
-			log.Printf("RateLimitMiddleware: invalid policy for route %s", routeName)
+			log.Printf("RateLimitMiddleware: invalid route policy")
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -60,13 +60,13 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			ipLimit = policy.Limit * rateLimitIPMultiplier
 		}
 		if ipLimit < 0 {
-			log.Printf("RateLimitMiddleware: invalid IP policy for route %s", routeName)
+			log.Printf("RateLimitMiddleware: invalid IP policy")
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
 		if policy.GlobalLimit < 0 ||
 			(policy.GlobalLimit > 0 && policy.GlobalRate <= 0) {
-			log.Printf("RateLimitMiddleware: invalid global policy for route %s", routeName)
+			log.Printf("RateLimitMiddleware: invalid global policy")
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -81,7 +81,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			}
 			globalResult, err := m.Checker.CheckRateLimit(r.Context(), globalRequest)
 			if err != nil {
-				log.Printf("RateLimitMiddleware: error checking global limit for route %s: %v", routeName, err)
+				log.Printf("RateLimitMiddleware: error checking global limit: %v", err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 				return
 			}
@@ -95,7 +95,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 					Propagate: true,
 				})
 				if err != nil {
-					log.Printf("RateLimitMiddleware: error marshalling rate limit response for route %s: %v", routeName, err)
+					log.Printf("RateLimitMiddleware: error marshalling global rate limit response: %v", err)
 					http.Error(w, "internal server error", http.StatusInternalServerError)
 					return
 				}
@@ -128,7 +128,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		}
 		result, err := m.Checker.CheckRateLimit(r.Context(), request)
 		if err != nil {
-			log.Printf("RateLimitMiddleware: error checking limit for route %s: %v", routeName, err)
+			log.Printf("RateLimitMiddleware: error checking limit: %v", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}
@@ -143,7 +143,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 				Propagate: true,
 			})
 			if err != nil {
-				log.Printf("RateLimitMiddleware: error marshalling rate limit response for route %s: %v", routeName, err)
+				log.Printf("RateLimitMiddleware: error marshalling rate limit response: %v", err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 				return
 			}

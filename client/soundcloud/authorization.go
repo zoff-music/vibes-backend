@@ -122,4 +122,5 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*vibe.T
 	return &res, nil
 }
 
+// #nosec G101 -- this is SoundCloud's public OAuth endpoint, not a credential.
 const soundCloudTokenURL = "https://secure.soundcloud.com/oauth/token"
