@@ -93,27 +93,57 @@ func (c *Client) CreateSearchUsages(
 
 func (c *Client) prepareListAdminSearchUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH windows_q AS (
-			SELECT *
-			FROM (
-				VALUES
-					('hour'::text, DATE_TRUNC('hour', NOW()), 1),
-					('day'::text, DATE_TRUNC('day', NOW()), 2),
-					('week'::text, DATE_TRUNC('week', NOW()), 3),
-					('month'::text, DATE_TRUNC('month', NOW()), 4)
-			) AS a(period, starts_at, window_order)
+		WITH usage_q AS (
+			SELECT
+				'hour'::text AS aggregation_window,
+				DATE_TRUNC('hour', created_at) AS bucket,
+				provider,
+				SUM(search_count) AS total,
+				COUNT(DISTINCT query_hash) AS unique_count,
+				COALESCE(
+					SUM(search_count) FILTER (WHERE cached),
+					0
+				) AS cached_count,
+				COALESCE(
+					SUM(search_count) FILTER (WHERE NOT cached),
+					0
+				) AS live_count
+			FROM search_usage
+			WHERE created_at >=
+				DATE_TRUNC('hour', NOW()) - INTERVAL '23 hours'
+			GROUP BY DATE_TRUNC('hour', created_at), provider
+
+			UNION ALL
+
+			SELECT
+				'day'::text AS aggregation_window,
+				DATE_TRUNC('day', created_at) AS bucket,
+				provider,
+				SUM(search_count) AS total,
+				COUNT(DISTINCT query_hash) AS unique_count,
+				COALESCE(
+					SUM(search_count) FILTER (WHERE cached),
+					0
+				) AS cached_count,
+				COALESCE(
+					SUM(search_count) FILTER (WHERE NOT cached),
+					0
+				) AS live_count
+			FROM search_usage
+			WHERE created_at >=
+				DATE_TRUNC('day', NOW()) - INTERVAL '29 days'
+			GROUP BY DATE_TRUNC('day', created_at), provider
 		)
 		SELECT
-			a.period,
-			b.provider,
-			SUM(b.search_count) AS total,
-			COUNT(DISTINCT b.query_hash) AS unique_count,
-			COALESCE(SUM(b.search_count) FILTER (WHERE b.cached), 0) AS cached_count,
-			COALESCE(SUM(b.search_count) FILTER (WHERE NOT b.cached), 0) AS live_count
-		FROM windows_q a
-		JOIN search_usage b ON b.created_at >= a.starts_at
-		GROUP BY a.period, a.window_order, b.provider
-		ORDER BY a.window_order, b.provider
+			aggregation_window,
+			bucket,
+			provider,
+			total,
+			unique_count,
+			cached_count,
+			live_count
+		FROM usage_q
+		ORDER BY aggregation_window, bucket, provider
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ListAdminSearchUsageStatement: %w", err)
@@ -125,7 +155,7 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 
 func (c *Client) ListAdminSearchUsage(
 	ctx context.Context,
-) ([]vibe.AdminSearchUsageSummary, error) {
+) ([]vibe.AdminSearchUsagePoint, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ListAdminSearchUsage")
 	defer span.End()
 
@@ -141,7 +171,7 @@ func (c *Client) ListAdminSearchUsage(
 	}
 	defer rows.Close()
 
-	summaries := make([]vibe.AdminSearchUsageSummary, 0)
+	points := make([]vibe.AdminSearchUsagePoint, 0)
 	for rows.Next() {
 		var row adminSearchUsageRow
 		err = row.scanRows(rows)
@@ -151,7 +181,7 @@ func (c *Client) ListAdminSearchUsage(
 				err,
 			)
 		}
-		summaries = append(summaries, row.adminSearchUsageSummary())
+		points = append(points, row.adminSearchUsagePoint())
 	}
 
 	err = rows.Err()
@@ -162,21 +192,23 @@ func (c *Client) ListAdminSearchUsage(
 		)
 	}
 
-	return summaries, nil
+	return points, nil
 }
 
 type adminSearchUsageRow struct {
-	Window   sql.NullString
-	Provider sql.NullString
-	Total    sql.NullInt64
-	Unique   sql.NullInt64
-	Cached   sql.NullInt64
-	Live     sql.NullInt64
+	Window    sql.NullString
+	Timestamp sql.NullTime
+	Provider  sql.NullString
+	Total     sql.NullInt64
+	Unique    sql.NullInt64
+	Cached    sql.NullInt64
+	Live      sql.NullInt64
 }
 
 func (r *adminSearchUsageRow) scanRows(rows *sql.Rows) error {
 	err := rows.Scan(
 		&r.Window,
+		&r.Timestamp,
 		&r.Provider,
 		&r.Total,
 		&r.Unique,
@@ -190,13 +222,14 @@ func (r *adminSearchUsageRow) scanRows(rows *sql.Rows) error {
 	return nil
 }
 
-func (r *adminSearchUsageRow) adminSearchUsageSummary() vibe.AdminSearchUsageSummary {
-	return vibe.AdminSearchUsageSummary{
-		Window:   r.Window.String,
-		Provider: r.Provider.String,
-		Total:    r.Total.Int64,
-		Unique:   r.Unique.Int64,
-		Cached:   r.Cached.Int64,
-		Live:     r.Live.Int64,
+func (r *adminSearchUsageRow) adminSearchUsagePoint() vibe.AdminSearchUsagePoint {
+	return vibe.AdminSearchUsagePoint{
+		Window:    r.Window.String,
+		Timestamp: r.Timestamp.Time,
+		Provider:  r.Provider.String,
+		Total:     r.Total.Int64,
+		Unique:    r.Unique.Int64,
+		Cached:    r.Cached.Int64,
+		Live:      r.Live.Int64,
 	}
 }
