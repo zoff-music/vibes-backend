@@ -233,6 +233,17 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			WHERE a.is_playing
 			AND (c.mode = 'server' OR c.mode = 'host')
 			AND ((EXTRACT(EPOCH FROM (NOW() - a.updated_at)) * 1000) + a.position_ms) >= (b.duration * 1000 - 500)
+			ORDER BY (
+				SELECT COUNT(*)
+				FROM room_users e
+				WHERE e.room_id = a.room_id
+				AND e.last_seen_at > NOW() - INTERVAL '15 seconds'
+				AND (
+					COALESCE(e.is_active_listener, FALSE)
+					OR COALESCE(e.is_cast_receiver, FALSE)
+				)
+			) DESC,
+			a.updated_at ASC
 			LIMIT 1
 			FOR UPDATE OF a SKIP LOCKED
 		),
