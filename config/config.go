@@ -54,7 +54,7 @@ type Config struct {
 	GeneratedPlaylistSelectedTrackCount int    `envconfig:"GENERATED_PLAYLIST_SELECTED_TRACK_COUNT" default:"30"`
 	RoomGenerationMaxAttempts           int    `envconfig:"ROOM_GENERATION_MAX_ATTEMPTS" default:"5"`
 	RoomGenerationMaxDailyCount         int    `envconfig:"ROOM_GENERATION_MAX_DAILY_COUNT" default:"2"`
-	RoomGenerationMaxExistingSongs      int    `envconfig:"ROOM_GENERATION_MAX_EXISTING_SONGS" default:"10"`
+	RoomGenerationMaxExistingSongs      int    `envconfig:"ROOM_GENERATION_MAX_EXISTING_SONGS" default:"29"`
 
 	// Grok configuration
 	GrokAPIKey   string `envconfig:"GROK_API_KEY" default:""`
