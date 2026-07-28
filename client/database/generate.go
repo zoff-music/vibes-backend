@@ -284,8 +284,50 @@ func (c *Client) ProcessNextRoomGeneration(
 	}
 
 	generation := generationRow.toRoomGeneration()
+	if generation.Exhausted {
+		return generation, nil
+	}
 
-	return generation, nil
+	room, err := c.GetRoom(ctx, generation.RoomID, "")
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error getting room in ProcessNextRoomGeneration: %w",
+			err,
+		)
+	}
+	if room.IsEmpty() {
+		return nil, fmt.Errorf(
+			"error getting room in ProcessNextRoomGeneration: room is empty",
+		)
+	}
+
+	playbackState, err := c.GetPlaybackState(ctx, generation.RoomID)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error getting playback state in ProcessNextRoomGeneration: %w",
+			err,
+		)
+	}
+
+	songs, err := c.GetSongs(ctx, generation.RoomID)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error getting songs in ProcessNextRoomGeneration: %w",
+			err,
+		)
+	}
+
+	generationWithContext := &vibe.RoomGeneration{
+		Room:          *room,
+		PlaybackState: *playbackState,
+		Songs:         songs,
+		RoomID:        generation.RoomID,
+		Prompt:        generation.Prompt,
+		Attempt:       generation.Attempt,
+		Exhausted:     generation.Exhausted,
+	}
+
+	return generationWithContext, nil
 }
 
 type roomGenerationRow struct {

@@ -103,10 +103,13 @@ type RoomGenerationUpdate struct {
 }
 
 type RoomGeneration struct {
-	RoomID    string
-	Prompt    string
-	Attempt   int
-	Exhausted bool
+	Room          Room
+	PlaybackState PlaybackState
+	Songs         []Song
+	RoomID        string
+	Prompt        string
+	Attempt       int
+	Exhausted     bool
 }
 
 type PlaylistGenerator interface {
@@ -160,11 +163,8 @@ type RoomGenerationWorker interface {
 	RoomGenerationProcessor
 	RoomGenerationCompleter
 	RoomGenerationFailer
-	RoomFetcher
-	SongsFetcher
 	GeneratedSongAdder
 	PlaybackController
-	PlaybackFetcher
 	SearchUsageCreator
 }
 

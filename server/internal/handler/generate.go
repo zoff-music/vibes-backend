@@ -471,39 +471,13 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 		return nil
 	}
 
-	room, err := h.DB.GetRoom(ctx, generation.RoomID, "")
-	if err != nil {
-		return fmt.Errorf(
-			"error getting room for generation in Handle: %w",
-			err,
-		)
-	}
-	if room.IsEmpty() {
-		return fmt.Errorf(
-			"error getting room for generation in Handle: room is empty",
-		)
-	}
-
-	playbackState, err := h.DB.GetPlaybackState(ctx, room.ID)
-	if err != nil {
-		return fmt.Errorf(
-			"error getting generated room playback in Handle: %w",
-			err,
-		)
-	}
-
-	songs, err := h.DB.GetSongs(ctx, room.ID)
-	if err != nil {
-		return fmt.Errorf(
-			"error getting generated room songs in Handle: %w",
-			err,
-		)
-	}
+	room := generation.Room
+	playbackState := generation.PlaybackState
 
 	prompt, err := vibe.GeneratePlaylistPrompt(
 		generation.Prompt,
 		playbackState.CurrentSong,
-		songs,
+		generation.Songs,
 	)
 	if err != nil {
 		return fmt.Errorf(
