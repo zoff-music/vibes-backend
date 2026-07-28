@@ -412,7 +412,7 @@ func AdminRooms(
 
 // AdminSearchUsage handles GET /api/v1/admin/searches/usage
 //
-//	@Summary	List search usage summaries
+//	@Summary	List search usage activity
 //	@Tags		admin
 //	@Produce	json
 //	@Success	200	{object}	vibe.AdminSearchUsage
@@ -433,7 +433,7 @@ func AdminSearchUsage(
 
 		usage := &cachedUsage.Usage
 		if cachedUsage.IsEmpty() {
-			summaries, err := db.ListAdminSearchUsage(ctx)
+			points, err := db.ListAdminSearchUsage(ctx)
 			if err != nil {
 				handleError(
 					w,
@@ -445,7 +445,7 @@ func AdminSearchUsage(
 			}
 
 			usage = &vibe.AdminSearchUsage{
-				Summaries:   summaries,
+				Points:      points,
 				GeneratedAt: time.Now().UTC(),
 			}
 			err = cache.CacheAdminSearchUsage(ctx, *usage)
