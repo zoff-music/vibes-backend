@@ -54,6 +54,7 @@ func RoomEvents(
 			}
 		}
 
+		lastUsersCount := -1
 		notifyUsers := func(ctx context.Context) {
 			counts, err := db.GetActiveListenerCounts(ctx, roomID, 15*time.Second)
 			if err != nil {
@@ -65,6 +66,10 @@ func RoomEvents(
 			if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
 				count = 1
 			}
+			if count == lastUsersCount {
+				return
+			}
+
 			payload, err := json.Marshal(count)
 			if err != nil {
 				log.Printf("failed to marshal active participants count: %v", err)
@@ -77,7 +82,9 @@ func RoomEvents(
 			})
 			if err != nil {
 				log.Printf("failed to notify room update: %v", err)
+				return
 			}
+			lastUsersCount = count
 
 			// Admin room updates are handled by the app event job to avoid
 			// amplifying updates on every listener heartbeat/connect.
@@ -205,6 +212,13 @@ func RoomEvents(
 				if err != nil {
 					log.Printf("failed to unmarshal room event: %v", err)
 					continue
+				}
+				if event.Type == vibe.UsersUpdate {
+					err = json.Unmarshal(event.Payload, &lastUsersCount)
+					if err != nil {
+						log.Printf("failed to unmarshal users update: %v", err)
+						continue
+					}
 				}
 
 				// Filter out events triggered by the same user (e.g., password setup)
