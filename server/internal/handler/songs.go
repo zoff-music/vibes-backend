@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -433,7 +434,16 @@ func VoteSong(
 			if errors.As(err, &alreadyVotedError) {
 				handleError(
 					w,
-					fmt.Errorf("error already voted"),
+					client.ErrorCodeWrapper{
+						Err: alreadyVotedError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "song_vote_already_exists",
+							Message:   "Your vote is already counted for this song.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusConflict,
+					},
 					http.StatusConflict,
 					false,
 				)
