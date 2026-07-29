@@ -126,6 +126,16 @@ func CreateRoom(
 			return
 		}
 
+		if req.Settings != nil && req.Settings.Public && req.Password == "" {
+			handleError(
+				w,
+				internalerror.ErrMissingAdminPassword{Err: fmt.Errorf("error room must have a password to be public")},
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
 		room := &vibe.Room{
 			ID:                slug,
 			Name:              req.Name,
@@ -437,6 +447,46 @@ func GetRoom(
 	}
 }
 
+// GetPublicRooms handles GET /api/v1/rooms/public
+//
+//	@Summary	Get public rooms with active listeners
+//	@Tags		rooms
+//	@Produce	json
+//	@Success	200	{array}		vibe.PublicRoom
+//	@Failure	500	{object}	vibe.ErrorResponse
+//	@Router		/api/v1/rooms/public [get]
+func GetPublicRooms(db vibe.PublicRoomFetcher) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+
+		rooms, err := db.GetPublicRooms(ctx)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching public rooms: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		body, err := json.Marshal(rooms)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling public rooms: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}
+}
+
 // UpdateRoomSettings handles PATCH /rooms/{id}/settings
 //
 //	@Summary	Update room settings
@@ -504,6 +554,16 @@ func UpdateRoomSettings(
 			handleError(
 				w,
 				internalerror.ErrMissingAdminPassword{Err: fmt.Errorf("error room must have a password to enable 'only admin add songs'")},
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		if room.Settings.Public && !room.HasPassword {
+			handleError(
+				w,
+				internalerror.ErrMissingAdminPassword{Err: fmt.Errorf("error room must have a password to be public")},
 				http.StatusBadRequest,
 				false,
 			)
