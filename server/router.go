@@ -23,6 +23,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms", handler.CreateRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
 	api.HandleFunc("/rooms/reservations", handler.ReserveRoomName(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("ReserveRoomName")
 	api.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
+	api.HandleFunc("/rooms/public", handler.GetPublicRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetPublicRooms")
 	api.HandleFunc("/rooms/generation", handler.CreateGeneratedRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoom")
 	api.HandleFunc("/rooms/{id}/generations", handler.CreateRoomGeneration(s.DB, s.Config.RoomGenerationMaxExistingSongs)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomGeneration")
 	api.HandleFunc("/rooms/{id}", handler.RoomExists(s.DB)).Methods(http.MethodHead).Name("RoomExists")
@@ -124,6 +125,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			},
 			"RoomExists":          {Rate: time.Minute, Limit: 60},
 			"GetRoom":             {Rate: time.Minute, Limit: 120},
+			"GetPublicRooms":      {Rate: time.Minute, Limit: 120},
 			"UpdateRoomSettings":  {Rate: time.Minute, Limit: 30},
 			"SkipSong":            {Rate: time.Minute, Limit: 60},
 			"GetPlaybackState":    {Rate: time.Minute, Limit: 240},
