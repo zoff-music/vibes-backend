@@ -16,6 +16,7 @@ type RoomSettings struct {
 	AllowDuplicates   bool     `json:"allowDuplicates"`
 	EnabledSources    []string `json:"enabledSources"`
 	OnlyAdminAddSongs bool     `json:"onlyAdminAddSongs"`
+	Public            bool     `json:"public"`
 }
 
 func (r RoomSettings) IsEmpty() bool {
@@ -27,7 +28,8 @@ func (r RoomSettings) IsEmpty() bool {
 		r.LoopQueue == false &&
 		r.AllowDuplicates == false &&
 		len(r.EnabledSources) == 0 &&
-		r.OnlyAdminAddSongs == false
+		r.OnlyAdminAddSongs == false &&
+		r.Public == false
 }
 
 // DefaultRoomSettings returns sensible defaults
@@ -42,6 +44,7 @@ func DefaultRoomSettings() RoomSettings {
 		AllowDuplicates:   false,
 		EnabledSources:    []string{"youtube", "spotify", "soundcloud"},
 		OnlyAdminAddSongs: false,
+		Public:            false,
 	}
 }
 
@@ -85,6 +88,14 @@ type RoomHostInfo struct {
 	NewHostID string
 }
 
+// PublicRoom is a password-protected room with active listeners.
+type PublicRoom struct {
+	ID            string `json:"id"`
+	Name          string `json:"name"`
+	ListenerCount int    `json:"listenerCount"`
+	SongCount     int    `json:"songCount"`
+}
+
 // CreateRoomRequest is the request payload for creating a room.
 type CreateRoomRequest struct {
 	Name             string        `json:"name"`
@@ -108,6 +119,11 @@ func (r *Room) IsEmpty() bool {
 // RoomFetcher fetches room data
 type RoomFetcher interface {
 	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
+}
+
+// PublicRoomFetcher fetches the bounded list of public rooms with active listeners.
+type PublicRoomFetcher interface {
+	GetPublicRooms(ctx context.Context) ([]PublicRoom, error)
 }
 
 // RoomNameReserver reserves custom or generated room names.
