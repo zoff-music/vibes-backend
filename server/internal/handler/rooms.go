@@ -129,7 +129,18 @@ func CreateRoom(
 		if req.Settings != nil && req.Settings.Public && req.Password == "" {
 			handleError(
 				w,
-				internalerror.ErrMissingAdminPassword{Err: fmt.Errorf("error room must have a password to be public")},
+				client.ErrorCodeWrapper{
+					Err: internalerror.ErrMissingAdminPassword{
+						Err: fmt.Errorf("error room must have a password to be public"),
+					},
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "public_room_password_required",
+						Message:   "Add an admin password before making this room public.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
 				http.StatusBadRequest,
 				false,
 			)
@@ -563,7 +574,18 @@ func UpdateRoomSettings(
 		if room.Settings.Public && !room.HasPassword {
 			handleError(
 				w,
-				internalerror.ErrMissingAdminPassword{Err: fmt.Errorf("error room must have a password to be public")},
+				client.ErrorCodeWrapper{
+					Err: internalerror.ErrMissingAdminPassword{
+						Err: fmt.Errorf("error room must have a password to be public"),
+					},
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "public_room_password_required",
+						Message:   "Add an admin password before making this room public.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
 				http.StatusBadRequest,
 				false,
 			)
