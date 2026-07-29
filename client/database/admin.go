@@ -201,13 +201,23 @@ func (r *adminRoomRow) toSummary() vibe.AdminRoomSummary {
 
 func (c *Client) prepareUpdateAdminRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE rooms a
-		SET name = COALESCE($2::text, a.name),
-		admin_password_hash = CASE
-			WHEN $3::boolean THEN NULL
-			ELSE a.admin_password_hash
+		WITH updated_room_q AS (
+			UPDATE rooms a
+			SET name = COALESCE($2::text, a.name),
+			admin_password_hash = CASE
+				WHEN $3::boolean THEN NULL
+				ELSE a.admin_password_hash
+			END
+			WHERE a.id = $1
+			RETURNING a.id
+		)
+		UPDATE room_settings a
+		SET is_public = CASE
+			WHEN $3::boolean THEN FALSE
+			ELSE a.is_public
 		END
-		WHERE a.id = $1
+		FROM updated_room_q b
+		WHERE a.room_id = b.id
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateAdminRoomStatement: %w", err)

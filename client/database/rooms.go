@@ -134,6 +134,7 @@ func (c *Client) prepareGetRoomStmt() error {
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
 			b.only_admin_add_songs,
+			b.is_public,
 			EXISTS (
 				SELECT 1
 				FROM room_generations d
@@ -267,6 +268,7 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
 			b.only_admin_add_songs,
+			b.is_public,
 			EXISTS (
 				SELECT 1
 				FROM room_generations d
@@ -355,6 +357,136 @@ func (c *Client) getRoomByName(ctx context.Context, name string, userID string) 
 	return room, nil
 }
 
+func (c *Client) prepareGetPublicRoomsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH participant_counts_q AS (
+			SELECT
+				room_id,
+				COUNT(*) FILTER (
+					WHERE is_active_listener
+					AND NOT is_cast_receiver
+				) AS active_listeners,
+				COUNT(*) FILTER (
+					WHERE is_cast_receiver
+				) AS active_cast_receivers
+			FROM room_users
+			WHERE last_seen_at >= NOW() - INTERVAL '15 seconds'
+			GROUP BY room_id
+		),
+		active_rooms_q AS (
+			SELECT
+				a.id,
+				a.name,
+				CASE
+					WHEN c.active_listeners = 0
+					AND c.active_cast_receivers > 0
+					THEN 1
+					ELSE c.active_listeners
+				END AS listener_count
+			FROM rooms a
+			JOIN room_settings b
+			ON b.room_id = a.id
+			JOIN participant_counts_q c
+			ON c.room_id = a.id
+			WHERE b.is_public
+			AND a.admin_password_hash IS NOT NULL
+			AND a.admin_password_hash != ''
+			AND (
+				c.active_listeners > 0
+				OR c.active_cast_receivers > 0
+			)
+		)
+		SELECT
+			a.id,
+			a.name,
+			a.listener_count,
+			COUNT(b.id) AS song_count
+		FROM active_rooms_q a
+		LEFT JOIN songs b
+		ON b.room_id = a.id
+		AND b.source_type = ANY($1::text[])
+		GROUP BY a.id, a.name, a.listener_count
+		ORDER BY
+			a.listener_count DESC,
+			song_count DESC,
+			a.name ASC
+		LIMIT 3
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetPublicRoomsStatement: %w", err)
+	}
+
+	c.GetPublicRoomsStatement = stmt
+
+	return nil
+}
+
+// GetPublicRooms fetches public, password-protected rooms with active listeners.
+func (c *Client) GetPublicRooms(ctx context.Context) ([]vibe.PublicRoom, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetPublicRooms")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := c.GetPublicRoomsStatement.QueryContext(
+		cctx,
+		c.enabledProviders,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error querying public rooms: %w", err)
+	}
+	defer rows.Close()
+
+	publicRooms := []vibe.PublicRoom{}
+	for rows.Next() {
+		var row publicRoomRow
+		err = row.scan(rows)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning public room: %w", err)
+		}
+
+		publicRooms = append(publicRooms, row.toPublicRoom())
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error iterating public rooms: %w", err)
+	}
+
+	return publicRooms, nil
+}
+
+type publicRoomRow struct {
+	ID            sql.NullString
+	Name          sql.NullString
+	ListenerCount sql.NullInt64
+	SongCount     sql.NullInt64
+}
+
+func (r *publicRoomRow) scan(rows *sql.Rows) error {
+	err := rows.Scan(
+		&r.ID,
+		&r.Name,
+		&r.ListenerCount,
+		&r.SongCount,
+	)
+	if err != nil {
+		return fmt.Errorf("error scanning public room row: %w", err)
+	}
+
+	return nil
+}
+
+func (r *publicRoomRow) toPublicRoom() vibe.PublicRoom {
+	return vibe.PublicRoom{
+		ID:            r.ID.String,
+		Name:          r.Name.String,
+		ListenerCount: int(r.ListenerCount.Int64),
+		SongCount:     int(r.SongCount.Int64),
+	}
+}
+
 // prepareRoomExistsStmt prepares the RoomExistsStatement.
 func (c *Client) prepareRoomExistsStmt() error {
 	stmt, err := c.DB.Prepare(`
@@ -412,6 +544,7 @@ type roomRow struct {
 	IsRequesterAdmin  sql.NullBool
 	EnabledSources    sql.NullString
 	OnlyAdminAddSongs sql.NullBool
+	Public            sql.NullBool
 	IsGenerating      sql.NullBool
 	GenerationCount   sql.NullInt64
 	GenerationError   sql.NullString
@@ -435,6 +568,7 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.IsRequesterAdmin,
 		&r.EnabledSources,
 		&r.OnlyAdminAddSongs,
+		&r.Public,
 		&r.IsGenerating,
 		&r.GenerationCount,
 		&r.GenerationError,
@@ -496,6 +630,7 @@ func (r *roomRow) toRoomSettings(
 		AllowDuplicates:   r.AllowDuplicates.Bool,
 		EnabledSources:    sources,
 		OnlyAdminAddSongs: r.OnlyAdminAddSongs.Bool,
+		Public:            r.Public.Bool,
 	}, nil
 }
 
@@ -573,19 +708,19 @@ func (c *Client) prepareCreateRoomStmt() error {
 			)
 			AND (
 				(
-					$16 != ''
+					$17 != ''
 					AND EXISTS (
 						SELECT 1
 						FROM room_name_reservations
 						WHERE room_name_reservations.name = $1
-						AND room_name_reservations.token::TEXT = $16
+						AND room_name_reservations.token::TEXT = $17
 						AND room_name_reservations.owner_id = $4
 						AND room_name_reservations.expires_at >
 							CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
 					)
 				)
 				OR (
-					$16 = ''
+					$17 = ''
 					AND NOT EXISTS (
 						SELECT 1
 						FROM room_name_reservations
@@ -614,9 +749,10 @@ func (c *Client) prepareCreateRoomStmt() error {
 				loop_queue,
 				allow_duplicates,
 				enabled_sources,
-				only_admin_add_songs
+				only_admin_add_songs,
+				is_public
 			)
-			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15 FROM created_room_q
+			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 FROM created_room_q
 		),
 		consumed_name_q AS (
 			INSERT INTO room_name_pool (name, generated, consumed_at)
@@ -633,8 +769,8 @@ func (c *Client) prepareCreateRoomStmt() error {
 			USING created_room_q
 			WHERE room_name_reservations.name = created_room_q.id
 			AND (
-				$16 = ''
-				OR room_name_reservations.token::TEXT = $16
+				$17 = ''
+				OR room_name_reservations.token::TEXT = $17
 			)
 		)
 		SELECT id FROM created_room_q
@@ -676,6 +812,7 @@ func (c *Client) CreateRoom(
 		room.Settings.AllowDuplicates,
 		strings.Join(room.Settings.EnabledSources, ","),
 		room.Settings.OnlyAdminAddSongs,
+		room.Settings.Public,
 		reservationToken,
 	)
 
@@ -744,7 +881,8 @@ func (c *Client) prepareUpdateRoomStmt() error {
 		loop_queue = $8,
 		allow_duplicates = $9,
 		enabled_sources = $13,
-		only_admin_add_songs = $14
+		only_admin_add_songs = $14,
+		is_public = $15
 		FROM updated_room_q a
 		WHERE room_settings.room_id = a.id
 	`)
@@ -802,6 +940,7 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		room.AdminPasswordHash,
 		strings.Join(enabledSources, ","),
 		room.Settings.OnlyAdminAddSongs,
+		room.Settings.Public,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error updating room: %w", err)
