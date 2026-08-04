@@ -37,6 +37,7 @@ func (s *Server) setupRoutes() {
 	// Song routes
 	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSongs")
 	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("AddSong")
+	api.HandleFunc("/rooms/{id}/playlists", handler.AddPlaylist(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("AddPlaylist")
 	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions).Name("RemoveSong")
 	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.VoteSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("VoteSong")
 
@@ -46,15 +47,18 @@ func (s *Server) setupRoutes() {
 	// YouTube routes
 	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
 	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetMusicTrack")
+	api.HandleFunc("/youtube/playlists/{id}", handler.GetMusicPlaylist(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubePlaylist")
 
 	// SoundCloud routes
 	api.HandleFunc("/soundcloud/search", handler.SearchSoundCloud(s.SoundCloud, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSoundCloud")
 	api.HandleFunc("/soundcloud/tracks", handler.ResolveSoundCloudTrack(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudTrack")
 	api.HandleFunc("/soundcloud/tracks/{id}", handler.GetSoundCloudTrack(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudTrack")
+	api.HandleFunc("/soundcloud/playlists", handler.ResolveSoundCloudPlaylist(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudPlaylist")
 
 	// Spotify search routes
 	api.HandleFunc("/spotify/search", handler.SearchSpotify(s.Spotify, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSpotify")
 	api.HandleFunc("/spotify/tracks/{id}", handler.GetSpotifyTrack(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyTrack")
+	api.HandleFunc("/spotify/playlists/{id}", handler.GetMusicPlaylist(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyPlaylist")
 	api.HandleFunc("/tokens/spotify", handler.GetToken(s.DB, s.Spotify, "spotify")).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyToken")
 	api.HandleFunc("/tokens/soundcloud", handler.GetToken(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudToken")
 	api.HandleFunc("/tokens/youtube", handler.GetToken(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubeToken")
@@ -133,6 +137,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"CreateSession":       {Rate: time.Minute, Limit: 30},
 			"GetSongs":            {Rate: time.Minute, Limit: 120},
 			"AddSong":             {Rate: time.Minute, Limit: 60},
+			"AddPlaylist":         {Rate: time.Minute, Limit: 6},
 			"RemoveSong":          {Rate: time.Minute, Limit: 60},
 			"VoteSong":            {Rate: time.Minute, Limit: 120},
 			"RoomEvents":          {Rate: time.Minute, Limit: 30},
@@ -142,7 +147,8 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 				Limit:   1,
 				IPLimit: 3,
 			},
-			"GetMusicTrack": {Rate: time.Minute, Limit: 120},
+			"GetMusicTrack":      {Rate: time.Minute, Limit: 120},
+			"GetYouTubePlaylist": {Rate: time.Minute, Limit: 10},
 			"SearchSoundCloud": {
 				Rate:    time.Second,
 				Limit:   1,
@@ -154,12 +160,14 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 				Limit:   3,
 				IPLimit: 30,
 			},
+			"ResolveSoundCloudPlaylist": {Rate: time.Minute, Limit: 10},
 			"SearchSpotify": {
 				Rate:    time.Second,
 				Limit:   1,
 				IPLimit: 3,
 			},
 			"GetSpotifyTrack":    {Rate: time.Minute, Limit: 120},
+			"GetSpotifyPlaylist": {Rate: time.Minute, Limit: 10},
 			"GetSpotifyToken":    {Rate: time.Minute, Limit: 60},
 			"GetSoundCloudToken": {Rate: time.Minute, Limit: 60},
 			"GetYouTubeToken":    {Rate: time.Minute, Limit: 60},
