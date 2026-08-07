@@ -844,6 +844,8 @@ func (c *Client) CreateRoom(
 	}
 	createdRoom.Settings = createdSettings
 	createdRoom.ActiveSources = []string{}
+	createdRoom.RoomGenerationMaxDailyCount = c.roomGenerationMaxDailyCount
+	createdRoom.RoomGenerationMaxExistingSongs = c.roomGenerationMaxExistingSongs
 	createdRoom.StoredEnabledSources = append(
 		[]string{},
 		room.Settings.EnabledSources...,
