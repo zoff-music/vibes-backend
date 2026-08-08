@@ -31,10 +31,16 @@ func (c *Client) prepareCreateRemoteControlStmt() error {
 			pairing_code_hash = EXCLUDED.pairing_code_hash,
 			controller_token_hash = '',
 			current_room_id = EXCLUDED.current_room_id,
+			current_song_id = '',
+			playback_position_ms = 0,
+			playback_is_playing = FALSE,
+			playback_observed_at = NOW(),
 			pairing_expires_at = EXCLUDED.pairing_expires_at,
 			last_seen_at = NOW(),
 			updated_at = NOW()
-		RETURNING id, owner_user_id, current_room_id, pairing_expires_at, last_seen_at
+		RETURNING id, owner_user_id, current_room_id, current_song_id,
+			playback_position_ms, playback_is_playing, playback_observed_at,
+			pairing_expires_at, last_seen_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRemoteControlStatement: %w", err)
@@ -73,7 +79,9 @@ func (c *Client) CreateRemoteControl(ctx context.Context, remoteID, ownerUserID,
 
 func (c *Client) prepareGetRemoteControlByOwnerStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT id, owner_user_id, current_room_id, pairing_expires_at, last_seen_at
+		SELECT id, owner_user_id, current_room_id, current_song_id,
+			playback_position_ms, playback_is_playing, playback_observed_at,
+			pairing_expires_at, last_seen_at
 		FROM remote_controls
 		WHERE owner_user_id = $1
 	`)
@@ -110,7 +118,9 @@ func (c *Client) GetRemoteControlByOwner(ctx context.Context, ownerUserID string
 
 func (c *Client) prepareGetRemoteControlStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT id, owner_user_id, current_room_id, pairing_expires_at, last_seen_at
+		SELECT id, owner_user_id, current_room_id, current_song_id,
+			playback_position_ms, playback_is_playing, playback_observed_at,
+			pairing_expires_at, last_seen_at
 		FROM remote_controls
 		WHERE id = $1
 	`)
@@ -158,7 +168,9 @@ func (c *Client) preparePairRemoteControlStmt() error {
 			($2 != '' AND pairing_token_hash = $2)
 			OR ($3 != '' AND pairing_code_hash = $3)
 		)
-		RETURNING id, owner_user_id, current_room_id, pairing_expires_at, last_seen_at
+		RETURNING id, owner_user_id, current_room_id, current_song_id,
+			playback_position_ms, playback_is_playing, playback_observed_at,
+			pairing_expires_at, last_seen_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing PairRemoteControlStatement: %w", err)
@@ -199,7 +211,9 @@ func (c *Client) PairRemoteControl(ctx context.Context, remoteID, pairingTokenHa
 
 func (c *Client) prepareAuthenticateRemoteControlStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT id, owner_user_id, current_room_id, pairing_expires_at, last_seen_at
+		SELECT id, owner_user_id, current_room_id, current_song_id,
+			playback_position_ms, playback_is_playing, playback_observed_at,
+			pairing_expires_at, last_seen_at
 		FROM remote_controls
 		WHERE id = $1
 		AND controller_token_hash = $2
@@ -245,10 +259,16 @@ func (c *Client) prepareUpdateOwnedRemoteControlStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE remote_controls
 		SET current_room_id = $3,
+			current_song_id = $4,
+			playback_position_ms = $5,
+			playback_is_playing = $6,
+			playback_observed_at = NOW(),
 			last_seen_at = NOW(),
 			updated_at = NOW()
 		WHERE id = $1 AND owner_user_id = $2
-		RETURNING id, owner_user_id, current_room_id, pairing_expires_at, last_seen_at
+		RETURNING id, owner_user_id, current_room_id, current_song_id,
+			playback_position_ms, playback_is_playing, playback_observed_at,
+			pairing_expires_at, last_seen_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateOwnedRemoteControlStatement: %w", err)
@@ -259,14 +279,22 @@ func (c *Client) prepareUpdateOwnedRemoteControlStmt() error {
 	return nil
 }
 
-func (c *Client) UpdateOwnedRemoteControl(ctx context.Context, remoteID, ownerUserID, roomID string) (*vibe.RemoteControl, error) {
+func (c *Client) UpdateOwnedRemoteControl(ctx context.Context, remoteID, ownerUserID string, request vibe.RemoteUpdateRequest) (*vibe.RemoteControl, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "UpdateOwnedRemoteControl")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.UpdateOwnedRemoteControlStatement.QueryRowContext(cctx, remoteID, ownerUserID, roomID)
+	r := c.UpdateOwnedRemoteControlStatement.QueryRowContext(
+		cctx,
+		remoteID,
+		ownerUserID,
+		request.RoomID,
+		request.CurrentSongID,
+		request.PlaybackPositionMs,
+		request.PlaybackIsPlaying,
+	)
 
 	var row remoteControlRow
 	err := row.scan(r)
@@ -287,7 +315,9 @@ func (c *Client) prepareUpdatePairedRemoteControlStmt() error {
 		SET current_room_id = $2,
 			updated_at = NOW()
 		WHERE id = $1
-		RETURNING id, owner_user_id, current_room_id, pairing_expires_at, last_seen_at
+		RETURNING id, owner_user_id, current_room_id, current_song_id,
+			playback_position_ms, playback_is_playing, playback_observed_at,
+			pairing_expires_at, last_seen_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdatePairedRemoteControlStatement: %w", err)
@@ -350,11 +380,15 @@ func (c *Client) DeleteRemoteControl(ctx context.Context, remoteID, ownerUserID 
 }
 
 type remoteControlRow struct {
-	ID               sql.NullString
-	OwnerUserID      sql.NullString
-	CurrentRoomID    sql.NullString
-	PairingExpiresAt sql.NullTime
-	LastSeenAt       sql.NullTime
+	ID                 sql.NullString
+	OwnerUserID        sql.NullString
+	CurrentRoomID      sql.NullString
+	CurrentSongID      sql.NullString
+	PlaybackPositionMs sql.NullInt64
+	PlaybackIsPlaying  sql.NullBool
+	PlaybackObservedAt sql.NullTime
+	PairingExpiresAt   sql.NullTime
+	LastSeenAt         sql.NullTime
 }
 
 func (r *remoteControlRow) scan(row *sql.Row) error {
@@ -362,6 +396,10 @@ func (r *remoteControlRow) scan(row *sql.Row) error {
 		&r.ID,
 		&r.OwnerUserID,
 		&r.CurrentRoomID,
+		&r.CurrentSongID,
+		&r.PlaybackPositionMs,
+		&r.PlaybackIsPlaying,
+		&r.PlaybackObservedAt,
 		&r.PairingExpiresAt,
 		&r.LastSeenAt,
 	)
@@ -369,10 +407,14 @@ func (r *remoteControlRow) scan(row *sql.Row) error {
 
 func (r *remoteControlRow) toRemoteControl() *vibe.RemoteControl {
 	return &vibe.RemoteControl{
-		ID:               r.ID.String,
-		OwnerUserID:      r.OwnerUserID.String,
-		CurrentRoomID:    r.CurrentRoomID.String,
-		PairingExpiresAt: r.PairingExpiresAt.Time,
-		LastSeenAt:       r.LastSeenAt.Time,
+		ID:                 r.ID.String,
+		OwnerUserID:        r.OwnerUserID.String,
+		CurrentRoomID:      r.CurrentRoomID.String,
+		CurrentSongID:      r.CurrentSongID.String,
+		PlaybackPositionMs: r.PlaybackPositionMs.Int64,
+		PlaybackIsPlaying:  r.PlaybackIsPlaying.Bool,
+		PlaybackObservedAt: r.PlaybackObservedAt.Time,
+		PairingExpiresAt:   r.PairingExpiresAt.Time,
+		LastSeenAt:         r.LastSeenAt.Time,
 	}
 }
