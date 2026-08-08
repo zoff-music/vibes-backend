@@ -126,7 +126,15 @@ func (v videoItem) playbackRestriction() string {
 		return vibe.PlaybackRestrictionAge
 	}
 	if v.ContentDetails.RegionRestriction != nil {
-		return vibe.PlaybackRestrictionRegion
+		allowedCountryCount := len(v.ContentDetails.RegionRestriction.Allowed)
+		blockedCountryCount := len(v.ContentDetails.RegionRestriction.Blocked)
+		if allowedCountryCount > 0 &&
+			allowedCountryCount <= youtubeRegionRestrictionCountryThreshold {
+			return vibe.PlaybackRestrictionRegion
+		}
+		if blockedCountryCount >= youtubeRegionRestrictionCountryThreshold {
+			return vibe.PlaybackRestrictionRegion
+		}
 	}
 	if !v.Status.Embeddable {
 		return vibe.PlaybackRestrictionEmbedding
@@ -141,3 +149,5 @@ type videoStatistics struct {
 }
 
 const youtubeAgeRestricted = "ytAgeRestricted"
+
+const youtubeRegionRestrictionCountryThreshold = 100
