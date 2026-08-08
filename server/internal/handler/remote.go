@@ -213,10 +213,14 @@ func GetOwnedRemoteControl(
 		}
 
 		body, err := json.Marshal(vibe.RemoteStatus{
-			Enabled:       true,
-			ID:            remote.ID,
-			CurrentRoomID: remote.CurrentRoomID,
-			Online:        remote.IsOnline(presenceTimeout),
+			Enabled:            true,
+			ID:                 remote.ID,
+			CurrentRoomID:      remote.CurrentRoomID,
+			CurrentSongID:      remote.CurrentSongID,
+			PlaybackPositionMs: remote.PlaybackPositionMs,
+			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
+			PlaybackObservedAt: remote.PlaybackObservedAt,
+			Online:             remote.IsOnline(presenceTimeout),
 		})
 		if err != nil {
 			handleError(
@@ -364,10 +368,14 @@ func PairRemoteControl(
 		})
 
 		body, err := json.Marshal(vibe.RemoteStatus{
-			Enabled:       true,
-			ID:            remote.ID,
-			CurrentRoomID: remote.CurrentRoomID,
-			Online:        true,
+			Enabled:            true,
+			ID:                 remote.ID,
+			CurrentRoomID:      remote.CurrentRoomID,
+			CurrentSongID:      remote.CurrentSongID,
+			PlaybackPositionMs: remote.PlaybackPositionMs,
+			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
+			PlaybackObservedAt: remote.PlaybackObservedAt,
+			Online:             true,
 		})
 		if err != nil {
 			handleError(
@@ -455,10 +463,14 @@ func GetRemoteControl(
 		}
 
 		body, err := json.Marshal(vibe.RemoteStatus{
-			Enabled:       true,
-			ID:            remote.ID,
-			CurrentRoomID: remote.CurrentRoomID,
-			Online:        remote.IsOnline(presenceTimeout),
+			Enabled:            true,
+			ID:                 remote.ID,
+			CurrentRoomID:      remote.CurrentRoomID,
+			CurrentSongID:      remote.CurrentSongID,
+			PlaybackPositionMs: remote.PlaybackPositionMs,
+			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
+			PlaybackObservedAt: remote.PlaybackObservedAt,
+			Online:             remote.IsOnline(presenceTimeout),
 		})
 		if err != nil {
 			handleError(
@@ -520,6 +532,16 @@ func UpdateRemoteControl(
 			return
 		}
 		request.RoomID = strings.TrimSpace(request.RoomID)
+		request.CurrentSongID = strings.TrimSpace(request.CurrentSongID)
+		if request.PlaybackPositionMs < 0 || request.PlaybackPositionMs > remotePlaybackPositionMaxMs {
+			handleError(
+				w,
+				fmt.Errorf("error remote playback position is invalid"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
 
 		if request.RoomID != "" {
 			room, err := db.GetRoom(ctx, request.RoomID, session.UserID)
@@ -549,7 +571,7 @@ func UpdateRemoteControl(
 			origin = vibe.RemoteOriginController
 			remote, err = db.UpdatePairedRemoteControl(ctx, remoteID, request.RoomID)
 		} else {
-			remote, err = db.UpdateOwnedRemoteControl(ctx, remoteID, session.UserID, request.RoomID)
+			remote, err = db.UpdateOwnedRemoteControl(ctx, remoteID, session.UserID, request)
 		}
 		if err != nil {
 			handleError(
@@ -570,10 +592,18 @@ func UpdateRemoteControl(
 			return
 		}
 
+		eventType := vibe.RemoteStateUpdate
+		if origin == vibe.RemoteOriginController {
+			eventType = vibe.RemoteRoomUpdate
+		}
 		err = notifier.NotifyRemoteUpdate(ctx, remote.ID, vibe.RemoteEvent{
-			Type:   vibe.RemoteRoomUpdate,
-			RoomID: remote.CurrentRoomID,
-			Origin: origin,
+			Type:               eventType,
+			RoomID:             remote.CurrentRoomID,
+			Origin:             origin,
+			CurrentSongID:      remote.CurrentSongID,
+			PlaybackPositionMs: remote.PlaybackPositionMs,
+			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
+			PlaybackObservedAt: remote.PlaybackObservedAt,
 		})
 		if err != nil {
 			handleError(
@@ -633,3 +663,5 @@ const remoteSessionCookieName = "remote_session"
 const remotePairingTokenMaxLength = 128
 
 const remotePairingCodeLength = 8
+
+const remotePlaybackPositionMaxMs = int64((24 * time.Hour) / time.Millisecond)

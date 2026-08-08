@@ -6,11 +6,15 @@ import (
 )
 
 type RemoteControl struct {
-	ID               string    `json:"id"`
-	OwnerUserID      string    `json:"-"`
-	CurrentRoomID    string    `json:"currentRoomId"`
-	PairingExpiresAt time.Time `json:"pairingExpiresAt,omitempty"`
-	LastSeenAt       time.Time `json:"lastSeenAt"`
+	ID                 string    `json:"id"`
+	OwnerUserID        string    `json:"-"`
+	CurrentRoomID      string    `json:"currentRoomId"`
+	CurrentSongID      string    `json:"currentSongId"`
+	PlaybackPositionMs int64     `json:"playbackPositionMs"`
+	PlaybackIsPlaying  bool      `json:"playbackIsPlaying"`
+	PlaybackObservedAt time.Time `json:"playbackObservedAt"`
+	PairingExpiresAt   time.Time `json:"pairingExpiresAt,omitempty"`
+	LastSeenAt         time.Time `json:"lastSeenAt"`
 }
 
 func (r *RemoteControl) IsEmpty() bool {
@@ -28,10 +32,14 @@ type RemotePairing struct {
 }
 
 type RemoteStatus struct {
-	Enabled       bool   `json:"enabled"`
-	ID            string `json:"id"`
-	CurrentRoomID string `json:"currentRoomId"`
-	Online        bool   `json:"online"`
+	Enabled            bool      `json:"enabled"`
+	ID                 string    `json:"id"`
+	CurrentRoomID      string    `json:"currentRoomId"`
+	CurrentSongID      string    `json:"currentSongId"`
+	PlaybackPositionMs int64     `json:"playbackPositionMs"`
+	PlaybackIsPlaying  bool      `json:"playbackIsPlaying"`
+	PlaybackObservedAt time.Time `json:"playbackObservedAt"`
+	Online             bool      `json:"online"`
 }
 
 type RemotePairingRequest struct {
@@ -40,13 +48,20 @@ type RemotePairingRequest struct {
 }
 
 type RemoteUpdateRequest struct {
-	RoomID string `json:"roomId"`
+	RoomID             string `json:"roomId"`
+	CurrentSongID      string `json:"currentSongId"`
+	PlaybackPositionMs int64  `json:"playbackPositionMs"`
+	PlaybackIsPlaying  bool   `json:"playbackIsPlaying"`
 }
 
 type RemoteEvent struct {
-	Type   string `json:"type"`
-	RoomID string `json:"roomId"`
-	Origin string `json:"origin"`
+	Type               string    `json:"type"`
+	RoomID             string    `json:"roomId"`
+	Origin             string    `json:"origin"`
+	CurrentSongID      string    `json:"currentSongId"`
+	PlaybackPositionMs int64     `json:"playbackPositionMs"`
+	PlaybackIsPlaying  bool      `json:"playbackIsPlaying"`
+	PlaybackObservedAt time.Time `json:"playbackObservedAt"`
 }
 
 type RemoteControlCreator interface {
@@ -75,7 +90,7 @@ type RemoteControlAuthenticator interface {
 }
 
 type OwnedRemoteControlUpdater interface {
-	UpdateOwnedRemoteControl(ctx context.Context, remoteID, ownerUserID, roomID string) (*RemoteControl, error)
+	UpdateOwnedRemoteControl(ctx context.Context, remoteID, ownerUserID string, request RemoteUpdateRequest) (*RemoteControl, error)
 }
 
 type PairedRemoteControlUpdater interface {
@@ -97,6 +112,8 @@ type RemoteEventNotifier interface {
 }
 
 const RemoteRoomUpdate = "remote_room_update"
+
+const RemoteStateUpdate = "remote_state_update"
 
 const RemoteOriginMachine = "machine"
 
