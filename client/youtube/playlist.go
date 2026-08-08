@@ -85,7 +85,7 @@ func (c *Client) GetPlaylist(
 		}
 
 		params := url.Values{}
-		params.Set("part", "snippet,contentDetails")
+		params.Set("part", "snippet,contentDetails,status")
 		params.Set("id", strings.Join(videoIDs[start:end], ","))
 		params.Set("key", c.apiKey)
 
@@ -133,14 +133,15 @@ func (c *Client) GetPlaylist(
 			}
 
 			tracks = append(tracks, &vibe.MusicTrack{
-				ID:              item.ID,
-				Source:          vibe.SourceTypeYouTube,
-				ProviderURL:     fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID),
-				Title:           html.UnescapeString(item.Snippet.Title),
-				ChannelTitle:    html.UnescapeString(item.Snippet.ChannelTitle),
-				ThumbnailURL:    thumbnailURL,
-				Duration:        item.ContentDetails.Duration,
-				DurationSeconds: durationSeconds,
+				ID:                  item.ID,
+				Source:              vibe.SourceTypeYouTube,
+				ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID),
+				Title:               html.UnescapeString(item.Snippet.Title),
+				ChannelTitle:        html.UnescapeString(item.Snippet.ChannelTitle),
+				ThumbnailURL:        thumbnailURL,
+				Duration:            item.ContentDetails.Duration,
+				DurationSeconds:     durationSeconds,
+				PlaybackRestriction: item.playbackRestriction(),
 			})
 		}
 	}

@@ -28,7 +28,7 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	}
 
 	params := url.Values{}
-	params.Set("part", "snippet,contentDetails")
+	params.Set("part", "snippet,contentDetails,status")
 	params.Set("id", id)
 	params.Set("key", c.apiKey)
 
@@ -71,14 +71,15 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	}
 
 	return &vibe.MusicTrack{
-		ID:              item.ID,
-		Source:          vibe.SourceTypeYouTube,
-		ProviderURL:     fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID),
-		Title:           html.UnescapeString(item.Snippet.Title),
-		ChannelTitle:    html.UnescapeString(item.Snippet.ChannelTitle),
-		ThumbnailURL:    item.Snippet.Thumbnails.Medium.URL,
-		Duration:        item.ContentDetails.Duration,
-		DurationSeconds: durationSeconds,
+		ID:                  item.ID,
+		Source:              vibe.SourceTypeYouTube,
+		ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID),
+		Title:               html.UnescapeString(item.Snippet.Title),
+		ChannelTitle:        html.UnescapeString(item.Snippet.ChannelTitle),
+		ThumbnailURL:        item.Snippet.Thumbnails.Medium.URL,
+		Duration:            item.ContentDetails.Duration,
+		DurationSeconds:     durationSeconds,
+		PlaybackRestriction: item.playbackRestriction(),
 	}, nil
 }
 
@@ -91,6 +92,7 @@ type videoItem struct {
 	Snippet        videoSnippet        `json:"snippet"`
 	ContentDetails videoContentDetails `json:"contentDetails"`
 	Statistics     videoStatistics     `json:"statistics"`
+	Status         videoStatus         `json:"status"`
 }
 
 type videoSnippet struct {
@@ -101,10 +103,41 @@ type videoSnippet struct {
 }
 
 type videoContentDetails struct {
-	Duration string `json:"duration"`
+	Duration          string                  `json:"duration"`
+	ContentRating     videoContentRating      `json:"contentRating"`
+	RegionRestriction *videoRegionRestriction `json:"regionRestriction"`
+}
+
+type videoContentRating struct {
+	YouTubeRating string `json:"ytRating"`
+}
+
+type videoRegionRestriction struct {
+	Allowed []string `json:"allowed"`
+	Blocked []string `json:"blocked"`
+}
+
+type videoStatus struct {
+	Embeddable bool `json:"embeddable"`
+}
+
+func (v videoItem) playbackRestriction() string {
+	if v.ContentDetails.ContentRating.YouTubeRating == youtubeAgeRestricted {
+		return vibe.PlaybackRestrictionAge
+	}
+	if v.ContentDetails.RegionRestriction != nil {
+		return vibe.PlaybackRestrictionRegion
+	}
+	if !v.Status.Embeddable {
+		return vibe.PlaybackRestrictionEmbedding
+	}
+
+	return ""
 }
 
 type videoStatistics struct {
 	ViewCount string `json:"viewCount"`
 	LikeCount string `json:"likeCount"`
 }
+
+const youtubeAgeRestricted = "ytAgeRestricted"

@@ -101,6 +101,7 @@ func (c *Client) SearchGeneratedPlaylist(
 				track := cachedTrack.GeneratedTrack(query)
 				if track.Duration <= 0 ||
 					track.Duration > generatedTrackMaxDurationSeconds ||
+					track.PlaybackRestriction != "" ||
 					seen[track.YouTubeID] {
 					continue
 				}
@@ -278,11 +279,11 @@ func (c *Client) getGeneratedTracks(
 	for start := 0; start < len(youtubeIDs); start += youtubeVideoBatchSize {
 		end := min(start+youtubeVideoBatchSize, len(youtubeIDs))
 		params := url.Values{}
-		params.Set("part", "snippet,contentDetails,statistics")
+		params.Set("part", "snippet,contentDetails,statistics,status")
 		params.Set("id", strings.Join(youtubeIDs[start:end], ","))
 		params.Set(
 			"fields",
-			"items(id,snippet(title,channelTitle,categoryId,thumbnails),contentDetails/duration,statistics(viewCount,likeCount))",
+			"items(id,snippet(title,channelTitle,categoryId,thumbnails),contentDetails(duration,contentRating/ytRating,regionRestriction),statistics(viewCount,likeCount),status/embeddable)",
 		)
 		params.Set("key", c.apiKey)
 
@@ -311,6 +312,7 @@ func (c *Client) getGeneratedTracks(
 			durationSeconds, err := youtubeDurationSeconds(item.ContentDetails.Duration)
 			if err != nil ||
 				item.Snippet.CategoryID != youtubeMusicCategoryID ||
+				item.playbackRestriction() != "" ||
 				durationSeconds <= 0 ||
 				durationSeconds > generatedTrackMaxDurationSeconds {
 				continue
@@ -327,13 +329,14 @@ func (c *Client) getGeneratedTracks(
 			viewCount, _ := strconv.ParseUint(item.Statistics.ViewCount, 10, 64)
 			likeCount, _ := strconv.ParseUint(item.Statistics.LikeCount, 10, 64)
 			tracks[item.ID] = vibe.GeneratedTrack{
-				YouTubeID:    item.ID,
-				Title:        html.UnescapeString(item.Snippet.Title),
-				Artist:       html.UnescapeString(item.Snippet.ChannelTitle),
-				ThumbnailURL: thumbnailURL,
-				Duration:     durationSeconds,
-				ViewCount:    viewCount,
-				LikeCount:    likeCount,
+				YouTubeID:           item.ID,
+				Title:               html.UnescapeString(item.Snippet.Title),
+				Artist:              html.UnescapeString(item.Snippet.ChannelTitle),
+				ThumbnailURL:        thumbnailURL,
+				Duration:            durationSeconds,
+				ViewCount:           viewCount,
+				LikeCount:           likeCount,
+				PlaybackRestriction: item.playbackRestriction(),
 			}
 		}
 	}
