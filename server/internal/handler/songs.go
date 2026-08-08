@@ -231,6 +231,7 @@ func AddSong(
 		err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
+			Origin:  session.EventOrigin,
 		})
 		if err != nil {
 			log.Printf("failed to notify room: %v", err)
@@ -270,6 +271,7 @@ func AddSong(
 			err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
+				Origin:  session.EventOrigin,
 			})
 			if err != nil {
 				log.Printf("failed to notify room: %v", err)
@@ -396,6 +398,7 @@ func RemoveSong(
 		err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
+			Origin:  session.EventOrigin,
 		})
 		if err != nil {
 			log.Printf("failed to notify room in remove song: %v", err)
@@ -494,6 +497,7 @@ func VoteSong(
 		err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
+			Origin:  session.EventOrigin,
 		})
 		if err != nil {
 			log.Printf("failed to notify room in vote song: %v", err)

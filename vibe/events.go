@@ -29,6 +29,7 @@ type RoomEvent struct {
 	Type    string `json:"type"`
 	Payload []byte `json:"payload"`
 	UserID  string `json:"userId,omitempty"` // ID of user who triggered this event
+	Origin  string `json:"origin,omitempty"`
 }
 
 // RoomEventNotifier broadcasts events to room subscribers
@@ -52,3 +53,5 @@ const UserLeft = "user_left"
 const UsersUpdate = "users_update"
 const SettingsUpdate = "settings_update"
 const GenerationUpdate = "generation_update"
+
+const RoomEventOriginRemote = "remote"

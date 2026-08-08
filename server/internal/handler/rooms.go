@@ -617,6 +617,7 @@ func UpdateRoomSettings(
 		err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 			Type:    vibe.SettingsUpdate,
 			Payload: body,
+			Origin:  session.EventOrigin,
 		})
 		if err != nil {
 			handleError(
@@ -738,6 +739,7 @@ func CreateSession(
 						Type:    vibe.SettingsUpdate,
 						Payload: body,
 						UserID:  session.UserID, // Include the user who set the password
+						Origin:  session.EventOrigin,
 					})
 					if err != nil {
 						log.Printf("CreateSession: failed to notify room password setup: %v", err)

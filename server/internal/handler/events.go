@@ -34,12 +34,14 @@ func RoomEvents(
 		// Get UserID from session/context.
 		userID := ""
 		isCastReceiver := false
+		isRemoteController := false
 		castOwnerID := ""
 		isNewSession := false
 		session, ok := helper.GetSessionFromContext(ctx)
 		if ok {
 			userID = session.UserID
 			isCastReceiver = session.AuthType == "cast"
+			isRemoteController = session.AuthType == "remote"
 			isNewSession = session.IsNew
 			if isCastReceiver {
 				castOwnerID = session.UserID
@@ -128,7 +130,7 @@ func RoomEvents(
 		// Reconnects reuse the participant row from the signed session cookie.
 		// New cookie-less connections must survive one heartbeat before they
 		// become listeners so short probes cannot manufacture participant rows.
-		if userID != "" {
+		if userID != "" && !isRemoteController {
 			if !isNewSession {
 				err = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
 				if err != nil {
@@ -187,7 +189,7 @@ func RoomEvents(
 				return
 			case <-ticker.C:
 				// Keep-alive heartbeat AND update participant status
-				if userID != "" {
+				if userID != "" && !isRemoteController {
 					err = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
 					if err != nil {
 						log.Printf("failed to update participant on heartbeat: %v", err)
@@ -221,14 +223,14 @@ func RoomEvents(
 					}
 				}
 
-				// Filter out events triggered by the same user (e.g., password setup)
-				// For cast connections, compare against the underlying user id (castOwnerID).
 				filterID := userID
 				if isCastReceiver && castOwnerID != "" {
 					filterID = castOwnerID
 				}
-				if event.UserID != "" && event.UserID == filterID {
-					continue // Skip sending this event to the user who triggered it
+				if event.UserID != "" &&
+					event.UserID == filterID &&
+					event.Origin != vibe.RoomEventOriginRemote {
+					continue
 				}
 
 				// payloadData is already []byte (JSON), so we can just use it.
