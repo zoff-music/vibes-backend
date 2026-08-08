@@ -112,6 +112,7 @@ func SkipSong(
 					Type:    vibe.SkipVoteEvent,
 					Payload: votePayload,
 					UserID:  userID,
+					Origin:  session.EventOrigin,
 				},
 			})
 			if err != nil {
@@ -157,10 +158,12 @@ func SkipSong(
 				{
 					Type:    vibe.QueueReordered,
 					Payload: songsPayload,
+					Origin:  session.EventOrigin,
 				},
 				{
 					Type:    vibe.PlaybackUpdate,
 					Payload: statePayload,
+					Origin:  session.EventOrigin,
 				},
 			})
 			if err != nil {
