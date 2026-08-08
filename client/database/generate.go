@@ -516,6 +516,7 @@ func (c *Client) AddGeneratedSong(
 		false,
 		c.enabledProviders,
 		song.ProviderURL,
+		song.PlaybackRestriction,
 	)
 
 	var rowData addSongRow

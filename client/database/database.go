@@ -45,16 +45,17 @@ type Client struct {
 	DeleteExpiredRoomGenerationsStatement *sql.Stmt
 
 	// Song statements
-	GetSongsStatement                 *sql.Stmt
-	GetSongStatement                  *sql.Stmt
-	AddSongStatement                  *sql.Stmt
-	RemoveSongStatement               *sql.Stmt
-	VoteSongStatement                 *sql.Stmt
-	ClearVotesSongStatement           *sql.Stmt
-	UpdateSongAddedAtStatement        *sql.Stmt
-	ClaimSongMetadataRefreshStatement *sql.Stmt
-	RefreshSongMetadataStatement      *sql.Stmt
-	DeferSongMetadataRefreshStatement *sql.Stmt
+	GetSongsStatement                      *sql.Stmt
+	GetSongStatement                       *sql.Stmt
+	AddSongStatement                       *sql.Stmt
+	RemoveSongStatement                    *sql.Stmt
+	VoteSongStatement                      *sql.Stmt
+	ClearVotesSongStatement                *sql.Stmt
+	UpdateSongAddedAtStatement             *sql.Stmt
+	ClaimSongMetadataRefreshStatement      *sql.Stmt
+	RefreshSongMetadataStatement           *sql.Stmt
+	DeferSongMetadataRefreshStatement      *sql.Stmt
+	UpdateSongPlaybackRestrictionStatement *sql.Stmt
 
 	// Playback statements
 	GetPlaybackStateStatement           *sql.Stmt
@@ -206,6 +207,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareClaimSongMetadataRefreshStmt,
 		c.prepareRefreshSongMetadataStmt,
 		c.prepareDeferSongMetadataRefreshStmt,
+		c.prepareUpdateSongPlaybackRestrictionStmt,
 		// Playback statements
 		c.prepareGetPlaybackStateStmt,
 		c.prepareUpsertPlaybackStateStmt,

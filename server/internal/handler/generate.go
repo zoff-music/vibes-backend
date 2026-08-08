@@ -583,17 +583,18 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 
 	for _, track := range *playlist {
 		song := &vibe.Song{
-			ID:           uuid.NewString(),
-			RoomID:       room.ID,
-			SourceType:   vibe.SourceTypeYouTube,
-			SourceID:     track.YouTubeID,
-			ProviderURL:  fmt.Sprintf("https://www.youtube.com/watch?v=%s", track.YouTubeID),
-			Title:        track.Title,
-			Artist:       track.Artist,
-			ThumbnailURL: track.ThumbnailURL,
-			Duration:     track.Duration,
-			AddedBy:      room.HostID,
-			AddedAt:      time.Now(),
+			ID:                  uuid.NewString(),
+			RoomID:              room.ID,
+			SourceType:          vibe.SourceTypeYouTube,
+			SourceID:            track.YouTubeID,
+			ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", track.YouTubeID),
+			PlaybackRestriction: track.PlaybackRestriction,
+			Title:               track.Title,
+			Artist:              track.Artist,
+			ThumbnailURL:        track.ThumbnailURL,
+			Duration:            track.Duration,
+			AddedBy:             room.HostID,
+			AddedAt:             time.Now(),
 		}
 
 		addedSong, err := h.DB.AddGeneratedSong(ctx, song)
