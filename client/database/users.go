@@ -95,7 +95,6 @@ func (c *Client) prepareCreateUserStmt() error {
 		FOR KEY SHARE OF a
 		ON CONFLICT(id, room_id) DO UPDATE SET
 		is_admin = EXCLUDED.is_admin,
-		is_active_listener = EXCLUDED.is_active_listener,
 		last_seen_at = EXCLUDED.last_seen_at
 		RETURNING id
 	`)

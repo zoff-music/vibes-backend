@@ -16,12 +16,15 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 type SessionMiddleware struct {
-	Secret          string
-	CastTokenSecret string
-	EmbedBasePath   string
+	Secret                     string
+	CastTokenSecret            string
+	EmbedBasePath              string
+	RemoteControlAuthenticator vibe.RemoteControlAuthenticator
+	RemotePresenceTimeout      time.Duration
 }
 
 // Middleware extracts the appropriate session cookie or creates a new one.
@@ -62,6 +65,64 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 				}
 			}
 
+			ctx := context.WithValue(r.Context(), helper.SessionKey, payload)
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
+
+		remoteID := strings.TrimSpace(r.Header.Get(remoteRequestHeader))
+		if remoteID != "" {
+			currentRoute := mux.CurrentRoute(r)
+			if currentRoute == nil {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+
+			routeName := currentRoute.GetName()
+			if !remoteRouteNames[routeName] {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+
+			cookie, err := r.Cookie(remoteSessionCookieName)
+			if err != nil || cookie.Value == "" {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			controllerTokenHash := helper.HashRemoteCredential(m.Secret, cookie.Value)
+			remote, err := m.RemoteControlAuthenticator.AuthenticateRemoteControl(
+				r.Context(),
+				remoteID,
+				controllerTokenHash,
+				m.RemotePresenceTimeout,
+			)
+			if err != nil {
+				log.Printf("SessionMiddleware: error authenticating remote control: %v", err)
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			if remote.IsEmpty() {
+				http.Error(w, "remote machine is unavailable", http.StatusUnauthorized)
+				return
+			}
+
+			if remoteRoomRouteNames[routeName] {
+				vars := mux.Vars(r)
+				roomID := vars["id"]
+				if roomID == "" || roomID != remote.CurrentRoomID {
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
+			}
+
+			payload := helper.SessionPayload{
+				UserID:       remote.OwnerUserID,
+				AuthType:     "remote",
+				RemoteID:     remote.ID,
+				RemoteRoomID: remote.CurrentRoomID,
+				EventOrigin:  vibe.RoomEventOriginRemote,
+			}
 			ctx := context.WithValue(r.Context(), helper.SessionKey, payload)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
@@ -204,3 +265,51 @@ const sessionCookieName = "session"
 const embedSessionCookieName = "embed_session"
 const embedRequestHeader = "X-Zoff-Embed"
 const embedRequestHeaderValue = "true"
+
+const remoteRequestHeader = "X-Zoff-Remote-ID"
+
+const remoteSessionCookieName = "remote_session"
+
+var remoteRouteNames = map[string]bool{
+	"GetRemoteControl":          true,
+	"UpdateRemoteControl":       true,
+	"RemoteEvents":              true,
+	"GetRoom":                   true,
+	"UpdateRoomSettings":        true,
+	"SkipSong":                  true,
+	"GetPlaybackState":          true,
+	"UpdatePlaybackState":       true,
+	"CreateSession":             true,
+	"GetSongs":                  true,
+	"AddSong":                   true,
+	"AddPlaylist":               true,
+	"RemoveSong":                true,
+	"VoteSong":                  true,
+	"RoomEvents":                true,
+	"SearchMusic":               true,
+	"GetMusicTrack":             true,
+	"GetYouTubePlaylist":        true,
+	"SearchSoundCloud":          true,
+	"ResolveSoundCloudTrack":    true,
+	"GetSoundCloudTrack":        true,
+	"ResolveSoundCloudPlaylist": true,
+	"SearchSpotify":             true,
+	"GetSpotifyTrack":           true,
+	"GetSpotifyPlaylist":        true,
+	"GetProviders":              true,
+}
+
+var remoteRoomRouteNames = map[string]bool{
+	"GetRoom":             true,
+	"UpdateRoomSettings":  true,
+	"SkipSong":            true,
+	"GetPlaybackState":    true,
+	"UpdatePlaybackState": true,
+	"CreateSession":       true,
+	"GetSongs":            true,
+	"AddSong":             true,
+	"AddPlaylist":         true,
+	"RemoveSong":          true,
+	"VoteSong":            true,
+	"RoomEvents":          true,
+}

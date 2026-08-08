@@ -387,6 +387,18 @@ func UpdatePlaybackState(
 				return
 			}
 
+			if session.EventOrigin == vibe.RoomEventOriginRemote {
+				err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+					Type:    vibe.PlaybackUpdate,
+					Payload: body,
+					UserID:  session.UserID,
+					Origin:  session.EventOrigin,
+				})
+				if err != nil {
+					log.Printf("error notifying room of remote playback update: %v", err)
+				}
+			}
+
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write(body)
@@ -421,6 +433,7 @@ func UpdatePlaybackState(
 			err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 				Type:    vibe.PlaybackUpdate,
 				Payload: statePayload,
+				Origin:  session.EventOrigin,
 			})
 			if err != nil {
 				log.Printf("error notifying room of playback update: %v", err)

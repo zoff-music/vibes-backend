@@ -123,6 +123,16 @@ type Client struct {
 	// Listener usage statements
 	CreateListenerUsageStatement    *sql.Stmt
 	ListAdminListenerUsageStatement *sql.Stmt
+
+	// Remote control statements
+	CreateRemoteControlStatement       *sql.Stmt
+	GetRemoteControlByOwnerStatement   *sql.Stmt
+	GetRemoteControlStatement          *sql.Stmt
+	PairRemoteControlStatement         *sql.Stmt
+	AuthenticateRemoteControlStatement *sql.Stmt
+	UpdateOwnedRemoteControlStatement  *sql.Stmt
+	UpdatePairedRemoteControlStatement *sql.Stmt
+	DeleteRemoteControlStatement       *sql.Stmt
 }
 
 // Init sets up a new database client.
@@ -243,6 +253,15 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareRemoveParticipantStmt,
 		c.prepareDeleteInactiveParticipantsStmt,
 		c.prepareGetStatsStmt,
+		// Remote control statements
+		c.prepareCreateRemoteControlStmt,
+		c.prepareGetRemoteControlByOwnerStmt,
+		c.prepareGetRemoteControlStmt,
+		c.preparePairRemoteControlStmt,
+		c.prepareAuthenticateRemoteControlStmt,
+		c.prepareUpdateOwnedRemoteControlStmt,
+		c.prepareUpdatePairedRemoteControlStmt,
+		c.prepareDeleteRemoteControlStmt,
 	}
 
 	for _, prepareStmt := range prepareStatements {
@@ -327,6 +346,14 @@ func (c *Client) Close() error {
 		c.ListAdminSearchUsageStatement,
 		c.CreateListenerUsageStatement,
 		c.ListAdminListenerUsageStatement,
+		c.CreateRemoteControlStatement,
+		c.GetRemoteControlByOwnerStatement,
+		c.GetRemoteControlStatement,
+		c.PairRemoteControlStatement,
+		c.AuthenticateRemoteControlStatement,
+		c.UpdateOwnedRemoteControlStatement,
+		c.UpdatePairedRemoteControlStatement,
+		c.DeleteRemoteControlStatement,
 	}
 
 	for _, stmt := range statements {
