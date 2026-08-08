@@ -10,19 +10,20 @@ import (
 
 // Song represents a song in the queue
 type Song struct {
-	ID              string    `json:"id"`
-	RoomID          string    `json:"-"`
-	SourceType      string    `json:"sourceType"`
-	SourceID        string    `json:"sourceId"`
-	ProviderURL     string    `json:"providerUrl,omitempty"`
-	Title           string    `json:"title"`
-	Artist          string    `json:"artist,omitempty"`
-	ThumbnailURL    string    `json:"thumbnailUrl"`
-	Duration        int       `json:"duration"`
-	AddedBy         string    `json:"addedBy"`
-	AddedByNickname string    `json:"addedByNickname,omitempty"`
-	AddedAt         time.Time `json:"addedAt"`
-	VoteCount       int       `json:"voteCount"`
+	ID                  string    `json:"id"`
+	RoomID              string    `json:"-"`
+	SourceType          string    `json:"sourceType"`
+	SourceID            string    `json:"sourceId"`
+	ProviderURL         string    `json:"providerUrl,omitempty"`
+	Title               string    `json:"title"`
+	Artist              string    `json:"artist,omitempty"`
+	ThumbnailURL        string    `json:"thumbnailUrl"`
+	Duration            int       `json:"duration"`
+	AddedBy             string    `json:"addedBy"`
+	AddedByNickname     string    `json:"addedByNickname,omitempty"`
+	AddedAt             time.Time `json:"addedAt"`
+	VoteCount           int       `json:"voteCount"`
+	PlaybackRestriction string    `json:"playbackRestriction,omitempty"`
 }
 
 // AddSongRequest is the request payload for adding a song.
@@ -174,3 +175,9 @@ type SongQueueVoter interface {
 const AddSongOutcomeAdded = "added"
 const AddSongOutcomeDuplicateVoted = "duplicate_voted"
 const AddSongOutcomeDuplicateAlreadyVoted = "duplicate_already_voted"
+
+const PlaybackRestrictionAge = "age"
+
+const PlaybackRestrictionRegion = "region"
+
+const PlaybackRestrictionEmbedding = "embedding"

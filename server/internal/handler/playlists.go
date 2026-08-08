@@ -27,6 +27,8 @@ import (
 //	@Router		/api/v1/spotify/playlists/{id} [get]
 func GetMusicPlaylist(
 	fetcher vibe.MusicPlaylistFetcher,
+	cache vibe.CachedMusicTrackCreator,
+	provider string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -61,6 +63,11 @@ func GetMusicPlaylist(
 				true,
 			)
 			return
+		}
+
+		err = cache.CacheMusicTracks(ctx, provider, playlist.GetMusicTracks())
+		if err != nil {
+			log.Printf("error caching provider playlist track metadata: %v", err)
 		}
 
 		body, err := json.Marshal(playlist)
@@ -153,6 +160,7 @@ func ResolveSoundCloudPlaylist(
 func AddPlaylist(
 	db vibe.SongQueueAdder,
 	ips vibe.RoomBatchEventNotifier,
+	cache vibe.CachedMusicTrackFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -277,18 +285,32 @@ func AddPlaylist(
 				return
 			}
 
+			playbackRestriction := ""
+			cachedTrack, err := cache.GetCachedMusicTrack(
+				ctx,
+				requestedSong.SourceType,
+				requestedSong.SourceID,
+			)
+			if err != nil {
+				log.Printf("error getting cached provider playlist track metadata: %v", err)
+			}
+			if err == nil && !cachedTrack.IsEmpty() {
+				playbackRestriction = cachedTrack.PlaybackRestriction
+			}
+
 			songs = append(songs, &vibe.Song{
-				ID:           uuid.New().String(),
-				RoomID:       roomID,
-				SourceType:   requestedSong.SourceType,
-				SourceID:     requestedSong.SourceID,
-				ProviderURL:  providerURL,
-				Title:        requestedSong.Title,
-				Artist:       requestedSong.Artist,
-				ThumbnailURL: requestedSong.Thumbnail,
-				Duration:     requestedSong.Duration,
-				AddedBy:      session.UserID,
-				AddedAt:      time.Now(),
+				ID:                  uuid.New().String(),
+				RoomID:              roomID,
+				SourceType:          requestedSong.SourceType,
+				SourceID:            requestedSong.SourceID,
+				ProviderURL:         providerURL,
+				PlaybackRestriction: playbackRestriction,
+				Title:               requestedSong.Title,
+				Artist:              requestedSong.Artist,
+				ThumbnailURL:        requestedSong.Thumbnail,
+				Duration:            requestedSong.Duration,
+				AddedBy:             session.UserID,
+				AddedAt:             time.Now(),
 			})
 		}
 

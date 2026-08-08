@@ -13,16 +13,21 @@ import (
 
 // MusicTrack represents a generic music track
 type MusicTrack struct {
-	ID              string `json:"id"`
-	Source          string `json:"source"`
-	ProviderURL     string `json:"providerUrl,omitempty"`
-	Title           string `json:"title"`
-	ChannelTitle    string `json:"channelTitle,omitempty"`
-	ThumbnailURL    string `json:"thumbnailUrl"`
-	Duration        string `json:"duration,omitempty"` // ISO 8601 duration
-	DurationSeconds int    `json:"durationSeconds,omitempty"`
-	ViewCount       uint64 `json:"viewCount,omitempty"`
-	LikeCount       uint64 `json:"likeCount,omitempty"`
+	ID                  string `json:"id"`
+	Source              string `json:"source"`
+	ProviderURL         string `json:"providerUrl,omitempty"`
+	Title               string `json:"title"`
+	ChannelTitle        string `json:"channelTitle,omitempty"`
+	ThumbnailURL        string `json:"thumbnailUrl"`
+	Duration            string `json:"duration,omitempty"` // ISO 8601 duration
+	DurationSeconds     int    `json:"durationSeconds,omitempty"`
+	ViewCount           uint64 `json:"viewCount,omitempty"`
+	LikeCount           uint64 `json:"likeCount,omitempty"`
+	PlaybackRestriction string `json:"playbackRestriction,omitempty"`
+}
+
+func (t *MusicTrack) IsEmpty() bool {
+	return t.ID == ""
 }
 
 type CachedSearch struct {
@@ -122,29 +127,31 @@ func isSearchNoise(value string) bool {
 
 func (t GeneratedTrack) MusicTrack() MusicTrack {
 	return MusicTrack{
-		ID:              t.YouTubeID,
-		Source:          SourceTypeYouTube,
-		ProviderURL:     fmt.Sprintf("https://www.youtube.com/watch?v=%s", t.YouTubeID),
-		Title:           t.Title,
-		ChannelTitle:    t.Artist,
-		ThumbnailURL:    t.ThumbnailURL,
-		Duration:        durationISO8601(t.Duration),
-		DurationSeconds: t.Duration,
-		ViewCount:       t.ViewCount,
-		LikeCount:       t.LikeCount,
+		ID:                  t.YouTubeID,
+		Source:              SourceTypeYouTube,
+		ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", t.YouTubeID),
+		Title:               t.Title,
+		ChannelTitle:        t.Artist,
+		ThumbnailURL:        t.ThumbnailURL,
+		Duration:            durationISO8601(t.Duration),
+		DurationSeconds:     t.Duration,
+		ViewCount:           t.ViewCount,
+		LikeCount:           t.LikeCount,
+		PlaybackRestriction: t.PlaybackRestriction,
 	}
 }
 
 func (t MusicTrack) GeneratedTrack(query string) GeneratedTrack {
 	return GeneratedTrack{
-		Artist:       t.ChannelTitle,
-		Title:        t.Title,
-		YouTubeID:    t.ID,
-		ThumbnailURL: t.ThumbnailURL,
-		Duration:     t.DurationSeconds,
-		ViewCount:    t.ViewCount,
-		LikeCount:    t.LikeCount,
-		SearchQuery:  query,
+		Artist:              t.ChannelTitle,
+		Title:               t.Title,
+		YouTubeID:           t.ID,
+		ThumbnailURL:        t.ThumbnailURL,
+		Duration:            t.DurationSeconds,
+		ViewCount:           t.ViewCount,
+		LikeCount:           t.LikeCount,
+		SearchQuery:         query,
+		PlaybackRestriction: t.PlaybackRestriction,
 	}
 }
 
@@ -198,6 +205,24 @@ type CachedSearchCreator interface {
 type CachedSearchFetcherCreator interface {
 	CachedSearchFetcher
 	CachedSearchCreator
+}
+
+type CachedMusicTrackFetcher interface {
+	GetCachedMusicTrack(ctx context.Context, source string, sourceID string) (*MusicTrack, error)
+}
+
+type CachedMusicTrackCreator interface {
+	CacheMusicTracks(ctx context.Context, source string, tracks []MusicTrack) error
+}
+
+type CachedMusicTrackFetcherCreator interface {
+	CachedMusicTrackFetcher
+	CachedMusicTrackCreator
+}
+
+type MusicSearchCache interface {
+	CachedSearchFetcherCreator
+	CachedMusicTrackCreator
 }
 
 type SearchUsageCreator interface {

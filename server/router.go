@@ -32,12 +32,13 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms/{id}/skips", handler.SkipSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("SkipSong")
 	api.HandleFunc("/rooms/{id}/states", handler.GetPlaybackState(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetPlaybackState")
 	api.HandleFunc("/rooms/{id}/states", handler.UpdatePlaybackState(s.DB, s.InternalPubSub)).Methods(http.MethodPut, http.MethodOptions).Name("UpdatePlaybackState")
+	api.HandleFunc("/rooms/{id}/playbackfailures", handler.ReportPlaybackFailure(s.DB, s.YouTube, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("ReportPlaybackFailure")
 	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
 
 	// Song routes
 	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSongs")
-	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("AddSong")
-	api.HandleFunc("/rooms/{id}/playlists", handler.AddPlaylist(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("AddPlaylist")
+	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.InternalPubSub, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddSong")
+	api.HandleFunc("/rooms/{id}/playlists", handler.AddPlaylist(s.DB, s.InternalPubSub, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddPlaylist")
 	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions).Name("RemoveSong")
 	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.VoteSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("VoteSong")
 
@@ -46,8 +47,8 @@ func (s *Server) setupRoutes() {
 
 	// YouTube routes
 	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
-	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetMusicTrack")
-	api.HandleFunc("/youtube/playlists/{id}", handler.GetMusicPlaylist(s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubePlaylist")
+	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube, s.Redis, vibe.SourceTypeYouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetMusicTrack")
+	api.HandleFunc("/youtube/playlists/{id}", handler.GetMusicPlaylist(s.YouTube, s.Redis, vibe.SourceTypeYouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubePlaylist")
 
 	// SoundCloud routes
 	api.HandleFunc("/soundcloud/search", handler.SearchSoundCloud(s.SoundCloud, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSoundCloud")
@@ -58,7 +59,7 @@ func (s *Server) setupRoutes() {
 	// Spotify search routes
 	api.HandleFunc("/spotify/search", handler.SearchSpotify(s.Spotify, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSpotify")
 	api.HandleFunc("/spotify/tracks/{id}", handler.GetSpotifyTrack(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyTrack")
-	api.HandleFunc("/spotify/playlists/{id}", handler.GetMusicPlaylist(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyPlaylist")
+	api.HandleFunc("/spotify/playlists/{id}", handler.GetMusicPlaylist(s.Spotify, s.Redis, vibe.SourceTypeSpotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyPlaylist")
 	api.HandleFunc("/tokens/spotify", handler.GetToken(s.DB, s.Spotify, "spotify")).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyToken")
 	api.HandleFunc("/tokens/soundcloud", handler.GetToken(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudToken")
 	api.HandleFunc("/tokens/youtube", handler.GetToken(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubeToken")
@@ -127,20 +128,21 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 				Limit:   12,
 				IPLimit: 30,
 			},
-			"RoomExists":          {Rate: time.Minute, Limit: 60},
-			"GetRoom":             {Rate: time.Minute, Limit: 120},
-			"GetPublicRooms":      {Rate: time.Minute, Limit: 120},
-			"UpdateRoomSettings":  {Rate: time.Minute, Limit: 30},
-			"SkipSong":            {Rate: time.Minute, Limit: 60},
-			"GetPlaybackState":    {Rate: time.Minute, Limit: 240},
-			"UpdatePlaybackState": {Rate: time.Minute, Limit: 240},
-			"CreateSession":       {Rate: time.Minute, Limit: 30},
-			"GetSongs":            {Rate: time.Minute, Limit: 120},
-			"AddSong":             {Rate: time.Minute, Limit: 60},
-			"AddPlaylist":         {Rate: time.Minute, Limit: 6},
-			"RemoveSong":          {Rate: time.Minute, Limit: 60},
-			"VoteSong":            {Rate: time.Minute, Limit: 120},
-			"RoomEvents":          {Rate: time.Minute, Limit: 30},
+			"RoomExists":            {Rate: time.Minute, Limit: 60},
+			"GetRoom":               {Rate: time.Minute, Limit: 120},
+			"GetPublicRooms":        {Rate: time.Minute, Limit: 120},
+			"UpdateRoomSettings":    {Rate: time.Minute, Limit: 30},
+			"SkipSong":              {Rate: time.Minute, Limit: 60},
+			"GetPlaybackState":      {Rate: time.Minute, Limit: 240},
+			"UpdatePlaybackState":   {Rate: time.Minute, Limit: 240},
+			"ReportPlaybackFailure": {Rate: time.Minute, Limit: 30},
+			"CreateSession":         {Rate: time.Minute, Limit: 30},
+			"GetSongs":              {Rate: time.Minute, Limit: 120},
+			"AddSong":               {Rate: time.Minute, Limit: 60},
+			"AddPlaylist":           {Rate: time.Minute, Limit: 6},
+			"RemoveSong":            {Rate: time.Minute, Limit: 60},
+			"VoteSong":              {Rate: time.Minute, Limit: 120},
+			"RoomEvents":            {Rate: time.Minute, Limit: 30},
 			"SearchMusic": {
 				Bucket:  "YouTubeSearch",
 				Rate:    time.Second,

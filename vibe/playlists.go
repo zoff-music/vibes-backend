@@ -15,6 +15,15 @@ type MusicPlaylist struct {
 	Truncated bool          `json:"truncated"`
 }
 
+func (p *MusicPlaylist) GetMusicTracks() []MusicTrack {
+	tracks := make([]MusicTrack, 0, len(p.Tracks))
+	for _, track := range p.Tracks {
+		tracks = append(tracks, *track)
+	}
+
+	return tracks
+}
+
 type AddPlaylistRequest struct {
 	Songs []*AddSongRequest `json:"songs"`
 }

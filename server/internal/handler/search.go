@@ -27,7 +27,7 @@ import (
 //	@Router		/api/v1/youtube/search [get]
 func SearchMusic(
 	ms vibe.MusicSearcher,
-	cache vibe.CachedSearchFetcherCreator,
+	cache vibe.MusicSearchCache,
 	usageCreator vibe.SearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -117,6 +117,11 @@ func SearchMusic(
 			}
 		}
 
+		err = cache.CacheMusicTracks(ctx, vibe.SourceTypeYouTube, tracks)
+		if err != nil {
+			log.Printf("error caching youtube track metadata: %v", err)
+		}
+
 		body, err := json.Marshal(tracks)
 		if err != nil {
 			handleError(
@@ -146,7 +151,7 @@ func SearchMusic(
 //	@Router		/api/v1/soundcloud/search [get]
 func SearchSoundCloud(
 	ms vibe.MusicSearcher,
-	cache vibe.CachedSearchFetcherCreator,
+	cache vibe.MusicSearchCache,
 	usageCreator vibe.SearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -219,6 +224,11 @@ func SearchSoundCloud(
 			}
 		}
 
+		err = cache.CacheMusicTracks(ctx, vibe.SourceTypeSoundCloud, tracks)
+		if err != nil {
+			log.Printf("error caching soundcloud track metadata: %v", err)
+		}
+
 		body, err := json.Marshal(tracks)
 		if err != nil {
 			handleError(
@@ -251,7 +261,7 @@ func SearchSoundCloud(
 //	@Router		/api/v1/spotify/search [get]
 func SearchSpotify(
 	ms vibe.MusicSearcher,
-	cache vibe.CachedSearchFetcherCreator,
+	cache vibe.MusicSearchCache,
 	usageCreator vibe.SearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -319,6 +329,11 @@ func SearchSpotify(
 			if err != nil {
 				log.Printf("error caching spotify search: %v", err)
 			}
+		}
+
+		err = cache.CacheMusicTracks(ctx, vibe.SourceTypeSpotify, tracks)
+		if err != nil {
+			log.Printf("error caching spotify track metadata: %v", err)
 		}
 
 		body, err := json.Marshal(tracks)

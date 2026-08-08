@@ -49,11 +49,11 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	}
 
 	params := url.Values{}
-	params.Set("part", "snippet,contentDetails,statistics")
+	params.Set("part", "snippet,contentDetails,statistics,status")
 	params.Set("id", strings.Join(youtubeIDs, ","))
 	params.Set(
 		"fields",
-		"items(id,snippet(categoryId),contentDetails/duration,statistics(viewCount,likeCount))",
+		"items(id,snippet(categoryId),contentDetails(duration,contentRating/ytRating,regionRestriction),statistics(viewCount,likeCount),status/embeddable)",
 	)
 	params.Set("key", c.apiKey)
 
@@ -119,16 +119,17 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 			64,
 		)
 		tracks = append(tracks, vibe.MusicTrack{
-			ID:              item.ID.VideoID,
-			Source:          vibe.SourceTypeYouTube,
-			ProviderURL:     fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID.VideoID),
-			Title:           html.UnescapeString(item.Snippet.Title),
-			ChannelTitle:    html.UnescapeString(item.Snippet.ChannelTitle),
-			ThumbnailURL:    thumbnailURL,
-			Duration:        videoItem.ContentDetails.Duration,
-			DurationSeconds: durationSeconds,
-			ViewCount:       viewCount,
-			LikeCount:       likeCount,
+			ID:                  item.ID.VideoID,
+			Source:              vibe.SourceTypeYouTube,
+			ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID.VideoID),
+			Title:               html.UnescapeString(item.Snippet.Title),
+			ChannelTitle:        html.UnescapeString(item.Snippet.ChannelTitle),
+			ThumbnailURL:        thumbnailURL,
+			Duration:            videoItem.ContentDetails.Duration,
+			DurationSeconds:     durationSeconds,
+			ViewCount:           viewCount,
+			LikeCount:           likeCount,
+			PlaybackRestriction: videoItem.playbackRestriction(),
 		})
 		if len(tracks) == youtubeSearchDisplayCount {
 			break
@@ -161,6 +162,8 @@ func (c *Client) searchVideos(
 	params.Set("q", query)
 	params.Set("type", "video")
 	params.Set("videoCategoryId", youtubeMusicCategoryID)
+	params.Set("videoEmbeddable", "true")
+	params.Set("videoSyndicated", "true")
 	params.Set("maxResults", fmt.Sprintf("%d", maxResults))
 	params.Set("fields", "items(id/videoId,snippet(title,channelTitle,thumbnails))")
 	params.Set("key", c.apiKey)

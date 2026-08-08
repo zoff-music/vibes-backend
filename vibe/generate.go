@@ -13,14 +13,15 @@ type GeneratedPlaylistRequest struct {
 }
 
 type GeneratedTrack struct {
-	Artist       string `json:"artist"`
-	Title        string `json:"title"`
-	YouTubeID    string `json:"youtubeId,omitempty"`
-	ThumbnailURL string `json:"thumbnailUrl,omitempty"`
-	Duration     int    `json:"duration,omitempty"`
-	ViewCount    uint64 `json:"-"`
-	LikeCount    uint64 `json:"-"`
-	SearchQuery  string `json:"-"`
+	Artist              string `json:"artist"`
+	Title               string `json:"title"`
+	YouTubeID           string `json:"youtubeId,omitempty"`
+	ThumbnailURL        string `json:"thumbnailUrl,omitempty"`
+	Duration            int    `json:"duration,omitempty"`
+	ViewCount           uint64 `json:"-"`
+	LikeCount           uint64 `json:"-"`
+	SearchQuery         string `json:"-"`
+	PlaybackRestriction string `json:"-"`
 }
 
 func (g *GeneratedTrack) IsEmpty() bool {

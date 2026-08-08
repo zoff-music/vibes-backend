@@ -117,7 +117,7 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 		currentPosition := state.PositionMs + int(elapsed)
 
 		if state.CurrentSong.Duration > 0 && currentPosition >= state.CurrentSong.Duration*1000 {
-			newState, err := c.skipTrack(ctx, roomID)
+			newState, err := c.skipTrack(ctx, roomID, "")
 			if err != nil {
 				return nil, fmt.Errorf("error lazy skipping playback: %w", err)
 			}
@@ -187,6 +187,7 @@ func (r *playbackSongRow) scan(row *sql.Row) error {
 		&r.Song.SourceType,
 		&r.Song.SourceID,
 		&r.Song.ProviderURL,
+		&r.Song.PlaybackRestriction,
 		&r.Song.Title,
 		&r.Song.Artist,
 		&r.Song.ThumbnailURL,
@@ -285,6 +286,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 				a.source_type,
 				a.source_id,
 				a.provider_url,
+				a.playback_restriction,
 				a.title,
 				a.artist,
 				a.thumbnail_url,
@@ -304,7 +306,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			AND a.id IS DISTINCT FROM c.current_song_id
 			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
 			AND a.source_type = ANY($1::text[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
 			LIMIT 1
 		),
@@ -330,6 +332,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			b.source_type,
 			b.source_id,
 			b.provider_url,
+			b.playback_restriction,
 			b.title,
 			b.artist,
 			b.thumbnail_url,
@@ -456,6 +459,17 @@ func (c *Client) prepareSkipTrackStmt() error {
 			FROM playback_state a
 			JOIN room_settings b ON b.room_id = a.room_id
 			WHERE a.room_id = $1
+			AND (
+				$3 = ''
+				OR EXISTS (
+					SELECT 1
+					FROM songs c
+					WHERE c.room_id = a.room_id
+					AND c.id = a.current_song_id
+					AND c.id = $3
+					AND c.playback_restriction != ''
+				)
+			)
 			FOR UPDATE OF a SKIP LOCKED
 		),
 		cleared_skip_votes_q AS (
@@ -498,6 +512,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 				a.source_type,
 				a.source_id,
 				a.provider_url,
+				a.playback_restriction,
 				a.title,
 				a.artist,
 				a.thumbnail_url,
@@ -516,8 +531,9 @@ func (c *Client) prepareSkipTrackStmt() error {
 			AND a.room_id = b.room_id
 			AND a.id IS DISTINCT FROM c.current_song_id
 			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
+			AND ($3 = '' OR a.id != $3)
 			AND a.source_type = ANY($2::text[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
 			LIMIT 1
 		),
@@ -543,6 +559,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 			b.source_type,
 			b.source_id,
 			b.provider_url,
+			b.playback_restriction,
 			b.title,
 			b.artist,
 			b.thumbnail_url,
@@ -564,7 +581,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 }
 
 // skipTrack skips the current track to the next one in the queue (internal).
-func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
+func (c *Client) skipTrack(ctx context.Context, roomID, restrictedSongID string) (*vibe.PlaybackState, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "skipTrack")
 	defer span.End()
 
@@ -575,12 +592,17 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 		cctx,
 		roomID,
 		c.enabledProviders,
+		restrictedSongID,
 	)
 
 	var row playbackSongRow
 	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
+			if restrictedSongID != "" {
+				return &vibe.PlaybackState{}, nil
+			}
+
 			state, err := c.getPlaybackState(ctx, roomID)
 			if err != nil {
 				return nil, fmt.Errorf("error getting playback state in skipTrack: %w", err)
@@ -593,6 +615,22 @@ func (c *Client) skipTrack(ctx context.Context, roomID string) (*vibe.PlaybackSt
 	state, err := row.toPlaybackState()
 	if err != nil {
 		return nil, fmt.Errorf("error converting playback state in skipTrack: %w", err)
+	}
+
+	return state, nil
+}
+
+func (c *Client) SkipRestrictedSong(
+	ctx context.Context,
+	roomID string,
+	songID string,
+) (*vibe.PlaybackState, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SkipRestrictedSong")
+	defer span.End()
+
+	state, err := c.skipTrack(ctx, roomID, songID)
+	if err != nil {
+		return nil, fmt.Errorf("error skipping restricted song: %w", err)
 	}
 
 	return state, nil
@@ -677,6 +715,7 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 				a.source_type,
 				a.source_id,
 				a.provider_url,
+				a.playback_restriction,
 				a.title,
 				a.artist,
 				a.thumbnail_url,
@@ -691,7 +730,7 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			ON a.id = b.song_id
 			AND a.room_id = b.room_id
 			WHERE a.source_type = ANY($2::text[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 			LIMIT 1
 		),
@@ -717,6 +756,7 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			b.source_type,
 			b.source_id,
 			b.provider_url,
+			b.playback_restriction,
 			b.title,
 			b.artist,
 			b.thumbnail_url,

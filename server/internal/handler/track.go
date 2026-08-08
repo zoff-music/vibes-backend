@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -21,6 +22,8 @@ import (
 //	@Router		/api/v1/youtube/videos/{id} [get]
 func GetMusicTrack(
 	ms vibe.MusicTrackFetcher,
+	cache vibe.CachedMusicTrackCreator,
+	provider string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -46,6 +49,11 @@ func GetMusicTrack(
 				true,
 			)
 			return
+		}
+
+		err = cache.CacheMusicTracks(ctx, provider, []vibe.MusicTrack{*track})
+		if err != nil {
+			log.Printf("error caching provider track metadata: %v", err)
 		}
 
 		body, err := json.Marshal(track)

@@ -15,10 +15,18 @@ type PlaybackState struct {
 	ServerTimeMs int       `json:"serverTimeMs"`
 }
 
+func (p *PlaybackState) IsEmpty() bool {
+	return p.RoomID == ""
+}
+
 // RoomActionRequest is the request payload for room actions.
 type RoomActionRequest struct {
 	Action     string `json:"action"`
 	PositionMs int    `json:"positionMs,omitempty"`
+}
+
+type PlaybackFailureRequest struct {
+	SongID string `json:"songId"`
 }
 
 // PlaybackFetcher fetches playback state
@@ -36,6 +44,26 @@ type RoomGetterPlaybackUpdater interface {
 // PlaybackController controls playback
 type PlaybackController interface {
 	UpsertPlaybackState(ctx context.Context, state *PlaybackState) error
+}
+
+type RestrictedPlaybackSkipper interface {
+	SkipRestrictedSong(ctx context.Context, roomID string, songID string) (*PlaybackState, error)
+}
+
+type SongPlaybackRestrictionUpdater interface {
+	UpdateSongPlaybackRestriction(
+		ctx context.Context,
+		roomID string,
+		songID string,
+		restriction string,
+	) error
+}
+
+type PlaybackFailureStorage interface {
+	PlaybackFetcher
+	RestrictedPlaybackSkipper
+	SongsFetcher
+	SongPlaybackRestrictionUpdater
 }
 
 // ExpiredPlaybackProcessor defines interfaces needed for background room playback automation
