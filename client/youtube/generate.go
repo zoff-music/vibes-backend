@@ -101,7 +101,8 @@ func (c *Client) SearchGeneratedPlaylist(
 				track := cachedTrack.GeneratedTrack(query)
 				if track.Duration <= 0 ||
 					track.Duration > generatedTrackMaxDurationSeconds ||
-					track.PlaybackRestriction != "" ||
+					track.PlaybackRestriction == vibe.PlaybackRestrictionAge ||
+					track.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding ||
 					seen[track.YouTubeID] {
 					continue
 				}
@@ -309,10 +310,12 @@ func (c *Client) getGeneratedTracks(
 		}
 
 		for _, item := range response.Items {
+			playbackRestriction := item.playbackRestriction()
 			durationSeconds, err := youtubeDurationSeconds(item.ContentDetails.Duration)
 			if err != nil ||
 				item.Snippet.CategoryID != youtubeMusicCategoryID ||
-				item.playbackRestriction() != "" ||
+				playbackRestriction == vibe.PlaybackRestrictionAge ||
+				playbackRestriction == vibe.PlaybackRestrictionEmbedding ||
 				durationSeconds <= 0 ||
 				durationSeconds > generatedTrackMaxDurationSeconds {
 				continue
@@ -336,7 +339,7 @@ func (c *Client) getGeneratedTracks(
 				Duration:            durationSeconds,
 				ViewCount:           viewCount,
 				LikeCount:           likeCount,
-				PlaybackRestriction: item.playbackRestriction(),
+				PlaybackRestriction: playbackRestriction,
 			}
 		}
 	}
