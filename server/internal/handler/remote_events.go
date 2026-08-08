@@ -108,9 +108,13 @@ func RemoteEvents(
 		}
 
 		initialEvent := vibe.RemoteEvent{
-			Type:   vibe.RemoteRoomUpdate,
-			RoomID: remote.CurrentRoomID,
-			Origin: vibe.RemoteOriginMachine,
+			Type:               vibe.RemoteStateUpdate,
+			RoomID:             remote.CurrentRoomID,
+			Origin:             vibe.RemoteOriginMachine,
+			CurrentSongID:      remote.CurrentSongID,
+			PlaybackPositionMs: remote.PlaybackPositionMs,
+			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
+			PlaybackObservedAt: remote.PlaybackObservedAt,
 		}
 		data, err := json.Marshal(initialEvent)
 		if err != nil {
