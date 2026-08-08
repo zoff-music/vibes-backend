@@ -75,6 +75,24 @@ func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) e
 	return nil
 }
 
+func (c *Client) NotifyRemoteUpdate(ctx context.Context, remoteID string, event vibe.RemoteEvent) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRemoteUpdate")
+	defer span.End()
+
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("error marshaling remote event in NotifyRemoteUpdate: %w", err)
+	}
+
+	topicName := fmt.Sprintf("remote:%s", remoteID)
+	err = c.NotifyTopic(ctx, topicName, data)
+	if err != nil {
+		return fmt.Errorf("error notifying topic in NotifyRemoteUpdate: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []vibe.RoomEvent) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdates")
 	defer span.End()

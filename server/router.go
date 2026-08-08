@@ -82,6 +82,15 @@ func (s *Server) setupRoutes() {
 	// Cast token endpoint (cookie-auth only)
 	api.HandleFunc("/tokens/casting", handler.CreateCastingToken(s.DB, s.Config.CastTokenSecret)).Methods(http.MethodPost, http.MethodOptions).Name("CreateCastingToken")
 
+	// Remote control routes
+	api.HandleFunc("/remotes", handler.CreateRemoteControl(s.DB, s.InternalPubSub, s.Config.CookieSecret, s.Config.RemotePairingTTL)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRemoteControl")
+	api.HandleFunc("/remotes", handler.GetOwnedRemoteControl(s.DB, s.Config.RemotePresenceTimeout)).Methods(http.MethodGet, http.MethodOptions).Name("GetOwnedRemoteControl")
+	api.HandleFunc("/remotes/{id}", handler.GetRemoteControl(s.DB, s.Config.RemotePresenceTimeout)).Methods(http.MethodGet, http.MethodOptions).Name("GetRemoteControl")
+	api.HandleFunc("/remotes/{id}", handler.UpdateRemoteControl(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRemoteControl")
+	api.HandleFunc("/remotes/{id}", handler.DeleteRemoteControl(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRemoteControl")
+	api.HandleFunc("/remotes/{id}/sessions", handler.PairRemoteControl(s.DB, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("PairRemoteControl")
+	api.HandleFunc("/remotes/{id}/events", handler.RemoteEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RemoteEvents")
+
 	// Admin routes
 	if s.Config.AdminPasswordPepper != "" {
 		api.HandleFunc("/admin/sessions", handler.AdminLogin(s.DB, s.Config.AdminPasswordPepper, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
@@ -189,13 +198,24 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 				GlobalRate:  time.Minute,
 				GlobalLimit: 1,
 			},
-			"Authorize":          {Rate: 10 * time.Minute, Limit: 20},
-			"SpotifyCallback":    {Rate: 10 * time.Minute, Limit: 30},
-			"SoundCloudCallback": {Rate: 10 * time.Minute, Limit: 30},
-			"YouTubeCallback":    {Rate: 10 * time.Minute, Limit: 30},
-			"GetProviders":       {Rate: time.Minute, Limit: 120},
-			"GetStats":           {Rate: time.Minute, Limit: 600},
-			"CreateCastingToken": {Rate: time.Minute, Limit: 30},
+			"Authorize":             {Rate: 10 * time.Minute, Limit: 20},
+			"SpotifyCallback":       {Rate: 10 * time.Minute, Limit: 30},
+			"SoundCloudCallback":    {Rate: 10 * time.Minute, Limit: 30},
+			"YouTubeCallback":       {Rate: 10 * time.Minute, Limit: 30},
+			"GetProviders":          {Rate: time.Minute, Limit: 120},
+			"GetStats":              {Rate: time.Minute, Limit: 600},
+			"CreateCastingToken":    {Rate: time.Minute, Limit: 30},
+			"CreateRemoteControl":   {Rate: time.Minute, Limit: 10},
+			"GetOwnedRemoteControl": {Rate: time.Minute, Limit: 120},
+			"GetRemoteControl":      {Rate: time.Minute, Limit: 120},
+			"UpdateRemoteControl":   {Rate: time.Minute, Limit: 180},
+			"DeleteRemoteControl":   {Rate: time.Minute, Limit: 10},
+			"PairRemoteControl": {
+				Rate:    10 * time.Minute,
+				Limit:   5,
+				IPLimit: 10,
+			},
+			"RemoteEvents":       {Rate: time.Minute, Limit: 30},
 			"AdminLogin":         {Rate: 10 * time.Minute, Limit: 5},
 			"AdminSession":       {Rate: time.Minute, Limit: 120},
 			"AdminLogout":        {Rate: time.Minute, Limit: 20},
@@ -224,9 +244,11 @@ func (s *Server) setupInternalRoutes() {
 
 func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 	sm := middleware.SessionMiddleware{
-		Secret:          s.Config.CookieSecret,
-		CastTokenSecret: s.Config.CastTokenSecret,
-		EmbedBasePath:   s.Config.EmbedBasePath,
+		Secret:                     s.Config.CookieSecret,
+		CastTokenSecret:            s.Config.CastTokenSecret,
+		EmbedBasePath:              s.Config.EmbedBasePath,
+		RemoteControlAuthenticator: s.DB,
+		RemotePresenceTimeout:      s.Config.RemotePresenceTimeout,
 	}
 	for _, r := range routers {
 		r.Use(sm.Middleware)

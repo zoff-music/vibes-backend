@@ -358,6 +358,7 @@ func AddPlaylist(
 		events := []vibe.RoomEvent{{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
+			Origin:  session.EventOrigin,
 		}}
 		if len(queuedSongs) == 0 && firstAddedSong != nil {
 			playbackState := &vibe.PlaybackState{
@@ -392,6 +393,7 @@ func AddPlaylist(
 			events = append(events, vibe.RoomEvent{
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
+				Origin:  session.EventOrigin,
 			})
 		}
 
