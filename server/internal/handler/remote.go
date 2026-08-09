@@ -221,6 +221,7 @@ func GetOwnedRemoteControl(
 			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
 			PlaybackObservedAt: remote.PlaybackObservedAt,
 			Online:             remote.IsOnline(presenceTimeout),
+			Paired:             remote.Paired,
 		})
 		if err != nil {
 			handleError(
@@ -376,6 +377,7 @@ func PairRemoteControl(
 			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
 			PlaybackObservedAt: remote.PlaybackObservedAt,
 			Online:             true,
+			Paired:             remote.Paired,
 		})
 		if err != nil {
 			handleError(
@@ -471,6 +473,7 @@ func GetRemoteControl(
 			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
 			PlaybackObservedAt: remote.PlaybackObservedAt,
 			Online:             remote.IsOnline(presenceTimeout),
+			Paired:             remote.Paired,
 		})
 		if err != nil {
 			handleError(

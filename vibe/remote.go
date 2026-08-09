@@ -13,6 +13,7 @@ type RemoteControl struct {
 	PlaybackPositionMs int64     `json:"playbackPositionMs"`
 	PlaybackIsPlaying  bool      `json:"playbackIsPlaying"`
 	PlaybackObservedAt time.Time `json:"playbackObservedAt"`
+	Paired             bool      `json:"paired"`
 	PairingExpiresAt   time.Time `json:"pairingExpiresAt,omitempty"`
 	LastSeenAt         time.Time `json:"lastSeenAt"`
 }
@@ -40,6 +41,7 @@ type RemoteStatus struct {
 	PlaybackIsPlaying  bool      `json:"playbackIsPlaying"`
 	PlaybackObservedAt time.Time `json:"playbackObservedAt"`
 	Online             bool      `json:"online"`
+	Paired             bool      `json:"paired"`
 }
 
 type RemotePairingRequest struct {
