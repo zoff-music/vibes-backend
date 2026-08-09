@@ -84,13 +84,17 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 				return
 			}
 
-			cookie, err := r.Cookie(remoteSessionCookieName)
-			if err != nil || cookie.Value == "" {
-				http.Error(w, "unauthorized", http.StatusUnauthorized)
-				return
+			controllerToken := strings.TrimSpace(r.Header.Get(remoteSessionHeader))
+			if controllerToken == "" {
+				cookie, err := r.Cookie(remoteSessionCookieName)
+				if err != nil || cookie.Value == "" {
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+					return
+				}
+				controllerToken = cookie.Value
 			}
 
-			controllerTokenHash := helper.HashRemoteCredential(m.Secret, cookie.Value)
+			controllerTokenHash := helper.HashRemoteCredential(m.Secret, controllerToken)
 			remote, err := m.RemoteControlAuthenticator.AuthenticateRemoteControl(
 				r.Context(),
 				remoteID,
@@ -267,6 +271,8 @@ const embedRequestHeader = "X-Zoff-Embed"
 const embedRequestHeaderValue = "true"
 
 const remoteRequestHeader = "X-Zoff-Remote-ID"
+
+const remoteSessionHeader = "X-Zoff-Remote-Token"
 
 const remoteSessionCookieName = "remote_session"
 

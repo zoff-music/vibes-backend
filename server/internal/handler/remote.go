@@ -247,7 +247,7 @@ func GetOwnedRemoteControl(
 //	@Produce	json
 //	@Param		id		path		string					true	"Remote ID"
 //	@Param		request	body		vibe.RemotePairingRequest	true	"Pairing credential"
-//	@Success	201		{object}	vibe.RemoteStatus
+//	@Success	201		{object}	vibe.RemoteSession
 //	@Failure	400		{object}	map[string]string
 //	@Failure	401		{object}	map[string]string
 //	@Failure	500		{object}	map[string]string
@@ -368,16 +368,19 @@ func PairRemoteControl(
 			SameSite: http.SameSiteStrictMode,
 		})
 
-		body, err := json.Marshal(vibe.RemoteStatus{
-			Enabled:            true,
-			ID:                 remote.ID,
-			CurrentRoomID:      remote.CurrentRoomID,
-			CurrentSongID:      remote.CurrentSongID,
-			PlaybackPositionMs: remote.PlaybackPositionMs,
-			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
-			PlaybackObservedAt: remote.PlaybackObservedAt,
-			Online:             true,
-			Paired:             remote.Paired,
+		body, err := json.Marshal(vibe.RemoteSession{
+			RemoteStatus: vibe.RemoteStatus{
+				Enabled:            true,
+				ID:                 remote.ID,
+				CurrentRoomID:      remote.CurrentRoomID,
+				CurrentSongID:      remote.CurrentSongID,
+				PlaybackPositionMs: remote.PlaybackPositionMs,
+				PlaybackIsPlaying:  remote.PlaybackIsPlaying,
+				PlaybackObservedAt: remote.PlaybackObservedAt,
+				Online:             true,
+				Paired:             remote.Paired,
+			},
+			ControllerToken: controllerToken,
 		})
 		if err != nil {
 			handleError(
@@ -572,7 +575,7 @@ func UpdateRemoteControl(
 		var remote *vibe.RemoteControl
 		if session.AuthType == "remote" {
 			origin = vibe.RemoteOriginController
-			remote, err = db.UpdatePairedRemoteControl(ctx, remoteID, request.RoomID)
+			remote, err = db.UpdatePairedRemoteControl(ctx, remoteID, request)
 		} else {
 			remote, err = db.UpdateOwnedRemoteControl(ctx, remoteID, session.UserID, request)
 		}
@@ -596,16 +599,24 @@ func UpdateRemoteControl(
 		}
 
 		eventType := vibe.RemoteStateUpdate
-		if origin == vibe.RemoteOriginController {
+		if origin == vibe.RemoteOriginController && request.RoomID != "" {
 			eventType = vibe.RemoteRoomUpdate
+		}
+		currentSongID := remote.CurrentSongID
+		playbackPositionMs := remote.PlaybackPositionMs
+		playbackIsPlaying := remote.PlaybackIsPlaying
+		if origin == vibe.RemoteOriginController && eventType == vibe.RemoteStateUpdate {
+			currentSongID = request.CurrentSongID
+			playbackPositionMs = request.PlaybackPositionMs
+			playbackIsPlaying = request.PlaybackIsPlaying
 		}
 		err = notifier.NotifyRemoteUpdate(ctx, remote.ID, vibe.RemoteEvent{
 			Type:               eventType,
 			RoomID:             remote.CurrentRoomID,
 			Origin:             origin,
-			CurrentSongID:      remote.CurrentSongID,
-			PlaybackPositionMs: remote.PlaybackPositionMs,
-			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
+			CurrentSongID:      currentSongID,
+			PlaybackPositionMs: playbackPositionMs,
+			PlaybackIsPlaying:  playbackIsPlaying,
 			PlaybackObservedAt: remote.PlaybackObservedAt,
 		})
 		if err != nil {

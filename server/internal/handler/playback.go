@@ -279,6 +279,7 @@ func ReportPlaybackFailure(
 //	@Success	200		{object}	vibe.PlaybackState
 //	@Failure	400		{object}	map[string]string
 //	@Failure	401		{object}	map[string]string
+//	@Failure	403		{object}	map[string]string
 //	@Failure	500		{object}	map[string]string
 //	@Router		/api/v1/rooms/{id}/states [put]
 func UpdatePlaybackState(
@@ -340,68 +341,12 @@ func UpdatePlaybackState(
 		var state *vibe.PlaybackState
 
 		if room.Mode == vibe.RoomModeServer {
-			state, err = db.GetPlaybackState(ctx, roomID)
-			if err != nil {
-				handleError(
-					w,
-					fmt.Errorf("error getting playback state: %w", err),
-					http.StatusInternalServerError,
-					true,
-				)
-				return
-			}
-
-			shouldPersist := req.Action == vibe.RoomActionSeek ||
-				(req.Action == vibe.RoomActionPlay && state.CurrentSong == nil)
-
-			if shouldPersist {
-				state, err = db.UpdatePlayback(ctx, roomID, userID, req.Action, req.PositionMs)
-				if err != nil {
-					handleError(
-						w,
-						fmt.Errorf("error action %s failed: %w", req.Action, err),
-						http.StatusInternalServerError,
-						true,
-					)
-					return
-				}
-			}
-
-			switch req.Action {
-			case vibe.RoomActionPause:
-				state.IsPlaying = false
-			case vibe.RoomActionPlay:
-				state.IsPlaying = true
-			}
-
-			state.ServerTimeMs = int(time.Now().UnixMilli())
-
-			body, err := json.Marshal(state)
-			if err != nil {
-				handleError(
-					w,
-					fmt.Errorf("error marshalling response in update playback state handler: %w", err),
-					http.StatusInternalServerError,
-					true,
-				)
-				return
-			}
-
-			if session.EventOrigin == vibe.RoomEventOriginRemote {
-				err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
-					Type:    vibe.PlaybackUpdate,
-					Payload: body,
-					UserID:  session.UserID,
-					Origin:  session.EventOrigin,
-				})
-				if err != nil {
-					log.Printf("error notifying room of remote playback update: %v", err)
-				}
-			}
-
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write(body)
+			handleError(
+				w,
+				fmt.Errorf("error shared playback controls are unavailable in server mode"),
+				http.StatusForbidden,
+				false,
+			)
 			return
 		}
 

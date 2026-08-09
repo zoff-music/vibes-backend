@@ -312,7 +312,10 @@ func (c *Client) UpdateOwnedRemoteControl(ctx context.Context, remoteID, ownerUs
 func (c *Client) prepareUpdatePairedRemoteControlStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE remote_controls
-		SET current_room_id = $2,
+		SET current_room_id = CASE
+				WHEN $2 = '' THEN current_room_id
+				ELSE $2
+			END,
 			updated_at = NOW()
 		WHERE id = $1
 		RETURNING id, owner_user_id, current_room_id, current_song_id,
@@ -328,14 +331,18 @@ func (c *Client) prepareUpdatePairedRemoteControlStmt() error {
 	return nil
 }
 
-func (c *Client) UpdatePairedRemoteControl(ctx context.Context, remoteID, roomID string) (*vibe.RemoteControl, error) {
+func (c *Client) UpdatePairedRemoteControl(ctx context.Context, remoteID string, request vibe.RemoteUpdateRequest) (*vibe.RemoteControl, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "UpdatePairedRemoteControl")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.UpdatePairedRemoteControlStatement.QueryRowContext(cctx, remoteID, roomID)
+	r := c.UpdatePairedRemoteControlStatement.QueryRowContext(
+		cctx,
+		remoteID,
+		request.RoomID,
+	)
 
 	var row remoteControlRow
 	err := row.scan(r)
