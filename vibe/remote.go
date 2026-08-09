@@ -44,6 +44,11 @@ type RemoteStatus struct {
 	Paired             bool      `json:"paired"`
 }
 
+type RemoteSession struct {
+	RemoteStatus
+	ControllerToken string `json:"controllerToken"`
+}
+
 type RemotePairingRequest struct {
 	PairingToken string `json:"pairingToken"`
 	PairingCode  string `json:"pairingCode"`
@@ -96,7 +101,7 @@ type OwnedRemoteControlUpdater interface {
 }
 
 type PairedRemoteControlUpdater interface {
-	UpdatePairedRemoteControl(ctx context.Context, remoteID, roomID string) (*RemoteControl, error)
+	UpdatePairedRemoteControl(ctx context.Context, remoteID string, request RemoteUpdateRequest) (*RemoteControl, error)
 }
 
 type RemoteControlRoomUpdater interface {
