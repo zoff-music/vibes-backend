@@ -40,7 +40,7 @@ func (c *Client) prepareCreateRemoteControlStmt() error {
 			updated_at = NOW()
 		RETURNING id, owner_user_id, current_room_id, current_song_id,
 			playback_position_ms, playback_is_playing, playback_observed_at,
-			pairing_expires_at, last_seen_at
+			controller_token_hash != '', pairing_expires_at, last_seen_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRemoteControlStatement: %w", err)
@@ -81,7 +81,7 @@ func (c *Client) prepareGetRemoteControlByOwnerStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id, owner_user_id, current_room_id, current_song_id,
 			playback_position_ms, playback_is_playing, playback_observed_at,
-			pairing_expires_at, last_seen_at
+			controller_token_hash != '', pairing_expires_at, last_seen_at
 		FROM remote_controls
 		WHERE owner_user_id = $1
 	`)
@@ -120,7 +120,7 @@ func (c *Client) prepareGetRemoteControlStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id, owner_user_id, current_room_id, current_song_id,
 			playback_position_ms, playback_is_playing, playback_observed_at,
-			pairing_expires_at, last_seen_at
+			controller_token_hash != '', pairing_expires_at, last_seen_at
 		FROM remote_controls
 		WHERE id = $1
 	`)
@@ -170,7 +170,7 @@ func (c *Client) preparePairRemoteControlStmt() error {
 		)
 		RETURNING id, owner_user_id, current_room_id, current_song_id,
 			playback_position_ms, playback_is_playing, playback_observed_at,
-			pairing_expires_at, last_seen_at
+			controller_token_hash != '', pairing_expires_at, last_seen_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing PairRemoteControlStatement: %w", err)
@@ -213,7 +213,7 @@ func (c *Client) prepareAuthenticateRemoteControlStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT id, owner_user_id, current_room_id, current_song_id,
 			playback_position_ms, playback_is_playing, playback_observed_at,
-			pairing_expires_at, last_seen_at
+			controller_token_hash != '', pairing_expires_at, last_seen_at
 		FROM remote_controls
 		WHERE id = $1
 		AND controller_token_hash = $2
@@ -268,7 +268,7 @@ func (c *Client) prepareUpdateOwnedRemoteControlStmt() error {
 		WHERE id = $1 AND owner_user_id = $2
 		RETURNING id, owner_user_id, current_room_id, current_song_id,
 			playback_position_ms, playback_is_playing, playback_observed_at,
-			pairing_expires_at, last_seen_at
+			controller_token_hash != '', pairing_expires_at, last_seen_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateOwnedRemoteControlStatement: %w", err)
@@ -317,7 +317,7 @@ func (c *Client) prepareUpdatePairedRemoteControlStmt() error {
 		WHERE id = $1
 		RETURNING id, owner_user_id, current_room_id, current_song_id,
 			playback_position_ms, playback_is_playing, playback_observed_at,
-			pairing_expires_at, last_seen_at
+			controller_token_hash != '', pairing_expires_at, last_seen_at
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdatePairedRemoteControlStatement: %w", err)
@@ -387,6 +387,7 @@ type remoteControlRow struct {
 	PlaybackPositionMs sql.NullInt64
 	PlaybackIsPlaying  sql.NullBool
 	PlaybackObservedAt sql.NullTime
+	Paired             sql.NullBool
 	PairingExpiresAt   sql.NullTime
 	LastSeenAt         sql.NullTime
 }
@@ -400,6 +401,7 @@ func (r *remoteControlRow) scan(row *sql.Row) error {
 		&r.PlaybackPositionMs,
 		&r.PlaybackIsPlaying,
 		&r.PlaybackObservedAt,
+		&r.Paired,
 		&r.PairingExpiresAt,
 		&r.LastSeenAt,
 	)
@@ -414,6 +416,7 @@ func (r *remoteControlRow) toRemoteControl() *vibe.RemoteControl {
 		PlaybackPositionMs: r.PlaybackPositionMs.Int64,
 		PlaybackIsPlaying:  r.PlaybackIsPlaying.Bool,
 		PlaybackObservedAt: r.PlaybackObservedAt.Time,
+		Paired:             r.Paired.Bool,
 		PairingExpiresAt:   r.PairingExpiresAt.Time,
 		LastSeenAt:         r.LastSeenAt.Time,
 	}
