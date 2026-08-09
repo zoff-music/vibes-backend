@@ -849,7 +849,7 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 	}
 
 	if room.Mode != vibe.RoomModeHost {
-		return nil
+		return fmt.Errorf("error shared playback controls are unavailable in server mode")
 	}
 
 	if room.HostID == "" {
