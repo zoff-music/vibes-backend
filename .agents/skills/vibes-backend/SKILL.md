@@ -29,7 +29,7 @@ Use these rules for Go backend work in this repository.
 - `client/database`: Postgres client split by mirrored feature files.
 - `client/internalpubsub`: in-process event fanout client.
 - `client/youtube`, `client/spotify`, and `client/soundcloud`: external music provider clients.
-- Database migrations live in the separate `~/dev/vibes-migrator` repository.
+- Database migrations live in the separate `~/dev/zoff-music/vibes-migrator` repository.
 
 ## Architecture
 
@@ -83,6 +83,9 @@ Use these rules for Go backend work in this repository.
 - Config values must come from `config.Config` and be passed through client init or handler params.
 - Set `Content-Type: application/json` for JSON responses.
 - Use the existing error helper for HTTP errors.
+- Treat HTTP and SSE contracts as multi-client APIs. The frontend repository serves platform web, mobile, remote, Cast, Android TV, and Samsung Tizen clients through `@vibes/api` and `@vibes/models`.
+- When a contract changes, identify the matching frontend schema/request hook and coordinate the frontend update instead of adding client-specific backend behavior.
+- Keep remote-control playback and room updates origin-aware so controllers do not become listeners or echo their own state changes.
 
 ## Tracing
 
