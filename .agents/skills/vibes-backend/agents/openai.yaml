@@ -1,0 +1,4 @@
+interface:
+  display_name: "Vibes Backend"
+  short_description: "Build and review the Vibes Go backend"
+  default_prompt: "Use $vibes-backend to implement or review this backend change using the repository's Go architecture and testing conventions."
