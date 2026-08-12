@@ -1,4 +1,9 @@
-# Backend Skill
+---
+name: vibes-backend
+description: Build, refactor, review, or debug the Vibes Go backend, including HTTP APIs, app events, domain interfaces, PostgreSQL clients, provider integrations, monitoring, tests, and server wiring.
+---
+
+# Vibes Backend
 
 Use these rules for Go backend work in this repository.
 
