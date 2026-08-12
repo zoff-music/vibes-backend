@@ -29,7 +29,12 @@ Use these rules for Go backend work in this repository.
 - `client/database`: Postgres client split by mirrored feature files.
 - `client/internalpubsub`: in-process event fanout client.
 - `client/youtube`, `client/spotify`, and `client/soundcloud`: external music provider clients.
-- Database migrations live in the separate `~/dev/zoff-music/vibes-migrator` repository.
+- Database migrations live in the separate `zoff-music/vibes-migrator` repository.
+
+## Public Repository References
+
+- Keep documentation and skill guidance portable: identify related repositories by their GitHub owner/name, never by a contributor's local filesystem path.
+- Do not mention private repositories, private deployment configuration, or private checkout layouts in this public repository.
 
 ## Architecture
 
