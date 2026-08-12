@@ -65,8 +65,9 @@ type Client struct {
 	StartPlaybackIfIdleStatement        *sql.Stmt
 
 	// User statements
-	GetUserStatement    *sql.Stmt
-	CreateUserStatement *sql.Stmt
+	GetUserStatement        *sql.Stmt
+	CreateUserStatement     *sql.Stmt
+	ClearRoomAdminStatement *sql.Stmt
 
 	// Skip vote statements
 	GetSkipVotesStatement   *sql.Stmt
@@ -227,6 +228,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		// User statements
 		c.prepareGetUserStmt,
 		c.prepareCreateUserStmt,
+		c.prepareClearRoomAdminStmt,
 		// Skip vote statements
 		c.prepareGetSkipVotesStmt,
 		c.prepareHasUserVotedStmt,
@@ -310,6 +312,7 @@ func (c *Client) Close() error {
 		c.StartPlaybackIfIdleStatement,
 		c.GetUserStatement,
 		c.CreateUserStatement,
+		c.ClearRoomAdminStatement,
 		c.GetSkipVotesStatement,
 		c.HasUserVotedStatement,
 		c.AddSkipVoteStatement,

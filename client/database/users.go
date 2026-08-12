@@ -143,6 +143,37 @@ func (c *createdUserRow) scan(row *sql.Row) error {
 	return row.Scan(&c.ID)
 }
 
+func (c *Client) prepareClearRoomAdminStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE room_users
+		SET is_admin = FALSE, last_seen_at = $3
+		WHERE room_id = $1 AND id = $2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ClearRoomAdminStatement: %w", err)
+	}
+
+	c.ClearRoomAdminStatement = stmt
+
+	return nil
+}
+
+// ClearRoomAdmin removes a user's admin access in one room.
+func (c *Client) ClearRoomAdmin(ctx context.Context, roomID string, userID string) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ClearRoomAdmin")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := c.ClearRoomAdminStatement.ExecContext(cctx, roomID, userID, time.Now())
+	if err != nil {
+		return fmt.Errorf("error clearing room admin in ClearRoomAdmin: %w", err)
+	}
+
+	return nil
+}
+
 // AuthenticateAdmin handles password verification and admin elevation.
 func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (*vibe.AdminAuthResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "AuthenticateAdmin")

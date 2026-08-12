@@ -761,3 +761,77 @@ func CreateSession(
 		_, _ = w.Write(body)
 	}
 }
+
+// DeleteRoomAdminSession handles DELETE /api/v1/rooms/:id/sessions.
+//
+//	@Summary	Log out of a room admin session
+//	@Tags		rooms
+//	@Produce	json
+//	@Param		id	path		string	true	"Room ID"
+//	@Success	200	{object}	vibe.SessionResponse
+//	@Failure	401	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v1/rooms/{id}/sessions [delete]
+func DeleteRoomAdminSession(db vibe.RoomAdminSessionDeleter) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		vars := mux.Vars(r)
+		roomID := vars["id"]
+
+		session, ok := helper.GetSessionFromContext(ctx)
+		isCookieSession := session.AuthType == "" || session.AuthType == "cookie"
+		if !ok || session.UserID == "" || !isCookieSession {
+			handleError(
+				w,
+				fmt.Errorf("error unauthorized: missing session"),
+				http.StatusUnauthorized,
+				true,
+			)
+			return
+		}
+
+		err := db.ClearRoomAdmin(ctx, roomID, session.UserID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error clearing room admin in DeleteRoomAdminSession: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		room, err := db.GetRoom(ctx, roomID, session.UserID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching room in DeleteRoomAdminSession: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		resp := vibe.SessionResponse{
+			UserID:    session.UserID,
+			SessionID: session.UserID,
+			IsAdmin:   false,
+			Room:      room,
+		}
+
+		body, err := json.Marshal(resp)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling response in DeleteRoomAdminSession: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}
+}
