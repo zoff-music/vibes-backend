@@ -5,7 +5,7 @@ Non-negotiable conventions. Follow strictly.
 ## Required Skill Check
 
 - Before making changes or reviewing code, check the repository's `.agents/` directory for applicable skills.
-- Backend work in this repository requires reading `.agents/vibes-backend/SKILL.md` in full before acting.
+- Backend work in this repository requires reading `.agents/skills/vibes-backend/SKILL.md` in full before acting.
 - Treat the skill and this `AGENTS.md` as cumulative, mandatory guidance. If additional applicable skills are added under `.agents/`, read those in full as well.
 
 ## Critical Rules
