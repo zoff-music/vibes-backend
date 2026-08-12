@@ -28,3 +28,9 @@ type AdminSessionCreator interface {
 	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
 	AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (*AdminAuthResult, error)
 }
+
+// RoomAdminSessionDeleter removes room-scoped admin access and fetches the room.
+type RoomAdminSessionDeleter interface {
+	ClearRoomAdmin(ctx context.Context, roomID string, userID string) error
+	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
+}
