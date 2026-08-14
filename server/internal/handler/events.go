@@ -125,6 +125,42 @@ func RoomEvents(
 		fmt.Fprintf(w, "event: connected\ndata: {\"time\": %d}\n\n", time.Now().UnixMilli())
 		flusher.Flush()
 
+		// Send an authoritative room snapshot for both first connections and
+		// reconnects. Room event delivery is intentionally ephemeral, so clients
+		// recover missed events by replacing local state with this snapshot.
+		room, err := db.GetRoom(ctx, roomID, userID)
+		if err != nil {
+			log.Printf("failed to fetch initial room: %v", err)
+		}
+		if err == nil && room != nil && !room.IsEmpty() {
+			data, marshalErr := json.Marshal(room)
+			if marshalErr != nil {
+				log.Printf("failed to marshal initial room: %v", marshalErr)
+			}
+			if marshalErr == nil {
+				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.SettingsUpdate, data)
+				flusher.Flush()
+			}
+		}
+
+		songs, err := db.GetSongs(ctx, roomID)
+		if err != nil {
+			log.Printf("failed to fetch initial songs: %v", err)
+		}
+		if err == nil {
+			if songs == nil {
+				songs = []vibe.Song{}
+			}
+			data, marshalErr := json.Marshal(songs)
+			if marshalErr != nil {
+				log.Printf("failed to marshal initial songs: %v", marshalErr)
+			}
+			if marshalErr == nil {
+				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.QueueReordered, data)
+				flusher.Flush()
+			}
+		}
+
 		participantRegistered := false
 
 		// Reconnects reuse the participant row from the signed session cookie.
