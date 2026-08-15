@@ -19,6 +19,16 @@ type Subscriber interface {
 	Subscribe(topic string) (*SubscriptionContainer, error)
 }
 
+type ReplaySubscription struct {
+	AfterID          string
+	RequiresSnapshot bool
+}
+
+type ReplaySubscriber interface {
+	PrepareReplay(ctx context.Context, topic string, lastEventID string) (*ReplaySubscription, error)
+	SubscribeFrom(ctx context.Context, topic string, afterID string) (*SubscriptionContainer, error)
+}
+
 type SubscriberPublisher interface {
 	Subscriber
 	RoomEventNotifier
@@ -38,10 +48,15 @@ type RoomEventConnection struct {
 
 // RoomEvent represents an SSE event for a room
 type RoomEvent struct {
+	ID      string `json:"id,omitempty"`
 	Type    string `json:"type"`
 	Payload []byte `json:"payload"`
 	UserID  string `json:"userId,omitempty"` // ID of user who triggered this event
 	Origin  string `json:"origin,omitempty"`
+}
+
+type RoomEventCursor struct {
+	ID string `json:"id"`
 }
 
 // RoomEventNotifier broadcasts events to room subscribers
@@ -66,5 +81,6 @@ const UsersUpdate = "users_update"
 const SettingsUpdate = "settings_update"
 const GenerationUpdate = "generation_update"
 const Connected = "connected"
+const EventCursor = "event_cursor"
 
 const RoomEventOriginRemote = "remote"

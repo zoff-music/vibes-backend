@@ -21,19 +21,21 @@ type Config struct {
 	OtelBatchInterval   time.Duration `envconfig:"OTEL_BATCH_INTERVAL" default:"5s"`
 	OtelBatchSize       int           `envconfig:"OTEL_BATCH_SIZE" default:"512"`
 
-	DatabaseURL            string        `envconfig:"DATABASE_URL" required:"true"`
-	DatabaseMaxConns       int           `envconfig:"DATABASE_MAX_CONNECTIONS" default:"10"`
-	DatabaseMaxIdleConns   int           `envconfig:"DATABASE_MAX_IDLE_CONNECTIONS" default:"2"`
-	RedisURL               string        `envconfig:"REDIS_URL" default:""`
-	RateLimitEnabled       bool          `envconfig:"RATE_LIMIT_ENABLED" default:"false"`
-	MaxNameLength          int           `envconfig:"MAX_NAME_LENGTH" default:"100"`
-	MaxQueueLength         int           `envconfig:"MAX_QUEUE_LENGTH" default:"200"`
-	RoomNameReservationTTL time.Duration `envconfig:"ROOM_NAME_RESERVATION_TTL" default:"2m"`
-	YouTubeAPIKey          string        `envconfig:"YOUTUBE_API_KEY" default:""`
-	YouTubeEndpoint        string        `envconfig:"YOUTUBE_ENDPOINT" default:"https://www.googleapis.com/youtube/v3"`
-	YouTubeClientID        string        `envconfig:"YOUTUBE_CLIENT_ID" default:""`
-	YouTubeClientSecret    string        `envconfig:"YOUTUBE_CLIENT_SECRET" default:""`
-	YouTubeRedirectURI     string        `envconfig:"YOUTUBE_REDIRECT_URI" default:"https://localhost/api/v1/callbacks/youtube"`
+	DatabaseURL              string        `envconfig:"DATABASE_URL" required:"true"`
+	DatabaseMaxConns         int           `envconfig:"DATABASE_MAX_CONNECTIONS" default:"10"`
+	DatabaseMaxIdleConns     int           `envconfig:"DATABASE_MAX_IDLE_CONNECTIONS" default:"2"`
+	RedisURL                 string        `envconfig:"REDIS_URL" default:""`
+	RateLimitEnabled         bool          `envconfig:"RATE_LIMIT_ENABLED" default:"false"`
+	RoomEventReplayMaxEvents int           `envconfig:"ROOM_EVENT_REPLAY_MAX_EVENTS" default:"1000"`
+	RoomEventReplayMaxAge    time.Duration `envconfig:"ROOM_EVENT_REPLAY_MAX_AGE" default:"2h"`
+	MaxNameLength            int           `envconfig:"MAX_NAME_LENGTH" default:"100"`
+	MaxQueueLength           int           `envconfig:"MAX_QUEUE_LENGTH" default:"200"`
+	RoomNameReservationTTL   time.Duration `envconfig:"ROOM_NAME_RESERVATION_TTL" default:"2m"`
+	YouTubeAPIKey            string        `envconfig:"YOUTUBE_API_KEY" default:""`
+	YouTubeEndpoint          string        `envconfig:"YOUTUBE_ENDPOINT" default:"https://www.googleapis.com/youtube/v3"`
+	YouTubeClientID          string        `envconfig:"YOUTUBE_CLIENT_ID" default:""`
+	YouTubeClientSecret      string        `envconfig:"YOUTUBE_CLIENT_SECRET" default:""`
+	YouTubeRedirectURI       string        `envconfig:"YOUTUBE_REDIRECT_URI" default:"https://localhost/api/v1/callbacks/youtube"`
 
 	// SoundCloud configuration
 	SoundCloudEndpoint     string `envconfig:"SOUNDCLOUD_ENDPOINT" default:"https://api.soundcloud.com"`
@@ -133,6 +135,12 @@ func LoadConfig() (*Config, error) {
 	}
 	if c.RemotePresenceTimeout <= 0 {
 		return nil, fmt.Errorf("error validating remote presence timeout: must be greater than zero")
+	}
+	if c.RoomEventReplayMaxEvents < 1 {
+		return nil, fmt.Errorf("error validating room event replay max events: must be greater than zero")
+	}
+	if c.RoomEventReplayMaxAge <= 0 {
+		return nil, fmt.Errorf("error validating room event replay max age: must be greater than zero")
 	}
 
 	return &c, nil
