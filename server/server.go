@@ -39,6 +39,7 @@ type Server struct {
 	DB             *database.Client
 	Redis          *redisclient.Client
 	InternalPubSub *internalpubsub.Client
+	RoomEvents     vibe.RoomEventSubscriberBatchNotifier
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
 	Spotify        *spotify.Client
@@ -64,11 +65,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	}
 
 	var internalpubsubClient internalpubsub.Client
-	err := internalpubsubClient.Init(
-		redisClient.Redis,
-		config.RoomEventReplayMaxEvents,
-		config.RoomEventReplayMaxAge,
-	)
+	err := internalpubsubClient.Init()
 	if err != nil {
 		return fmt.Errorf("error initializing internalpubsub client: %w", err)
 	}
@@ -126,6 +123,10 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.DB = &dbClient
 	s.Redis = &redisClient
 	s.InternalPubSub = &internalpubsubClient
+	s.RoomEvents = &internalpubsubClient
+	if redisClient.Redis != nil {
+		s.RoomEvents = &redisClient
+	}
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
 	s.Spotify = &spotifyClient
@@ -255,6 +256,7 @@ func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
 		s.DB,
 		s.Redis,
 		s.InternalPubSub,
+		s.RoomEvents,
 		s.SoundCloud,
 		s.Spotify,
 		s.YouTube,

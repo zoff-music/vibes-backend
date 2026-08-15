@@ -27,6 +27,7 @@ func GetAppEvents(
 	db *database.Client,
 	redisClient *redisclient.Client,
 	ips *internalpubsub.Client,
+	roomEvents vibe.RoomEventSubscriberBatchNotifier,
 	soundcloudClient *soundcloud.Client,
 	spotifyClient *spotify.Client,
 	youtubeClient *youtube.Client,
@@ -41,7 +42,7 @@ func GetAppEvents(
 				AI:       ai,
 				Cache:    redisClient,
 				DB:       db,
-				IPS:      ips,
+				IPS:      roomEvents,
 				Searcher: youtubeClient,
 			},
 		},
@@ -50,7 +51,7 @@ func GetAppEvents(
 			Rate: 100 * time.Millisecond,
 			Handler: &handler.ReviewRoomPlayback{
 				DB:  db,
-				IPS: ips,
+				IPS: roomEvents,
 			},
 		},
 		{
@@ -58,7 +59,7 @@ func GetAppEvents(
 			Rate: 500 * time.Millisecond,
 			Handler: &handler.ReviewHostHealth{
 				DB:  db,
-				IPS: ips,
+				IPS: roomEvents,
 			},
 		},
 		{
@@ -137,7 +138,7 @@ func GetAppEvents(
 				Rate: time.Second,
 				Handler: &handler.MetaRefresh{
 					DB:           db,
-					IPS:          ips,
+					IPS:          roomEvents,
 					Provider:     youtubeClient,
 					ProviderName: vibe.SourceTypeYouTube,
 				},
@@ -148,7 +149,7 @@ func GetAppEvents(
 				Rate: time.Second,
 				Handler: &handler.MetaRefresh{
 					DB:           db,
-					IPS:          ips,
+					IPS:          roomEvents,
 					Provider:     soundcloudClient,
 					ProviderName: vibe.SourceTypeSoundCloud,
 				},
@@ -159,7 +160,7 @@ func GetAppEvents(
 				Rate: time.Second,
 				Handler: &handler.MetaRefresh{
 					DB:           db,
-					IPS:          ips,
+					IPS:          roomEvents,
 					Provider:     spotifyClient,
 					ProviderName: vibe.SourceTypeSpotify,
 				},

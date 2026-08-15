@@ -1,4 +1,4 @@
-package internalpubsub
+package redis
 
 import (
 	"context"
@@ -11,17 +11,111 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gomodule/redigo/redis"
+	redigo "github.com/gomodule/redigo/redis"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-type Replay struct {
-	Pool      *redis.Pool
+type roomEventReplay struct {
+	Pool      *redigo.Pool
 	MaxEvents int
 	MaxAge    time.Duration
 }
 
-func (r *Replay) Append(ctx context.Context, topicName string, data []byte) error {
+func (c *Client) NotifyRoomUpdate(
+	ctx context.Context,
+	roomID string,
+	event vibe.RoomEvent,
+) error {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("error marshaling room event in NotifyRoomUpdate: %w", err)
+	}
+
+	err = c.appendRoomEvent(ctx, roomTopicName(roomID), data)
+	if err != nil {
+		return fmt.Errorf("error appending room event in NotifyRoomUpdate: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) NotifyRoomUpdates(
+	ctx context.Context,
+	roomID string,
+	events []vibe.RoomEvent,
+) error {
+	for _, event := range events {
+		err := c.NotifyRoomUpdate(ctx, roomID, event)
+		if err != nil {
+			return fmt.Errorf("error notifying room event batch in NotifyRoomUpdates: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (c *Client) appendRoomEvent(ctx context.Context, topicName string, data []byte) error {
+	if c.replay == nil {
+		return fmt.Errorf("error appending room event: replay is not initialized")
+	}
+
+	err := c.replay.Append(ctx, topicName, data)
+	if err != nil {
+		return fmt.Errorf("error appending room event: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) PrepareReplay(
+	ctx context.Context,
+	topicName string,
+	lastEventID string,
+) (*vibe.ReplaySubscription, error) {
+	if c.replay == nil {
+		return nil, fmt.Errorf("error preparing room event replay: replay is not initialized")
+	}
+
+	replay, err := c.replay.Prepare(ctx, topicName, lastEventID)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing room event replay: %w", err)
+	}
+
+	return replay, nil
+}
+
+func (c *Client) SubscribeFrom(
+	ctx context.Context,
+	topicName string,
+	afterID string,
+) (*vibe.SubscriptionContainer, error) {
+	if c.replay == nil {
+		return nil, fmt.Errorf("error subscribing to room events: replay is not initialized")
+	}
+
+	subscription, err := c.replay.Subscribe(ctx, topicName, afterID)
+	if err != nil {
+		return nil, fmt.Errorf("error subscribing to room events: %w", err)
+	}
+
+	return &vibe.SubscriptionContainer{Subscription: subscription}, nil
+}
+
+func (c *Client) Subscribe(topicName string) (*vibe.SubscriptionContainer, error) {
+	replay, err := c.PrepareReplay(context.Background(), topicName, "")
+	if err != nil {
+		return nil, fmt.Errorf("error preparing room events in Subscribe: %w", err)
+	}
+
+	container, err := c.SubscribeFrom(context.Background(), topicName, replay.AfterID)
+	if err != nil {
+		return nil, fmt.Errorf("error subscribing to room events in Subscribe: %w", err)
+	}
+
+	return container, nil
+}
+
+func (r *roomEventReplay) Append(ctx context.Context, topicName string, data []byte) error {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -32,7 +126,7 @@ func (r *Replay) Append(ctx context.Context, topicName string, data []byte) erro
 	defer connection.Close()
 
 	key := replayKey(topicName)
-	_, err = redis.DoContext(
+	_, err = redigo.DoContext(
 		connection,
 		cctx,
 		"XADD",
@@ -48,7 +142,7 @@ func (r *Replay) Append(ctx context.Context, topicName string, data []byte) erro
 	}
 
 	cutoffID := replayCutoffID(time.Now(), r.MaxAge)
-	_, err = redis.DoContext(
+	_, err = redigo.DoContext(
 		connection,
 		cctx,
 		"XTRIM",
@@ -64,7 +158,7 @@ func (r *Replay) Append(ctx context.Context, topicName string, data []byte) erro
 	if maxAgeSeconds < 1 {
 		maxAgeSeconds = 1
 	}
-	_, err = redis.DoContext(connection, cctx, "EXPIRE", key, maxAgeSeconds)
+	_, err = redigo.DoContext(connection, cctx, "EXPIRE", key, maxAgeSeconds)
 	if err != nil {
 		return fmt.Errorf("error setting inactive redis stream expiry in Append: %w", err)
 	}
@@ -76,7 +170,7 @@ func replayCutoffID(now time.Time, maxAge time.Duration) string {
 	return fmt.Sprintf("%d-0", now.Add(-maxAge).UnixMilli())
 }
 
-func (r *Replay) Prepare(
+func (r *roomEventReplay) Prepare(
 	ctx context.Context,
 	topicName string,
 	lastEventID string,
@@ -129,7 +223,7 @@ func (r *Replay) Prepare(
 	}, nil
 }
 
-func (r *Replay) Subscribe(
+func (r *roomEventReplay) Subscribe(
 	ctx context.Context,
 	topicName string,
 	afterID string,
@@ -152,7 +246,7 @@ func (r *Replay) Subscribe(
 		cancel:    cancel,
 		done:      make(chan struct{}),
 		key:       replayKey(topicName),
-		messages:  make(chan []byte, subscriptionBufferSize),
+		messages:  make(chan []byte, roomEventSubscriptionBufferSize),
 		pool:      r.Pool,
 		readCount: r.MaxEvents,
 	}
@@ -168,7 +262,7 @@ type StreamSubscription struct {
 	key       string
 	messages  chan []byte
 	once      sync.Once
-	pool      *redis.Pool
+	pool      *redigo.Pool
 	readCount int
 }
 
@@ -226,7 +320,7 @@ func (s *StreamSubscription) read(
 	}
 	defer connection.Close()
 
-	reply, err := redis.DoContext(
+	reply, err := redigo.DoContext(
 		connection,
 		ctx,
 		"XREAD",
@@ -238,21 +332,21 @@ func (s *StreamSubscription) read(
 		s.key,
 		cursor,
 	)
-	if errors.Is(err, redis.ErrNil) {
+	if errors.Is(err, redigo.ErrNil) {
 		return []StreamMessage{}, nil
 	}
 	if err != nil {
 		return nil, fmt.Errorf("error reading redis stream in read: %w", err)
 	}
 
-	streams, err := redis.Values(reply, nil)
+	streams, err := redigo.Values(reply, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing stream list in read: %w", err)
 	}
 
 	messages := []StreamMessage{}
 	for _, rawStream := range streams {
-		stream, err := redis.Values(rawStream, nil)
+		stream, err := redigo.Values(rawStream, nil)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing stream in read: %w", err)
 		}
@@ -260,12 +354,12 @@ func (s *StreamSubscription) read(
 			return nil, fmt.Errorf("error parsing stream in read: expected two values")
 		}
 
-		entries, err := redis.Values(stream[1], nil)
+		entries, err := redigo.Values(stream[1], nil)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing stream entries in read: %w", err)
 		}
 		for _, rawEntry := range entries {
-			entry, err := redis.Values(rawEntry, nil)
+			entry, err := redigo.Values(rawEntry, nil)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing entry in read: %w", err)
 			}
@@ -273,11 +367,11 @@ func (s *StreamSubscription) read(
 				return nil, fmt.Errorf("error parsing entry in read: expected two values")
 			}
 
-			id, err := redis.String(entry[0], nil)
+			id, err := redigo.String(entry[0], nil)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing id in read: %w", err)
 			}
-			fields, err := redis.StringMap(entry[1], nil)
+			fields, err := redigo.StringMap(entry[1], nil)
 			if err != nil {
 				return nil, fmt.Errorf("error parsing fields in read: %w", err)
 			}
@@ -364,13 +458,13 @@ type StreamID struct {
 
 func readBoundaryID(
 	ctx context.Context,
-	connection redis.Conn,
+	connection redigo.Conn,
 	command string,
 	key string,
 	start string,
 	end string,
 ) (string, error) {
-	reply, err := redis.DoContext(
+	reply, err := redigo.DoContext(
 		connection,
 		ctx,
 		command,
@@ -384,7 +478,7 @@ func readBoundaryID(
 		return "", fmt.Errorf("error reading redis stream boundary in readBoundaryID: %w", err)
 	}
 
-	entries, err := redis.Values(reply, nil)
+	entries, err := redigo.Values(reply, nil)
 	if err != nil {
 		return "", fmt.Errorf("error parsing redis stream boundary in readBoundaryID: %w", err)
 	}
@@ -392,7 +486,7 @@ func readBoundaryID(
 		return "", nil
 	}
 
-	entry, err := redis.Values(entries[0], nil)
+	entry, err := redigo.Values(entries[0], nil)
 	if err != nil {
 		return "", fmt.Errorf("error parsing redis stream entry in readBoundaryID: %w", err)
 	}
@@ -400,7 +494,7 @@ func readBoundaryID(
 		return "", fmt.Errorf("error parsing redis stream entry in readBoundaryID: entry is empty")
 	}
 
-	id, err := redis.String(entry[0], nil)
+	id, err := redigo.String(entry[0], nil)
 	if err != nil {
 		return "", fmt.Errorf("error parsing redis stream id in readBoundaryID: %w", err)
 	}
@@ -476,11 +570,15 @@ func waitForReplayRetry(ctx context.Context) bool {
 }
 
 func replayKey(topicName string) string {
-	return fmt.Sprintf("%s:%s", replayKeyPrefix, topicName)
+	return fmt.Sprintf("%s:events:%s", redisPrefix, topicName)
 }
 
-const replayKeyPrefix = "vibes:events"
+func roomTopicName(roomID string) string {
+	return fmt.Sprintf("room:%s", roomID)
+}
+
 const replayEventField = "event"
 const initialStreamID = "0-0"
 const replayBlockMilliseconds = 3000
 const replayRetryDelay = time.Second
+const roomEventSubscriptionBufferSize = 32
