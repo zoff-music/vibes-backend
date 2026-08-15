@@ -133,7 +133,7 @@ func RoomEvents(
 			)
 			return
 		}
-		err = writeRoomEvent(w, flusher, "connected", data)
+		err = writeRoomEvent(w, flusher, vibe.Connected, data)
 		if err != nil {
 			log.Printf("error writing connection event in RoomEvents: %v", err)
 			return
@@ -261,10 +261,6 @@ func writeRoomEventSnapshot(
 	if err != nil {
 		return fmt.Errorf("error marshaling room in writeRoomEventSnapshot: %w", err)
 	}
-	err = writeRoomEvent(w, flusher, vibe.SettingsUpdate, roomData)
-	if err != nil {
-		return fmt.Errorf("error writing room in writeRoomEventSnapshot: %w", err)
-	}
 
 	songs, err := snapshot.GetSongs(ctx, roomID)
 	if err != nil {
@@ -276,10 +272,6 @@ func writeRoomEventSnapshot(
 	songsData, err := json.Marshal(songs)
 	if err != nil {
 		return fmt.Errorf("error marshaling songs in writeRoomEventSnapshot: %w", err)
-	}
-	err = writeRoomEvent(w, flusher, vibe.QueueReordered, songsData)
-	if err != nil {
-		return fmt.Errorf("error writing songs in writeRoomEventSnapshot: %w", err)
 	}
 
 	state, err := snapshot.GetPlaybackState(ctx, roomID)
@@ -297,6 +289,15 @@ func writeRoomEventSnapshot(
 	playbackData, err := json.Marshal(state)
 	if err != nil {
 		return fmt.Errorf("error marshaling playback in writeRoomEventSnapshot: %w", err)
+	}
+
+	err = writeRoomEvent(w, flusher, vibe.SettingsUpdate, roomData)
+	if err != nil {
+		return fmt.Errorf("error writing room in writeRoomEventSnapshot: %w", err)
+	}
+	err = writeRoomEvent(w, flusher, vibe.QueueReordered, songsData)
+	if err != nil {
+		return fmt.Errorf("error writing songs in writeRoomEventSnapshot: %w", err)
 	}
 	err = writeRoomEvent(w, flusher, vibe.PlaybackUpdate, playbackData)
 	if err != nil {
