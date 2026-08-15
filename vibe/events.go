@@ -24,6 +24,18 @@ type SubscriberPublisher interface {
 	RoomEventNotifier
 }
 
+// RoomEventSnapshotFetcher fetches the authoritative state sent on connection.
+type RoomEventSnapshotFetcher interface {
+	RoomFetcher
+	SongsFetcher
+	PlaybackFetcher
+}
+
+// RoomEventConnection describes when an SSE connection was established.
+type RoomEventConnection struct {
+	Time int64 `json:"time"`
+}
+
 // RoomEvent represents an SSE event for a room
 type RoomEvent struct {
 	Type    string `json:"type"`
