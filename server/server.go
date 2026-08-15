@@ -55,8 +55,20 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 
 	metrics.RegisterPrometheusCollectors()
 
+	var redisClient redisclient.Client
+	if config.RateLimitEnabled || config.RedisURL != "" {
+		err := redisClient.Init(ctx, config)
+		if err != nil {
+			return fmt.Errorf("error initializing redis client: %w", err)
+		}
+	}
+
 	var internalpubsubClient internalpubsub.Client
-	err := internalpubsubClient.Init()
+	err := internalpubsubClient.Init(
+		redisClient.Redis,
+		config.RoomEventReplayMaxEvents,
+		config.RoomEventReplayMaxAge,
+	)
 	if err != nil {
 		return fmt.Errorf("error initializing internalpubsub client: %w", err)
 	}
@@ -108,14 +120,6 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		ai = &grokClient
 	case vibe.AIProviderGemini:
 		ai = &geminiClient
-	}
-
-	var redisClient redisclient.Client
-	if config.RateLimitEnabled || config.RedisURL != "" {
-		err = redisClient.Init(ctx, config)
-		if err != nil {
-			return fmt.Errorf("error initializing redis client: %w", err)
-		}
 	}
 
 	s.Config = config

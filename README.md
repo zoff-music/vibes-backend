@@ -35,7 +35,9 @@ Copy and configure the environment file:
 # Configure required API keys:
 # - DATABASE_URL (required)
 # - RATE_LIMIT_ENABLED (optional, defaults to false)
-# - REDIS_URL (required when rate limiting is enabled)
+# - REDIS_URL (required for durable room-event replay and when rate limiting is enabled)
+# - ROOM_EVENT_REPLAY_MAX_EVENTS (optional, defaults to 1000 retained events per active room)
+# - ROOM_EVENT_REPLAY_MAX_AGE (optional, defaults to 2h)
 # - YOUTUBE_API_KEY (required)
 # - GROK_API_KEY (required when Grok is selected for AI-generated rooms)
 # - GEMINI_API_KEY (required when Gemini is selected for AI-generated rooms)

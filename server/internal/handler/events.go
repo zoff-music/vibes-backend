@@ -99,7 +99,29 @@ func RoomEvents(
 		w.Header().Set("Connection", "keep-alive")
 
 		topicName := fmt.Sprintf("room:%s", roomID)
-		container, err := ips.Subscribe(topicName)
+		replay := &vibe.ReplaySubscription{RequiresSnapshot: true}
+		var container *vibe.SubscriptionContainer
+		var err error
+		replaySubscriber, supportsReplay := ips.(vibe.ReplaySubscriber)
+		if supportsReplay {
+			replay, err = replaySubscriber.PrepareReplay(
+				ctx,
+				topicName,
+				lastEventIDFromRequest(r),
+			)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error preparing room event replay: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+			container, err = replaySubscriber.SubscribeFrom(ctx, topicName, replay.AfterID)
+		} else {
+			container, err = ips.Subscribe(topicName)
+		}
 		if err != nil {
 			handleError(
 				w,
@@ -133,18 +155,26 @@ func RoomEvents(
 			)
 			return
 		}
-		err = writeRoomEvent(w, flusher, vibe.Connected, data)
+		err = writeRoomEvent(w, flusher, vibe.Connected, data, "")
 		if err != nil {
 			log.Printf("error writing connection event in RoomEvents: %v", err)
 			return
 		}
 
-		// Room event delivery is ephemeral, so every connection receives a full
-		// authoritative snapshot instead of relying on unavailable event replay.
-		err = writeRoomEventSnapshot(ctx, w, flusher, snapshot, roomID, userID)
-		if err != nil {
-			log.Printf("error writing room snapshot in RoomEvents: %v", err)
-			return
+		if replay.RequiresSnapshot {
+			err = writeRoomEventSnapshot(
+				ctx,
+				w,
+				flusher,
+				snapshot,
+				roomID,
+				userID,
+				replay.AfterID,
+			)
+			if err != nil {
+				log.Printf("error writing room snapshot in RoomEvents: %v", err)
+				return
+			}
 		}
 
 		participantRegistered := false
@@ -227,12 +257,17 @@ func RoomEvents(
 				if event.UserID != "" &&
 					event.UserID == filterID &&
 					event.Origin != vibe.RoomEventOriginRemote {
+					err = writeRoomEventCursor(w, flusher, event.ID)
+					if err != nil {
+						log.Printf("error writing filtered event cursor in RoomEvents: %v", err)
+						return
+					}
 					continue
 				}
 
 				// payloadData is already []byte (JSON), so we can just use it.
 				// However, if we print it as %s, it works.
-				err = writeRoomEvent(w, flusher, event.Type, event.Payload)
+				err = writeRoomEvent(w, flusher, event.Type, event.Payload, event.ID)
 				if err != nil {
 					log.Printf("error writing event in RoomEvents: %v", err)
 					return
@@ -249,6 +284,7 @@ func writeRoomEventSnapshot(
 	snapshot vibe.RoomEventSnapshotFetcher,
 	roomID string,
 	userID string,
+	eventID string,
 ) error {
 	room, err := snapshot.GetRoom(ctx, roomID, userID)
 	if err != nil {
@@ -291,15 +327,15 @@ func writeRoomEventSnapshot(
 		return fmt.Errorf("error marshaling playback in writeRoomEventSnapshot: %w", err)
 	}
 
-	err = writeRoomEvent(w, flusher, vibe.SettingsUpdate, roomData)
+	err = writeRoomEvent(w, flusher, vibe.SettingsUpdate, roomData, eventID)
 	if err != nil {
 		return fmt.Errorf("error writing room in writeRoomEventSnapshot: %w", err)
 	}
-	err = writeRoomEvent(w, flusher, vibe.QueueReordered, songsData)
+	err = writeRoomEvent(w, flusher, vibe.QueueReordered, songsData, eventID)
 	if err != nil {
 		return fmt.Errorf("error writing songs in writeRoomEventSnapshot: %w", err)
 	}
-	err = writeRoomEvent(w, flusher, vibe.PlaybackUpdate, playbackData)
+	err = writeRoomEvent(w, flusher, vibe.PlaybackUpdate, playbackData, eventID)
 	if err != nil {
 		return fmt.Errorf("error writing playback in writeRoomEventSnapshot: %w", err)
 	}
@@ -312,12 +348,63 @@ func writeRoomEvent(
 	flusher http.Flusher,
 	eventType string,
 	payload []byte,
+	eventID string,
 ) error {
+	if eventID != "" {
+		_, err := fmt.Fprintf(w, "id: %s\n", eventID)
+		if err != nil {
+			return fmt.Errorf("error writing SSE event id in writeRoomEvent: %w", err)
+		}
+	}
+
 	_, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", eventType, payload)
 	if err != nil {
 		return fmt.Errorf("error writing SSE event in writeRoomEvent: %w", err)
 	}
+	if eventID != "" {
+		err = writeRoomEventCursor(w, flusher, eventID)
+		if err != nil {
+			return fmt.Errorf("error writing cursor in writeRoomEvent: %w", err)
+		}
+	}
 	flusher.Flush()
 
 	return nil
+}
+
+func writeRoomEventCursor(
+	w http.ResponseWriter,
+	flusher http.Flusher,
+	eventID string,
+) error {
+	if eventID == "" {
+		return nil
+	}
+
+	cursorData, err := json.Marshal(vibe.RoomEventCursor{ID: eventID})
+	if err != nil {
+		return fmt.Errorf("error marshaling SSE cursor in writeRoomEventCursor: %w", err)
+	}
+	_, err = fmt.Fprintf(
+		w,
+		"id: %s\nevent: %s\ndata: %s\n\n",
+		eventID,
+		vibe.EventCursor,
+		cursorData,
+	)
+	if err != nil {
+		return fmt.Errorf("error writing SSE cursor in writeRoomEventCursor: %w", err)
+	}
+	flusher.Flush()
+
+	return nil
+}
+
+func lastEventIDFromRequest(r *http.Request) string {
+	lastEventID := r.Header.Get("Last-Event-ID")
+	if lastEventID != "" {
+		return lastEventID
+	}
+
+	return r.URL.Query().Get("lastEventId")
 }

@@ -4,8 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"sync"
+	"time"
 
+	"github.com/gomodule/redigo/redis"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 
@@ -15,10 +18,22 @@ import (
 type Client struct {
 	mu     sync.Mutex
 	topics map[string]*Topic
+	replay *Replay
 }
 
-func (c *Client) Init() error {
+func (c *Client) Init(
+	redisPool *redis.Pool,
+	replayMaxEvents int,
+	replayMaxAge time.Duration,
+) error {
 	c.topics = make(map[string]*Topic)
+	if redisPool != nil {
+		c.replay = &Replay{
+			Pool:      redisPool,
+			MaxEvents: replayMaxEvents,
+			MaxAge:    replayMaxAge,
+		}
+	}
 
 	return nil
 }
@@ -27,10 +42,55 @@ func (c *Client) NotifyTopic(ctx context.Context, topicName string, data []byte)
 	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyTopic")
 	defer span.End()
 
-	topic := c.getTopic(topicName)
+	if c.replay != nil && strings.HasPrefix(topicName, roomTopicPrefix) {
+		err := c.replay.Append(ctx, topicName, data)
+		if err != nil {
+			return fmt.Errorf("error appending replay event in NotifyTopic: %w", err)
+		}
+	}
 
+	topic := c.getTopic(topicName)
 	topic.publish(data)
 	return nil
+}
+
+func (c *Client) PrepareReplay(
+	ctx context.Context,
+	topicName string,
+	lastEventID string,
+) (*vibe.ReplaySubscription, error) {
+	if c.replay == nil || !strings.HasPrefix(topicName, roomTopicPrefix) {
+		return &vibe.ReplaySubscription{RequiresSnapshot: true}, nil
+	}
+
+	replay, err := c.replay.Prepare(ctx, topicName, lastEventID)
+	if err != nil {
+		return nil, fmt.Errorf("error preparing replay in PrepareReplay: %w", err)
+	}
+
+	return replay, nil
+}
+
+func (c *Client) SubscribeFrom(
+	ctx context.Context,
+	topicName string,
+	afterID string,
+) (*vibe.SubscriptionContainer, error) {
+	if c.replay == nil || !strings.HasPrefix(topicName, roomTopicPrefix) {
+		container, err := c.Subscribe(topicName)
+		if err != nil {
+			return nil, fmt.Errorf("error subscribing without replay in SubscribeFrom: %w", err)
+		}
+
+		return container, nil
+	}
+
+	subscription, err := c.replay.Subscribe(ctx, topicName, afterID)
+	if err != nil {
+		return nil, fmt.Errorf("error subscribing with replay in SubscribeFrom: %w", err)
+	}
+
+	return &vibe.SubscriptionContainer{Subscription: subscription}, nil
 }
 
 func (c *Client) NotifyRoomUpdate(ctx context.Context, roomID string, event vibe.RoomEvent) error {
@@ -268,3 +328,4 @@ func generateSubscriptionID() (string, error) {
 
 const adminTopicName string = "admin"
 const subscriptionBufferSize = 32
+const roomTopicPrefix = "room:"
