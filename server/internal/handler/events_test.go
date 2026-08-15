@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,9 +14,12 @@ import (
 )
 
 type roomEventsStorageStub struct {
-	playback *vibe.PlaybackState
-	room     *vibe.Room
-	songs    []vibe.Song
+	playback      *vibe.PlaybackState
+	playbackError error
+	room          *vibe.Room
+	roomError     error
+	songs         []vibe.Song
+	songsError    error
 }
 
 func (s *roomEventsStorageStub) GetActiveListenerCounts(
@@ -30,7 +34,7 @@ func (s *roomEventsStorageStub) GetPlaybackState(
 	_ context.Context,
 	_ string,
 ) (*vibe.PlaybackState, error) {
-	return s.playback, nil
+	return s.playback, s.playbackError
 }
 
 func (s *roomEventsStorageStub) GetRoom(
@@ -38,14 +42,14 @@ func (s *roomEventsStorageStub) GetRoom(
 	_ string,
 	_ string,
 ) (*vibe.Room, error) {
-	return s.room, nil
+	return s.room, s.roomError
 }
 
 func (s *roomEventsStorageStub) GetSongs(
 	_ context.Context,
 	_ string,
 ) ([]vibe.Song, error) {
-	return s.songs, nil
+	return s.songs, s.songsError
 }
 
 func (s *roomEventsStorageStub) UpdateParticipant(
@@ -102,17 +106,48 @@ func (r *snapshotResponseRecorder) Flush() {
 }
 
 type roomEventsTest struct {
-	name           string
-	expectedEvents []string
+	name             string
+	storage          roomEventsStorageStub
+	expectedEvents   []string
+	expectedPayloads []string
+	unexpectedEvents []string
 }
 
 func TestRoomEventsSendsAuthoritativeSnapshot(t *testing.T) {
 	tests := []roomEventsTest{
 		{
 			name: "sends room queue and playback after connecting",
+			storage: roomEventsStorageStub{
+				playback: &vibe.PlaybackState{
+					RoomID:      "electro",
+					CurrentSong: &vibe.Song{ID: "song-1", Title: "First song"},
+				},
+				room:  &vibe.Room{ID: "electro", Name: "Electro"},
+				songs: []vibe.Song{{ID: "song-1", Title: "First song"}},
+			},
 			expectedEvents: []string{
 				"event: connected",
 				"event: settings_update",
+				"event: songs_update",
+				"event: playback_update",
+			},
+			expectedPayloads: []string{
+				`"name":"Electro"`,
+				`"title":"First song"`,
+				`"currentSong":{"id":"song-1"`,
+			},
+		},
+		{
+			name: "closes the stream when the snapshot is incomplete",
+			storage: roomEventsStorageStub{
+				room:       &vibe.Room{ID: "electro", Name: "Electro"},
+				songsError: fmt.Errorf("songs unavailable"),
+			},
+			expectedEvents: []string{
+				"event: connected",
+				"event: settings_update",
+			},
+			unexpectedEvents: []string{
 				"event: songs_update",
 				"event: playback_update",
 			},
@@ -122,6 +157,7 @@ func TestRoomEventsSendsAuthoritativeSnapshot(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
 			request := httptest.NewRequest(http.MethodGet, "/rooms/electro/events", nil)
 			request = request.WithContext(ctx)
 			request = mux.SetURLVars(request, map[string]string{"id": "electro"})
@@ -129,18 +165,13 @@ func TestRoomEventsSendsAuthoritativeSnapshot(t *testing.T) {
 				ResponseRecorder: httptest.NewRecorder(),
 				cancel:           cancel,
 			}
-			storage := &roomEventsStorageStub{
-				playback: &vibe.PlaybackState{RoomID: "electro"},
-				room:     &vibe.Room{ID: "electro", Name: "Electro"},
-				songs:    []vibe.Song{{ID: "song-1", Title: "First song"}},
-			}
 			publisher := &roomEventsPublisherStub{
 				subscription: &roomEventsSubscriptionStub{
 					messages: make(chan []byte),
 				},
 			}
 
-			RoomEvents(publisher, storage).ServeHTTP(response, request)
+			RoomEvents(publisher, &tt.storage, &tt.storage).ServeHTTP(response, request)
 
 			body := response.Body.String()
 			previousIndex := -1
@@ -153,6 +184,16 @@ func TestRoomEventsSendsAuthoritativeSnapshot(t *testing.T) {
 					t.Fatalf("expected %q after previous event in %q", expectedEvent, body)
 				}
 				previousIndex = index
+			}
+			for _, expectedPayload := range tt.expectedPayloads {
+				if !strings.Contains(body, expectedPayload) {
+					t.Fatalf("expected response to contain %q, got %q", expectedPayload, body)
+				}
+			}
+			for _, unexpectedEvent := range tt.unexpectedEvents {
+				if strings.Contains(body, unexpectedEvent) {
+					t.Fatalf("expected response not to contain %q, got %q", unexpectedEvent, body)
+				}
 			}
 		})
 	}
