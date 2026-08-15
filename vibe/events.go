@@ -65,5 +65,6 @@ const UserLeft = "user_left"
 const UsersUpdate = "users_update"
 const SettingsUpdate = "settings_update"
 const GenerationUpdate = "generation_update"
+const Connected = "connected"
 
 const RoomEventOriginRemote = "remote"
