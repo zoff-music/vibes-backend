@@ -1,6 +1,6 @@
 // Package event handles configuration and setup for receiving events.
 //
-// Events to subscribe to should be defined in GetPubSubEvents
+// Scheduled application events are defined in GetAppEvents.
 package event
 
 import (

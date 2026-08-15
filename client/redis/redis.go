@@ -67,9 +67,9 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		return fmt.Errorf("error pinging redis: %w", err)
 	}
 	c.events = &eventStreams{
-		Pool:      c.Redis,
-		MaxEvents: cfg.RoomEventReplayMaxEvents,
-		MaxAge:    cfg.RoomEventReplayMaxAge,
+		pool:      c.Redis,
+		maxEvents: cfg.RoomEventReplayMaxEvents,
+		maxAge:    cfg.RoomEventReplayMaxAge,
 	}
 
 	return nil

@@ -16,7 +16,7 @@ type SubscriptionContainer struct {
 
 // Subscriber subscribes to listen for room events
 type Subscriber interface {
-	Subscribe(topic string) (*SubscriptionContainer, error)
+	Subscribe(ctx context.Context, topic string) (*SubscriptionContainer, error)
 }
 
 type ReplaySubscription struct {
@@ -29,14 +29,9 @@ type ReplaySubscriber interface {
 	SubscribeFrom(ctx context.Context, topic string, afterID string) (*SubscriptionContainer, error)
 }
 
-type SubscriberPublisher interface {
-	Subscriber
+type RoomEventReplayNotifier interface {
+	ReplaySubscriber
 	RoomEventNotifier
-}
-
-type RoomEventSubscriberBatchNotifier interface {
-	SubscriberPublisher
-	RoomBatchEventNotifier
 }
 
 // RoomEventSnapshotFetcher fetches the authoritative state sent on connection.

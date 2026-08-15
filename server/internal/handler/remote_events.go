@@ -84,7 +84,7 @@ func RemoteEvents(
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
 
-		container, err := subscriber.Subscribe(fmt.Sprintf("remote:%s", remoteID))
+		container, err := subscriber.Subscribe(ctx, fmt.Sprintf("remote:%s", remoteID))
 		if err != nil {
 			handleError(
 				w,

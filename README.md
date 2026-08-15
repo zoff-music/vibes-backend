@@ -50,7 +50,7 @@ Copy and configure the environment file:
 ## Architecture
 
 - **`cmd/server`**: Application entrypoint and dependency injection
-- **`client/`**: External integrations (Database, YouTube, Spotify, SoundCloud, PubSub)
+- **`client/`**: External integrations (Database, Redis, YouTube, Spotify, SoundCloud)
 - **`server/`**: HTTP router, middleware, and handlers
 - **`server/internal/handler`**: Domain-specific HTTP handlers
 - **`vibe/`**: Core domain types and interfaces (pure Go, no dependencies)

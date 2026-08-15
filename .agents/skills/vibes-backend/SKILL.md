@@ -85,6 +85,7 @@ Use these rules for Go backend work in this repository.
 - Handler names and route names should match.
 - Use plural nouns for route handlers.
 - Handlers accept only the minimal interfaces they need.
+- Handler helpers must not receive injected dependencies. Use dependencies directly in the handler closure or handler receiver, and keep helpers limited to dependency-free transformations or output formatting.
 - Config values must come from `config.Config` and be passed through client init or handler params.
 - Set `Content-Type: application/json` for JSON responses.
 - Use the existing error helper for HTTP errors.

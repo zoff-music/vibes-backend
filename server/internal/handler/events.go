@@ -23,7 +23,7 @@ import (
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/rooms/{id}/events [get]
 func RoomEvents(
-	events vibe.SubscriberPublisher,
+	events vibe.RoomEventReplayNotifier,
 	participants vibe.RoomEventParticipantFetcherUpdater,
 	snapshot vibe.RoomEventSnapshotFetcher,
 ) http.HandlerFunc {
@@ -99,29 +99,17 @@ func RoomEvents(
 		w.Header().Set("Connection", "keep-alive")
 
 		topicName := fmt.Sprintf("room:%s", roomID)
-		replay := &vibe.ReplaySubscription{RequiresSnapshot: true}
-		var container *vibe.SubscriptionContainer
-		var err error
-		replaySubscriber, supportsReplay := events.(vibe.ReplaySubscriber)
-		if supportsReplay {
-			replay, err = replaySubscriber.PrepareReplay(
-				ctx,
-				topicName,
-				lastEventIDFromRequest(r),
+		replay, err := events.PrepareReplay(ctx, topicName, lastEventIDFromRequest(r))
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error preparing room event replay: %w", err),
+				http.StatusInternalServerError,
+				true,
 			)
-			if err != nil {
-				handleError(
-					w,
-					fmt.Errorf("error preparing room event replay: %w", err),
-					http.StatusInternalServerError,
-					true,
-				)
-				return
-			}
-			container, err = replaySubscriber.SubscribeFrom(ctx, topicName, replay.AfterID)
-		} else {
-			container, err = events.Subscribe(topicName)
+			return
 		}
+		container, err := events.SubscribeFrom(ctx, topicName, replay.AfterID)
 		if err != nil {
 			handleError(
 				w,
@@ -162,17 +150,68 @@ func RoomEvents(
 		}
 
 		if replay.RequiresSnapshot {
-			err = writeRoomEventSnapshot(
-				ctx,
-				w,
-				flusher,
-				snapshot,
-				roomID,
-				userID,
-				replay.AfterID,
-			)
+			room, err := snapshot.GetRoom(ctx, roomID, userID)
+			if err != nil {
+				log.Printf("error fetching room snapshot in RoomEvents: %v", err)
+				return
+			}
+			if room == nil || room.IsEmpty() {
+				log.Printf("error fetching room snapshot in RoomEvents: room is empty")
+				return
+			}
+			roomData, err := json.Marshal(room)
+			if err != nil {
+				log.Printf("error marshaling room snapshot in RoomEvents: %v", err)
+				return
+			}
+
+			songs, err := snapshot.GetSongs(ctx, roomID)
+			if err != nil {
+				log.Printf("error fetching songs snapshot in RoomEvents: %v", err)
+				return
+			}
+			if songs == nil {
+				songs = []vibe.Song{}
+			}
+			songsData, err := json.Marshal(songs)
+			if err != nil {
+				log.Printf("error marshaling songs snapshot in RoomEvents: %v", err)
+				return
+			}
+
+			state, err := snapshot.GetPlaybackState(ctx, roomID)
+			if err != nil {
+				log.Printf("error fetching playback snapshot in RoomEvents: %v", err)
+				return
+			}
+			if state == nil {
+				log.Printf("error fetching playback snapshot in RoomEvents: playback is nil")
+				return
+			}
+			if state.IsPlaying && state.UpdatedAt.Before(time.Now()) {
+				state.PositionMs += int(time.Since(state.UpdatedAt).Milliseconds())
+				state.UpdatedAt = time.Now()
+			}
+			state.ServerTimeMs = int(time.Now().UnixMilli())
+			playbackData, err := json.Marshal(state)
+			if err != nil {
+				log.Printf("error marshaling playback snapshot in RoomEvents: %v", err)
+				return
+			}
+
+			err = writeRoomEvent(w, flusher, vibe.SettingsUpdate, roomData, replay.AfterID)
 			if err != nil {
 				log.Printf("error writing room snapshot in RoomEvents: %v", err)
+				return
+			}
+			err = writeRoomEvent(w, flusher, vibe.QueueReordered, songsData, replay.AfterID)
+			if err != nil {
+				log.Printf("error writing songs snapshot in RoomEvents: %v", err)
+				return
+			}
+			err = writeRoomEvent(w, flusher, vibe.PlaybackUpdate, playbackData, replay.AfterID)
+			if err != nil {
+				log.Printf("error writing playback snapshot in RoomEvents: %v", err)
 				return
 			}
 		}
@@ -277,72 +316,6 @@ func RoomEvents(
 	}
 }
 
-func writeRoomEventSnapshot(
-	ctx context.Context,
-	w http.ResponseWriter,
-	flusher http.Flusher,
-	snapshot vibe.RoomEventSnapshotFetcher,
-	roomID string,
-	userID string,
-	eventID string,
-) error {
-	room, err := snapshot.GetRoom(ctx, roomID, userID)
-	if err != nil {
-		return fmt.Errorf("error fetching room in writeRoomEventSnapshot: %w", err)
-	}
-	if room == nil || room.IsEmpty() {
-		return fmt.Errorf("error fetching room in writeRoomEventSnapshot: room is empty")
-	}
-	roomData, err := json.Marshal(room)
-	if err != nil {
-		return fmt.Errorf("error marshaling room in writeRoomEventSnapshot: %w", err)
-	}
-
-	songs, err := snapshot.GetSongs(ctx, roomID)
-	if err != nil {
-		return fmt.Errorf("error fetching songs in writeRoomEventSnapshot: %w", err)
-	}
-	if songs == nil {
-		songs = []vibe.Song{}
-	}
-	songsData, err := json.Marshal(songs)
-	if err != nil {
-		return fmt.Errorf("error marshaling songs in writeRoomEventSnapshot: %w", err)
-	}
-
-	state, err := snapshot.GetPlaybackState(ctx, roomID)
-	if err != nil {
-		return fmt.Errorf("error fetching playback in writeRoomEventSnapshot: %w", err)
-	}
-	if state == nil {
-		return fmt.Errorf("error fetching playback in writeRoomEventSnapshot: playback is nil")
-	}
-	if state.IsPlaying && state.UpdatedAt.Before(time.Now()) {
-		state.PositionMs += int(time.Since(state.UpdatedAt).Milliseconds())
-		state.UpdatedAt = time.Now()
-	}
-	state.ServerTimeMs = int(time.Now().UnixMilli())
-	playbackData, err := json.Marshal(state)
-	if err != nil {
-		return fmt.Errorf("error marshaling playback in writeRoomEventSnapshot: %w", err)
-	}
-
-	err = writeRoomEvent(w, flusher, vibe.SettingsUpdate, roomData, eventID)
-	if err != nil {
-		return fmt.Errorf("error writing room in writeRoomEventSnapshot: %w", err)
-	}
-	err = writeRoomEvent(w, flusher, vibe.QueueReordered, songsData, eventID)
-	if err != nil {
-		return fmt.Errorf("error writing songs in writeRoomEventSnapshot: %w", err)
-	}
-	err = writeRoomEvent(w, flusher, vibe.PlaybackUpdate, playbackData, eventID)
-	if err != nil {
-		return fmt.Errorf("error writing playback in writeRoomEventSnapshot: %w", err)
-	}
-
-	return nil
-}
-
 func writeRoomEvent(
 	w http.ResponseWriter,
 	flusher http.Flusher,
@@ -406,5 +379,7 @@ func lastEventIDFromRequest(r *http.Request) string {
 		return lastEventID
 	}
 
-	return r.URL.Query().Get("lastEventId")
+	lastEventID = r.URL.Query().Get("lastEventId")
+
+	return lastEventID
 }

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -489,6 +488,8 @@ func AdminUpdateRoom(
 	db vibe.AdminRoomUpdaterLister,
 	notifier vibe.AdminEventNotifier,
 ) http.HandlerFunc {
+	updates := adminRoomUpdateWriter{Rooms: db, Events: notifier}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		vars := mux.Vars(r)
@@ -550,7 +551,7 @@ func AdminUpdateRoom(
 			return
 		}
 
-		writeAndNotifyAdminRooms(ctx, w, db, notifier)
+		updates.write(ctx, w)
 	}
 }
 
@@ -570,6 +571,8 @@ func AdminDeleteRoom(
 	db vibe.AdminRoomDeleterLister,
 	notifier vibe.AdminEventNotifier,
 ) http.HandlerFunc {
+	updates := adminRoomUpdateWriter{Rooms: db, Events: notifier}
+
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		vars := mux.Vars(r)
@@ -605,20 +608,17 @@ func AdminDeleteRoom(
 			return
 		}
 
-		writeAndNotifyAdminRooms(ctx, w, db, notifier)
+		updates.write(ctx, w)
 	}
 }
 
-func writeAndNotifyAdminRooms(
-	ctx context.Context,
-	w http.ResponseWriter,
-	db vibe.AdminRoomLister,
-	notifier vibe.AdminEventNotifier,
-) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "writeAndNotifyAdminRooms")
-	defer span.End()
+type adminRoomUpdateWriter struct {
+	Rooms  vibe.AdminRoomLister
+	Events vibe.AdminEventNotifier
+}
 
-	rooms, err := db.ListAdminRooms(ctx)
+func (h *adminRoomUpdateWriter) write(ctx context.Context, w http.ResponseWriter) {
+	rooms, err := h.Rooms.ListAdminRooms(ctx)
 	if err != nil {
 		handleError(
 			w,
@@ -640,7 +640,7 @@ func writeAndNotifyAdminRooms(
 		return
 	}
 
-	err = notifier.NotifyAdminUpdate(ctx, vibe.AdminEvent{
+	err = h.Events.NotifyAdminUpdate(ctx, vibe.AdminEvent{
 		Type:    vibe.AdminRoomsUpdate,
 		Payload: body,
 	})
@@ -674,7 +674,7 @@ func AdminEvents(
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
 
-		container, err := subscriber.Subscribe("admin")
+		container, err := subscriber.Subscribe(ctx, "admin")
 		if err != nil {
 			handleError(
 				w,
