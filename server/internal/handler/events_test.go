@@ -86,6 +86,23 @@ func (s *roomEventsPublisherStub) NotifyRoomUpdate(
 }
 
 func (s *roomEventsPublisherStub) Subscribe(
+	_ context.Context,
+	_ string,
+) (*vibe.SubscriptionContainer, error) {
+	return &vibe.SubscriptionContainer{Subscription: s.subscription}, nil
+}
+
+func (s *roomEventsPublisherStub) PrepareReplay(
+	_ context.Context,
+	_ string,
+	_ string,
+) (*vibe.ReplaySubscription, error) {
+	return &vibe.ReplaySubscription{RequiresSnapshot: true}, nil
+}
+
+func (s *roomEventsPublisherStub) SubscribeFrom(
+	_ context.Context,
+	_ string,
 	_ string,
 ) (*vibe.SubscriptionContainer, error) {
 	return &vibe.SubscriptionContainer{Subscription: s.subscription}, nil
