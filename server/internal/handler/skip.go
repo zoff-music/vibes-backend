@@ -28,7 +28,7 @@ import (
 //	@Router		/api/v1/rooms/{id}/skips [post]
 func SkipSong(
 	db vibe.RoomSkipper,
-	ips vibe.RoomBatchEventNotifier,
+	notifier vibe.RoomBatchEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -107,7 +107,7 @@ func SkipSong(
 				return
 			}
 
-			err = ips.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
+			err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
 				{
 					Type:    vibe.SkipVoteEvent,
 					Payload: votePayload,
@@ -154,7 +154,7 @@ func SkipSong(
 				return
 			}
 
-			err = ips.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
+			err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
 				{
 					Type:    vibe.QueueReordered,
 					Payload: songsPayload,

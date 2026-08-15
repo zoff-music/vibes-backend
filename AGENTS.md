@@ -59,8 +59,7 @@ client/                    # External integrations
 │   ├── track.go           # GetTrack method
 │   ├── token.go           # Token refresh operations
 │   └── authorization.go   # OAuth flow
-└── internalpubsub/        # SSE broadcasting
-    └── internalpubsub.go  # PubSub client
+└── redis/                 # Cache, rate limiting, and SSE event streams
 
 server/
 ├── server.go              # Client init, route wiring
@@ -97,7 +96,7 @@ vibe/                      # ALL domain types & interfaces
 
 Handlers are functions returning `http.HandlerFunc`. Dependencies injected as interfaces.
 
-**IMPORTANT:** Do NOT create helper functions for broadcasting multiple updates (e.g. `broadcastUpdates`). Instead, use `ips.NotifyRoomUpdates` which takes a slice of events.
+**IMPORTANT:** Do NOT create helper functions for broadcasting multiple updates (e.g. `broadcastUpdates`). Instead, use `notifier.NotifyRoomUpdates` which takes a slice of events.
 
 ```go
 func GetRoom(rf vibe.RoomFetcher) http.HandlerFunc {
@@ -285,7 +284,7 @@ events := []vibe.RoomEvent{
     },
 }
 
-err = ips.NotifyRoomUpdates(ctx, roomID, events)
+err = notifier.NotifyRoomUpdates(ctx, roomID, events)
 if err != nil {
     log.Printf("failed to notify room updates: %v", err)
 }

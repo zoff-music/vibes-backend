@@ -13,7 +13,7 @@ import (
 type Client struct {
 	Prefix string
 	Redis  *redis.Pool
-	replay *roomEventReplay
+	events *eventStreams
 }
 
 func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
@@ -66,7 +66,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		}
 		return fmt.Errorf("error pinging redis: %w", err)
 	}
-	c.replay = &roomEventReplay{
+	c.events = &eventStreams{
 		Pool:      c.Redis,
 		MaxEvents: cfg.RoomEventReplayMaxEvents,
 		MaxAge:    cfg.RoomEventReplayMaxAge,

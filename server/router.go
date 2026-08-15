@@ -84,13 +84,13 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/tokens/casting", handler.CreateCastingToken(s.DB, s.Config.CastTokenSecret)).Methods(http.MethodPost, http.MethodOptions).Name("CreateCastingToken")
 
 	// Remote control routes
-	api.HandleFunc("/remotes", handler.CreateRemoteControl(s.DB, s.InternalPubSub, s.Config.CookieSecret, s.Config.RemotePairingTTL)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRemoteControl")
+	api.HandleFunc("/remotes", handler.CreateRemoteControl(s.DB, s.Redis, s.Config.CookieSecret, s.Config.RemotePairingTTL)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRemoteControl")
 	api.HandleFunc("/remotes", handler.GetOwnedRemoteControl(s.DB, s.Config.RemotePresenceTimeout)).Methods(http.MethodGet, http.MethodOptions).Name("GetOwnedRemoteControl")
 	api.HandleFunc("/remotes/{id}", handler.GetRemoteControl(s.DB, s.Config.RemotePresenceTimeout)).Methods(http.MethodGet, http.MethodOptions).Name("GetRemoteControl")
-	api.HandleFunc("/remotes/{id}", handler.UpdateRemoteControl(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRemoteControl")
+	api.HandleFunc("/remotes/{id}", handler.UpdateRemoteControl(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRemoteControl")
 	api.HandleFunc("/remotes/{id}", handler.DeleteRemoteControl(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRemoteControl")
 	api.HandleFunc("/remotes/{id}/sessions", handler.PairRemoteControl(s.DB, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("PairRemoteControl")
-	api.HandleFunc("/remotes/{id}/events", handler.RemoteEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RemoteEvents")
+	api.HandleFunc("/remotes/{id}/events", handler.RemoteEvents(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RemoteEvents")
 
 	// Admin routes
 	if s.Config.AdminPasswordPepper != "" {
@@ -104,9 +104,9 @@ func (s *Server) setupRoutes() {
 		api.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
 		api.HandleFunc("/admin/searches/usage", handler.AdminSearchUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminSearchUsage")
 		api.HandleFunc("/admin/listeners/usage", handler.AdminListenerUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminListenerUsage")
-		api.HandleFunc("/admin/rooms/{id}", handler.AdminUpdateRoom(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateRoom")
-		api.HandleFunc("/admin/rooms/{id}", handler.AdminDeleteRoom(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteRoom")
-		api.HandleFunc("/admin/events", handler.AdminEvents(s.InternalPubSub, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
+		api.HandleFunc("/admin/rooms/{id}", handler.AdminUpdateRoom(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateRoom")
+		api.HandleFunc("/admin/rooms/{id}", handler.AdminDeleteRoom(s.DB, s.Redis)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteRoom")
+		api.HandleFunc("/admin/events", handler.AdminEvents(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
 	}
 
 	s.addSessionMiddleware(api)

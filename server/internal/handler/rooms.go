@@ -513,7 +513,7 @@ func GetPublicRooms(db vibe.PublicRoomFetcher) http.HandlerFunc {
 //	@Router		/api/v1/rooms/{id}/settings [patch]
 func UpdateRoomSettings(
 	db vibe.RoomSettingsUpdater,
-	ips vibe.RoomEventNotifier,
+	notifier vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -614,7 +614,7 @@ func UpdateRoomSettings(
 			return
 		}
 
-		err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+		err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 			Type:    vibe.SettingsUpdate,
 			Payload: body,
 			Origin:  session.EventOrigin,
@@ -650,7 +650,7 @@ func UpdateRoomSettings(
 //	@Router		/api/v1/rooms/{id}/sessions [post]
 func CreateSession(
 	db vibe.AdminSessionCreator,
-	ips vibe.RoomEventNotifier,
+	notifier vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -735,7 +735,7 @@ func CreateSession(
 					log.Printf("CreateSession: failed to marshal room for notification: %v", err)
 				}
 				if err == nil {
-					err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+					err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 						Type:    vibe.SettingsUpdate,
 						Payload: body,
 						UserID:  session.UserID, // Include the user who set the password

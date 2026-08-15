@@ -159,7 +159,7 @@ func ResolveSoundCloudPlaylist(
 //	@Router		/api/v1/rooms/{id}/playlists [post]
 func AddPlaylist(
 	db vibe.SongQueueAdder,
-	ips vibe.RoomBatchEventNotifier,
+	notifier vibe.RoomBatchEventNotifier,
 	cache vibe.CachedMusicTrackFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -397,7 +397,7 @@ func AddPlaylist(
 			})
 		}
 
-		err = ips.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, events)
+		err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, events)
 		if err != nil {
 			log.Printf("failed to notify room after playlist import: %v", err)
 		}

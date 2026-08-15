@@ -487,7 +487,7 @@ func AdminSearchUsage(
 //	@Router		/api/v1/admin/rooms/{id} [patch]
 func AdminUpdateRoom(
 	db vibe.AdminRoomUpdaterLister,
-	ips vibe.AdminEventNotifier,
+	notifier vibe.AdminEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -550,7 +550,7 @@ func AdminUpdateRoom(
 			return
 		}
 
-		writeAndNotifyAdminRooms(ctx, w, db, ips)
+		writeAndNotifyAdminRooms(ctx, w, db, notifier)
 	}
 }
 
@@ -568,7 +568,7 @@ func AdminUpdateRoom(
 //	@Router		/api/v1/admin/rooms/{id} [delete]
 func AdminDeleteRoom(
 	db vibe.AdminRoomDeleterLister,
-	ips vibe.AdminEventNotifier,
+	notifier vibe.AdminEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -605,7 +605,7 @@ func AdminDeleteRoom(
 			return
 		}
 
-		writeAndNotifyAdminRooms(ctx, w, db, ips)
+		writeAndNotifyAdminRooms(ctx, w, db, notifier)
 	}
 }
 
@@ -613,7 +613,7 @@ func writeAndNotifyAdminRooms(
 	ctx context.Context,
 	w http.ResponseWriter,
 	db vibe.AdminRoomLister,
-	ips vibe.AdminEventNotifier,
+	notifier vibe.AdminEventNotifier,
 ) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "writeAndNotifyAdminRooms")
 	defer span.End()
@@ -640,7 +640,7 @@ func writeAndNotifyAdminRooms(
 		return
 	}
 
-	err = ips.NotifyAdminUpdate(ctx, vibe.AdminEvent{
+	err = notifier.NotifyAdminUpdate(ctx, vibe.AdminEvent{
 		Type:    vibe.AdminRoomsUpdate,
 		Payload: body,
 	})
@@ -663,7 +663,7 @@ func writeAndNotifyAdminRooms(
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/admin/events [get]
 func AdminEvents(
-	ips vibe.Subscriber,
+	subscriber vibe.Subscriber,
 	db vibe.AdminRoomLister,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -674,7 +674,7 @@ func AdminEvents(
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
 
-		container, err := ips.Subscribe("admin")
+		container, err := subscriber.Subscribe("admin")
 		if err != nil {
 			handleError(
 				w,
@@ -741,8 +741,8 @@ func AdminEvents(
 
 // ReviewAdminRooms handles scheduled admin room updates
 type ReviewAdminRooms struct {
-	DB  vibe.AdminRoomLister
-	IPS vibe.AdminEventNotifier
+	DB     vibe.AdminRoomLister
+	Events vibe.AdminEventNotifier
 }
 
 // Handle fetches admin rooms and broadcasts the update
@@ -757,7 +757,7 @@ func (h *ReviewAdminRooms) Handle(ctx context.Context, data []byte) error {
 		return fmt.Errorf("error marshaling admin rooms: %w", err)
 	}
 
-	err = h.IPS.NotifyAdminUpdate(ctx, vibe.AdminEvent{
+	err = h.Events.NotifyAdminUpdate(ctx, vibe.AdminEvent{
 		Type:    vibe.AdminRoomsUpdate,
 		Payload: payload,
 	})

@@ -23,7 +23,7 @@ import (
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/rooms/{id}/events [get]
 func RoomEvents(
-	ips vibe.SubscriberPublisher,
+	events vibe.SubscriberPublisher,
 	participants vibe.RoomEventParticipantFetcherUpdater,
 	snapshot vibe.RoomEventSnapshotFetcher,
 ) http.HandlerFunc {
@@ -79,7 +79,7 @@ func RoomEvents(
 				return
 			}
 
-			err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+			err = events.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 				Type:    vibe.UsersUpdate,
 				Payload: payload,
 			})
@@ -102,7 +102,7 @@ func RoomEvents(
 		replay := &vibe.ReplaySubscription{RequiresSnapshot: true}
 		var container *vibe.SubscriptionContainer
 		var err error
-		replaySubscriber, supportsReplay := ips.(vibe.ReplaySubscriber)
+		replaySubscriber, supportsReplay := events.(vibe.ReplaySubscriber)
 		if supportsReplay {
 			replay, err = replaySubscriber.PrepareReplay(
 				ctx,
@@ -120,7 +120,7 @@ func RoomEvents(
 			}
 			container, err = replaySubscriber.SubscribeFrom(ctx, topicName, replay.AfterID)
 		} else {
-			container, err = ips.Subscribe(topicName)
+			container, err = events.Subscribe(topicName)
 		}
 		if err != nil {
 			handleError(

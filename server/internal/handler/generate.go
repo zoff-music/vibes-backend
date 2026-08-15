@@ -434,7 +434,7 @@ type GenerateRoomPlaylist struct {
 	AI       vibe.PlaylistGenerator
 	Cache    vibe.CachedSearchFetcherCreator
 	DB       vibe.RoomGenerationWorker
-	IPS      vibe.RoomEventNotifier
+	Events   vibe.RoomEventNotifier
 	Searcher vibe.GeneratedPlaylistSearcher
 }
 
@@ -458,7 +458,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 				err,
 			)
 		}
-		err = h.IPS.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
+		err = h.Events.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
 			Type:    vibe.GenerationUpdate,
 			Payload: payload,
 		})
@@ -539,7 +539,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 					err,
 				)
 			}
-			err = h.IPS.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
+			err = h.Events.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
 				Type:    vibe.GenerationUpdate,
 				Payload: payload,
 			})
@@ -613,7 +613,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 			)
 		}
 
-		err = h.IPS.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
+		err = h.Events.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
 			Type:    vibe.SongAdded,
 			Payload: songPayload,
 		})
@@ -645,7 +645,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 					err,
 				)
 			}
-			err = h.IPS.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
+			err = h.Events.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
 			})
@@ -677,7 +677,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, data []byte) error {
 			err,
 		)
 	}
-	err = h.IPS.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
+	err = h.Events.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
 		Type:    vibe.GenerationUpdate,
 		Payload: payload,
 	})

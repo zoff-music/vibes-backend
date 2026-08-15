@@ -19,7 +19,6 @@ import (
 	"github.com/zoff-music/vibes-backend/client/database"
 	"github.com/zoff-music/vibes-backend/client/gemini"
 	"github.com/zoff-music/vibes-backend/client/grok"
-	"github.com/zoff-music/vibes-backend/client/internalpubsub"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
 	"github.com/zoff-music/vibes-backend/client/spotify"
@@ -38,7 +37,6 @@ type Server struct {
 	InternalHTTP   *http.Server
 	DB             *database.Client
 	Redis          *redisclient.Client
-	InternalPubSub *internalpubsub.Client
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
 	Spotify        *spotify.Client
@@ -59,12 +57,6 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	err := redisClient.Init(ctx, config)
 	if err != nil {
 		return fmt.Errorf("error initializing redis client: %w", err)
-	}
-
-	var internalpubsubClient internalpubsub.Client
-	err = internalpubsubClient.Init()
-	if err != nil {
-		return fmt.Errorf("error initializing internalpubsub client: %w", err)
 	}
 
 	var dbClient database.Client
@@ -119,7 +111,6 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.Config = config
 	s.DB = &dbClient
 	s.Redis = &redisClient
-	s.InternalPubSub = &internalpubsubClient
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
 	s.Spotify = &spotifyClient
@@ -248,7 +239,6 @@ func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
 	for _, e := range event.GetAppEvents(
 		s.DB,
 		s.Redis,
-		s.InternalPubSub,
 		s.SoundCloud,
 		s.Spotify,
 		s.YouTube,
