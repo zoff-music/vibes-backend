@@ -80,7 +80,7 @@ func GetSongs(
 //	@Router		/api/v1/rooms/{id}/songs [post]
 func AddSong(
 	db vibe.SongQueueAdder,
-	ips vibe.RoomEventNotifier,
+	notifier vibe.RoomEventNotifier,
 	cache vibe.CachedMusicTrackFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -228,7 +228,7 @@ func AddSong(
 			return
 		}
 
-		err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+		err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
 			Origin:  session.EventOrigin,
@@ -268,7 +268,7 @@ func AddSong(
 				return
 			}
 
-			err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+			err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
 				Origin:  session.EventOrigin,
@@ -314,7 +314,7 @@ func AddSong(
 //	@Router		/api/v1/rooms/{id}/songs/{songId} [delete]
 func RemoveSong(
 	db vibe.SongQueueRemover,
-	ips vibe.RoomEventNotifier,
+	notifier vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -395,7 +395,7 @@ func RemoveSong(
 			return
 		}
 
-		err = ips.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+		err = notifier.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
 			Origin:  session.EventOrigin,
@@ -421,7 +421,7 @@ func RemoveSong(
 //	@Router		/api/v1/rooms/{id}/songs/{songId} [post]
 func VoteSong(
 	db vibe.SongQueueVoter,
-	ips vibe.RoomEventNotifier,
+	notifier vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -494,7 +494,7 @@ func VoteSong(
 			return
 		}
 
-		err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+		err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
 			Origin:  session.EventOrigin,
@@ -509,7 +509,7 @@ func VoteSong(
 
 type MetaRefresh struct {
 	DB           vibe.SongMetadataRefreshStorage
-	IPS          vibe.RoomEventNotifier
+	Events       vibe.RoomEventNotifier
 	Provider     vibe.MusicTrackFetcher
 	ProviderName string
 }
@@ -591,7 +591,7 @@ func (h *MetaRefresh) Handle(
 			)
 		}
 
-		err = h.IPS.NotifyRoomUpdate(ctx, refresh.RoomID, vibe.RoomEvent{
+		err = h.Events.NotifyRoomUpdate(ctx, refresh.RoomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
 			Payload: payload,
 		})

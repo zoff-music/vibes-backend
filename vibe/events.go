@@ -4,7 +4,7 @@ import (
 	"context"
 )
 
-// Subscription defines interface to use the internalpubsub client
+// Subscription exposes a stream of application events.
 type Subscription interface {
 	Listen() chan []byte
 	Destroy()

@@ -89,7 +89,7 @@ func GetPlaybackState(
 func ReportPlaybackFailure(
 	db vibe.PlaybackFailureStorage,
 	trackFetcher vibe.MusicTrackFetcher,
-	ips vibe.RoomBatchEventNotifier,
+	notifier vibe.RoomBatchEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -248,7 +248,7 @@ func ReportPlaybackFailure(
 			return
 		}
 
-		err = ips.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
+		err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
 			{
 				Type:    vibe.QueueReordered,
 				Payload: songsBody,
@@ -284,7 +284,7 @@ func ReportPlaybackFailure(
 //	@Router		/api/v1/rooms/{id}/states [put]
 func UpdatePlaybackState(
 	db vibe.RoomGetterPlaybackUpdater,
-	ips vibe.RoomEventNotifier,
+	notifier vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -375,7 +375,7 @@ func UpdatePlaybackState(
 				return
 			}
 
-			err = ips.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+			err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 				Type:    vibe.PlaybackUpdate,
 				Payload: statePayload,
 				Origin:  session.EventOrigin,
@@ -404,8 +404,8 @@ func UpdatePlaybackState(
 
 // ReviewRoomPlayback handles playback monitoring for server-mode rooms
 type ReviewRoomPlayback struct {
-	DB  vibe.ExpiredPlaybackSongFetcher
-	IPS vibe.RoomBatchEventNotifier
+	DB     vibe.ExpiredPlaybackSongFetcher
+	Events vibe.RoomBatchEventNotifier
 }
 
 // Handle checks for rooms that need to auto-advance
@@ -430,7 +430,7 @@ func (h *ReviewRoomPlayback) Handle(ctx context.Context, data []byte) error {
 		return fmt.Errorf("error marshaling songs payload: %w", err)
 	}
 
-	err = h.IPS.NotifyRoomUpdates(ctx, state.RoomID, []vibe.RoomEvent{
+	err = h.Events.NotifyRoomUpdates(ctx, state.RoomID, []vibe.RoomEvent{
 		{
 			Type:    vibe.PlaybackUpdate,
 			Payload: statePayload,
@@ -449,8 +449,8 @@ func (h *ReviewRoomPlayback) Handle(ctx context.Context, data []byte) error {
 
 // ReviewHostHealth handles host health checks
 type ReviewHostHealth struct {
-	DB  vibe.AbandonedHostProcessor
-	IPS vibe.RoomEventNotifier
+	DB     vibe.AbandonedHostProcessor
+	Events vibe.RoomEventNotifier
 }
 
 // Handle checks for rooms that need a new host
@@ -466,7 +466,7 @@ func (h *ReviewHostHealth) Handle(ctx context.Context, data []byte) error {
 		return fmt.Errorf("error marshaling new host payload: %w", err)
 	}
 
-	err = h.IPS.NotifyRoomUpdate(ctx, info.RoomID, vibe.RoomEvent{
+	err = h.Events.NotifyRoomUpdate(ctx, info.RoomID, vibe.RoomEvent{
 		Type:    vibe.NewHost,
 		Payload: payloadBytes,
 	})

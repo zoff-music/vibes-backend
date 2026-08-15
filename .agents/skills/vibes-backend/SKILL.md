@@ -27,7 +27,7 @@ Use these rules for Go backend work in this repository.
 - `server/internal/handler`: HTTP handlers only.
 - `server/internal/event`: app-event wiring and handlers.
 - `client/database`: Postgres client split by mirrored feature files.
-- `client/internalpubsub`: in-process event fanout client.
+- `client/redis`: required shared cache, rate limiting, and durable application-event streams.
 - `client/youtube`, `client/spotify`, and `client/soundcloud`: external music provider clients.
 - Database migrations live in the separate `zoff-music/vibes-migrator` repository.
 

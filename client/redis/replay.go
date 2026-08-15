@@ -15,10 +15,42 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-type roomEventReplay struct {
+type eventStreams struct {
 	Pool      *redigo.Pool
 	MaxEvents int
 	MaxAge    time.Duration
+}
+
+func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) error {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("error marshaling admin event in NotifyAdminUpdate: %w", err)
+	}
+
+	err = c.appendEvent(ctx, adminTopicName, data)
+	if err != nil {
+		return fmt.Errorf("error appending admin event in NotifyAdminUpdate: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) NotifyRemoteUpdate(
+	ctx context.Context,
+	remoteID string,
+	event vibe.RemoteEvent,
+) error {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return fmt.Errorf("error marshaling remote event in NotifyRemoteUpdate: %w", err)
+	}
+
+	err = c.appendEvent(ctx, remoteTopicName(remoteID), data)
+	if err != nil {
+		return fmt.Errorf("error appending remote event in NotifyRemoteUpdate: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) NotifyRoomUpdate(
@@ -55,13 +87,22 @@ func (c *Client) NotifyRoomUpdates(
 }
 
 func (c *Client) appendRoomEvent(ctx context.Context, topicName string, data []byte) error {
-	if c.replay == nil {
-		return fmt.Errorf("error appending room event: replay is not initialized")
-	}
-
-	err := c.replay.Append(ctx, topicName, data)
+	err := c.appendEvent(ctx, topicName, data)
 	if err != nil {
 		return fmt.Errorf("error appending room event: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) appendEvent(ctx context.Context, topicName string, data []byte) error {
+	if c.events == nil {
+		return fmt.Errorf("error appending event: streams are not initialized")
+	}
+
+	err := c.events.Append(ctx, topicName, data)
+	if err != nil {
+		return fmt.Errorf("error appending event: %w", err)
 	}
 
 	return nil
@@ -72,11 +113,11 @@ func (c *Client) PrepareReplay(
 	topicName string,
 	lastEventID string,
 ) (*vibe.ReplaySubscription, error) {
-	if c.replay == nil {
+	if c.events == nil {
 		return nil, fmt.Errorf("error preparing room event replay: replay is not initialized")
 	}
 
-	replay, err := c.replay.Prepare(ctx, topicName, lastEventID)
+	replay, err := c.events.Prepare(ctx, topicName, lastEventID)
 	if err != nil {
 		return nil, fmt.Errorf("error preparing room event replay: %w", err)
 	}
@@ -89,11 +130,11 @@ func (c *Client) SubscribeFrom(
 	topicName string,
 	afterID string,
 ) (*vibe.SubscriptionContainer, error) {
-	if c.replay == nil {
+	if c.events == nil {
 		return nil, fmt.Errorf("error subscribing to room events: replay is not initialized")
 	}
 
-	subscription, err := c.replay.Subscribe(ctx, topicName, afterID)
+	subscription, err := c.events.Subscribe(ctx, topicName, afterID, true)
 	if err != nil {
 		return nil, fmt.Errorf("error subscribing to room events: %w", err)
 	}
@@ -102,20 +143,29 @@ func (c *Client) SubscribeFrom(
 }
 
 func (c *Client) Subscribe(topicName string) (*vibe.SubscriptionContainer, error) {
-	replay, err := c.PrepareReplay(context.Background(), topicName, "")
-	if err != nil {
-		return nil, fmt.Errorf("error preparing room events in Subscribe: %w", err)
+	if c.events == nil {
+		return nil, fmt.Errorf("error subscribing to events: streams are not initialized")
 	}
 
-	container, err := c.SubscribeFrom(context.Background(), topicName, replay.AfterID)
+	replay, err := c.events.Prepare(context.Background(), topicName, "")
 	if err != nil {
-		return nil, fmt.Errorf("error subscribing to room events in Subscribe: %w", err)
+		return nil, fmt.Errorf("error preparing events in Subscribe: %w", err)
 	}
 
-	return container, nil
+	subscription, err := c.events.Subscribe(
+		context.Background(),
+		topicName,
+		replay.AfterID,
+		false,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error subscribing to events in Subscribe: %w", err)
+	}
+
+	return &vibe.SubscriptionContainer{Subscription: subscription}, nil
 }
 
-func (r *roomEventReplay) Append(ctx context.Context, topicName string, data []byte) error {
+func (r *eventStreams) Append(ctx context.Context, topicName string, data []byte) error {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -170,7 +220,7 @@ func replayCutoffID(now time.Time, maxAge time.Duration) string {
 	return fmt.Sprintf("%d-0", now.Add(-maxAge).UnixMilli())
 }
 
-func (r *roomEventReplay) Prepare(
+func (r *eventStreams) Prepare(
 	ctx context.Context,
 	topicName string,
 	lastEventID string,
@@ -223,10 +273,11 @@ func (r *roomEventReplay) Prepare(
 	}, nil
 }
 
-func (r *roomEventReplay) Subscribe(
+func (r *eventStreams) Subscribe(
 	ctx context.Context,
 	topicName string,
 	afterID string,
+	roomEvents bool,
 ) (*StreamSubscription, error) {
 	if r.Pool == nil {
 		return nil, fmt.Errorf("error creating replay subscription in Subscribe: redis pool is nil")
@@ -243,12 +294,13 @@ func (r *roomEventReplay) Subscribe(
 
 	subscriptionContext, cancel := context.WithCancel(ctx)
 	subscription := &StreamSubscription{
-		cancel:    cancel,
-		done:      make(chan struct{}),
-		key:       replayKey(topicName),
-		messages:  make(chan []byte, roomEventSubscriptionBufferSize),
-		pool:      r.Pool,
-		readCount: r.MaxEvents,
+		cancel:     cancel,
+		done:       make(chan struct{}),
+		key:        replayKey(topicName),
+		messages:   make(chan []byte, roomEventSubscriptionBufferSize),
+		pool:       r.Pool,
+		readCount:  r.MaxEvents,
+		roomEvents: roomEvents,
 	}
 
 	go subscription.listen(subscriptionContext, cursor)
@@ -257,13 +309,14 @@ func (r *roomEventReplay) Subscribe(
 }
 
 type StreamSubscription struct {
-	cancel    context.CancelFunc
-	done      chan struct{}
-	key       string
-	messages  chan []byte
-	once      sync.Once
-	pool      *redigo.Pool
-	readCount int
+	cancel     context.CancelFunc
+	done       chan struct{}
+	key        string
+	messages   chan []byte
+	once       sync.Once
+	pool       *redigo.Pool
+	readCount  int
+	roomEvents bool
 }
 
 func (s *StreamSubscription) Destroy() {
@@ -299,7 +352,12 @@ func (s *StreamSubscription) listen(ctx context.Context, cursor string) {
 			continue
 		}
 
-		for _, message := range compactReplayMessages(messages) {
+		deliveries := messages
+		if s.roomEvents {
+			deliveries = compactReplayMessages(messages)
+		}
+
+		for _, message := range deliveries {
 			select {
 			case <-ctx.Done():
 				return
@@ -380,18 +438,23 @@ func (s *StreamSubscription) read(
 				return nil, fmt.Errorf("error parsing fields in read: event is missing")
 			}
 
-			var event vibe.RoomEvent
-			err = json.Unmarshal([]byte(data), &event)
-			if err != nil {
-				return nil, fmt.Errorf("error unmarshaling room event in read: %w", err)
-			}
-			event.ID = id
-			eventData, err := json.Marshal(event)
-			if err != nil {
-				return nil, fmt.Errorf("error marshaling room event in read: %w", err)
+			eventData := []byte(data)
+			eventType := ""
+			if s.roomEvents {
+				var event vibe.RoomEvent
+				err = json.Unmarshal(eventData, &event)
+				if err != nil {
+					return nil, fmt.Errorf("error unmarshaling room event in read: %w", err)
+				}
+				event.ID = id
+				eventData, err = json.Marshal(event)
+				if err != nil {
+					return nil, fmt.Errorf("error marshaling room event in read: %w", err)
+				}
+				eventType = event.Type
 			}
 
-			messages = append(messages, StreamMessage{ID: id, Data: eventData, Type: event.Type})
+			messages = append(messages, StreamMessage{ID: id, Data: eventData, Type: eventType})
 		}
 	}
 
@@ -577,6 +640,11 @@ func roomTopicName(roomID string) string {
 	return fmt.Sprintf("room:%s", roomID)
 }
 
+func remoteTopicName(remoteID string) string {
+	return fmt.Sprintf("remote:%s", remoteID)
+}
+
+const adminTopicName = "admin"
 const replayEventField = "event"
 const initialStreamID = "0-0"
 const replayBlockMilliseconds = 3000

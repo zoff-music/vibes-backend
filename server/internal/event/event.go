@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/client/database"
-	"github.com/zoff-music/vibes-backend/client/internalpubsub"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
 	"github.com/zoff-music/vibes-backend/client/spotify"
@@ -26,7 +25,6 @@ type Handler interface {
 func GetAppEvents(
 	db *database.Client,
 	redisClient *redisclient.Client,
-	ips *internalpubsub.Client,
 	soundcloudClient *soundcloud.Client,
 	spotifyClient *spotify.Client,
 	youtubeClient *youtube.Client,
@@ -41,7 +39,7 @@ func GetAppEvents(
 				AI:       ai,
 				Cache:    redisClient,
 				DB:       db,
-				IPS:      redisClient,
+				Events:   redisClient,
 				Searcher: youtubeClient,
 			},
 		},
@@ -49,16 +47,16 @@ func GetAppEvents(
 			Name: "ReviewRoomPlayback",
 			Rate: 100 * time.Millisecond,
 			Handler: &handler.ReviewRoomPlayback{
-				DB:  db,
-				IPS: redisClient,
+				DB:     db,
+				Events: redisClient,
 			},
 		},
 		{
 			Name: "ReviewHostHealth",
 			Rate: 500 * time.Millisecond,
 			Handler: &handler.ReviewHostHealth{
-				DB:  db,
-				IPS: redisClient,
+				DB:     db,
+				Events: redisClient,
 			},
 		},
 		{
@@ -123,8 +121,8 @@ func GetAppEvents(
 			Name: "ReviewAdminRooms",
 			Rate: 15 * time.Second,
 			Handler: &handler.ReviewAdminRooms{
-				DB:  db,
-				IPS: ips,
+				DB:     db,
+				Events: redisClient,
 			},
 		},
 	}
@@ -137,7 +135,7 @@ func GetAppEvents(
 				Rate: time.Second,
 				Handler: &handler.MetaRefresh{
 					DB:           db,
-					IPS:          redisClient,
+					Events:       redisClient,
 					Provider:     youtubeClient,
 					ProviderName: vibe.SourceTypeYouTube,
 				},
@@ -148,7 +146,7 @@ func GetAppEvents(
 				Rate: time.Second,
 				Handler: &handler.MetaRefresh{
 					DB:           db,
-					IPS:          redisClient,
+					Events:       redisClient,
 					Provider:     soundcloudClient,
 					ProviderName: vibe.SourceTypeSoundCloud,
 				},
@@ -159,7 +157,7 @@ func GetAppEvents(
 				Rate: time.Second,
 				Handler: &handler.MetaRefresh{
 					DB:           db,
-					IPS:          redisClient,
+					Events:       redisClient,
 					Provider:     spotifyClient,
 					ProviderName: vibe.SourceTypeSpotify,
 				},
