@@ -28,23 +28,23 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms/{id}/generations", handler.CreateRoomGeneration(s.DB, s.Config.RoomGenerationMaxExistingSongs)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomGeneration")
 	api.HandleFunc("/rooms/{id}", handler.RoomExists(s.DB)).Methods(http.MethodHead).Name("RoomExists")
 	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoom")
-	api.HandleFunc("/rooms/{id}/settings", handler.UpdateRoomSettings(s.DB, s.InternalPubSub)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoomSettings")
-	api.HandleFunc("/rooms/{id}/skips", handler.SkipSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("SkipSong")
+	api.HandleFunc("/rooms/{id}/settings", handler.UpdateRoomSettings(s.DB, s.RoomEvents)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoomSettings")
+	api.HandleFunc("/rooms/{id}/skips", handler.SkipSong(s.DB, s.RoomEvents)).Methods(http.MethodPost, http.MethodOptions).Name("SkipSong")
 	api.HandleFunc("/rooms/{id}/states", handler.GetPlaybackState(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetPlaybackState")
-	api.HandleFunc("/rooms/{id}/states", handler.UpdatePlaybackState(s.DB, s.InternalPubSub)).Methods(http.MethodPut, http.MethodOptions).Name("UpdatePlaybackState")
-	api.HandleFunc("/rooms/{id}/playbackfailures", handler.ReportPlaybackFailure(s.DB, s.YouTube, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("ReportPlaybackFailure")
-	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
+	api.HandleFunc("/rooms/{id}/states", handler.UpdatePlaybackState(s.DB, s.RoomEvents)).Methods(http.MethodPut, http.MethodOptions).Name("UpdatePlaybackState")
+	api.HandleFunc("/rooms/{id}/playbackfailures", handler.ReportPlaybackFailure(s.DB, s.YouTube, s.RoomEvents)).Methods(http.MethodPost, http.MethodOptions).Name("ReportPlaybackFailure")
+	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB, s.RoomEvents)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
 	api.HandleFunc("/rooms/{id}/sessions", handler.DeleteRoomAdminSession(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRoomAdminSession")
 
 	// Song routes
 	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSongs")
-	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.InternalPubSub, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddSong")
-	api.HandleFunc("/rooms/{id}/playlists", handler.AddPlaylist(s.DB, s.InternalPubSub, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddPlaylist")
-	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.InternalPubSub)).Methods(http.MethodDelete, http.MethodOptions).Name("RemoveSong")
-	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.VoteSong(s.DB, s.InternalPubSub)).Methods(http.MethodPost, http.MethodOptions).Name("VoteSong")
+	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.RoomEvents, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddSong")
+	api.HandleFunc("/rooms/{id}/playlists", handler.AddPlaylist(s.DB, s.RoomEvents, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddPlaylist")
+	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.RoomEvents)).Methods(http.MethodDelete, http.MethodOptions).Name("RemoveSong")
+	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.VoteSong(s.DB, s.RoomEvents)).Methods(http.MethodPost, http.MethodOptions).Name("VoteSong")
 
 	// SSE route
-	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.InternalPubSub, s.DB, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
+	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.RoomEvents, s.DB, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
 
 	// YouTube routes
 	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")

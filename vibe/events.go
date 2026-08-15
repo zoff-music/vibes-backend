@@ -34,6 +34,11 @@ type SubscriberPublisher interface {
 	RoomEventNotifier
 }
 
+type RoomEventSubscriberBatchNotifier interface {
+	SubscriberPublisher
+	RoomBatchEventNotifier
+}
+
 // RoomEventSnapshotFetcher fetches the authoritative state sent on connection.
 type RoomEventSnapshotFetcher interface {
 	RoomFetcher
