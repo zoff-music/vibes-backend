@@ -423,14 +423,10 @@ func (s *streamSubscription) read(
 		s.key,
 		cursor,
 	)
+	streams, err := redigo.Values(reply, err)
 	if errors.Is(err, redigo.ErrNil) {
 		return []streamMessage{}, nil
 	}
-	if err != nil {
-		return nil, fmt.Errorf("error reading redis stream in read: %w", err)
-	}
-
-	streams, err := redigo.Values(reply, nil)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing stream list in read: %w", err)
 	}
