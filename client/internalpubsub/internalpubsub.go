@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"sync"
 
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
@@ -197,17 +196,30 @@ func (t *Topic) publish(msg []byte) {
 	t.mu.Unlock()
 
 	for _, subscription := range subscriptions {
-		subscription.mu.Lock()
-
-		if !subscription.closed {
-			select {
-			case subscription.messages <- msg:
-			default:
-				log.Printf("dropped message due to full buffer on topic %s subscription subscription-id %s", t.name, subscription.id)
-			}
+		if subscription.publish(msg) {
+			continue
 		}
 
-		subscription.mu.Unlock()
+		t.removeSubscription(subscription.id)
+	}
+}
+
+func (s *Subscription) publish(msg []byte) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if s.closed {
+		return false
+	}
+
+	select {
+	case s.messages <- msg:
+		return true
+	default:
+		s.closed = true
+		close(s.messages)
+
+		return false
 	}
 }
 
@@ -226,7 +238,7 @@ func (t *Topic) createSubscription() (*Subscription, error) {
 	subscription := &Subscription{
 		id:       id,
 		parent:   t,
-		messages: make(chan []byte, 32),
+		messages: make(chan []byte, subscriptionBufferSize),
 	}
 
 	t.subscriptions[id] = subscription
@@ -255,3 +267,4 @@ func generateSubscriptionID() (string, error) {
 }
 
 const adminTopicName string = "admin"
+const subscriptionBufferSize = 32
