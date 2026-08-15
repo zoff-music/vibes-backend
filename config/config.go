@@ -24,7 +24,7 @@ type Config struct {
 	DatabaseURL              string        `envconfig:"DATABASE_URL" required:"true"`
 	DatabaseMaxConns         int           `envconfig:"DATABASE_MAX_CONNECTIONS" default:"10"`
 	DatabaseMaxIdleConns     int           `envconfig:"DATABASE_MAX_IDLE_CONNECTIONS" default:"2"`
-	RedisURL                 string        `envconfig:"REDIS_URL" default:""`
+	RedisURL                 string        `envconfig:"REDIS_URL" required:"true"`
 	RateLimitEnabled         bool          `envconfig:"RATE_LIMIT_ENABLED" default:"false"`
 	RoomEventReplayMaxEvents int           `envconfig:"ROOM_EVENT_REPLAY_MAX_EVENTS" default:"1000"`
 	RoomEventReplayMaxAge    time.Duration `envconfig:"ROOM_EVENT_REPLAY_MAX_AGE" default:"2h"`
