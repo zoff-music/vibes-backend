@@ -24,7 +24,8 @@ import (
 //	@Router		/api/v1/rooms/{id}/events [get]
 func RoomEvents(
 	ips vibe.SubscriberPublisher,
-	db vibe.RoomEventParticipantStorage,
+	participants vibe.RoomEventParticipantFetcherUpdater,
+	snapshot vibe.RoomEventSnapshotFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -58,7 +59,7 @@ func RoomEvents(
 
 		lastUsersCount := -1
 		notifyUsers := func(ctx context.Context) {
-			counts, err := db.GetActiveListenerCounts(ctx, roomID, 15*time.Second)
+			counts, err := participants.GetActiveListenerCounts(ctx, roomID, 15*time.Second)
 			if err != nil {
 				log.Printf("failed to fetch active participants: %v", err)
 				return
@@ -121,44 +122,29 @@ func RoomEvents(
 			return
 		}
 
-		// Send initial heartbeat or connection established event
-		fmt.Fprintf(w, "event: connected\ndata: {\"time\": %d}\n\n", time.Now().UnixMilli())
-		flusher.Flush()
-
-		// Send an authoritative room snapshot for both first connections and
-		// reconnects. Room event delivery is intentionally ephemeral, so clients
-		// recover missed events by replacing local state with this snapshot.
-		room, err := db.GetRoom(ctx, roomID, userID)
+		connection := vibe.RoomEventConnection{Time: time.Now().UnixMilli()}
+		data, err := json.Marshal(connection)
 		if err != nil {
-			log.Printf("failed to fetch initial room: %v", err)
+			handleError(
+				w,
+				fmt.Errorf("error marshaling connection event in RoomEvents: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
 		}
-		if err == nil && room != nil && !room.IsEmpty() {
-			data, marshalErr := json.Marshal(room)
-			if marshalErr != nil {
-				log.Printf("failed to marshal initial room: %v", marshalErr)
-			}
-			if marshalErr == nil {
-				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.SettingsUpdate, data)
-				flusher.Flush()
-			}
+		err = writeRoomEvent(w, flusher, "connected", data)
+		if err != nil {
+			log.Printf("error writing connection event in RoomEvents: %v", err)
+			return
 		}
 
-		songs, err := db.GetSongs(ctx, roomID)
+		// Room event delivery is ephemeral, so every connection receives a full
+		// authoritative snapshot instead of relying on unavailable event replay.
+		err = writeRoomEventSnapshot(ctx, w, flusher, snapshot, roomID, userID)
 		if err != nil {
-			log.Printf("failed to fetch initial songs: %v", err)
-		}
-		if err == nil {
-			if songs == nil {
-				songs = []vibe.Song{}
-			}
-			data, marshalErr := json.Marshal(songs)
-			if marshalErr != nil {
-				log.Printf("failed to marshal initial songs: %v", marshalErr)
-			}
-			if marshalErr == nil {
-				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.QueueReordered, data)
-				flusher.Flush()
-			}
+			log.Printf("error writing room snapshot in RoomEvents: %v", err)
+			return
 		}
 
 		participantRegistered := false
@@ -168,7 +154,7 @@ func RoomEvents(
 		// become listeners so short probes cannot manufacture participant rows.
 		if userID != "" && !isRemoteController {
 			if !isNewSession {
-				err = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
+				err = participants.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
 				if err != nil {
 					log.Printf("failed to update participant on connect: %v", err)
 				}
@@ -185,35 +171,6 @@ func RoomEvents(
 			}()
 		}
 
-		// Send initial playback state
-		state, err := db.GetPlaybackState(ctx, roomID)
-		if err != nil {
-			log.Printf("failed to fetch initial playback state: %v", err)
-		}
-
-		if state != nil {
-			// Project position to current time if playing
-			if state.IsPlaying && state.UpdatedAt.Before(time.Now()) {
-				state.PositionMs += int(time.Since(state.UpdatedAt).Milliseconds())
-				state.UpdatedAt = time.Now()
-			}
-			state.ServerTimeMs = int(time.Now().UnixMilli())
-
-			data, err := json.Marshal(state)
-			if err != nil {
-				handleError(
-					w,
-					fmt.Errorf("error marshalling playback state: %w", err),
-					http.StatusInternalServerError,
-					true,
-				)
-				return
-			}
-
-			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.PlaybackUpdate, data)
-			flusher.Flush()
-		}
-
 		ticker := time.NewTicker(5 * time.Second)
 		defer ticker.Stop()
 
@@ -226,7 +183,7 @@ func RoomEvents(
 			case <-ticker.C:
 				// Keep-alive heartbeat AND update participant status
 				if userID != "" && !isRemoteController {
-					err = db.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
+					err = participants.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
 					if err != nil {
 						log.Printf("failed to update participant on heartbeat: %v", err)
 					}
@@ -238,7 +195,11 @@ func RoomEvents(
 					}
 				}
 
-				fmt.Fprintf(w, ": heartbeat\n\n")
+				_, err = fmt.Fprint(w, ": heartbeat\n\n")
+				if err != nil {
+					log.Printf("error writing heartbeat in RoomEvents: %v", err)
+					return
+				}
 				flusher.Flush()
 			case data, ok := <-messages:
 				if !ok {
@@ -271,9 +232,91 @@ func RoomEvents(
 
 				// payloadData is already []byte (JSON), so we can just use it.
 				// However, if we print it as %s, it works.
-				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, event.Payload)
-				flusher.Flush()
+				err = writeRoomEvent(w, flusher, event.Type, event.Payload)
+				if err != nil {
+					log.Printf("error writing event in RoomEvents: %v", err)
+					return
+				}
 			}
 		}
 	}
+}
+
+func writeRoomEventSnapshot(
+	ctx context.Context,
+	w http.ResponseWriter,
+	flusher http.Flusher,
+	snapshot vibe.RoomEventSnapshotFetcher,
+	roomID string,
+	userID string,
+) error {
+	room, err := snapshot.GetRoom(ctx, roomID, userID)
+	if err != nil {
+		return fmt.Errorf("error fetching room in writeRoomEventSnapshot: %w", err)
+	}
+	if room == nil || room.IsEmpty() {
+		return fmt.Errorf("error fetching room in writeRoomEventSnapshot: room is empty")
+	}
+	roomData, err := json.Marshal(room)
+	if err != nil {
+		return fmt.Errorf("error marshaling room in writeRoomEventSnapshot: %w", err)
+	}
+	err = writeRoomEvent(w, flusher, vibe.SettingsUpdate, roomData)
+	if err != nil {
+		return fmt.Errorf("error writing room in writeRoomEventSnapshot: %w", err)
+	}
+
+	songs, err := snapshot.GetSongs(ctx, roomID)
+	if err != nil {
+		return fmt.Errorf("error fetching songs in writeRoomEventSnapshot: %w", err)
+	}
+	if songs == nil {
+		songs = []vibe.Song{}
+	}
+	songsData, err := json.Marshal(songs)
+	if err != nil {
+		return fmt.Errorf("error marshaling songs in writeRoomEventSnapshot: %w", err)
+	}
+	err = writeRoomEvent(w, flusher, vibe.QueueReordered, songsData)
+	if err != nil {
+		return fmt.Errorf("error writing songs in writeRoomEventSnapshot: %w", err)
+	}
+
+	state, err := snapshot.GetPlaybackState(ctx, roomID)
+	if err != nil {
+		return fmt.Errorf("error fetching playback in writeRoomEventSnapshot: %w", err)
+	}
+	if state == nil {
+		return fmt.Errorf("error fetching playback in writeRoomEventSnapshot: playback is nil")
+	}
+	if state.IsPlaying && state.UpdatedAt.Before(time.Now()) {
+		state.PositionMs += int(time.Since(state.UpdatedAt).Milliseconds())
+		state.UpdatedAt = time.Now()
+	}
+	state.ServerTimeMs = int(time.Now().UnixMilli())
+	playbackData, err := json.Marshal(state)
+	if err != nil {
+		return fmt.Errorf("error marshaling playback in writeRoomEventSnapshot: %w", err)
+	}
+	err = writeRoomEvent(w, flusher, vibe.PlaybackUpdate, playbackData)
+	if err != nil {
+		return fmt.Errorf("error writing playback in writeRoomEventSnapshot: %w", err)
+	}
+
+	return nil
+}
+
+func writeRoomEvent(
+	w http.ResponseWriter,
+	flusher http.Flusher,
+	eventType string,
+	payload []byte,
+) error {
+	_, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", eventType, payload)
+	if err != nil {
+		return fmt.Errorf("error writing SSE event in writeRoomEvent: %w", err)
+	}
+	flusher.Flush()
+
+	return nil
 }

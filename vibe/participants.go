@@ -26,11 +26,8 @@ type InactiveParticipantDeleter interface {
 	DeleteInactiveParticipants(ctx context.Context, olderThan time.Duration) (int, error)
 }
 
-// RoomEventParticipantStorage defines the exact storage used by the room event handler.
-type RoomEventParticipantStorage interface {
+// RoomEventParticipantFetcherUpdater maintains listener presence for room events.
+type RoomEventParticipantFetcherUpdater interface {
 	UpdateParticipant(ctx context.Context, roomID, userID string, isActiveListener bool, isCastReceiver bool, castOwnerID string) error
 	GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (ListenerCounts, error)
-	GetPlaybackState(ctx context.Context, roomID string) (*PlaybackState, error)
-	GetRoom(ctx context.Context, roomID string, userID string) (*Room, error)
-	GetSongs(ctx context.Context, roomID string) ([]Song, error)
 }
