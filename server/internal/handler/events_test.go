@@ -138,16 +138,32 @@ func TestRoomEventsSendsAuthoritativeSnapshot(t *testing.T) {
 			},
 		},
 		{
-			name: "closes the stream when the snapshot is incomplete",
+			name: "does not send a partial snapshot when songs are unavailable",
 			storage: roomEventsStorageStub{
 				room:       &vibe.Room{ID: "electro", Name: "Electro"},
 				songsError: fmt.Errorf("songs unavailable"),
 			},
 			expectedEvents: []string{
 				"event: connected",
-				"event: settings_update",
 			},
 			unexpectedEvents: []string{
+				"event: settings_update",
+				"event: songs_update",
+				"event: playback_update",
+			},
+		},
+		{
+			name: "does not send a partial snapshot when playback is unavailable",
+			storage: roomEventsStorageStub{
+				room:          &vibe.Room{ID: "electro", Name: "Electro"},
+				songs:         []vibe.Song{{ID: "song-1", Title: "First song"}},
+				playbackError: fmt.Errorf("playback unavailable"),
+			},
+			expectedEvents: []string{
+				"event: connected",
+			},
+			unexpectedEvents: []string{
+				"event: settings_update",
 				"event: songs_update",
 				"event: playback_update",
 			},
