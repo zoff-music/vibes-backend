@@ -111,20 +111,6 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 		return nil, fmt.Errorf("error get playback state: %w", err)
 	}
 
-	// Lazy-skip check on the PUBLIC API only
-	if state.IsPlaying && state.CurrentSong != nil {
-		elapsed := time.Since(state.UpdatedAt).Milliseconds()
-		currentPosition := state.PositionMs + int(elapsed)
-
-		if state.CurrentSong.Duration > 0 && currentPosition >= state.CurrentSong.Duration*1000 {
-			newState, err := c.skipTrack(ctx, roomID, "")
-			if err != nil {
-				return nil, fmt.Errorf("error lazy skipping playback: %w", err)
-			}
-			return newState, nil
-		}
-	}
-
 	if state.CurrentSong != nil {
 		return state, nil
 	}
