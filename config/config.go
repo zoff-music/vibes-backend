@@ -52,7 +52,7 @@ type Config struct {
 
 	// AI configuration
 	AIModel                             string `envconfig:"AI_MODEL" default:"GROK:grok-4.3"`
-	GeneratedPlaylistTrackCount         int    `envconfig:"GENERATED_PLAYLIST_TRACK_COUNT" default:"60"`
+	GeneratedPlaylistTrackCount         int    `envconfig:"GENERATED_PLAYLIST_TRACK_COUNT" default:"80"`
 	GeneratedPlaylistSelectedTrackCount int    `envconfig:"GENERATED_PLAYLIST_SELECTED_TRACK_COUNT" default:"30"`
 	RoomGenerationMaxAttempts           int    `envconfig:"ROOM_GENERATION_MAX_ATTEMPTS" default:"5"`
 	RoomGenerationMaxDailyCount         int    `envconfig:"ROOM_GENERATION_MAX_DAILY_COUNT" default:"2"`
