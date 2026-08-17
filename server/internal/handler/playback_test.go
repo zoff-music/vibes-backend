@@ -149,6 +149,12 @@ func TestUpdatePlaybackStateTargetsRemoteMachine(t *testing.T) {
 			if notifier.remoteEvent.CurrentSongID != "song-1" {
 				t.Fatalf("expected song ID %q, got %q", "song-1", notifier.remoteEvent.CurrentSongID)
 			}
+			if !notifier.remoteEvent.Online {
+				t.Fatal("expected remote event to report online")
+			}
+			if !notifier.remoteEvent.Paired {
+				t.Fatal("expected remote event to report paired")
+			}
 
 			var state vibe.PlaybackState
 			err := json.NewDecoder(response.Body).Decode(&state)

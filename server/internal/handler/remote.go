@@ -126,6 +126,8 @@ func CreateRemoteControl(
 			Type:   vibe.RemoteRoomUpdate,
 			RoomID: remote.CurrentRoomID,
 			Origin: vibe.RemoteOriginMachine,
+			Online: true,
+			Paired: false,
 		}
 		err = notifier.NotifyRemoteUpdate(ctx, remote.ID, event)
 		if err != nil {
@@ -170,7 +172,6 @@ func CreateRemoteControl(
 //	@Router		/api/v1/remotes [get]
 func GetOwnedRemoteControl(
 	fetcher vibe.OwnedRemoteControlFetcher,
-	presenceTimeout time.Duration,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -220,7 +221,7 @@ func GetOwnedRemoteControl(
 			PlaybackPositionMs: remote.PlaybackPositionMs,
 			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
 			PlaybackObservedAt: remote.PlaybackObservedAt,
-			Online:             remote.IsOnline(presenceTimeout),
+			Online:             true,
 			Paired:             remote.Paired,
 		})
 		if err != nil {
@@ -254,6 +255,7 @@ func GetOwnedRemoteControl(
 //	@Router		/api/v1/remotes/{id}/sessions [post]
 func PairRemoteControl(
 	pairer vibe.RemoteControlPairer,
+	notifier vibe.RemoteEventNotifier,
 	secret string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -359,6 +361,27 @@ func PairRemoteControl(
 			return
 		}
 
+		err = notifier.NotifyRemoteUpdate(ctx, remote.ID, vibe.RemoteEvent{
+			Type:               vibe.RemoteStateUpdate,
+			RoomID:             remote.CurrentRoomID,
+			Origin:             vibe.RemoteOriginController,
+			Online:             true,
+			Paired:             true,
+			CurrentSongID:      remote.CurrentSongID,
+			PlaybackPositionMs: remote.PlaybackPositionMs,
+			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
+			PlaybackObservedAt: remote.PlaybackObservedAt,
+		})
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error notifying machine of remote pairing: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
 		http.SetCookie(w, &http.Cookie{
 			Name:     remoteSessionCookieName,
 			Value:    controllerToken,
@@ -411,7 +434,6 @@ func PairRemoteControl(
 //	@Router		/api/v1/remotes/{id} [get]
 func GetRemoteControl(
 	fetcher vibe.RemoteControlFetcher,
-	presenceTimeout time.Duration,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -475,7 +497,7 @@ func GetRemoteControl(
 			PlaybackPositionMs: remote.PlaybackPositionMs,
 			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
 			PlaybackObservedAt: remote.PlaybackObservedAt,
-			Online:             remote.IsOnline(presenceTimeout),
+			Online:             true,
 			Paired:             remote.Paired,
 		})
 		if err != nil {
@@ -614,6 +636,8 @@ func UpdateRemoteControl(
 			Type:               eventType,
 			RoomID:             remote.CurrentRoomID,
 			Origin:             origin,
+			Online:             true,
+			Paired:             remote.Paired,
 			CurrentSongID:      currentSongID,
 			PlaybackPositionMs: playbackPositionMs,
 			PlaybackIsPlaying:  playbackIsPlaying,
