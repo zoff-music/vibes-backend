@@ -341,7 +341,7 @@ func UpdatePlaybackState(
 
 		var state *vibe.PlaybackState
 
-		if session.AuthType == "remote" {
+		if session.AuthType == "remote" && room.Mode == vibe.RoomModeServer {
 			state, err = db.GetPlaybackState(ctx, roomID)
 			if err != nil {
 				handleError(
