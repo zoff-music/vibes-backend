@@ -31,7 +31,7 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms/{id}/settings", handler.UpdateRoomSettings(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoomSettings")
 	api.HandleFunc("/rooms/{id}/skips", handler.SkipSong(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("SkipSong")
 	api.HandleFunc("/rooms/{id}/states", handler.GetPlaybackState(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetPlaybackState")
-	api.HandleFunc("/rooms/{id}/states", handler.UpdatePlaybackState(s.DB, s.Redis)).Methods(http.MethodPut, http.MethodOptions).Name("UpdatePlaybackState")
+	api.HandleFunc("/rooms/{id}/states", handler.UpdatePlaybackState(s.DB, s.Redis, s.Redis)).Methods(http.MethodPut, http.MethodOptions).Name("UpdatePlaybackState")
 	api.HandleFunc("/rooms/{id}/playbackfailures", handler.ReportPlaybackFailure(s.DB, s.YouTube, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("ReportPlaybackFailure")
 	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
 	api.HandleFunc("/rooms/{id}/sessions", handler.DeleteRoomAdminSession(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRoomAdminSession")

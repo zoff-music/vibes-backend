@@ -285,6 +285,7 @@ func ReportPlaybackFailure(
 func UpdatePlaybackState(
 	db vibe.RoomGetterPlaybackUpdater,
 	notifier vibe.RoomEventNotifier,
+	remoteNotifier vibe.RemoteEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -339,6 +340,69 @@ func UpdatePlaybackState(
 		}
 
 		var state *vibe.PlaybackState
+
+		if session.AuthType == "remote" {
+			state, err = db.GetPlaybackState(ctx, roomID)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error fetching playback for remote update: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			state.PositionMs = req.PositionMs
+			if req.Action == vibe.RoomActionPlay {
+				state.IsPlaying = true
+			}
+			if req.Action == vibe.RoomActionPause {
+				state.IsPlaying = false
+			}
+			observedAt := time.Now()
+			state.UpdatedAt = observedAt
+			state.ServerTimeMs = int(observedAt.UnixMilli())
+			currentSongID := ""
+			if state.CurrentSong != nil {
+				currentSongID = state.CurrentSong.ID
+			}
+
+			err = remoteNotifier.NotifyRemoteUpdate(context.WithoutCancel(ctx), session.RemoteID, vibe.RemoteEvent{
+				Type:               vibe.RemoteStateUpdate,
+				RoomID:             roomID,
+				Origin:             vibe.RemoteOriginController,
+				CurrentSongID:      currentSongID,
+				PlaybackPositionMs: int64(state.PositionMs),
+				PlaybackIsPlaying:  state.IsPlaying,
+				PlaybackObservedAt: observedAt,
+			})
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error notifying machine of remote playback update: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			body, err := json.Marshal(state)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshalling remote playback response in update playback state handler: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write(body)
+			return
+		}
 
 		if room.Mode == vibe.RoomModeServer {
 			handleError(
