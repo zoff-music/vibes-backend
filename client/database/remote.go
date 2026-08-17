@@ -217,7 +217,6 @@ func (c *Client) prepareAuthenticateRemoteControlStmt() error {
 		FROM remote_controls
 		WHERE id = $1
 		AND controller_token_hash = $2
-		AND last_seen_at > NOW() - ($3 * INTERVAL '1 millisecond')
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing AuthenticateRemoteControlStatement: %w", err)
@@ -228,7 +227,7 @@ func (c *Client) prepareAuthenticateRemoteControlStmt() error {
 	return nil
 }
 
-func (c *Client) AuthenticateRemoteControl(ctx context.Context, remoteID, controllerTokenHash string, presenceTimeout time.Duration) (*vibe.RemoteControl, error) {
+func (c *Client) AuthenticateRemoteControl(ctx context.Context, remoteID, controllerTokenHash string) (*vibe.RemoteControl, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "AuthenticateRemoteControl")
 	defer span.End()
 
@@ -239,7 +238,6 @@ func (c *Client) AuthenticateRemoteControl(ctx context.Context, remoteID, contro
 		cctx,
 		remoteID,
 		controllerTokenHash,
-		presenceTimeout.Milliseconds(),
 	)
 
 	var row remoteControlRow

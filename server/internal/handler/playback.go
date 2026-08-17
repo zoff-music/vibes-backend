@@ -372,6 +372,8 @@ func UpdatePlaybackState(
 				Type:               vibe.RemoteStateUpdate,
 				RoomID:             roomID,
 				Origin:             vibe.RemoteOriginController,
+				Online:             true,
+				Paired:             true,
 				CurrentSongID:      currentSongID,
 				PlaybackPositionMs: int64(state.PositionMs),
 				PlaybackIsPlaying:  state.IsPlaying,

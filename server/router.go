@@ -85,11 +85,11 @@ func (s *Server) setupRoutes() {
 
 	// Remote control routes
 	api.HandleFunc("/remotes", handler.CreateRemoteControl(s.DB, s.Redis, s.Config.CookieSecret, s.Config.RemotePairingTTL)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRemoteControl")
-	api.HandleFunc("/remotes", handler.GetOwnedRemoteControl(s.DB, s.Config.RemotePresenceTimeout)).Methods(http.MethodGet, http.MethodOptions).Name("GetOwnedRemoteControl")
-	api.HandleFunc("/remotes/{id}", handler.GetRemoteControl(s.DB, s.Config.RemotePresenceTimeout)).Methods(http.MethodGet, http.MethodOptions).Name("GetRemoteControl")
+	api.HandleFunc("/remotes", handler.GetOwnedRemoteControl(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetOwnedRemoteControl")
+	api.HandleFunc("/remotes/{id}", handler.GetRemoteControl(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRemoteControl")
 	api.HandleFunc("/remotes/{id}", handler.UpdateRemoteControl(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRemoteControl")
 	api.HandleFunc("/remotes/{id}", handler.DeleteRemoteControl(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRemoteControl")
-	api.HandleFunc("/remotes/{id}/sessions", handler.PairRemoteControl(s.DB, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("PairRemoteControl")
+	api.HandleFunc("/remotes/{id}/sessions", handler.PairRemoteControl(s.DB, s.Redis, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("PairRemoteControl")
 	api.HandleFunc("/remotes/{id}/events", handler.RemoteEvents(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RemoteEvents")
 
 	// Admin routes
@@ -249,7 +249,6 @@ func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 		CastTokenSecret:            s.Config.CastTokenSecret,
 		EmbedBasePath:              s.Config.EmbedBasePath,
 		RemoteControlAuthenticator: s.DB,
-		RemotePresenceTimeout:      s.Config.RemotePresenceTimeout,
 	}
 	for _, r := range routers {
 		r.Use(sm.Middleware)
