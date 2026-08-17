@@ -72,7 +72,6 @@ type Config struct {
 	AdminPasswordPepper   string        `envconfig:"ADMIN_PASSWORD_PEPPER" default:""`
 	EmbedBasePath         string        `envconfig:"EMBED_BASE_PATH" default:"/embed"`
 	RemotePairingTTL      time.Duration `envconfig:"REMOTE_PAIRING_TTL" default:"5m"`
-	RemotePresenceTimeout time.Duration `envconfig:"REMOTE_PRESENCE_TIMEOUT" default:"30s"`
 
 	// Cast auth
 	CastTokenSecret string `envconfig:"CAST_TOKEN_SECRET" default:""`
@@ -132,9 +131,6 @@ func LoadConfig() (*Config, error) {
 	}
 	if c.RemotePairingTTL <= 0 {
 		return nil, fmt.Errorf("error validating remote pairing ttl: must be greater than zero")
-	}
-	if c.RemotePresenceTimeout <= 0 {
-		return nil, fmt.Errorf("error validating remote presence timeout: must be greater than zero")
 	}
 	if c.RoomEventReplayMaxEvents < 1 {
 		return nil, fmt.Errorf("error validating room event replay max events: must be greater than zero")
