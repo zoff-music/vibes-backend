@@ -51,8 +51,9 @@ Copy and configure the environment file:
 
 - **`cmd/server`**: Application entrypoint and dependency injection
 - **`client/`**: External integrations (Database, Redis, YouTube, Spotify, SoundCloud)
-- **`server/`**: HTTP router, middleware, and handlers
+- **`server/`**: Dependency injection, HTTP routing, middleware, and app-event wiring
 - **`server/internal/handler`**: Domain-specific HTTP handlers
+- **`server/internal/event`**: Scheduled worker handlers and app-event dispatch
 - **`vibe/`**: Core domain types and interfaces (pure Go, no dependencies)
 - **`config/`**: Configuration management and environment variables
 - **`monitoring/`**: OpenTelemetry tracing, metrics, and telemetry

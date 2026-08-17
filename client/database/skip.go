@@ -67,10 +67,15 @@ type skipVoteRow struct {
 }
 
 func (r *skipVoteRow) scanRows(rows *sql.Rows) error {
-	return rows.Scan(
+	err := rows.Scan(
 		&r.SongID,
 		&r.UserID,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning skip vote row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *skipVoteRow) toSkipVote() vibe.SkipVote {
@@ -111,7 +116,8 @@ func (c *Client) HasUserVoted(ctx context.Context, roomID, songID, userID string
 		return false, fmt.Errorf("error checking user vote: %w", err)
 	}
 
-	return row.toHasUserVoted(), nil
+	hasVoted := row.toHasUserVoted()
+	return hasVoted, nil
 }
 
 type skipVoteCountRow struct {
@@ -119,7 +125,12 @@ type skipVoteCountRow struct {
 }
 
 func (r *skipVoteCountRow) scan(row *sql.Row) error {
-	return row.Scan(&r.Count)
+	err := row.Scan(&r.Count)
+	if err != nil {
+		return fmt.Errorf("error scanning skip vote count row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *skipVoteCountRow) toHasUserVoted() bool {

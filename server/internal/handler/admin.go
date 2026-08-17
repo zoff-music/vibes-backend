@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -488,8 +487,6 @@ func AdminUpdateRoom(
 	db vibe.AdminRoomUpdaterLister,
 	notifier vibe.AdminEventNotifier,
 ) http.HandlerFunc {
-	updates := adminRoomUpdateWriter{Rooms: db, Events: notifier}
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		vars := mux.Vars(r)
@@ -551,18 +548,49 @@ func AdminUpdateRoom(
 			return
 		}
 
-		updates.write(ctx, w)
+		rooms, err := db.ListAdminRooms(ctx)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching admin rooms: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		body, err := json.Marshal(rooms)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling admin rooms: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		err = notifier.NotifyAdminUpdate(ctx, vibe.AdminEvent{
+			Type:    vibe.AdminRoomsUpdate,
+			Payload: body,
+		})
+		if err != nil {
+			log.Printf("error notifying admin rooms update: %v", err)
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
 	}
 }
 
 // AdminDeleteRoom handles DELETE /api/v1/admin/rooms/{id}
 //
 //	@Summary		Delete a room
-//	@Description	Deletes the identified room and returns the refreshed room list.
+//	@Description	Deletes the identified room and publishes the refreshed room list to administrators.
 //	@Tags		admin
-//	@Produce	json
 //	@Param		id	path		string	true	"Room ID"
-//	@Success	200	{array}		vibe.AdminRoomSummary
+//	@Success	204
 //	@Failure	400	{object}	map[string]string
 //	@Failure	404	{object}	map[string]string
 //	@Failure	500	{object}	map[string]string
@@ -571,8 +599,6 @@ func AdminDeleteRoom(
 	db vibe.AdminRoomDeleterLister,
 	notifier vibe.AdminEventNotifier,
 ) http.HandlerFunc {
-	updates := adminRoomUpdateWriter{Rooms: db, Events: notifier}
-
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		vars := mux.Vars(r)
@@ -608,49 +634,38 @@ func AdminDeleteRoom(
 			return
 		}
 
-		updates.write(ctx, w)
+		rooms, err := db.ListAdminRooms(ctx)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching admin rooms: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		body, err := json.Marshal(rooms)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling admin rooms: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		err = notifier.NotifyAdminUpdate(ctx, vibe.AdminEvent{
+			Type:    vibe.AdminRoomsUpdate,
+			Payload: body,
+		})
+		if err != nil {
+			log.Printf("error notifying admin rooms update: %v", err)
+		}
+
+		w.WriteHeader(http.StatusNoContent)
 	}
-}
-
-type adminRoomUpdateWriter struct {
-	Rooms  vibe.AdminRoomLister
-	Events vibe.AdminEventNotifier
-}
-
-func (h *adminRoomUpdateWriter) write(ctx context.Context, w http.ResponseWriter) {
-	rooms, err := h.Rooms.ListAdminRooms(ctx)
-	if err != nil {
-		handleError(
-			w,
-			fmt.Errorf("error fetching admin rooms: %w", err),
-			http.StatusInternalServerError,
-			true,
-		)
-		return
-	}
-
-	body, err := json.Marshal(rooms)
-	if err != nil {
-		handleError(
-			w,
-			fmt.Errorf("error marshaling admin rooms: %w", err),
-			http.StatusInternalServerError,
-			true,
-		)
-		return
-	}
-
-	err = h.Events.NotifyAdminUpdate(ctx, vibe.AdminEvent{
-		Type:    vibe.AdminRoomsUpdate,
-		Payload: body,
-	})
-	if err != nil {
-		log.Printf("error notifying admin rooms update: %v", err)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(body)
 }
 
 // AdminEvents handles GET /api/v1/admin/events (SSE)
@@ -737,35 +752,6 @@ func AdminEvents(
 			}
 		}
 	}
-}
-
-// ReviewAdminRooms handles scheduled admin room updates
-type ReviewAdminRooms struct {
-	DB     vibe.AdminRoomLister
-	Events vibe.AdminEventNotifier
-}
-
-// Handle fetches admin rooms and broadcasts the update
-func (h *ReviewAdminRooms) Handle(ctx context.Context, data []byte) error {
-	rooms, err := h.DB.ListAdminRooms(ctx)
-	if err != nil {
-		return fmt.Errorf("error listing admin rooms: %w", err)
-	}
-
-	payload, err := json.Marshal(rooms)
-	if err != nil {
-		return fmt.Errorf("error marshaling admin rooms: %w", err)
-	}
-
-	err = h.Events.NotifyAdminUpdate(ctx, vibe.AdminEvent{
-		Type:    vibe.AdminRoomsUpdate,
-		Payload: payload,
-	})
-	if err != nil {
-		return fmt.Errorf("error notifying admin rooms update: %w", err)
-	}
-
-	return nil
 }
 
 const adminSessionDuration = 24 * time.Hour

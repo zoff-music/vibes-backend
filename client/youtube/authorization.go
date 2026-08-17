@@ -15,7 +15,11 @@ import (
 
 // GetOAuthURL returns the URL to redirect the user to for YouTube (Google) authentication
 func (c *Client) GetOAuthURL(state, codeVerifier string) string {
-	u, _ := url.Parse("https://accounts.google.com/o/oauth2/v2/auth")
+	u := url.URL{
+		Scheme: "https",
+		Host:   "accounts.google.com",
+		Path:   "/o/oauth2/v2/auth",
+	}
 	q := u.Query()
 	q.Set("response_type", "code")
 	q.Set("client_id", c.clientID)
@@ -26,7 +30,8 @@ func (c *Client) GetOAuthURL(state, codeVerifier string) string {
 	q.Set("prompt", "consent")
 	u.RawQuery = q.Encode()
 
-	return u.String()
+	authorizationURL := u.String()
+	return authorizationURL
 }
 
 // ExchangeCode exchanges an authorization code for an access token

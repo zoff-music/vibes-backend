@@ -172,7 +172,7 @@ type adminRoomRow struct {
 }
 
 func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
-	return rows.Scan(
+	err := rows.Scan(
 		&r.ID,
 		&r.Name,
 		&r.UserCount,
@@ -181,6 +181,11 @@ func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
 		&r.HasAdminPassword,
 		&r.TotalCount,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning admin room row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *adminRoomRow) toSummary() vibe.AdminRoomSummary {

@@ -74,7 +74,8 @@ func (c *Client) CreateRemoteControl(ctx context.Context, remoteID, ownerUserID,
 		return nil, fmt.Errorf("error creating remote control: %w", err)
 	}
 
-	return row.toRemoteControl(), nil
+	remote := row.toRemoteControl()
+	return remote, nil
 }
 
 func (c *Client) prepareGetRemoteControlByOwnerStmt() error {
@@ -113,7 +114,8 @@ func (c *Client) GetRemoteControlByOwner(ctx context.Context, ownerUserID string
 		return nil, fmt.Errorf("error getting remote control by owner: %w", err)
 	}
 
-	return row.toRemoteControl(), nil
+	remote := row.toRemoteControl()
+	return remote, nil
 }
 
 func (c *Client) prepareGetRemoteControlStmt() error {
@@ -152,7 +154,8 @@ func (c *Client) GetRemoteControl(ctx context.Context, remoteID string) (*vibe.R
 		return nil, fmt.Errorf("error getting remote control: %w", err)
 	}
 
-	return row.toRemoteControl(), nil
+	remote := row.toRemoteControl()
+	return remote, nil
 }
 
 func (c *Client) preparePairRemoteControlStmt() error {
@@ -206,7 +209,8 @@ func (c *Client) PairRemoteControl(ctx context.Context, remoteID, pairingTokenHa
 		return nil, fmt.Errorf("error pairing remote control: %w", err)
 	}
 
-	return row.toRemoteControl(), nil
+	remote := row.toRemoteControl()
+	return remote, nil
 }
 
 func (c *Client) prepareAuthenticateRemoteControlStmt() error {
@@ -250,7 +254,8 @@ func (c *Client) AuthenticateRemoteControl(ctx context.Context, remoteID, contro
 		return nil, fmt.Errorf("error authenticating remote control: %w", err)
 	}
 
-	return row.toRemoteControl(), nil
+	remote := row.toRemoteControl()
+	return remote, nil
 }
 
 func (c *Client) prepareUpdateOwnedRemoteControlStmt() error {
@@ -304,7 +309,8 @@ func (c *Client) UpdateOwnedRemoteControl(ctx context.Context, remoteID, ownerUs
 		return nil, fmt.Errorf("error updating owned remote control: %w", err)
 	}
 
-	return row.toRemoteControl(), nil
+	remote := row.toRemoteControl()
+	return remote, nil
 }
 
 func (c *Client) prepareUpdatePairedRemoteControlStmt() error {
@@ -352,7 +358,8 @@ func (c *Client) UpdatePairedRemoteControl(ctx context.Context, remoteID string,
 		return nil, fmt.Errorf("error updating paired remote control: %w", err)
 	}
 
-	return row.toRemoteControl(), nil
+	remote := row.toRemoteControl()
+	return remote, nil
 }
 
 func (c *Client) prepareDeleteRemoteControlStmt() error {
@@ -398,7 +405,7 @@ type remoteControlRow struct {
 }
 
 func (r *remoteControlRow) scan(row *sql.Row) error {
-	return row.Scan(
+	err := row.Scan(
 		&r.ID,
 		&r.OwnerUserID,
 		&r.CurrentRoomID,
@@ -410,6 +417,11 @@ func (r *remoteControlRow) scan(row *sql.Row) error {
 		&r.PairingExpiresAt,
 		&r.LastSeenAt,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning remote control row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *remoteControlRow) toRemoteControl() *vibe.RemoteControl {

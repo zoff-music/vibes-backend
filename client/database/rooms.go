@@ -77,7 +77,8 @@ func (c *Client) processNextAbandonedHost(ctx context.Context) (*vibe.RoomHostIn
 		return nil, fmt.Errorf("error scanning abandoned host: %w", err)
 	}
 
-	return row.toRoomHostInfo(), nil
+	hostInfo := row.toRoomHostInfo()
+	return hostInfo, nil
 }
 
 type abandonedHostRow struct {
@@ -551,7 +552,7 @@ type roomRow struct {
 }
 
 func (r *roomRow) scanRow(row *sql.Row) error {
-	return row.Scan(
+	err := row.Scan(
 		&r.ID,
 		&r.Name,
 		&r.Mode,
@@ -573,6 +574,11 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.GenerationCount,
 		&r.GenerationError,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning room row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *roomRow) toRoom(enabledProviders []string) (*vibe.Room, error) {
@@ -689,7 +695,12 @@ type activeSourceRow struct {
 }
 
 func (a *activeSourceRow) scan(rows *sql.Rows) error {
-	return rows.Scan(&a.Source)
+	err := rows.Scan(&a.Source)
+	if err != nil {
+		return fmt.Errorf("error scanning active source row: %w", err)
+	}
+
+	return nil
 }
 
 func (a *activeSourceRow) toSource() string {
@@ -859,7 +870,12 @@ type createRoomRow struct {
 }
 
 func (r *createRoomRow) scan(row *sql.Row) error {
-	return row.Scan(&r.ID)
+	err := row.Scan(&r.ID)
+	if err != nil {
+		return fmt.Errorf("error scanning created room row: %w", err)
+	}
+
+	return nil
 }
 
 // prepareUpdateRoomStmt prepares the UpdateRoomStatement.

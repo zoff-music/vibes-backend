@@ -105,7 +105,7 @@ type songRow struct {
 }
 
 func (r *songRow) scanRows(rows *sql.Rows) error {
-	return rows.Scan(
+	err := rows.Scan(
 		&r.ID,
 		&r.RoomID,
 		&r.SourceType,
@@ -121,10 +121,15 @@ func (r *songRow) scanRows(rows *sql.Rows) error {
 		&r.AddedAt,
 		&r.VoteCount,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning song row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *songRow) scan(row *sql.Row) error {
-	return row.Scan(
+	err := row.Scan(
 		&r.ID,
 		&r.RoomID,
 		&r.SourceType,
@@ -140,6 +145,11 @@ func (r *songRow) scan(row *sql.Row) error {
 		&r.AddedAt,
 		&r.VoteCount,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning song row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *songRow) toSong() vibe.Song {
@@ -335,7 +345,8 @@ func (c *Client) ClaimSongMetadataRefresh(
 		)
 	}
 
-	return refreshRow.toSongMetadataRefresh(), nil
+	refresh := refreshRow.toSongMetadataRefresh()
+	return refresh, nil
 }
 
 type songMetadataRefreshRow struct {
@@ -658,7 +669,7 @@ type addSongRow struct {
 }
 
 func (r *addSongRow) scan(row *sql.Row) error {
-	return row.Scan(
+	err := row.Scan(
 		&r.Result,
 		&r.ID,
 		&r.RoomID,
@@ -675,6 +686,11 @@ func (r *addSongRow) scan(row *sql.Row) error {
 		&r.AddedAt,
 		&r.VoteCount,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning added song row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *addSongRow) toSong() vibe.Song {
@@ -811,7 +827,12 @@ type voteSongRow struct {
 }
 
 func (r *voteSongRow) scan(row *sql.Row) error {
-	return row.Scan(&r.Outcome)
+	err := row.Scan(&r.Outcome)
+	if err != nil {
+		return fmt.Errorf("error scanning song vote row: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) prepareClearVotesSongStmt() error {

@@ -138,9 +138,6 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 // It also makes sure that the server gracefully shuts down on exit.
 // Returns an error if an error occurs.
 func (s *Server) Serve(ctx context.Context, errc chan<- error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Serve")
-	defer span.End()
-
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -154,7 +151,7 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 
 	go s.serveHTTP(ctx, errc)
 	go s.serveInternalHTTP(ctx, errc)
-	go s.subscribeAndListen(ctx, errc)
+	go s.subscribeAndListen(ctx)
 
 	log.Println("Ready")
 
@@ -171,9 +168,6 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 }
 
 func (s *Server) serveInternalHTTP(ctx context.Context, errc chan<- error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "serveInternalHTTP")
-	defer span.End()
-
 	go func(ctx context.Context, httpServ *http.Server) {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -202,9 +196,6 @@ func (s *Server) serveInternalHTTP(ctx context.Context, errc chan<- error) {
 }
 
 func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "serveHTTP")
-	defer span.End()
-
 	go func(ctx context.Context, httpServ *http.Server) {
 		stop := make(chan os.Signal, 1)
 		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
@@ -232,10 +223,7 @@ func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
 	log.Println("HTTP server closed")
 }
 
-func (s *Server) subscribeAndListen(ctx context.Context, errc chan<- error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "subscribeAndListen")
-	defer span.End()
-
+func (s *Server) subscribeAndListen(ctx context.Context) {
 	for _, e := range event.GetAppEvents(
 		s.DB,
 		s.Redis,

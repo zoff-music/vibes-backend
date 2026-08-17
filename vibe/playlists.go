@@ -54,7 +54,8 @@ func ResolveSoundCloudPlaylistURL(value string) (string, error) {
 	providerURL.RawQuery = ""
 	providerURL.Fragment = ""
 
-	return providerURL.String(), nil
+	url := providerURL.String()
+	return url, nil
 }
 
 type MusicPlaylistFetcher interface {

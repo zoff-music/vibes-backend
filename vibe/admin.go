@@ -207,7 +207,7 @@ type AdminRoomUpdaterLister interface {
 	AdminRoomUpdater
 }
 
-// AdminRoomDeleterLister deletes a room and lists the resulting room state.
+// AdminRoomDeleterLister deletes a room and lists the state published to administrators.
 type AdminRoomDeleterLister interface {
 	AdminRoomLister
 	AdminRoomDeleter

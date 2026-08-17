@@ -116,7 +116,8 @@ func (c *Client) CacheAdminSearchUsage(
 }
 
 func (c *Client) adminSearchUsageCacheKey() string {
-	return c.getKeyWithPrefix("admin:searches:usage")
+	key := c.getKeyWithPrefix("admin:searches:usage")
+	return key
 }
 
 const adminUsageCacheExpiration = 30 * time.Second
