@@ -108,16 +108,22 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 			thumbnailURL = item.Snippet.Thumbnails.Default.URL
 		}
 
-		viewCount, _ := strconv.ParseUint(
+		viewCount, err := strconv.ParseUint(
 			videoItem.Statistics.ViewCount,
 			10,
 			64,
 		)
-		likeCount, _ := strconv.ParseUint(
+		if err != nil {
+			viewCount = 0
+		}
+		likeCount, err := strconv.ParseUint(
 			videoItem.Statistics.LikeCount,
 			10,
 			64,
 		)
+		if err != nil {
+			likeCount = 0
+		}
 		tracks = append(tracks, vibe.MusicTrack{
 			ID:                  item.ID.VideoID,
 			Source:              vibe.SourceTypeYouTube,

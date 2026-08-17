@@ -140,6 +140,23 @@ func TestUpdatePlaybackStateTargetsRemoteMachine(t *testing.T) {
 			if notifier.remoteID != "remote-1" {
 				t.Fatalf("expected remote ID %q, got %q", "remote-1", notifier.remoteID)
 			}
+			if notifier.remoteEvent.Type != vibe.RemoteStateUpdate {
+				t.Fatalf(
+					"expected event type %q, got %q",
+					vibe.RemoteStateUpdate,
+					notifier.remoteEvent.Type,
+				)
+			}
+			if notifier.remoteEvent.Origin != vibe.RemoteOriginController {
+				t.Fatalf(
+					"expected event origin %q, got %q",
+					vibe.RemoteOriginController,
+					notifier.remoteEvent.Origin,
+				)
+			}
+			if notifier.remoteEvent.RoomID != "electro" {
+				t.Fatalf("expected room ID %q, got %q", "electro", notifier.remoteEvent.RoomID)
+			}
 			if notifier.remoteEvent.PlaybackIsPlaying != tt.expectedIsPlaying {
 				t.Fatalf("expected playing state %t, got %t", tt.expectedIsPlaying, notifier.remoteEvent.PlaybackIsPlaying)
 			}

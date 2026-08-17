@@ -156,7 +156,8 @@ func (c *Client) GetAccessToken(ctx context.Context, userID, provider string) (*
 		}
 		return nil, fmt.Errorf("error in db: get access token: %w", err)
 	}
-	return row.toAccessToken(), nil
+	token := row.toAccessToken()
+	return token, nil
 }
 
 type accessTokenRow struct {
@@ -169,7 +170,7 @@ type accessTokenRow struct {
 }
 
 func (a *accessTokenRow) scan(rows *sql.Row) error {
-	return rows.Scan(
+	err := rows.Scan(
 		&a.UserID,
 		&a.Provider,
 		&a.AccessToken,
@@ -177,6 +178,11 @@ func (a *accessTokenRow) scan(rows *sql.Row) error {
 		&a.ExpiresAt,
 		&a.RefreshExpiresAt,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning access token row: %w", err)
+	}
+
+	return nil
 }
 
 func (a *accessTokenRow) toAccessToken() *vibe.AccessToken {
@@ -316,7 +322,8 @@ func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (*
 		return nil, fmt.Errorf("error in db: validate pending oauth state: %w", err)
 	}
 
-	return row.toPendingOAuthState(), nil
+	pendingState := row.toPendingOAuthState()
+	return pendingState, nil
 }
 
 type pendingOAuthStateRow struct {
@@ -325,10 +332,15 @@ type pendingOAuthStateRow struct {
 }
 
 func (p *pendingOAuthStateRow) scan(row *sql.Row) error {
-	return row.Scan(
+	err := row.Scan(
 		&p.UserID,
 		&p.CodeVerifier,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning pending OAuth state row: %w", err)
+	}
+
+	return nil
 }
 
 func (p *pendingOAuthStateRow) toPendingOAuthState() *vibe.PendingOAuthState {
