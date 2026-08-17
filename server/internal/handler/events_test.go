@@ -158,7 +158,7 @@ func TestRoomEventsSendsAuthoritativeSnapshot(t *testing.T) {
 			name: "does not send a partial snapshot when songs are unavailable",
 			storage: roomEventsStorageStub{
 				room:       &vibe.Room{ID: "electro", Name: "Electro"},
-				songsError: fmt.Errorf("songs unavailable"),
+				songsError: fmt.Errorf("error songs unavailable"),
 			},
 			expectedEvents: []string{
 				"event: connected",
@@ -174,7 +174,7 @@ func TestRoomEventsSendsAuthoritativeSnapshot(t *testing.T) {
 			storage: roomEventsStorageStub{
 				room:          &vibe.Room{ID: "electro", Name: "Electro"},
 				songs:         []vibe.Song{{ID: "song-1", Title: "First song"}},
-				playbackError: fmt.Errorf("playback unavailable"),
+				playbackError: fmt.Errorf("error playback unavailable"),
 			},
 			expectedEvents: []string{
 				"event: connected",

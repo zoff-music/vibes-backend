@@ -325,7 +325,7 @@ func (r *eventStreams) subscribe(
 	subscriptionContext, cancel := context.WithCancel(ctx)
 	subscription := &streamSubscription{
 		cancel:     cancel,
-		done:       make(chan struct{}),
+		done:       make(chan bool),
 		key:        replayKey(topicName),
 		messages:   make(chan []byte, roomEventSubscriptionBufferSize),
 		pool:       r.pool,
@@ -340,7 +340,7 @@ func (r *eventStreams) subscribe(
 
 type streamSubscription struct {
 	cancel     context.CancelFunc
-	done       chan struct{}
+	done       chan bool
 	key        string
 	messages   chan []byte
 	once       sync.Once

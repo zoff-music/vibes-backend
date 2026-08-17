@@ -261,9 +261,10 @@ func (c *Client) searchCacheKey(source string, query string) string {
 
 func (c *Client) musicTrackCacheKey(source string, sourceID string) string {
 	hash := sha256.Sum256([]byte(sourceID))
-	return c.getKeyWithPrefix(
+	key := c.getKeyWithPrefix(
 		"track:" + source + ":" + hex.EncodeToString(hash[:]),
 	)
+	return key
 }
 
 const searchCacheExpiration = 3 * 24 * time.Hour

@@ -66,7 +66,8 @@ func (r AddSongRequest) CanonicalProviderURL() (string, error) {
 		return "", fmt.Errorf("error validating soundcloud provider URL")
 	}
 
-	return providerURL.String(), nil
+	url := providerURL.String()
+	return url, nil
 }
 
 func ResolveSoundCloudTrackURL(value string) (string, error) {
@@ -90,7 +91,8 @@ func ResolveSoundCloudTrackURL(value string) (string, error) {
 	providerURL.RawQuery = ""
 	providerURL.Fragment = ""
 
-	return providerURL.String(), nil
+	url := providerURL.String()
+	return url, nil
 }
 
 // AddSongResult is the result of adding a song or voting on an existing duplicate.

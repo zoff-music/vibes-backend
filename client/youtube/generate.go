@@ -329,8 +329,14 @@ func (c *Client) getGeneratedTracks(
 				thumbnailURL = item.Snippet.Thumbnails.Default.URL
 			}
 
-			viewCount, _ := strconv.ParseUint(item.Statistics.ViewCount, 10, 64)
-			likeCount, _ := strconv.ParseUint(item.Statistics.LikeCount, 10, 64)
+			viewCount, err := strconv.ParseUint(item.Statistics.ViewCount, 10, 64)
+			if err != nil {
+				viewCount = 0
+			}
+			likeCount, err := strconv.ParseUint(item.Statistics.LikeCount, 10, 64)
+			if err != nil {
+				likeCount = 0
+			}
 			tracks[item.ID] = vibe.GeneratedTrack{
 				YouTubeID:           item.ID,
 				Title:               html.UnescapeString(item.Snippet.Title),

@@ -95,7 +95,8 @@ func generateAdminPasswordInput(password string, pepper string) []byte {
 	digest := hmac.New(sha256.New, []byte(pepper))
 	_, _ = digest.Write([]byte(password))
 
-	return digest.Sum(nil)
+	hash := digest.Sum(nil)
+	return hash
 }
 
 func parseAdminPasswordHash(encodedHash string) (*adminPasswordHash, error) {

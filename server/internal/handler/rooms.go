@@ -755,7 +755,16 @@ func CreateSession(
 			Room:      room,
 		}
 
-		body, _ := json.Marshal(resp)
+		body, err := json.Marshal(resp)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling room session response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
