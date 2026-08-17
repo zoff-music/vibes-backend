@@ -24,7 +24,6 @@ type SessionMiddleware struct {
 	CastTokenSecret            string
 	EmbedBasePath              string
 	RemoteControlAuthenticator vibe.RemoteControlAuthenticator
-	RemotePresenceTimeout      time.Duration
 }
 
 // Middleware extracts the appropriate session cookie or creates a new one.
@@ -99,7 +98,6 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 				r.Context(),
 				remoteID,
 				controllerTokenHash,
-				m.RemotePresenceTimeout,
 			)
 			if err != nil {
 				log.Printf("SessionMiddleware: error authenticating remote control: %v", err)

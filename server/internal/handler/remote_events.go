@@ -111,6 +111,8 @@ func RemoteEvents(
 			Type:               vibe.RemoteStateUpdate,
 			RoomID:             remote.CurrentRoomID,
 			Origin:             vibe.RemoteOriginMachine,
+			Online:             true,
+			Paired:             remote.Paired,
 			CurrentSongID:      remote.CurrentSongID,
 			PlaybackPositionMs: remote.PlaybackPositionMs,
 			PlaybackIsPlaying:  remote.PlaybackIsPlaying,

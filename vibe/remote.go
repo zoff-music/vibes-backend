@@ -22,10 +22,6 @@ func (r *RemoteControl) IsEmpty() bool {
 	return r.ID == ""
 }
 
-func (r *RemoteControl) IsOnline(timeout time.Duration) bool {
-	return r.LastSeenAt.After(time.Now().Add(-timeout))
-}
-
 type RemotePairing struct {
 	RemoteControl
 	PairingToken string `json:"pairingToken"`
@@ -65,6 +61,8 @@ type RemoteEvent struct {
 	Type               string    `json:"type"`
 	RoomID             string    `json:"roomId"`
 	Origin             string    `json:"origin"`
+	Online             bool      `json:"online"`
+	Paired             bool      `json:"paired"`
 	CurrentSongID      string    `json:"currentSongId"`
 	PlaybackPositionMs int64     `json:"playbackPositionMs"`
 	PlaybackIsPlaying  bool      `json:"playbackIsPlaying"`
@@ -93,7 +91,7 @@ type RemoteControlPairer interface {
 }
 
 type RemoteControlAuthenticator interface {
-	AuthenticateRemoteControl(ctx context.Context, remoteID, controllerTokenHash string, presenceTimeout time.Duration) (*RemoteControl, error)
+	AuthenticateRemoteControl(ctx context.Context, remoteID, controllerTokenHash string) (*RemoteControl, error)
 }
 
 type OwnedRemoteControlUpdater interface {
