@@ -66,13 +66,18 @@ type userRow struct {
 }
 
 func (r *userRow) scan(row *sql.Row) error {
-	return row.Scan(
+	err := row.Scan(
 		&r.ID,
 		&r.RoomID,
 		&r.IsAdmin,
 		&r.JoinedAt,
 		&r.LastSeenAt,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning user row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *userRow) toUser() (*vibe.User, error) {
@@ -140,7 +145,12 @@ type createdUserRow struct {
 }
 
 func (c *createdUserRow) scan(row *sql.Row) error {
-	return row.Scan(&c.ID)
+	err := row.Scan(&c.ID)
+	if err != nil {
+		return fmt.Errorf("error scanning created user row: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) prepareClearRoomAdminStmt() error {

@@ -1,6 +1,7 @@
 # Vibez API Contract
 
-Complete API specification for frontend-backend communication.
+High-level API contract for frontend-backend communication. The generated
+Swagger document at `/api/swagger/` is the exhaustive route and schema reference.
 
 ---
 
@@ -222,6 +223,14 @@ available.
 
 #### List All Rooms
 `GET /admin/rooms`
+
+---
+
+#### Delete Room
+`DELETE /admin/rooms/{id}`
+
+Returns `204 No Content` and publishes the refreshed room list through the admin
+event stream.
 
 ---
 

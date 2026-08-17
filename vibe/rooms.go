@@ -88,6 +88,11 @@ type RoomHostInfo struct {
 	NewHostID string
 }
 
+type NewHostUpdate struct {
+	UserID  string `json:"userId"`
+	Message string `json:"message"`
+}
+
 // PublicRoom is a password-protected room with active listeners.
 type PublicRoom struct {
 	ID            string `json:"id"`

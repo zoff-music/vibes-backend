@@ -28,7 +28,16 @@ import (
 func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		state := generateRandomString(32)
+		state, err := generateRandomString(32)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error generating OAuth state: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
 
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
@@ -41,9 +50,18 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 			return
 		}
 
-		codeVerifier := generateRandomString(43) // length between 43 and 128 for PKCE
+		codeVerifier, err := generateRandomString(43) // length between 43 and 128 for PKCE
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error generating PKCE code verifier: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
 
-		err := db.SavePendingOAuthState(ctx, session.UserID, state, codeVerifier)
+		err = db.SavePendingOAuthState(ctx, session.UserID, state, codeVerifier)
 		if err != nil {
 			handleError(
 				w,
@@ -285,8 +303,13 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 	}
 }
 
-func generateRandomString(n int) string {
+func generateRandomString(n int) (string, error) {
 	b := make([]byte, n)
-	_, _ = rand.Read(b)
-	return base64.URLEncoding.EncodeToString(b)
+	_, err := rand.Read(b)
+	if err != nil {
+		return "", fmt.Errorf("error reading cryptographic random bytes: %w", err)
+	}
+
+	value := base64.URLEncoding.EncodeToString(b)
+	return value, nil
 }

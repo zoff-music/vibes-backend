@@ -126,7 +126,7 @@ type participantRow struct {
 }
 
 func (p *participantRow) scan(rows *sql.Rows) error {
-	return rows.Scan(
+	err := rows.Scan(
 		&p.RoomID,
 		&p.UserID,
 		&p.LastSeenAt,
@@ -134,6 +134,11 @@ func (p *participantRow) scan(rows *sql.Rows) error {
 		&p.IsCast,
 		&p.CastOwner,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning participant row: %w", err)
+	}
+
+	return nil
 }
 
 func (p *participantRow) toParticipant() vibe.Participant {
@@ -180,7 +185,8 @@ func (c *Client) GetActiveListenerCounts(ctx context.Context, roomID string, act
 		return vibe.ListenerCounts{}, fmt.Errorf("error scanning listener counts: %w", err)
 	}
 
-	return listenerCountsRow.toListenerCounts(), nil
+	listenerCounts := listenerCountsRow.toListenerCounts()
+	return listenerCounts, nil
 }
 
 type listenerCountsRow struct {
@@ -189,10 +195,15 @@ type listenerCountsRow struct {
 }
 
 func (l *listenerCountsRow) scan(row *sql.Row) error {
-	return row.Scan(
+	err := row.Scan(
 		&l.ActiveListeners,
 		&l.ActiveCastReceivers,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning listener counts row: %w", err)
+	}
+
+	return nil
 }
 
 func (l *listenerCountsRow) toListenerCounts() vibe.ListenerCounts {

@@ -116,5 +116,6 @@ func (c *Client) CacheAdminListenerUsage(
 }
 
 func (c *Client) adminListenerUsageCacheKey() string {
-	return c.getKeyWithPrefix("admin:listeners:usage")
+	key := c.getKeyWithPrefix("admin:listeners:usage")
+	return key
 }

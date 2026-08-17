@@ -132,13 +132,18 @@ type playbackStateRow struct {
 }
 
 func (r *playbackStateRow) scan(row *sql.Row) error {
-	return row.Scan(
+	err := row.Scan(
 		&r.RoomID,
 		&r.CurrentSongID,
 		&r.IsPlaying,
 		&r.PositionMs,
 		&r.UpdatedAt,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning playback state row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
@@ -162,7 +167,7 @@ type playbackSongRow struct {
 }
 
 func (r *playbackSongRow) scan(row *sql.Row) error {
-	return row.Scan(
+	err := row.Scan(
 		&r.PlaybackRoomID,
 		&r.PlaybackCurrentSongID,
 		&r.PlaybackIsPlaying,
@@ -183,6 +188,11 @@ func (r *playbackSongRow) scan(row *sql.Row) error {
 		&r.Song.AddedAt,
 		&r.Song.VoteCount,
 	)
+	if err != nil {
+		return fmt.Errorf("error scanning playback song row: %w", err)
+	}
+
+	return nil
 }
 
 func (r *playbackSongRow) toPlaybackState() (*vibe.PlaybackState, error) {
