@@ -131,10 +131,6 @@
   <text class="title" x="1005" y="234">SoundCloud</text>
   <text class="detail" x="1005" y="257">Search · metadata · playback</text>
 
-  <rect class="node external" x="868" y="305" width="274" height="70" rx="9"/>
-  <text class="title" x="1005" y="334">Spotify</text>
-  <text class="detail" x="1005" y="357">Search · metadata · playback</text>
-
   <rect class="node external" x="868" y="405" width="274" height="70" rx="9"/>
   <text class="title" x="1005" y="434">Playlist-generation providers</text>
   <text class="detail" x="1005" y="457">xAI Grok · Google Gemini</text>

@@ -42,7 +42,7 @@ func DefaultRoomSettings() RoomSettings {
 		RemoveOnPlay:      false,
 		LoopQueue:         true,
 		AllowDuplicates:   false,
-		EnabledSources:    []string{"youtube", "spotify", "soundcloud"},
+		EnabledSources:    []string{"youtube", "soundcloud"},
 		OnlyAdminAddSongs: false,
 		Public:            false,
 	}

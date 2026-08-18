@@ -57,20 +57,13 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/soundcloud/tracks/{id}", handler.GetSoundCloudTrack(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudTrack")
 	api.HandleFunc("/soundcloud/playlists", handler.ResolveSoundCloudPlaylist(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudPlaylist")
 
-	// Spotify search routes
-	api.HandleFunc("/spotify/search", handler.SearchSpotify(s.Spotify, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSpotify")
-	api.HandleFunc("/spotify/tracks/{id}", handler.GetSpotifyTrack(s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyTrack")
-	api.HandleFunc("/spotify/playlists/{id}", handler.GetMusicPlaylist(s.Spotify, s.Redis, vibe.SourceTypeSpotify)).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyPlaylist")
-	api.HandleFunc("/tokens/spotify", handler.GetToken(s.DB, s.Spotify, "spotify")).Methods(http.MethodGet, http.MethodOptions).Name("GetSpotifyToken")
 	api.HandleFunc("/tokens/soundcloud", handler.GetToken(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudToken")
 	api.HandleFunc("/tokens/youtube", handler.GetToken(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubeToken")
 
 	// Authorization routes
-	api.HandleFunc("/authorizations/spotify", handler.Authorize(s.DB, s.Spotify)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
 	api.HandleFunc("/authorizations/soundcloud", handler.Authorize(s.DB, s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
 	api.HandleFunc("/authorizations/youtube", handler.Authorize(s.DB, s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
 	// Callbacks
-	api.HandleFunc("/callbacks/spotify", handler.OAuthCallback(s.DB, s.Spotify, "spotify")).Methods(http.MethodGet, http.MethodOptions).Name("SpotifyCallback")
 	api.HandleFunc("/callbacks/soundcloud", handler.OAuthCallback(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("SoundCloudCallback")
 	api.HandleFunc("/callbacks/youtube", handler.OAuthCallback(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("YouTubeCallback")
 
@@ -173,16 +166,8 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 				IPLimit: 30,
 			},
 			"ResolveSoundCloudPlaylist": {Rate: time.Minute, Limit: 10},
-			"SearchSpotify": {
-				Rate:    time.Second,
-				Limit:   1,
-				IPLimit: 3,
-			},
-			"GetSpotifyTrack":    {Rate: time.Minute, Limit: 120},
-			"GetSpotifyPlaylist": {Rate: time.Minute, Limit: 10},
-			"GetSpotifyToken":    {Rate: time.Minute, Limit: 60},
-			"GetSoundCloudToken": {Rate: time.Minute, Limit: 60},
-			"GetYouTubeToken":    {Rate: time.Minute, Limit: 60},
+			"GetSoundCloudToken":        {Rate: time.Minute, Limit: 60},
+			"GetYouTubeToken":           {Rate: time.Minute, Limit: 60},
 			"CreateGeneratedRoom": {
 				Bucket:      "RoomGeneration",
 				Rate:        10 * time.Minute,
@@ -200,7 +185,6 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 				GlobalLimit: 1,
 			},
 			"Authorize":             {Rate: 10 * time.Minute, Limit: 20},
-			"SpotifyCallback":       {Rate: 10 * time.Minute, Limit: 30},
 			"SoundCloudCallback":    {Rate: 10 * time.Minute, Limit: 30},
 			"YouTubeCallback":       {Rate: 10 * time.Minute, Limit: 30},
 			"GetProviders":          {Rate: time.Minute, Limit: 120},

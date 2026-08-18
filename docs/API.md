@@ -20,7 +20,7 @@ Production: https://api.vibez.app/api/v1
 - **Regular User**: Anonymous session auto-created via middleware on first request
 - **Global Admin**: Password-based authentication via `POST /admin/sessions`
 - **Session Storage**: HTTP-only cookie with UUID-based user ID
-- **OAuth**: Spotify, YouTube, SoundCloud via OAuth 2.0 flow
+- **OAuth**: YouTube and SoundCloud via OAuth 2.0 flow
 
 ---
 
@@ -63,7 +63,7 @@ Production: https://api.vibez.app/api/v1
     "removeOnPlay": true,
     "loopQueue": false,
     "allowDuplicates": false,
-    "enabledSources": ["youtube", "spotify", "soundcloud"],
+    "enabledSources": ["youtube", "soundcloud"],
     "onlyAdminAddSongs": false
   }
 }
@@ -182,7 +182,7 @@ available.
 ### Music Search & Track Details
 
 #### Search Music
-`GET /{youtube|spotify|soundcloud}/search?q=query`
+`GET /{youtube|soundcloud}/search?q=query`
 
 #### Get Track Details
 `GET /{youtube|videos|tracks}/{id}`
@@ -242,7 +242,7 @@ event stream.
 ## Data Types
 
 ### SourceType
-`"youtube" | "spotify" | "soundcloud"`
+`"youtube" | "soundcloud"`
 
 ### RoomMode
 `"server" | "host"`
