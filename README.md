@@ -5,7 +5,7 @@ Go API backend for the Vibes collaborative music queue.
 ## Features
 
 - **Real-time Sync**: Server-Sent Events (SSE) for low-latency state distribution
-- **Provider Aggregator**: Unified API for YouTube, Spotify, and SoundCloud
+- **Provider Aggregator**: Unified API for YouTube and SoundCloud
 - **PostgreSQL Storage**: Atomic database operations through prepared statements
 - **OAuth2 Flow**: Centralized authorization management for music providers
 - **OpenTelemetry**: Comprehensive monitoring with metrics and tracing
@@ -43,14 +43,13 @@ Copy and configure the environment file:
 # - GEMINI_API_KEY (required when Gemini is selected for AI-generated rooms)
 # - AI_MODEL (optional, PROVIDER:model format; defaults to GROK:grok-4.3)
 #   Examples: GROK:grok-4.5, GEMINI:gemini-3.6-flash
-# - SPOTIFY_CLIENT_ID, SPOTIFY_CLIENT_SECRET (optional)
 # - SOUNDCLOUD_CLIENT_ID, SOUNDCLOUD_CLIENT_SECRET (optional)
 ```
 
 ## Architecture
 
 - **`cmd/server`**: Application entrypoint and dependency injection
-- **`client/`**: External integrations (Database, Redis, YouTube, Spotify, SoundCloud)
+- **`client/`**: External integrations (Database, Redis, YouTube, SoundCloud)
 - **`server/`**: Dependency injection, HTTP routing, middleware, and app-event wiring
 - **`server/internal/handler`**: Domain-specific HTTP handlers
 - **`server/internal/event`**: Scheduled worker handlers and app-event dispatch

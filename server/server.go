@@ -21,7 +21,6 @@ import (
 	"github.com/zoff-music/vibes-backend/client/grok"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
-	"github.com/zoff-music/vibes-backend/client/spotify"
 	"github.com/zoff-music/vibes-backend/client/youtube"
 	"github.com/zoff-music/vibes-backend/config"
 	"github.com/zoff-music/vibes-backend/monitoring/metrics"
@@ -39,7 +38,6 @@ type Server struct {
 	Redis          *redisclient.Client
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
-	Spotify        *spotify.Client
 	AI             vibe.PlaylistGenerator
 	Router         *mux.Router
 	InternalRouter *mux.Router
@@ -77,12 +75,6 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("error initializing soundcloud client: %w", err)
 	}
 
-	var spotifyClient spotify.Client
-	err = spotifyClient.Init(ctx, config)
-	if err != nil {
-		return fmt.Errorf("error initializing spotify client: %w", err)
-	}
-
 	var grokClient grok.Client
 	err = grokClient.Init(ctx, config)
 	if err != nil {
@@ -113,7 +105,6 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.Redis = &redisClient
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
-	s.Spotify = &spotifyClient
 	s.AI = ai
 	s.Router = mux.NewRouter()
 	s.InternalRouter = mux.NewRouter()
@@ -228,7 +219,6 @@ func (s *Server) subscribeAndListen(ctx context.Context) {
 		s.DB,
 		s.Redis,
 		s.SoundCloud,
-		s.Spotify,
 		s.YouTube,
 		s.AI,
 		s.Config.EnabledProviders(),

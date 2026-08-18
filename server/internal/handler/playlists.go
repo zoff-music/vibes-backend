@@ -24,7 +24,6 @@ import (
 //	@Failure	400	{object}	map[string]string
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/youtube/playlists/{id} [get]
-//	@Router		/api/v1/spotify/playlists/{id} [get]
 func GetMusicPlaylist(
 	fetcher vibe.MusicPlaylistFetcher,
 	cache vibe.CachedMusicTrackCreator,

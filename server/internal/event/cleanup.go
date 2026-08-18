@@ -53,41 +53,6 @@ func (h *CleanupExpiredTokens) Handle(ctx context.Context, _ []byte) error {
 	return nil
 }
 
-// RefreshSpotifyTokens refreshes expired Spotify access tokens
-type RefreshSpotifyTokens struct {
-	DB       vibe.ExpiredTokenClaimUpdater
-	Provider vibe.TokenRefresher
-}
-
-// Handle refreshes the next expired Spotify token
-func (h *RefreshSpotifyTokens) Handle(ctx context.Context, _ []byte) error {
-	token, err := h.DB.ClaimAndGetExpiredTokenForRefresh(ctx, "spotify")
-	if err != nil {
-		return fmt.Errorf("error claiming expired token for refresh in spotify handler: %w", err)
-	}
-
-	newToken, err := h.Provider.RefreshToken(ctx, token.RefreshToken)
-	if err != nil {
-		log.Printf("Failed to refresh Spotify token for user %s: %v", token.UserID, err)
-		return nil // Don't return error to continue processing other tokens
-	}
-
-	expiresAt := time.Now().Add(time.Duration(newToken.ExpiresIn) * time.Second)
-	// Spotify refresh tokens don't expire, keep existing refresh_expires_at
-	refreshToken := newToken.RefreshToken
-	if refreshToken == "" {
-		refreshToken = token.RefreshToken // Keep existing if not provided
-	}
-
-	err = h.DB.UpsertAccessToken(ctx, token.UserID, "spotify", newToken.AccessToken, refreshToken, expiresAt, token.RefreshExpiresAt)
-	if err != nil {
-		return fmt.Errorf("error upserting access token in RefreshSpotifyTokens.Handle: %w", err)
-	}
-
-	log.Printf("Refreshed Spotify token for user %s", token.UserID)
-	return nil
-}
-
 // RefreshYouTubeTokens refreshes expired YouTube access tokens
 type RefreshYouTubeTokens struct {
 	DB       vibe.ExpiredTokenClaimUpdater

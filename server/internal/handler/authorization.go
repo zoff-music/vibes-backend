@@ -22,7 +22,6 @@ import (
 //	@Success	307
 //	@Failure	401	{object}	map[string]string
 //	@Failure	500	{object}	map[string]string
-//	@Router		/api/v1/authorizations/spotify [get]
 //	@Router		/api/v1/authorizations/soundcloud [get]
 //	@Router		/api/v1/authorizations/youtube [get]
 func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.HandlerFunc {
@@ -91,7 +90,6 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 //	@Success	307
 //	@Failure	400	{object}	map[string]string
 //	@Failure	500	{object}	map[string]string
-//	@Router		/api/v1/callbacks/spotify [get]
 //	@Router		/api/v1/callbacks/soundcloud [get]
 //	@Router		/api/v1/callbacks/youtube [get]
 func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, providerName string) http.HandlerFunc {
@@ -178,7 +176,6 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 //	@Failure	403	{object}	map[string]string
 //	@Failure	412	{object}	map[string]string
 //	@Failure	500	{object}	map[string]string
-//	@Router		/api/v1/tokens/spotify [get]
 //	@Router		/api/v1/tokens/soundcloud [get]
 //	@Router		/api/v1/tokens/youtube [get]
 func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, providerName string) http.HandlerFunc {

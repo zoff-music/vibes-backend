@@ -1,6 +1,6 @@
 # Provider Authorization and Tokens
 
-## Authenticate with Spotify, SoundCloud, or YouTube
+## Authenticate with SoundCloud or YouTube
 
 The provider-specific clients share the same OAuth sequence. Pending state and
 PKCE data are stored before redirecting, then consumed atomically by the
@@ -12,7 +12,7 @@ sequenceDiagram
     participant Platform
     participant API as Vibes backend
     participant DB as PostgreSQL
-    participant Provider as Spotify, SoundCloud or YouTube
+    participant Provider as SoundCloud or YouTube
 
     Listener->>Platform: Connect provider
     Platform->>API: GET /authorizations/{provider}
@@ -35,7 +35,7 @@ sequenceDiagram
     participant Platform
     participant API as Vibes backend
     participant DB as PostgreSQL
-    participant Provider as Spotify, SoundCloud or YouTube
+    participant Provider as SoundCloud or YouTube
 
     Platform->>API: GET /tokens/{provider}
     API->>DB: Load the session's provider token

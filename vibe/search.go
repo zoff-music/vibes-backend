@@ -230,5 +230,4 @@ type SearchUsageCreator interface {
 }
 
 const SourceTypeYouTube = "youtube"
-const SourceTypeSpotify = "spotify"
 const SourceTypeSoundCloud = "soundcloud"

@@ -43,13 +43,6 @@ type Config struct {
 	SoundCloudClientSecret string `envconfig:"SOUNDCLOUD_CLIENT_SECRET" default:""`
 	SoundCloudRedirectURI  string `envconfig:"SOUNDCLOUD_REDIRECT_URI" default:"https://localhost/api/v1/callbacks/soundcloud"`
 
-	// Spotify configuration
-	SpotifyClientID     string `envconfig:"SPOTIFY_CLIENT_ID" default:""`
-	SpotifyClientSecret string `envconfig:"SPOTIFY_CLIENT_SECRET" default:""`
-	SpotifyEndpoint     string `envconfig:"SPOTIFY_ENDPOINT" default:"https://api.spotify.com/v1"`
-	SpotifyTokenURL     string `envconfig:"SPOTIFY_TOKEN_URL" default:"https://accounts.spotify.com/api/token"`
-	SpotifyRedirectURI  string `envconfig:"SPOTIFY_REDIRECT_URI" default:"https://127.0.0.1/api/v1/callbacks/spotify"`
-
 	// AI configuration
 	AIModel                             string `envconfig:"AI_MODEL" default:"GROK:grok-4.3"`
 	GeneratedPlaylistTrackCount         int    `envconfig:"GENERATED_PLAYLIST_TRACK_COUNT" default:"80"`
@@ -84,9 +77,6 @@ type Config struct {
 func (c *Config) EnabledProviders() []string {
 	providers := []string{}
 
-	if c.SpotifyClientID != "" && c.SpotifyClientSecret != "" {
-		providers = append(providers, "spotify")
-	}
 	if c.YouTubeAPIKey != "" {
 		providers = append(providers, "youtube")
 	}

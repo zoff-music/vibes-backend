@@ -42,10 +42,6 @@ func (r AddSongRequest) CanonicalProviderURL() (string, error) {
 		return fmt.Sprintf("https://www.youtube.com/watch?v=%s", r.SourceID), nil
 	}
 
-	if r.SourceType == SourceTypeSpotify {
-		return fmt.Sprintf("https://open.spotify.com/track/%s", r.SourceID), nil
-	}
-
 	if r.SourceType != SourceTypeSoundCloud || r.ProviderURL == "" {
 		return "", nil
 	}

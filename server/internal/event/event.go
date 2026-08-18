@@ -10,7 +10,6 @@ import (
 	"github.com/zoff-music/vibes-backend/client/database"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
-	"github.com/zoff-music/vibes-backend/client/spotify"
 	"github.com/zoff-music/vibes-backend/client/youtube"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -25,7 +24,6 @@ func GetAppEvents(
 	db *database.Client,
 	redisClient *redisclient.Client,
 	soundcloudClient *soundcloud.Client,
-	spotifyClient *spotify.Client,
 	youtubeClient *youtube.Client,
 	ai vibe.PlaylistGenerator,
 	enabledProviders []string,
@@ -94,14 +92,6 @@ func GetAppEvents(
 			},
 		},
 		{
-			Name: "RefreshSpotifyTokens",
-			Rate: 10 * time.Second,
-			Handler: &RefreshSpotifyTokens{
-				DB:       db,
-				Provider: spotifyClient,
-			},
-		},
-		{
 			Name: "RefreshYouTubeTokens",
 			Rate: 10 * time.Second,
 			Handler: &RefreshYouTubeTokens{
@@ -148,17 +138,6 @@ func GetAppEvents(
 					Events:       redisClient,
 					Provider:     soundcloudClient,
 					ProviderName: vibe.SourceTypeSoundCloud,
-				},
-			})
-		case vibe.SourceTypeSpotify:
-			events = append(events, AppEvent{
-				Name: "MetaRefreshSpotify",
-				Rate: time.Second,
-				Handler: &MetaRefresh{
-					DB:           db,
-					Events:       redisClient,
-					Provider:     spotifyClient,
-					ProviderName: vibe.SourceTypeSpotify,
 				},
 			})
 		}
