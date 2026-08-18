@@ -297,9 +297,6 @@ var remoteRouteNames = map[string]bool{
 	"ResolveSoundCloudTrack":    true,
 	"GetSoundCloudTrack":        true,
 	"ResolveSoundCloudPlaylist": true,
-	"SearchSpotify":             true,
-	"GetSpotifyTrack":           true,
-	"GetSpotifyPlaylist":        true,
 	"GetProviders":              true,
 }
 

@@ -53,12 +53,6 @@ client/                    # External integrations
 │   ├── search.go          # Search method
 │   ├── track.go           # GetTrack method
 │   └── authorization.go   # OAuth flow
-├── spotify/               # Spotify API
-│   ├── spotify.go         # Client struct, Init, token management
-│   ├── search.go          # Search method
-│   ├── track.go           # GetTrack method
-│   ├── token.go           # Token refresh operations
-│   └── authorization.go   # OAuth flow
 └── redis/                 # Cache, rate limiting, and SSE event streams
 
 server/
@@ -434,8 +428,6 @@ DATABASE_PATH=./data/db/vibes.db
 YOUTUBE_API_KEY=your-youtube-api-key
 
 # Optional OAuth
-SPOTIFY_CLIENT_ID=your-spotify-client-id
-SPOTIFY_CLIENT_SECRET=your-spotify-client-secret
 SOUNDCLOUD_CLIENT_ID=your-soundcloud-client-id
 SOUNDCLOUD_CLIENT_SECRET=your-soundcloud-client-secret
 
