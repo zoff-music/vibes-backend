@@ -2,7 +2,7 @@ package event
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 
 	"github.com/zoff-music/vibes-backend/vibe"

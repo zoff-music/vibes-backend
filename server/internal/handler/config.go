@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 
 	"github.com/zoff-music/vibes-backend/config"

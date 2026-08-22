@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
@@ -45,7 +45,7 @@ func CreateRemoteControl(
 		}
 
 		var request vibe.RemoteUpdateRequest
-		err := json.NewDecoder(r.Body).Decode(&request)
+		err := json.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -273,7 +273,7 @@ func PairRemoteControl(
 		}
 
 		var request vibe.RemotePairingRequest
-		err = json.NewDecoder(r.Body).Decode(&request)
+		err = json.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -549,7 +549,7 @@ func UpdateRemoteControl(
 		}
 
 		var request vibe.RemoteUpdateRequest
-		err := json.NewDecoder(r.Body).Decode(&request)
+		err := json.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,

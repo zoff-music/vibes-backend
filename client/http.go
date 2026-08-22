@@ -4,7 +4,8 @@ package client
 import (
 	"bytes"
 	"context"
-	"encoding/json"
+	"encoding/json/jsontext"
+	"encoding/json/v2"
 	"fmt"
 	"io"
 	"log"
@@ -180,12 +181,12 @@ func redactBodyForLog(headers map[string]string, body []byte) string {
 	}
 
 	if strings.Contains(contentType, "application/json") {
-		var obj map[string]json.RawMessage
+		var obj map[string]jsontext.Value
 		err := json.Unmarshal(body, &obj)
 		if err == nil {
 			for k := range obj {
 				if redactKey(k) {
-					obj[k] = json.RawMessage(`"[REDACTED]"`)
+					obj[k] = jsontext.Value(`"[REDACTED]"`)
 				}
 			}
 			b, err := json.Marshal(obj)

@@ -14,7 +14,7 @@ type RemoteControl struct {
 	PlaybackIsPlaying  bool      `json:"playbackIsPlaying"`
 	PlaybackObservedAt time.Time `json:"playbackObservedAt"`
 	Paired             bool      `json:"paired"`
-	PairingExpiresAt   time.Time `json:"pairingExpiresAt,omitempty"`
+	PairingExpiresAt   time.Time `json:"pairingExpiresAt"`
 	LastSeenAt         time.Time `json:"lastSeenAt"`
 }
 

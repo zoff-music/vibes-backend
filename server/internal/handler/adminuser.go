@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -71,7 +71,7 @@ func AdminCreateUser(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var request vibe.AdminCreateUserRequest
-		err := json.NewDecoder(r.Body).Decode(&request)
+		err := json.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -212,7 +212,7 @@ func AdminUpdateUser(
 		}
 
 		var request vibe.AdminUpdateUserRequest
-		err := json.NewDecoder(r.Body).Decode(&request)
+		err := json.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,

@@ -20,9 +20,9 @@ type MusicTrack struct {
 	ChannelTitle        string `json:"channelTitle,omitempty"`
 	ThumbnailURL        string `json:"thumbnailUrl"`
 	Duration            string `json:"duration,omitempty"` // ISO 8601 duration
-	DurationSeconds     int    `json:"durationSeconds,omitempty"`
-	ViewCount           uint64 `json:"viewCount,omitempty"`
-	LikeCount           uint64 `json:"likeCount,omitempty"`
+	DurationSeconds     int    `json:"durationSeconds,omitzero"`
+	ViewCount           uint64 `json:"viewCount,omitzero"`
+	LikeCount           uint64 `json:"likeCount,omitzero"`
 	PlaybackRestriction string `json:"playbackRestriction,omitempty"`
 }
 

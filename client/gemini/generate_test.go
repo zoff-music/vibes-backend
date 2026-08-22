@@ -2,7 +2,7 @@ package gemini
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -72,7 +72,7 @@ func TestGeneratePlaylist(t *testing.T) {
 						},
 					},
 				}
-				err = json.NewEncoder(w).Encode(response)
+				err = json.MarshalWrite(w, response)
 				if err != nil {
 					t.Errorf("expected response encode to succeed, got error %v", err)
 				}

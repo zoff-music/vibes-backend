@@ -2,7 +2,7 @@ package vibe
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"strings"
 	"time"
@@ -17,7 +17,7 @@ type GeneratedTrack struct {
 	Title               string `json:"title"`
 	YouTubeID           string `json:"youtubeId,omitempty"`
 	ThumbnailURL        string `json:"thumbnailUrl,omitempty"`
-	Duration            int    `json:"duration,omitempty"`
+	Duration            int    `json:"duration,omitzero"`
 	ViewCount           uint64 `json:"-"`
 	LikeCount           uint64 `json:"-"`
 	SearchQuery         string `json:"-"`

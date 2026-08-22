@@ -1,7 +1,7 @@
 package client
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 )
 
@@ -9,7 +9,7 @@ type ErrorCodeResponseBody struct {
 	Namespace string `json:"namespace"`
 	Error     string `json:"error"`
 	Message   string `json:"message"`
-	Propagate bool   `json:"propagate,omitempty"`
+	Propagate bool   `json:"propagate,omitzero"`
 }
 
 // ErrorCodeWrapper is an error type that we want to

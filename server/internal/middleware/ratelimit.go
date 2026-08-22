@@ -3,7 +3,7 @@ package middleware
 import (
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
+	"encoding/json/v2"
 	"log"
 	"net"
 	"net/http"

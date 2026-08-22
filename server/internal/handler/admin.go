@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"net/http"
@@ -37,7 +37,7 @@ func AdminLogin(
 		ctx := r.Context()
 
 		var req vibe.AdminLoginRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
+		err := json.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -502,7 +502,7 @@ func AdminUpdateRoom(
 		}
 
 		var req vibe.AdminUpdateRoomRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
+		err := json.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,

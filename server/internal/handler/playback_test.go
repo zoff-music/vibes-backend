@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -174,7 +174,7 @@ func TestUpdatePlaybackStateTargetsRemoteMachine(t *testing.T) {
 			}
 
 			var state vibe.PlaybackState
-			err := json.NewDecoder(response.Body).Decode(&state)
+			err := json.UnmarshalRead(response.Body, &state)
 			if err != nil {
 				t.Fatalf("expected playback response: %v", err)
 			}

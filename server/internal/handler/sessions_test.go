@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -102,7 +102,7 @@ func TestDeleteRoomAdminSession(t *testing.T) {
 			}
 
 			var session vibe.SessionResponse
-			err := json.NewDecoder(response.Body).Decode(&session)
+			err := json.UnmarshalRead(response.Body, &session)
 			if err != nil {
 				t.Fatalf("expected session response: %v", err)
 			}
