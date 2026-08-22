@@ -1,8 +1,8 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 760" role="img" aria-labelledby="title description">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 980" role="img" aria-labelledby="title description">
   <title id="title">Zoff application architecture</title>
   <desc id="description">
-    High-level architecture showing the four frontend applications, shared frontend packages,
-    Go backend, PostgreSQL, Redis, migrator, and external music and AI providers.
+    High-level architecture showing the seven frontend applications, shared frontend packages,
+    Go backend, PostgreSQL, Redis, migrator, and external music, Cast, and playlist-generation providers.
   </desc>
 
   <defs>
@@ -73,103 +73,133 @@
     </marker>
   </defs>
 
-  <rect class="canvas" width="1200" height="760"/>
+  <rect class="canvas" width="1400" height="980"/>
 
-  <!-- Frontend applications -->
-  <rect class="boundary" x="25" y="25" width="340" height="540" rx="14"/>
+  <!-- Frontend applications and shared packages -->
+  <rect class="boundary" x="25" y="25" width="430" height="720" rx="14"/>
   <text class="group-title" x="47" y="56">FRONTEND APPLICATIONS</text>
-  <text class="detail" x="195" y="80">React Router · Node SSR</text>
+  <text class="detail" x="240" y="80">Web · native mobile · television · Cast</text>
 
-  <rect class="node frontend" x="58" y="105" width="274" height="70" rx="9"/>
-  <text class="title" x="195" y="134">Platform</text>
-  <text class="detail" x="195" y="157">Rooms · search · playback</text>
+  <rect class="node frontend" x="55" y="105" width="175" height="65" rx="9"/>
+  <text class="title" x="142.5" y="132">Platform</text>
+  <text class="detail" x="142.5" y="153">Rooms · queue · playback</text>
 
-  <rect class="node frontend" x="58" y="205" width="274" height="70" rx="9"/>
-  <text class="title" x="195" y="234">Admin</text>
-  <text class="detail" x="195" y="257">Administration and operations</text>
+  <rect class="node frontend" x="250" y="105" width="175" height="65" rx="9"/>
+  <text class="title" x="337.5" y="132">Admin</text>
+  <text class="detail" x="337.5" y="153">Rooms · users · operations</text>
 
-  <rect class="node frontend" x="58" y="305" width="274" height="70" rx="9"/>
-  <text class="title" x="195" y="334">Embed</text>
-  <text class="detail" x="195" y="357">Embeddable room player</text>
+  <rect class="node frontend" x="55" y="190" width="175" height="65" rx="9"/>
+  <text class="title" x="142.5" y="217">Embed</text>
+  <text class="detail" x="142.5" y="238">Embeddable room player</text>
 
-  <rect class="node frontend" x="58" y="405" width="274" height="70" rx="9"/>
-  <text class="title" x="195" y="434">Cast receiver</text>
-  <text class="detail" x="195" y="457">Chromecast playback application</text>
+  <rect class="node frontend" x="250" y="190" width="175" height="65" rx="9"/>
+  <text class="title" x="337.5" y="217">Remote</text>
+  <text class="detail" x="337.5" y="238">Paired web controller</text>
 
-  <rect class="node shared" x="58" y="505" width="274" height="38" rx="9"/>
-  <text class="title" x="195" y="529">Shared UI · API · models · state</text>
+  <rect class="node frontend" x="55" y="275" width="175" height="65" rx="9"/>
+  <text class="title" x="142.5" y="302">Cast receiver</text>
+  <text class="detail" x="142.5" y="323">Chromecast playback</text>
+
+  <rect class="node frontend" x="250" y="275" width="175" height="65" rx="9"/>
+  <text class="title" x="337.5" y="302">Mobile</text>
+  <text class="detail" x="337.5" y="323">Expo · iOS · Android</text>
+
+  <rect class="node frontend" x="55" y="360" width="370" height="70" rx="9"/>
+  <text class="title" x="240" y="388">TV</text>
+  <text class="detail" x="240" y="411">Expo Android TV · Samsung Tizen renderer</text>
+
+  <text class="group-title" x="55" y="475">SHARED FRONTEND PACKAGES</text>
+
+  <rect class="node shared" x="55" y="495" width="370" height="55" rx="9"/>
+  <text class="title" x="240" y="518">@vibes/api · @vibes/models</text>
+  <text class="detail" x="240" y="538">Typed REST and SSE · schemas and domain types</text>
+
+  <rect class="node shared" x="55" y="570" width="370" height="55" rx="9"/>
+  <text class="title" x="240" y="593">@vibes/shared · @vibes/ui</text>
+  <text class="detail" x="240" y="613">State and utilities · web, native, and shared renderers</text>
+
+  <rect class="node shared" x="55" y="645" width="370" height="55" rx="9"/>
+  <text class="title" x="240" y="668">Serve · Tailwind · iconography</text>
+  <text class="detail" x="240" y="688">SSR runtime · styling · generated icon exports</text>
 
   <!-- Go backend -->
-  <rect class="boundary" x="435" y="25" width="330" height="540" rx="14"/>
-  <text class="group-title" x="457" y="56">VIBES BACKEND</text>
-  <text class="detail" x="600" y="80">Single Go application</text>
+  <rect class="boundary" x="510" y="25" width="370" height="720" rx="14"/>
+  <text class="group-title" x="532" y="56">VIBES BACKEND</text>
+  <text class="detail" x="695" y="80">Single Go application</text>
 
-  <rect class="node backend" x="475" y="105" width="250" height="170" rx="10"/>
-  <text class="title" x="600" y="137">Public API</text>
-  <text class="detail" x="600" y="163">Rooms · playlists · search</text>
-  <text class="detail" x="600" y="184">playback · settings · authorization</text>
-  <text class="detail" x="600" y="220">HTTP endpoints and SSE updates</text>
-  <text class="detail" x="600" y="241">for every frontend application</text>
+  <rect class="node backend" x="550" y="105" width="290" height="185" rx="10"/>
+  <text class="title" x="695" y="137">Public API</text>
+  <text class="detail" x="695" y="164">Rooms · songs · playlists · search</text>
+  <text class="detail" x="695" y="185">playback · settings · authorization</text>
+  <text class="detail" x="695" y="206">remote pairing and control</text>
+  <text class="detail" x="695" y="242">HTTP endpoints and SSE updates</text>
+  <text class="detail" x="695" y="263">shared by every frontend application</text>
 
-  <rect class="node backend" x="475" y="305" width="250" height="90" rx="10"/>
-  <text class="title" x="600" y="338">Background processing</text>
-  <text class="detail" x="600" y="363">Generation · playback · maintenance</text>
+  <rect class="node backend" x="550" y="325" width="290" height="110" rx="10"/>
+  <text class="title" x="695" y="357">Application events</text>
+  <text class="detail" x="695" y="382">Playlist generation · playback progression</text>
+  <text class="detail" x="695" y="403">provider refresh · cleanup · maintenance</text>
 
-  <rect class="node backend" x="475" y="425" width="250" height="90" rx="10"/>
-  <text class="title" x="600" y="458">External integrations</text>
-  <text class="detail" x="600" y="483">Music and playlist providers</text>
+  <rect class="node backend" x="550" y="470" width="290" height="100" rx="10"/>
+  <text class="title" x="695" y="502">External integrations</text>
+  <text class="detail" x="695" y="527">Music search and metadata</text>
+  <text class="detail" x="695" y="548">Playlist-generation providers</text>
 
-  <!-- External providers -->
-  <rect class="boundary" x="835" y="25" width="340" height="540" rx="14"/>
-  <text class="group-title" x="857" y="56">EXTERNAL PROVIDERS</text>
+  <rect class="node backend" x="550" y="605" width="290" height="80" rx="10"/>
+  <text class="title" x="695" y="636">Server wiring and domain interfaces</text>
+  <text class="detail" x="695" y="660">Handlers depend on minimal vibe interfaces</text>
 
-  <rect class="node external" x="868" y="105" width="274" height="70" rx="9"/>
-  <text class="title" x="1005" y="134">YouTube</text>
-  <text class="detail" x="1005" y="157">Search · metadata · embedded player</text>
+  <!-- External platforms and providers -->
+  <rect class="boundary" x="935" y="25" width="440" height="720" rx="14"/>
+  <text class="group-title" x="957" y="56">EXTERNAL PLATFORMS AND PROVIDERS</text>
 
-  <rect class="node external" x="868" y="205" width="274" height="70" rx="9"/>
-  <text class="title" x="1005" y="234">SoundCloud</text>
-  <text class="detail" x="1005" y="257">Search · metadata · playback</text>
+  <rect class="node external" x="970" y="105" width="370" height="110" rx="9"/>
+  <text class="title" x="1155" y="136">Music providers</text>
+  <text class="detail" x="1155" y="162">YouTube · Spotify · SoundCloud</text>
+  <text class="detail" x="1155" y="184">Search and metadata APIs · official client players</text>
 
-  <rect class="node external" x="868" y="405" width="274" height="70" rx="9"/>
-  <text class="title" x="1005" y="434">Playlist-generation providers</text>
-  <text class="detail" x="1005" y="457">xAI Grok · Google Gemini</text>
+  <rect class="node external" x="970" y="325" width="370" height="90" rx="9"/>
+  <text class="title" x="1155" y="356">Playlist-generation providers</text>
+  <text class="detail" x="1155" y="382">xAI Grok · Google Gemini</text>
 
-  <!-- Parallel, non-crossing application connections -->
-  <path class="connector" d="M 332 140 L 435 140"/>
-  <path class="connector" d="M 332 240 L 435 240"/>
-  <path class="connector" d="M 332 340 L 435 340"/>
-  <path class="connector" d="M 332 440 L 435 440"/>
-  <text class="edge-label" x="383" y="129">HTTPS + SSE</text>
+  <rect class="node external" x="970" y="505" width="370" height="90" rx="9"/>
+  <text class="title" x="1155" y="536">Google Cast platform</text>
+  <text class="detail" x="1155" y="562">Sender SDK · receiver runtime · media messages</text>
 
-  <!-- Parallel, non-crossing provider connections -->
-  <path class="connector-both" d="M 765 140 L 868 140"/>
-  <path class="connector-both" d="M 765 240 L 868 240"/>
-  <path class="connector-both" d="M 765 340 L 868 340"/>
-  <path class="connector-both" d="M 765 440 L 868 440"/>
-  <text class="edge-label" x="816" y="129">Provider APIs</text>
+  <!-- Application and provider connections -->
+  <path class="connector-both" d="M 455 197 L 550 197"/>
+  <text class="edge-label" x="502.5" y="185">HTTPS + SSE</text>
+
+  <path class="connector-both" d="M 840 160 L 970 160"/>
+  <text class="edge-label" x="905" y="148">Provider APIs</text>
+
+  <path class="connector-both" d="M 840 370 L 970 370"/>
+  <text class="edge-label" x="905" y="358">Generation API</text>
+
+  <path class="connector-both" d="M 455 550 L 500 550 L 500 720 L 910 720 L 910 550 L 970 550"/>
+  <text class="edge-label" x="705" y="710">Official provider players and Cast SDK</text>
 
   <!-- Data stores -->
-  <text class="group-title" x="25" y="620">DATA AND SCHEMA</text>
+  <text class="group-title" x="25" y="805">DATA AND SCHEMA</text>
 
-  <rect class="node backend" x="58" y="655" width="210" height="64" rx="9"/>
-  <text class="title" x="163" y="682">Vibes migrator</text>
-  <text class="detail" x="163" y="704">Database schema migrations</text>
+  <rect class="node backend" x="55" y="845" width="240" height="70" rx="9"/>
+  <text class="title" x="175" y="874">Vibes migrator</text>
+  <text class="detail" x="175" y="897">PostgreSQL schema migrations</text>
 
-  <path class="node storage" d="M 425 651 C 425 633, 625 633, 625 651 L 625 707 C 625 725, 425 725, 425 707 Z"/>
-  <ellipse class="node storage" cx="525" cy="651" rx="100" ry="18"/>
-  <path class="boundary" d="M 425 707 C 425 725, 625 725, 625 707"/>
-  <text class="title" x="525" y="680">PostgreSQL</text>
-  <text class="detail" x="525" y="702">Rooms · songs · playback · users</text>
+  <path class="node storage" d="M 390 839 C 390 819, 650 819, 650 839 L 650 901 C 650 921, 390 921, 390 901 Z"/>
+  <ellipse class="node storage" cx="520" cy="839" rx="130" ry="20"/>
+  <path class="boundary" d="M 390 901 C 390 921, 650 921, 650 901"/>
+  <text class="title" x="520" y="871">PostgreSQL</text>
+  <text class="detail" x="520" y="893">Rooms · songs · playback · users</text>
 
-  <path class="node storage" d="M 790 651 C 790 633, 990 633, 990 651 L 990 707 C 990 725, 790 725, 790 707 Z"/>
-  <ellipse class="node storage" cx="890" cy="651" rx="100" ry="18"/>
-  <path class="boundary" d="M 790 707 C 790 725, 990 725, 990 707"/>
-  <text class="title" x="890" y="680">Redis</text>
-  <text class="detail" x="890" y="702">Rate limits · search cache · statistics</text>
+  <path class="node storage" d="M 790 839 C 790 819, 1070 819, 1070 839 L 1070 901 C 1070 921, 790 921, 790 901 Z"/>
+  <ellipse class="node storage" cx="930" cy="839" rx="140" ry="20"/>
+  <path class="boundary" d="M 790 901 C 790 921, 1070 921, 1070 901"/>
+  <text class="title" x="930" y="871">Redis</text>
+  <text class="detail" x="930" y="893">App-event streams · cache · rate limits · statistics</text>
 
-  <path class="connector" d="M 268 687 L 425 687"/>
-  <path class="connector-both" d="M 550 565 L 550 633"/>
-  <path class="connector-both" d="M 690 565 L 690 610 L 890 610 L 890 633"/>
-  <text class="edge-label" x="346" y="677">schema</text>
+  <path class="connector" d="M 295 880 L 390 880"/>
+  <path class="connector-both" d="M 650 745 L 650 790 L 520 790 L 520 819"/>
+  <path class="connector-both" d="M 740 745 L 740 790 L 930 790 L 930 819"/>
+  <text class="edge-label" x="342.5" y="868">schema</text>
 </svg>
