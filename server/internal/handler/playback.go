@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"net/http"
@@ -96,7 +96,7 @@ func ReportPlaybackFailure(
 		roomID := mux.Vars(r)["id"]
 
 		var request vibe.PlaybackFailureRequest
-		err := json.NewDecoder(r.Body).Decode(&request)
+		err := json.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -292,7 +292,7 @@ func UpdatePlaybackState(
 		roomID := mux.Vars(r)["id"]
 
 		var req vibe.RoomActionRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
+		err := json.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,

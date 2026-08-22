@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"log"
@@ -36,7 +36,7 @@ func CreateRoom(
 		ctx := r.Context()
 
 		var req vibe.CreateRoomRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
+		err := json.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -208,7 +208,7 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 		ctx := r.Context()
 
 		var req vibe.RoomNameReservationRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
+		err := json.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -521,7 +521,7 @@ func UpdateRoomSettings(
 		roomID := vars["id"]
 
 		var req vibe.UpdateRoomRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
+		err := json.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -658,7 +658,7 @@ func CreateSession(
 		roomID := vars["id"]
 
 		var req vibe.CreateSessionRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
+		err := json.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,

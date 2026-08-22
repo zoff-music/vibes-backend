@@ -22,7 +22,7 @@ func (p *PlaybackState) IsEmpty() bool {
 // RoomActionRequest is the request payload for room actions.
 type RoomActionRequest struct {
 	Action     string `json:"action"`
-	PositionMs int    `json:"positionMs,omitempty"`
+	PositionMs int    `json:"positionMs,omitzero"`
 }
 
 type PlaybackFailureRequest struct {
