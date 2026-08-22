@@ -13,7 +13,7 @@ Go API backend for the Vibes collaborative music queue.
 ## Getting Started
 
 ### Prerequisites
-- Go 1.26.5+
+- Go 1.26.7+
 - PostgreSQL schema applied by the `vibes-migrator` repository
 - Redis when `RATE_LIMIT_ENABLED=true`
 - Environment variables configured for local development
