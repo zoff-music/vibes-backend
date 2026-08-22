@@ -24,7 +24,7 @@ implementation-level worker details.
 | PostgreSQL | Persistent rooms, songs, playback, participants, generations, and authorization data |
 | Redis | Durable application-event streams, rate limiting, provider-search caching, and short-lived statistics |
 | Vibes migrator | Applies PostgreSQL schema changes |
-| Music providers | YouTube, Spotify, and SoundCloud search, metadata, authorization, and playback surfaces |
+| Music providers | YouTube and SoundCloud search, metadata, authorization, and playback surfaces |
 | Playlist-generation providers | xAI Grok and Google Gemini produce candidate playlists from natural-language prompts |
 | Google Cast | Sender SDK, receiver runtime, and media-message transport between Cast-capable clients and the receiver |
 
