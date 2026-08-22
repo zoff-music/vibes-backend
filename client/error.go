@@ -32,7 +32,7 @@ func (e ErrorCodeWrapper) GetResponseBody() ([]byte, error) {
 	// We don't want to overwrite the namespace
 	// if we are already propagating something here
 	if e.ResponseBody.Namespace == "" {
-		e.ResponseBody.Namespace = "template-api-go"
+		e.ResponseBody.Namespace = applicationName
 	}
 	resp, err := json.Marshal(&e.ResponseBody)
 	if err != nil {

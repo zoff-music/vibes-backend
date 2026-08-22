@@ -135,7 +135,7 @@ func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) 
 		req.Header.Set(k, v)
 	}
 
-	req.Header.Set("User-Agent", "template-api-go")
+	req.Header.Set("User-Agent", applicationName)
 
 	if reqData.BasicAuth != nil {
 		req.SetBasicAuth(reqData.BasicAuth.Username, reqData.BasicAuth.Password)
@@ -152,6 +152,8 @@ func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) 
 
 	return resp, nil
 }
+
+const applicationName = "vibes-backend"
 
 // redactBodyForLog returns a redacted representation of a request body suitable for logs/traces.
 // It tries to parse JSON and form bodies and redact common secret/token fields; otherwise it
