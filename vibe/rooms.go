@@ -58,7 +58,7 @@ type Room struct {
 	HasPassword                    bool         `json:"hasPassword"`
 	Settings                       RoomSettings `json:"settings"`
 	CreatedAt                      time.Time    `json:"createdAt"`
-	UserCount                      int          `json:"userCount,omitempty"`
+	UserCount                      int          `json:"userCount,omitzero"`
 	IsAdmin                        bool         `json:"isAdmin"`
 	UserID                         string       `json:"userId,omitempty"`
 	ActiveSources                  []string     `json:"activeSources"`

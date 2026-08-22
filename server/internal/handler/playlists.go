@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"encoding/json"
+	"encoding/json/v2"
 	"fmt"
 	"log"
 	"net/http"
@@ -167,7 +167,7 @@ func AddPlaylist(
 		roomID := vars["id"]
 
 		var req vibe.AddPlaylistRequest
-		err := json.NewDecoder(r.Body).Decode(&req)
+		err := json.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,
