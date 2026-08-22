@@ -155,7 +155,7 @@
 
   <rect class="node external" x="970" y="105" width="370" height="110" rx="9"/>
   <text class="title" x="1155" y="136">Music providers</text>
-  <text class="detail" x="1155" y="162">YouTube · Spotify · SoundCloud</text>
+  <text class="detail" x="1155" y="162">YouTube · SoundCloud</text>
   <text class="detail" x="1155" y="184">Search and metadata APIs · official client players</text>
 
   <rect class="node external" x="970" y="325" width="370" height="90" rx="9"/>
