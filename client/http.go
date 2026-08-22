@@ -6,12 +6,15 @@ import (
 	"context"
 	"encoding/json/jsontext"
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"net/url"
 	"strings"
+	"unicode"
 
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -79,10 +82,11 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 	if r.StatusCode >= 400 {
 		resp, _ := io.ReadAll(r.Body)
 
-		message := string(resp)
+		requestURL := redactURLForLog(r.Request.URL)
+		message := fmt.Sprintf("[response body omitted: %d bytes]", len(resp))
 		requestErr := fmt.Errorf(
-			"error making request to %s, body: %s. Got error: %s",
-			reqData.URL,
+			"error making request to %s, body: %s. Got response: %s",
+			requestURL,
 			redactBodyForLog(reqData.Headers, reqData.Body),
 			message,
 		)
@@ -91,7 +95,7 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 		span.SetAttributes(attribute.String("message", requestErr.Error()))
 
 		httpStatusCodeError := HTTPStatusCodeError{
-			URL:        reqData.URL,
+			URL:        requestURL,
 			StatusCode: r.StatusCode,
 			Message:    message,
 		}
@@ -143,17 +147,23 @@ func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) 
 
 	resp, err := client.Do(req)
 	if err != nil {
-		if reqData.Method == http.MethodPost {
-			return resp, fmt.Errorf("error making request: %w. Body: %s", err, redactBodyForLog(reqData.Headers, reqData.Body))
-		}
-
-		return resp, fmt.Errorf("error making request: %w. Query: %v", err, req.URL.RawQuery)
+		redactedErr := redactHTTPError(err)
+		return resp, fmt.Errorf(
+			"error making request to %s: %w. Body: %s",
+			redactURLForLog(req.URL),
+			redactedErr,
+			redactBodyForLog(reqData.Headers, reqData.Body),
+		)
 	}
 
 	return resp, nil
 }
 
 const applicationName = "vibes-backend"
+
+const maxLoggedValueBytes = 4096
+
+const redactedValue = "[REDACTED]"
 
 // redactBodyForLog returns a redacted representation of a request body suitable for logs/traces.
 // It tries to parse JSON and form bodies and redact common secret/token fields; otherwise it
@@ -171,46 +181,172 @@ func redactBodyForLog(headers map[string]string, body []byte) string {
 		}
 	}
 
-	redactKey := func(k string) bool {
-		switch strings.ToLower(k) {
-		case "access_token", "refresh_token", "id_token", "token",
-			"client_secret", "clientsecret", "secret", "password",
-			"authorization", "code", "api_key", "apikey":
-			return true
-		default:
-			return false
-		}
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return fmt.Sprintf("[body omitted: %d bytes]", len(body))
+	}
+	mediaType = strings.ToLower(mediaType)
+
+	if mediaType == "application/json" || strings.HasSuffix(mediaType, "+json") {
+		redacted := redactJSONForLog(body)
+		return redacted
 	}
 
-	if strings.Contains(contentType, "application/json") {
-		var obj map[string]jsontext.Value
-		err := json.Unmarshal(body, &obj)
-		if err == nil {
-			for k := range obj {
-				if redactKey(k) {
-					obj[k] = jsontext.Value(`"[REDACTED]"`)
-				}
-			}
-			b, err := json.Marshal(obj)
-			if err == nil {
-				return string(b)
-			}
-		}
-		return fmt.Sprintf("[unparseable json body: %d bytes]", len(body))
-	}
-
-	if strings.Contains(contentType, "application/x-www-form-urlencoded") {
+	if mediaType == "application/x-www-form-urlencoded" {
 		values, err := url.ParseQuery(string(body))
-		if err == nil {
-			for k := range values {
-				if redactKey(k) {
-					values.Set(k, "[REDACTED]")
-				}
-			}
-			return values.Encode()
+		if err != nil {
+			return fmt.Sprintf("[unparseable form body: %d bytes]", len(body))
 		}
-		return fmt.Sprintf("[unparseable form body: %d bytes]", len(body))
+		redacted := redactValuesForLog(values)
+		return redacted
 	}
 
 	return fmt.Sprintf("[body omitted: %d bytes]", len(body))
+}
+
+func redactJSONForLog(body []byte) string {
+	value := jsontext.Value(body)
+	if !value.IsValid() || (value.Kind() != '{' && value.Kind() != '[') {
+		return fmt.Sprintf("[unparseable json body: %d bytes]", len(body))
+	}
+
+	redacted, err := redactJSONValue(value)
+	if err != nil {
+		return fmt.Sprintf("[unparseable json body: %d bytes]", len(body))
+	}
+	if len(redacted) > maxLoggedValueBytes {
+		return fmt.Sprintf("[redacted json body omitted: %d bytes]", len(body))
+	}
+
+	return string(redacted)
+}
+
+func redactJSONValue(value jsontext.Value) (jsontext.Value, error) {
+	switch value.Kind() {
+	case '{':
+		object := map[string]jsontext.Value{}
+		err := json.Unmarshal(value, &object)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshaling JSON object for log redaction: %w", err)
+		}
+		for key, item := range object {
+			if isSensitiveLogKey(key) {
+				object[key] = jsontext.Value(`"[REDACTED]"`)
+				continue
+			}
+			redacted, err := redactJSONValue(item)
+			if err != nil {
+				return nil, fmt.Errorf("error redacting JSON object value for log redaction: %w", err)
+			}
+			object[key] = redacted
+		}
+		body, err := json.Marshal(object)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling JSON object for log redaction: %w", err)
+		}
+		return jsontext.Value(body), nil
+	case '[':
+		items := []jsontext.Value{}
+		err := json.Unmarshal(value, &items)
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshaling JSON array for log redaction: %w", err)
+		}
+		for index, item := range items {
+			redacted, err := redactJSONValue(item)
+			if err != nil {
+				return nil, fmt.Errorf("error redacting JSON array value for log redaction: %w", err)
+			}
+			items[index] = redacted
+		}
+		body, err := json.Marshal(items)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling JSON array for log redaction: %w", err)
+		}
+		return jsontext.Value(body), nil
+	default:
+		cloned := value.Clone()
+		return cloned, nil
+	}
+}
+
+func redactValuesForLog(values url.Values) string {
+	redacted := make(url.Values, len(values))
+	for key, items := range values {
+		if isSensitiveLogKey(key) {
+			redacted.Set(key, redactedValue)
+			continue
+		}
+		copied := make([]string, len(items))
+		copy(copied, items)
+		redacted[key] = copied
+	}
+
+	encoded := redacted.Encode()
+	if len(encoded) > maxLoggedValueBytes {
+		return fmt.Sprintf("query_omitted=%d_bytes", len(encoded))
+	}
+	return encoded
+}
+
+func redactURLForLog(value *url.URL) string {
+	if value == nil {
+		return "[URL omitted]"
+	}
+
+	redacted := *value
+	redacted.RawQuery = redactValuesForLog(value.Query())
+	redacted.Fragment = ""
+	redacted.RawFragment = ""
+	if value.User != nil {
+		redacted.User = url.User(redactedValue)
+	}
+	return redacted.String()
+}
+
+func redactHTTPError(err error) error {
+	var urlErr *url.Error
+	if !errors.As(err, &urlErr) {
+		return fmt.Errorf("error sending HTTP request: %w", err)
+	}
+
+	inner := redactHTTPError(urlErr.Err)
+	redacted := &url.Error{
+		Op:  urlErr.Op,
+		URL: redactRawURLForLog(urlErr.URL),
+		Err: inner,
+	}
+	return redacted
+}
+
+func redactRawURLForLog(rawURL string) string {
+	value, err := url.Parse(rawURL)
+	if err != nil {
+		return "[URL omitted]"
+	}
+	redacted := redactURLForLog(value)
+	return redacted
+}
+
+func isSensitiveLogKey(key string) bool {
+	normalized := strings.Map(func(value rune) rune {
+		if unicode.IsLetter(value) || unicode.IsDigit(value) {
+			return unicode.ToLower(value)
+		}
+		return -1
+	}, key)
+
+	switch normalized {
+	case "authorization", "code", "codeverifier", "key", "apikey",
+		"pairingcode", "sessionid", "state":
+		return true
+	}
+
+	return strings.Contains(normalized, "password") ||
+		strings.HasSuffix(normalized, "token") ||
+		strings.HasSuffix(normalized, "secret") ||
+		strings.HasSuffix(normalized, "credential") ||
+		strings.HasSuffix(normalized, "cookie") ||
+		strings.HasSuffix(normalized, "privatekey") ||
+		strings.HasSuffix(normalized, "signingkey") ||
+		strings.HasSuffix(normalized, "encryptionkey")
 }
