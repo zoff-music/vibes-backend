@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -216,6 +217,24 @@ func AddPlaylist(
 				w,
 				fmt.Errorf("error room not found"),
 				http.StatusNotFound,
+				false,
+			)
+			return
+		}
+		if !room.Settings.PlaylistImport {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error playlist import is disabled for this room"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "room_playlist_import_disabled",
+						Message:   "Playlist importing is disabled in this room.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusForbidden,
+				},
+				http.StatusForbidden,
 				false,
 			)
 			return
