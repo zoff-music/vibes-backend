@@ -136,6 +136,7 @@ func (c *Client) prepareGetRoomStmt() error {
 			b.enabled_sources,
 			b.only_admin_add_songs,
 			b.is_public,
+			b.playlist_import,
 			EXISTS (
 				SELECT 1
 				FROM room_generations d
@@ -270,6 +271,7 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 			b.enabled_sources,
 			b.only_admin_add_songs,
 			b.is_public,
+			b.playlist_import,
 			EXISTS (
 				SELECT 1
 				FROM room_generations d
@@ -546,6 +548,7 @@ type roomRow struct {
 	EnabledSources    sql.NullString
 	OnlyAdminAddSongs sql.NullBool
 	Public            sql.NullBool
+	PlaylistImport    sql.NullBool
 	IsGenerating      sql.NullBool
 	GenerationCount   sql.NullInt64
 	GenerationError   sql.NullString
@@ -570,6 +573,7 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.EnabledSources,
 		&r.OnlyAdminAddSongs,
 		&r.Public,
+		&r.PlaylistImport,
 		&r.IsGenerating,
 		&r.GenerationCount,
 		&r.GenerationError,
@@ -637,6 +641,7 @@ func (r *roomRow) toRoomSettings(
 		EnabledSources:    sources,
 		OnlyAdminAddSongs: r.OnlyAdminAddSongs.Bool,
 		Public:            r.Public.Bool,
+		PlaylistImport:    r.PlaylistImport.Bool,
 	}, nil
 }
 
@@ -719,19 +724,19 @@ func (c *Client) prepareCreateRoomStmt() error {
 			)
 			AND (
 				(
-					$17 != ''
+					$18 != ''
 					AND EXISTS (
 						SELECT 1
 						FROM room_name_reservations
 						WHERE room_name_reservations.name = $1
-						AND room_name_reservations.token::TEXT = $17
+						AND room_name_reservations.token::TEXT = $18
 						AND room_name_reservations.owner_id = $4
 						AND room_name_reservations.expires_at >
 							CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
 					)
 				)
 				OR (
-					$17 = ''
+					$18 = ''
 					AND NOT EXISTS (
 						SELECT 1
 						FROM room_name_reservations
@@ -761,9 +766,10 @@ func (c *Client) prepareCreateRoomStmt() error {
 				allow_duplicates,
 				enabled_sources,
 				only_admin_add_songs,
-				is_public
+				is_public,
+				playlist_import
 			)
-			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 FROM created_room_q
+			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17 FROM created_room_q
 		),
 		consumed_name_q AS (
 			INSERT INTO room_name_pool (name, generated, consumed_at)
@@ -780,8 +786,8 @@ func (c *Client) prepareCreateRoomStmt() error {
 			USING created_room_q
 			WHERE room_name_reservations.name = created_room_q.id
 			AND (
-				$17 = ''
-				OR room_name_reservations.token::TEXT = $17
+				$18 = ''
+				OR room_name_reservations.token::TEXT = $18
 			)
 		)
 		SELECT id FROM created_room_q
@@ -824,6 +830,7 @@ func (c *Client) CreateRoom(
 		strings.Join(room.Settings.EnabledSources, ","),
 		room.Settings.OnlyAdminAddSongs,
 		room.Settings.Public,
+		room.Settings.PlaylistImport,
 		reservationToken,
 	)
 
@@ -900,7 +907,8 @@ func (c *Client) prepareUpdateRoomStmt() error {
 		allow_duplicates = $9,
 		enabled_sources = $13,
 		only_admin_add_songs = $14,
-		is_public = $15
+		is_public = $15,
+		playlist_import = $16
 		FROM updated_room_q a
 		WHERE room_settings.room_id = a.id
 	`)
@@ -959,6 +967,7 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		strings.Join(enabledSources, ","),
 		room.Settings.OnlyAdminAddSongs,
 		room.Settings.Public,
+		room.Settings.PlaylistImport,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error updating room: %w", err)
