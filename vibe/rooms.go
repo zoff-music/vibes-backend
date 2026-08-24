@@ -17,6 +17,7 @@ type RoomSettings struct {
 	EnabledSources    []string `json:"enabledSources"`
 	OnlyAdminAddSongs bool     `json:"onlyAdminAddSongs"`
 	Public            bool     `json:"public"`
+	PlaylistImport    bool     `json:"playlistImport"`
 }
 
 func (r RoomSettings) IsEmpty() bool {
@@ -29,7 +30,8 @@ func (r RoomSettings) IsEmpty() bool {
 		r.AllowDuplicates == false &&
 		len(r.EnabledSources) == 0 &&
 		r.OnlyAdminAddSongs == false &&
-		r.Public == false
+		r.Public == false &&
+		r.PlaylistImport == false
 }
 
 // DefaultRoomSettings returns sensible defaults
@@ -45,6 +47,7 @@ func DefaultRoomSettings() RoomSettings {
 		EnabledSources:    []string{"youtube", "soundcloud"},
 		OnlyAdminAddSongs: false,
 		Public:            false,
+		PlaylistImport:    true,
 	}
 }
 
