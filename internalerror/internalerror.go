@@ -1,6 +1,9 @@
 package internalerror
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // ErrNonRecoverable is an error type that indicates a permanent issue,
 // meaning the related message will never lead to a successful outcome.
@@ -36,6 +39,7 @@ func (e ErrExpected) Unwrap() error {
 type ErrProviderQuotaExceeded struct {
 	Err      error
 	Provider string
+	ResetAt  time.Time
 }
 
 func (e ErrProviderQuotaExceeded) Error() string {
