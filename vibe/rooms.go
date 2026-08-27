@@ -12,7 +12,6 @@ type RoomSettings struct {
 	SkipVoteThreshold float64  `json:"skipVoteThreshold"`
 	MaxContinuousAdds int      `json:"maxContinuousAdds"`
 	RemoveOnPlay      bool     `json:"removeOnPlay"`
-	LoopQueue         bool     `json:"loopQueue"`
 	AllowDuplicates   bool     `json:"allowDuplicates"`
 	EnabledSources    []string `json:"enabledSources"`
 	OnlyAdminAddSongs bool     `json:"onlyAdminAddSongs"`
@@ -26,7 +25,6 @@ func (r RoomSettings) IsEmpty() bool {
 		r.SkipVoteThreshold == 0 &&
 		r.MaxContinuousAdds == 0 &&
 		r.RemoveOnPlay == false &&
-		r.LoopQueue == false &&
 		r.AllowDuplicates == false &&
 		len(r.EnabledSources) == 0 &&
 		r.OnlyAdminAddSongs == false &&
@@ -42,7 +40,6 @@ func DefaultRoomSettings() RoomSettings {
 		SkipVoteThreshold: 0.5,
 		MaxContinuousAdds: 3,
 		RemoveOnPlay:      false,
-		LoopQueue:         true,
 		AllowDuplicates:   false,
 		EnabledSources:    []string{"youtube", "soundcloud"},
 		OnlyAdminAddSongs: false,
