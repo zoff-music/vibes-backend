@@ -61,7 +61,13 @@ func SearchMusic(
 		tracks := make([]vibe.MusicTrack, 0)
 		cacheHit := len(cachedSearches) > 0
 		if cacheHit {
-			tracks = cachedSearches[0].GetMusicTracks()
+			cachedTracks := cachedSearches[0].GetMusicTracks()
+			for _, track := range cachedTracks {
+				if vibe.IsLiveVideo(track.Source, track.DurationSeconds) {
+					continue
+				}
+				tracks = append(tracks, track)
+			}
 		}
 		usage := vibe.GenerateSearchUsage(
 			vibe.SourceTypeYouTube,

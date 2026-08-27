@@ -291,6 +291,24 @@ func AddPlaylist(
 				)
 				return
 			}
+			if vibe.IsLiveVideo(requestedSong.SourceType, requestedSong.Duration) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error playlist contains a live video"),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "youtube_live_video_not_supported",
+							Message:   liveVideoErrorMessage,
+							Propagate: true,
+						},
+						StatusCode: http.StatusBadRequest,
+					},
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
 
 			providerURL, err := requestedSong.CanonicalProviderURL()
 			if err != nil {
@@ -313,6 +331,27 @@ func AddPlaylist(
 				log.Printf("error getting cached provider playlist track metadata: %v", err)
 			}
 			if err == nil && !cachedTrack.IsEmpty() {
+				if vibe.IsLiveVideo(
+					requestedSong.SourceType,
+					cachedTrack.DurationSeconds,
+				) {
+					handleError(
+						w,
+						client.ErrorCodeWrapper{
+							Err: fmt.Errorf("error playlist contains a live video"),
+							ResponseBody: client.ErrorCodeResponseBody{
+								Namespace: "vibes-backend",
+								Error:     "youtube_live_video_not_supported",
+								Message:   liveVideoErrorMessage,
+								Propagate: true,
+							},
+							StatusCode: http.StatusBadRequest,
+						},
+						http.StatusBadRequest,
+						false,
+					)
+					return
+				}
 				playbackRestriction = cachedTrack.PlaybackRestriction
 			}
 

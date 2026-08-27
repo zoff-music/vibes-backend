@@ -40,6 +40,7 @@ func (c *Client) prepareGetSongsStmt() error {
 		AND a.room_id = b.room_id
 		WHERE a.room_id = $1
 		AND a.source_type = ANY($2::text[])
+		AND NOT (a.source_type = 'youtube' AND a.duration <= 0)
 		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 		ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 	`)
@@ -202,6 +203,7 @@ func (c *Client) prepareGetSongStmt() error {
 		WHERE a.room_id = $1
 		AND a.id = $2
 		AND a.source_type = ANY($3::text[])
+		AND NOT (a.source_type = 'youtube' AND a.duration <= 0)
 		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 	`)
 	if err != nil {
@@ -625,6 +627,11 @@ func (c *Client) prepareAddSongStmt() error {
 func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "AddSong")
 	defer span.End()
+	if vibe.IsLiveVideo(song.SourceType, song.Duration) {
+		return nil, internalerror.ErrLiveVideo{
+			Err: fmt.Errorf("error adding song in AddSong: live videos are not supported"),
+		}
+	}
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
