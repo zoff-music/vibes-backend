@@ -21,6 +21,7 @@ import (
 
 type SessionMiddleware struct {
 	Secret                     string
+	CookieMaxAge               time.Duration
 	CastTokenSecret            string
 	EmbedBasePath              string
 	RemoteControlAuthenticator vibe.RemoteControlAuthenticator
@@ -162,6 +163,13 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 				return
 			}
 			payload = *createdPayload
+		} else {
+			err := m.setSessionCookie(w, cookieName, sameSite, payload)
+			if err != nil {
+				log.Printf("SessionMiddleware: %v", err)
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		ctx := context.WithValue(r.Context(), helper.SessionKey, payload)
@@ -214,12 +222,28 @@ func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, cookieName s
 		AuthType: "cookie",
 	}
 
+	err := m.setSessionCookie(w, cookieName, sameSite, payload)
+	if err != nil {
+		return nil, fmt.Errorf("error setting session cookie in createNewSession: %w", err)
+	}
+
+	return &payload, nil
+}
+
+func (m *SessionMiddleware) setSessionCookie(
+	w http.ResponseWriter,
+	cookieName string,
+	sameSite http.SameSite,
+	payload helper.SessionPayload,
+) error {
 	sessionJSON, err := json.Marshal(payload)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling session in createNewSession: %w", err)
+		return fmt.Errorf("error marshaling session in setSessionCookie: %w", err)
 	}
+
 	sessionEncoded := base64.StdEncoding.EncodeToString(sessionJSON)
 	signed := m.sign(sessionEncoded)
+	expiresAt := time.Now().Add(m.CookieMaxAge)
 
 	// #nosec G124 -- all session cookies are Secure and HttpOnly; SameSite is restricted to Lax or None above.
 	http.SetCookie(w, &http.Cookie{
@@ -230,9 +254,11 @@ func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, cookieName s
 		Secure:      true,
 		SameSite:    sameSite,
 		Partitioned: sameSite == http.SameSiteNoneMode,
+		Expires:     expiresAt,
+		MaxAge:      int(m.CookieMaxAge / time.Second),
 	})
 
-	return &payload, nil
+	return nil
 }
 
 func (m *SessionMiddleware) sign(value string) string {

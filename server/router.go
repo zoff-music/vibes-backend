@@ -232,6 +232,7 @@ func (s *Server) setupInternalRoutes() {
 func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 	sm := middleware.SessionMiddleware{
 		Secret:                     s.Config.CookieSecret,
+		CookieMaxAge:               s.Config.SessionCookieMaxAge,
 		CastTokenSecret:            s.Config.CastTokenSecret,
 		EmbedBasePath:              s.Config.EmbedBasePath,
 		RemoteControlAuthenticator: s.DB,

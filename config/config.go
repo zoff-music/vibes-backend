@@ -61,6 +61,7 @@ type Config struct {
 
 	// User session settings
 	UserInactivityTimeout time.Duration `envconfig:"USER_INACTIVITY_TIMEOUT" default:"30m"`
+	SessionCookieMaxAge   time.Duration `envconfig:"SESSION_COOKIE_MAX_AGE" default:"87600h"`
 	CookieSecret          string        `envconfig:"COOKIE_SECRET" default:"vibes-default-secret-change-me"`
 	AdminPasswordPepper   string        `envconfig:"ADMIN_PASSWORD_PEPPER" default:""`
 	EmbedBasePath         string        `envconfig:"EMBED_BASE_PATH" default:"/embed"`
@@ -121,6 +122,9 @@ func LoadConfig() (*Config, error) {
 	}
 	if c.RemotePairingTTL <= 0 {
 		return nil, fmt.Errorf("error validating remote pairing ttl: must be greater than zero")
+	}
+	if c.SessionCookieMaxAge <= 0 {
+		return nil, fmt.Errorf("error validating session cookie max age: must be greater than zero")
 	}
 	if c.RoomEventReplayMaxEvents < 1 {
 		return nil, fmt.Errorf("error validating room event replay max events: must be greater than zero")
