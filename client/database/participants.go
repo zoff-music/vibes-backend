@@ -274,22 +274,37 @@ func (c *Client) RemoveParticipant(ctx context.Context, roomID, userID string) e
 	return nil
 }
 
-func (c *Client) prepareDeleteInactiveParticipantsStmt() error {
+func (c *Client) prepareCleanInactiveParticipantsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM room_users
-		WHERE last_seen_at < $1
-		AND NOT is_admin
+		WITH inactive_admins_q AS (
+			UPDATE room_users
+			SET is_active_listener = FALSE
+			WHERE last_seen_at < $1
+			AND is_admin
+			AND is_active_listener
+			RETURNING 1
+		),
+		deleted_participants_q AS (
+			DELETE FROM room_users
+			WHERE last_seen_at < $1
+			AND NOT is_admin
+			RETURNING 1
+		)
+		SELECT
+			(SELECT COUNT(*) FROM inactive_admins_q) +
+			(SELECT COUNT(*) FROM deleted_participants_q)
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing DeleteInactiveParticipantsStatement: %w", err)
+		return fmt.Errorf("error preparing CleanInactiveParticipantsStatement: %w", err)
 	}
-	c.DeleteInactiveParticipantsStatement = stmt
+	c.CleanInactiveParticipantsStatement = stmt
 	return nil
 }
 
-// DeleteInactiveParticipants removes inactive non-admin participants.
-func (c *Client) DeleteInactiveParticipants(ctx context.Context, olderThan time.Duration) (int, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteInactiveParticipants")
+// CleanInactiveParticipants removes inactive non-admin participants and marks
+// inactive administrators as no longer listening.
+func (c *Client) CleanInactiveParticipants(ctx context.Context, olderThan time.Duration) (int, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "CleanInactiveParticipants")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -297,15 +312,26 @@ func (c *Client) DeleteInactiveParticipants(ctx context.Context, olderThan time.
 
 	cutoff := time.Now().Add(-olderThan)
 
-	result, err := c.DeleteInactiveParticipantsStatement.ExecContext(cctx, cutoff)
+	row := c.CleanInactiveParticipantsStatement.QueryRowContext(cctx, cutoff)
+
+	var rowData inactiveParticipantCleanupRow
+	err := rowData.scan(row)
 	if err != nil {
-		return 0, fmt.Errorf("error deleting inactive participants: %w", err)
+		return 0, fmt.Errorf("error scanning cleaned inactive participants: %w", err)
 	}
 
-	rowsAffected, err := result.RowsAffected()
+	return rowData.Count, nil
+}
+
+type inactiveParticipantCleanupRow struct {
+	Count int
+}
+
+func (r *inactiveParticipantCleanupRow) scan(row *sql.Row) error {
+	err := row.Scan(&r.Count)
 	if err != nil {
-		return 0, fmt.Errorf("error getting deleted inactive participants rows affected: %w", err)
+		return fmt.Errorf("error scanning inactive participant cleanup row: %w", err)
 	}
 
-	return int(rowsAffected), nil
+	return nil
 }
