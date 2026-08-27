@@ -99,13 +99,13 @@ type Client struct {
 	ClaimAndGetExpiredTokenForRefreshStatement *sql.Stmt
 
 	// Participant statements
-	UpdateParticipantStatement          *sql.Stmt
-	GetActiveParticipantsStatement      *sql.Stmt
-	GetActiveListenerCountsStatement    *sql.Stmt
-	SetRoomHostStatement                *sql.Stmt
-	RemoveParticipantStatement          *sql.Stmt
-	DeleteInactiveParticipantsStatement *sql.Stmt
-	GetStatsStatement                   *sql.Stmt
+	UpdateParticipantStatement         *sql.Stmt
+	GetActiveParticipantsStatement     *sql.Stmt
+	GetActiveListenerCountsStatement   *sql.Stmt
+	SetRoomHostStatement               *sql.Stmt
+	RemoveParticipantStatement         *sql.Stmt
+	CleanInactiveParticipantsStatement *sql.Stmt
+	GetStatsStatement                  *sql.Stmt
 
 	// Additional room statements
 	GetActiveSourcesStatement *sql.Stmt
@@ -260,7 +260,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareGetActiveListenerCountsStmt,
 		c.prepareSetRoomHostStmt,
 		c.prepareRemoveParticipantStmt,
-		c.prepareDeleteInactiveParticipantsStmt,
+		c.prepareCleanInactiveParticipantsStmt,
 		c.prepareGetStatsStmt,
 		// Remote control statements
 		c.prepareCreateRemoteControlStmt,
@@ -342,7 +342,7 @@ func (c *Client) Close() error {
 		c.GetActiveListenerCountsStatement,
 		c.SetRoomHostStatement,
 		c.RemoveParticipantStatement,
-		c.DeleteInactiveParticipantsStatement,
+		c.CleanInactiveParticipantsStatement,
 		c.GetStatsStatement,
 		c.GetActiveSourcesStatement,
 		c.GetAdminRoomsStatement,

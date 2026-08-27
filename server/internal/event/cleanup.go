@@ -11,18 +11,18 @@ import (
 
 // CleanupInactiveParticipants cleans up inactive participants
 type CleanupInactiveParticipants struct {
-	DB vibe.InactiveParticipantDeleter
+	DB vibe.InactiveParticipantCleaner
 }
 
-// Handle deletes non-admin participants who haven't been seen in 1 hour.
+// Handle cleans participants who haven't been seen in 1 hour.
 func (h *CleanupInactiveParticipants) Handle(ctx context.Context, _ []byte) error {
-	deleted, err := h.DB.DeleteInactiveParticipants(ctx, 1*time.Hour)
+	cleaned, err := h.DB.CleanInactiveParticipants(ctx, 1*time.Hour)
 	if err != nil {
-		return fmt.Errorf("error deleting inactive participants in CleanupInactiveParticipants.Handle: %w", err)
+		return fmt.Errorf("error cleaning inactive participants in CleanupInactiveParticipants.Handle: %w", err)
 	}
 
-	if deleted > 0 {
-		log.Printf("Cleaned up %d inactive participants", deleted)
+	if cleaned > 0 {
+		log.Printf("Cleaned up %d inactive participants", cleaned)
 	}
 
 	return nil
