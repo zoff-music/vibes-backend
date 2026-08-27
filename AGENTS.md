@@ -144,7 +144,7 @@ func (c *Client) prepareGetRoomStmt() error {
     stmt, err := c.DB.Prepare(`
         SELECT r.id, r.name, r.mode, r.admin_password_hash, r.created_at,
                rs.skip_allowed, rs.democratic_skip, rs.skip_vote_threshold,
-               rs.max_continuous_adds, rs.remove_on_play, rs.loop_queue, rs.allow_duplicates,
+               rs.max_continuous_adds, rs.remove_on_play, rs.allow_duplicates,
                COALESCE(COUNT(ru.id), 0) as user_count
         FROM rooms r
         LEFT JOIN room_settings rs ON r.id = rs.room_id

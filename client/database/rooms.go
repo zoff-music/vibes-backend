@@ -130,7 +130,6 @@ func (c *Client) prepareGetRoomStmt() error {
 			b.skip_vote_threshold,
 			b.max_continuous_adds,
 			b.remove_on_play,
-			b.loop_queue,
 			b.allow_duplicates,
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
@@ -265,7 +264,6 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 			b.skip_vote_threshold,
 			b.max_continuous_adds,
 			b.remove_on_play,
-			b.loop_queue,
 			b.allow_duplicates,
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
@@ -542,7 +540,6 @@ type roomRow struct {
 	SkipVoteThreshold sql.NullFloat64
 	MaxContinuousAdds sql.NullInt64
 	RemoveOnPlay      sql.NullBool
-	LoopQueue         sql.NullBool
 	AllowDuplicates   sql.NullBool
 	IsRequesterAdmin  sql.NullBool
 	EnabledSources    sql.NullString
@@ -567,7 +564,6 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.SkipVoteThreshold,
 		&r.MaxContinuousAdds,
 		&r.RemoveOnPlay,
-		&r.LoopQueue,
 		&r.AllowDuplicates,
 		&r.IsRequesterAdmin,
 		&r.EnabledSources,
@@ -636,7 +632,6 @@ func (r *roomRow) toRoomSettings(
 		SkipVoteThreshold: r.SkipVoteThreshold.Float64,
 		MaxContinuousAdds: int(r.MaxContinuousAdds.Int64),
 		RemoveOnPlay:      r.RemoveOnPlay.Bool,
-		LoopQueue:         r.LoopQueue.Bool,
 		AllowDuplicates:   r.AllowDuplicates.Bool,
 		EnabledSources:    sources,
 		OnlyAdminAddSongs: r.OnlyAdminAddSongs.Bool,
@@ -724,19 +719,19 @@ func (c *Client) prepareCreateRoomStmt() error {
 			)
 			AND (
 				(
-					$18 != ''
+					$17 != ''
 					AND EXISTS (
 						SELECT 1
 						FROM room_name_reservations
 						WHERE room_name_reservations.name = $1
-						AND room_name_reservations.token::TEXT = $18
+						AND room_name_reservations.token::TEXT = $17
 						AND room_name_reservations.owner_id = $4
 						AND room_name_reservations.expires_at >
 							CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
 					)
 				)
 				OR (
-					$18 = ''
+					$17 = ''
 					AND NOT EXISTS (
 						SELECT 1
 						FROM room_name_reservations
@@ -762,14 +757,13 @@ func (c *Client) prepareCreateRoomStmt() error {
 				skip_vote_threshold,
 				max_continuous_adds,
 				remove_on_play,
-				loop_queue,
 				allow_duplicates,
 				enabled_sources,
 				only_admin_add_songs,
 				is_public,
 				playlist_import
 			)
-			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17 FROM created_room_q
+			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 FROM created_room_q
 		),
 		consumed_name_q AS (
 			INSERT INTO room_name_pool (name, generated, consumed_at)
@@ -786,8 +780,8 @@ func (c *Client) prepareCreateRoomStmt() error {
 			USING created_room_q
 			WHERE room_name_reservations.name = created_room_q.id
 			AND (
-				$18 = ''
-				OR room_name_reservations.token::TEXT = $18
+				$17 = ''
+				OR room_name_reservations.token::TEXT = $17
 			)
 		)
 		SELECT id FROM created_room_q
@@ -825,7 +819,6 @@ func (c *Client) CreateRoom(
 		room.Settings.SkipVoteThreshold,
 		room.Settings.MaxContinuousAdds,
 		room.Settings.RemoveOnPlay,
-		room.Settings.LoopQueue,
 		room.Settings.AllowDuplicates,
 		strings.Join(room.Settings.EnabledSources, ","),
 		room.Settings.OnlyAdminAddSongs,
@@ -891,9 +884,9 @@ func (c *Client) prepareUpdateRoomStmt() error {
 		WITH updated_room_q AS (
 			UPDATE rooms
 			SET name = $1,
-			mode = $10,
-			host_id = $11,
-			admin_password_hash = $12
+			mode = $9,
+			host_id = $10,
+			admin_password_hash = $11
 			WHERE id = $2
 			RETURNING id
 		)
@@ -903,12 +896,11 @@ func (c *Client) prepareUpdateRoomStmt() error {
 		skip_vote_threshold = $5,
 		max_continuous_adds = $6,
 		remove_on_play = $7,
-		loop_queue = $8,
-		allow_duplicates = $9,
-		enabled_sources = $13,
-		only_admin_add_songs = $14,
-		is_public = $15,
-		playlist_import = $16
+		allow_duplicates = $8,
+		enabled_sources = $12,
+		only_admin_add_songs = $13,
+		is_public = $14,
+		playlist_import = $15
 		FROM updated_room_q a
 		WHERE room_settings.room_id = a.id
 	`)
@@ -959,7 +951,6 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		room.Settings.SkipVoteThreshold,
 		room.Settings.MaxContinuousAdds,
 		room.Settings.RemoveOnPlay,
-		room.Settings.LoopQueue,
 		room.Settings.AllowDuplicates,
 		room.Mode,
 		room.HostID,
