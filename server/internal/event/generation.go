@@ -171,7 +171,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 			Artist:              track.Artist,
 			ThumbnailURL:        track.ThumbnailURL,
 			Duration:            track.Duration,
-			AddedBy:             room.HostID,
+			AddedBySessionID:    room.HostID,
 			AddedAt:             time.Now(),
 		}
 

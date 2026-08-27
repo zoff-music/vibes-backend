@@ -35,6 +35,8 @@ func (s *Server) setupRoutes() {
 	api.HandleFunc("/rooms/{id}/playbackfailures", handler.ReportPlaybackFailure(s.DB, s.YouTube, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("ReportPlaybackFailure")
 	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
 	api.HandleFunc("/rooms/{id}/sessions", handler.DeleteRoomAdminSession(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRoomAdminSession")
+	api.HandleFunc("/sessions", handler.GetSessionProfile(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSessionProfile")
+	api.HandleFunc("/sessions", handler.UpdateSessionProfile(s.DB)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateSessionProfile")
 
 	// Song routes
 	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSongs")
