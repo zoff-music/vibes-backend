@@ -191,7 +191,7 @@ func AddSong(
 			Artist:              artist,
 			ThumbnailURL:        req.Thumbnail,
 			Duration:            req.Duration,
-			AddedBy:             session.UserID,
+			AddedBySessionID:    session.UserID,
 			AddedAt:             time.Now(),
 		}
 

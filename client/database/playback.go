@@ -183,8 +183,8 @@ func (r *playbackSongRow) scan(row *sql.Row) error {
 		&r.Song.Artist,
 		&r.Song.ThumbnailURL,
 		&r.Song.Duration,
+		&r.Song.AddedBySessionID,
 		&r.Song.AddedBy,
-		&r.Song.AddedByNickname,
 		&r.Song.AddedAt,
 		&r.Song.VoteCount,
 	)
@@ -288,7 +288,10 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 				a.thumbnail_url,
 				a.duration,
 				a.added_by,
-				a.added_by_nickname,
+				COALESCE(
+					(SELECT d.name FROM sessions d WHERE d.id = a.added_by),
+					a.added_by_nickname
+				) AS added_by_nickname,
 				CASE
 					WHEN a.id = c.current_song_id AND NOT c.remove_on_play THEN NOW()
 					ELSE a.added_at
@@ -334,7 +337,10 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			b.thumbnail_url,
 			b.duration,
 			b.added_by,
-			b.added_by_nickname,
+			COALESCE(
+				(SELECT d.name FROM sessions d WHERE d.id = b.added_by),
+				b.added_by_nickname
+			) AS added_by_nickname,
 			b.added_at,
 			COALESCE(b.vote_count, 0) AS vote_count
 		FROM updated_playback_q a
@@ -514,7 +520,10 @@ func (c *Client) prepareSkipTrackStmt() error {
 				a.thumbnail_url,
 				a.duration,
 				a.added_by,
-				a.added_by_nickname,
+				COALESCE(
+					(SELECT d.name FROM sessions d WHERE d.id = a.added_by),
+					a.added_by_nickname
+				) AS added_by_nickname,
 				CASE
 					WHEN a.id = c.current_song_id AND NOT c.remove_on_play THEN NOW()
 					ELSE a.added_at
@@ -561,7 +570,10 @@ func (c *Client) prepareSkipTrackStmt() error {
 			b.thumbnail_url,
 			b.duration,
 			b.added_by,
-			b.added_by_nickname,
+			COALESCE(
+				(SELECT d.name FROM sessions d WHERE d.id = b.added_by),
+				b.added_by_nickname
+			) AS added_by_nickname,
 			b.added_at,
 			COALESCE(b.vote_count, 0) AS vote_count
 		FROM updated_playback_q a
@@ -717,7 +729,10 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 				a.thumbnail_url,
 				a.duration,
 				a.added_by,
-				a.added_by_nickname,
+				COALESCE(
+					(SELECT d.name FROM sessions d WHERE d.id = a.added_by),
+					a.added_by_nickname
+				) AS added_by_nickname,
 				a.added_at,
 				COUNT(b.user_id) AS vote_count
 			FROM songs a
@@ -758,7 +773,10 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			b.thumbnail_url,
 			b.duration,
 			b.added_by,
-			b.added_by_nickname,
+			COALESCE(
+				(SELECT d.name FROM sessions d WHERE d.id = b.added_by),
+				b.added_by_nickname
+			) AS added_by_nickname,
 			b.added_at,
 			COALESCE(b.vote_count, 0) AS vote_count
 		FROM updated_playback_q a
