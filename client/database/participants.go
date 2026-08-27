@@ -276,7 +276,9 @@ func (c *Client) RemoveParticipant(ctx context.Context, roomID, userID string) e
 
 func (c *Client) prepareDeleteInactiveParticipantsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM room_users WHERE last_seen_at < $1
+		DELETE FROM room_users
+		WHERE last_seen_at < $1
+		AND NOT is_admin
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing DeleteInactiveParticipantsStatement: %w", err)
@@ -285,7 +287,7 @@ func (c *Client) prepareDeleteInactiveParticipantsStmt() error {
 	return nil
 }
 
-// DeleteInactiveParticipants removes participants who haven't been seen within the duration
+// DeleteInactiveParticipants removes inactive non-admin participants.
 func (c *Client) DeleteInactiveParticipants(ctx context.Context, olderThan time.Duration) (int, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteInactiveParticipants")
 	defer span.End()

@@ -159,6 +159,24 @@ func AddSong(
 			)
 			return
 		}
+		if vibe.IsLiveVideo(req.SourceType, req.Duration) {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error live videos cannot be added to rooms"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "youtube_live_video_not_supported",
+						Message:   liveVideoErrorMessage,
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
 
 		providerURL, err := req.CanonicalProviderURL()
 		if err != nil {
@@ -178,6 +196,24 @@ func AddSong(
 			log.Printf("error getting cached provider track metadata: %v", err)
 		}
 		if err == nil && !cachedTrack.IsEmpty() {
+			if vibe.IsLiveVideo(req.SourceType, cachedTrack.DurationSeconds) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error live videos cannot be added to rooms"),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "youtube_live_video_not_supported",
+							Message:   liveVideoErrorMessage,
+							Propagate: true,
+						},
+						StatusCode: http.StatusBadRequest,
+					},
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
 			playbackRestriction = cachedTrack.PlaybackRestriction
 		}
 		song := &vibe.Song{

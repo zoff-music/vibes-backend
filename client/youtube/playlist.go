@@ -116,11 +116,14 @@ func (c *Client) GetPlaylist(
 		}
 		for _, videoID := range videoIDs[start:end] {
 			item, ok := items[videoID]
-			if !ok {
+			if !ok || item.isLiveVideo() {
 				continue
 			}
 			durationSeconds, err := youtubeDurationSeconds(item.ContentDetails.Duration)
 			if err != nil {
+				continue
+			}
+			if vibe.IsLiveVideo(vibe.SourceTypeYouTube, durationSeconds) {
 				continue
 			}
 

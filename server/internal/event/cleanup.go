@@ -14,7 +14,7 @@ type CleanupInactiveParticipants struct {
 	DB vibe.InactiveParticipantDeleter
 }
 
-// Handle deletes participants who haven't been seen in 1 hour
+// Handle deletes non-admin participants who haven't been seen in 1 hour.
 func (h *CleanupInactiveParticipants) Handle(ctx context.Context, _ []byte) error {
 	deleted, err := h.DB.DeleteInactiveParticipants(ctx, 1*time.Hour)
 	if err != nil {

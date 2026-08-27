@@ -31,6 +31,10 @@ func (t *MusicTrack) IsEmpty() bool {
 	return t.ID == ""
 }
 
+func IsLiveVideo(source string, duration int) bool {
+	return source == SourceTypeYouTube && duration <= 0
+}
+
 type CachedSearch struct {
 	Query  string       `json:"query"`
 	Tracks []MusicTrack `json:"tracks"`

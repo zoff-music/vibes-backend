@@ -50,7 +50,8 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 		}
 
 		var notFoundError internalerror.ErrMusicTrackNotFound
-		if !errors.As(err, &notFoundError) {
+		var liveVideoError internalerror.ErrLiveVideo
+		if !errors.As(err, &notFoundError) && !errors.As(err, &liveVideoError) {
 			return fmt.Errorf(
 				"error fetching %s metadata in MetaRefresh.Handle: %w",
 				h.ProviderName,
