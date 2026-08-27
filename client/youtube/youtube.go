@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"sync"
 	"time"
 	_ "time/tzdata"
 
@@ -23,9 +22,7 @@ type Client struct {
 	Endpoint                       string
 	HTTPClient                     client.HTTPClient
 
-	searchQuotaMu    sync.RWMutex
-	searchQuotaZone  *time.Location
-	searchQuotaReset time.Time
+	searchQuotaZone *time.Location
 }
 
 // Init initializes the YouTube API client

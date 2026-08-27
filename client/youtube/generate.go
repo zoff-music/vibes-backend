@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -23,6 +24,7 @@ func (c *Client) SearchGeneratedPlaylist(
 	ctx context.Context,
 	playlist vibe.GeneratedPlaylist,
 	cachedSearches []vibe.CachedSearch,
+	searchQuotaReset time.Time,
 ) (*vibe.GeneratedPlaylistSearchResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SearchGeneratedPlaylist")
 	defer span.End()
@@ -149,6 +151,17 @@ func (c *Client) SearchGeneratedPlaylist(
 		len(unresolvedCandidates),
 	)
 	var fallbackSearchErr error
+	if time.Now().Before(searchQuotaReset) {
+		fallbackSearchErr = internalerror.ErrProviderQuotaExceeded{
+			Err: fmt.Errorf(
+				"error checking youtube search quota in SearchGeneratedPlaylist: cached until %s",
+				searchQuotaReset.Format(time.RFC3339),
+			),
+			Provider: youtubeProvider,
+			ResetAt:  searchQuotaReset,
+		}
+		unresolvedCandidates = unresolvedCandidates[:0]
+	}
 	for _, candidate := range unresolvedCandidates {
 		query := candidate.Artist + " " + candidate.Title
 		searchUsages = append(
