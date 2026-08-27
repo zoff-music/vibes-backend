@@ -150,19 +150,6 @@ func (c *Client) searchVideos(
 	query string,
 	maxResults int,
 ) (*searchResponse, error) {
-	c.searchQuotaMu.RLock()
-	searchQuotaReset := c.searchQuotaReset
-	c.searchQuotaMu.RUnlock()
-	if time.Now().Before(searchQuotaReset) {
-		return nil, internalerror.ErrProviderQuotaExceeded{
-			Err: fmt.Errorf(
-				"error checking youtube search quota in searchVideos: cached until %s",
-				searchQuotaReset.Format(time.RFC3339),
-			),
-			Provider: youtubeProvider,
-		}
-	}
-
 	params := url.Values{}
 	params.Set("part", "snippet")
 	params.Set("q", query)
@@ -198,16 +185,13 @@ func (c *Client) searchVideos(
 				0,
 				c.searchQuotaZone,
 			)
-			c.searchQuotaMu.Lock()
-			c.searchQuotaReset = reset
-			c.searchQuotaMu.Unlock()
-
 			return nil, internalerror.ErrProviderQuotaExceeded{
 				Err: fmt.Errorf(
 					"error requesting youtube search in searchVideos: %w",
 					err,
 				),
 				Provider: youtubeProvider,
+				ResetAt:  reset,
 			}
 		}
 

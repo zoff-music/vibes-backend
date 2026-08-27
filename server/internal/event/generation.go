@@ -15,7 +15,7 @@ import (
 
 type GenerateRoomPlaylist struct {
 	AI       vibe.PlaylistGenerator
-	Cache    vibe.CachedSearchFetcherCreator
+	Cache    vibe.GeneratedPlaylistCache
 	DB       vibe.RoomGenerationWorker
 	Events   vibe.RoomEventNotifier
 	Searcher vibe.GeneratedPlaylistSearcher
@@ -74,10 +74,37 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 		cachedSearches = []vibe.CachedSearch{}
 	}
 
-	searchResult, err := h.Searcher.SearchGeneratedPlaylist(ctx, *playlist, cachedSearches)
+	searchQuotaReset, err := h.Cache.GetProviderQuotaReset(
+		ctx,
+		vibe.SourceTypeYouTube,
+		vibe.ProviderQuotaOperationSearch,
+	)
+	if err != nil {
+		log.Printf("error getting cached youtube quota reset for room generation: %v", err)
+		searchQuotaReset = time.Time{}
+	}
+
+	searchResult, err := h.Searcher.SearchGeneratedPlaylist(
+		ctx,
+		*playlist,
+		cachedSearches,
+		searchQuotaReset,
+	)
 	if err != nil {
 		var quotaError internalerror.ErrProviderQuotaExceeded
 		if errors.As(err, &quotaError) {
+			err = h.Cache.CacheProviderQuotaReset(
+				ctx,
+				vibe.SourceTypeYouTube,
+				vibe.ProviderQuotaOperationSearch,
+				quotaError.ResetAt,
+			)
+			if err != nil {
+				log.Printf(
+					"error caching youtube quota reset for room generation: %v",
+					err,
+				)
+			}
 			err = h.DB.FailRoomGeneration(
 				ctx,
 				generation.RoomID,

@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"github.com/zoff-music/vibes-backend/client"
@@ -72,11 +73,43 @@ func SearchMusic(
 			log.Printf("error creating youtube search usage: %v", err)
 		}
 		if !cacheHit {
-			tracks, err = ms.Search(ctx, query)
+			var quotaReset time.Time
+			quotaReset, err = cache.GetProviderQuotaReset(
+				ctx,
+				vibe.SourceTypeYouTube,
+				vibe.ProviderQuotaOperationSearch,
+			)
+			quotaCheckSucceeded := err == nil
+			if !quotaCheckSucceeded {
+				log.Printf("error getting cached youtube quota reset: %v", err)
+			}
+			quotaExceeded := time.Now().Before(quotaReset)
+			if quotaCheckSucceeded && quotaExceeded {
+				err = internalerror.ErrProviderQuotaExceeded{
+					Err: fmt.Errorf(
+						"error checking youtube search quota in SearchMusic handler: cached until %s",
+						quotaReset.Format(time.RFC3339),
+					),
+					Provider: vibe.SourceTypeYouTube,
+					ResetAt:  quotaReset,
+				}
+			}
+			if !quotaCheckSucceeded || !quotaExceeded {
+				tracks, err = ms.Search(ctx, query)
+			}
 		}
 		if err != nil {
 			var quotaError internalerror.ErrProviderQuotaExceeded
 			if errors.As(err, &quotaError) {
+				err = cache.CacheProviderQuotaReset(
+					ctx,
+					vibe.SourceTypeYouTube,
+					vibe.ProviderQuotaOperationSearch,
+					quotaError.ResetAt,
+				)
+				if err != nil {
+					log.Printf("error caching youtube quota reset: %v", err)
+				}
 				handleError(
 					w,
 					client.ErrorCodeWrapper{

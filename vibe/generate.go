@@ -122,7 +122,13 @@ type GeneratedPlaylistSearcher interface {
 		ctx context.Context,
 		playlist GeneratedPlaylist,
 		cachedSearches []CachedSearch,
+		searchQuotaReset time.Time,
 	) (*GeneratedPlaylistSearchResult, error)
+}
+
+type GeneratedPlaylistCache interface {
+	CachedSearchFetcherCreator
+	ProviderQuotaResetFetcherCreator
 }
 
 type GeneratedSongAdder interface {
