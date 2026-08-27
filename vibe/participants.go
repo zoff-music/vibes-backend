@@ -21,9 +21,9 @@ type ListenerCounts struct {
 	ActiveCastReceivers int
 }
 
-// InactiveParticipantDeleter removes inactive room participants.
-type InactiveParticipantDeleter interface {
-	DeleteInactiveParticipants(ctx context.Context, olderThan time.Duration) (int, error)
+// InactiveParticipantCleaner cleans inactive room participants.
+type InactiveParticipantCleaner interface {
+	CleanInactiveParticipants(ctx context.Context, olderThan time.Duration) (int, error)
 }
 
 // RoomEventParticipantFetcherUpdater maintains listener presence for room events.
