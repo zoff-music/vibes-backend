@@ -28,7 +28,10 @@ func (c *Client) prepareGetSongsStmt() error {
 			a.thumbnail_url,
 			a.duration,
 			a.added_by,
-			a.added_by_nickname,
+			COALESCE(
+				(SELECT c.name FROM sessions c WHERE c.id = a.added_by),
+				a.added_by_nickname
+			) AS added_by_nickname,
 			a.added_at,
 			COUNT(b.user_id) as vote_count
 		FROM songs a
@@ -98,8 +101,8 @@ type songRow struct {
 	Artist              sql.NullString
 	ThumbnailURL        sql.NullString
 	Duration            sql.NullInt64
+	AddedBySessionID    sql.NullString
 	AddedBy             sql.NullString
-	AddedByNickname     sql.NullString
 	AddedAt             sql.NullTime
 	VoteCount           sql.NullInt64
 }
@@ -116,8 +119,8 @@ func (r *songRow) scanRows(rows *sql.Rows) error {
 		&r.Artist,
 		&r.ThumbnailURL,
 		&r.Duration,
+		&r.AddedBySessionID,
 		&r.AddedBy,
-		&r.AddedByNickname,
 		&r.AddedAt,
 		&r.VoteCount,
 	)
@@ -140,8 +143,8 @@ func (r *songRow) scan(row *sql.Row) error {
 		&r.Artist,
 		&r.ThumbnailURL,
 		&r.Duration,
+		&r.AddedBySessionID,
 		&r.AddedBy,
-		&r.AddedByNickname,
 		&r.AddedAt,
 		&r.VoteCount,
 	)
@@ -164,8 +167,8 @@ func (r *songRow) toSong() vibe.Song {
 		Artist:              r.Artist.String,
 		ThumbnailURL:        r.ThumbnailURL.String,
 		Duration:            int(r.Duration.Int64),
+		AddedBySessionID:    r.AddedBySessionID.String,
 		AddedBy:             r.AddedBy.String,
-		AddedByNickname:     r.AddedByNickname.String,
 		AddedAt:             r.AddedAt.Time,
 		VoteCount:           int(r.VoteCount.Int64),
 	}
@@ -186,7 +189,10 @@ func (c *Client) prepareGetSongStmt() error {
 			a.thumbnail_url,
 			a.duration,
 			a.added_by,
-			a.added_by_nickname,
+			COALESCE(
+				(SELECT c.name FROM sessions c WHERE c.id = a.added_by),
+				a.added_by_nickname
+			) AS added_by_nickname,
 			a.added_at,
 			COUNT(b.user_id) as vote_count
 		FROM songs a
@@ -482,6 +488,19 @@ func (c *Client) prepareAddSongStmt() error {
 			AND $2 = ANY($12::text[])
 			FOR KEY SHARE OF a
 		),
+		session_profile_q AS (
+			INSERT INTO sessions (id, name)
+			SELECT
+				$8,
+				SPLIT_PART(a.name, '-', 1) || '-' || SPLIT_PART(a.name, '-', 2)
+			FROM room_name_pool a
+			WHERE a.generated
+			ORDER BY RANDOM()
+			LIMIT 1
+			ON CONFLICT (id) DO UPDATE
+			SET name = sessions.name
+			RETURNING name
+		),
 		upserted_song_q AS (
 			INSERT INTO songs (
 				id,
@@ -511,7 +530,7 @@ func (c *Client) prepareAddSongStmt() error {
 				$6,
 				$7,
 				$8,
-				$9,
+				COALESCE((SELECT name FROM session_profile_q), $9),
 				NOW(),
 				NOT a.allow_duplicates
 			FROM room_config_q a
@@ -559,7 +578,10 @@ func (c *Client) prepareAddSongStmt() error {
 			a.thumbnail_url,
 			a.duration,
 			a.added_by,
-			a.added_by_nickname,
+			COALESCE(
+				(SELECT b.name FROM sessions b WHERE b.id = a.added_by),
+				a.added_by_nickname
+			) AS added_by_nickname,
 			a.added_at,
 			(
 				SELECT COUNT(*)
@@ -615,8 +637,8 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongRes
 		song.Artist,
 		song.ThumbnailURL,
 		song.Duration,
+		song.AddedBySessionID,
 		song.AddedBy,
-		song.AddedByNickname,
 		song.ID,
 		true,
 		c.enabledProviders,
@@ -662,8 +684,8 @@ type addSongRow struct {
 	Artist              sql.NullString
 	ThumbnailURL        sql.NullString
 	Duration            sql.NullInt64
+	AddedBySessionID    sql.NullString
 	AddedBy             sql.NullString
-	AddedByNickname     sql.NullString
 	AddedAt             sql.NullTime
 	VoteCount           sql.NullInt64
 }
@@ -681,8 +703,8 @@ func (r *addSongRow) scan(row *sql.Row) error {
 		&r.Artist,
 		&r.ThumbnailURL,
 		&r.Duration,
+		&r.AddedBySessionID,
 		&r.AddedBy,
-		&r.AddedByNickname,
 		&r.AddedAt,
 		&r.VoteCount,
 	)
@@ -705,8 +727,8 @@ func (r *addSongRow) toSong() vibe.Song {
 		Artist:              r.Artist.String,
 		ThumbnailURL:        r.ThumbnailURL.String,
 		Duration:            int(r.Duration.Int64),
+		AddedBySessionID:    r.AddedBySessionID.String,
 		AddedBy:             r.AddedBy.String,
-		AddedByNickname:     r.AddedByNickname.String,
 		AddedAt:             r.AddedAt.Time,
 		VoteCount:           int(r.VoteCount.Int64),
 	}
