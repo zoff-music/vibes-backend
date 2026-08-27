@@ -69,6 +69,10 @@ type Client struct {
 	CreateUserStatement     *sql.Stmt
 	ClearRoomAdminStatement *sql.Stmt
 
+	// Session statements
+	GetOrCreateSessionProfileStatement *sql.Stmt
+	UpdateSessionProfileStatement      *sql.Stmt
+
 	// Skip vote statements
 	GetSkipVotesStatement   *sql.Stmt
 	HasUserVotedStatement   *sql.Stmt
@@ -229,6 +233,9 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareGetUserStmt,
 		c.prepareCreateUserStmt,
 		c.prepareClearRoomAdminStmt,
+		// Session statements
+		c.prepareGetOrCreateSessionProfileStmt,
+		c.prepareUpdateSessionProfileStmt,
 		// Skip vote statements
 		c.prepareGetSkipVotesStmt,
 		c.prepareHasUserVotedStmt,
@@ -313,6 +320,8 @@ func (c *Client) Close() error {
 		c.GetUserStatement,
 		c.CreateUserStatement,
 		c.ClearRoomAdminStatement,
+		c.GetOrCreateSessionProfileStatement,
+		c.UpdateSessionProfileStatement,
 		c.GetSkipVotesStatement,
 		c.HasUserVotedStatement,
 		c.AddSkipVoteStatement,

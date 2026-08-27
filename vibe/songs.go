@@ -19,8 +19,8 @@ type Song struct {
 	Artist              string    `json:"artist,omitempty"`
 	ThumbnailURL        string    `json:"thumbnailUrl"`
 	Duration            int       `json:"duration"`
-	AddedBy             string    `json:"addedBy"`
-	AddedByNickname     string    `json:"addedByNickname,omitempty"`
+	AddedBySessionID    string    `json:"-"`
+	AddedBy             string    `json:"addedBy,omitempty"`
 	AddedAt             time.Time `json:"addedAt"`
 	VoteCount           int       `json:"voteCount"`
 	PlaybackRestriction string    `json:"playbackRestriction,omitempty"`

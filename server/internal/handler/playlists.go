@@ -327,7 +327,7 @@ func AddPlaylist(
 				Artist:              requestedSong.Artist,
 				ThumbnailURL:        requestedSong.Thumbnail,
 				Duration:            requestedSong.Duration,
-				AddedBy:             session.UserID,
+				AddedBySessionID:    session.UserID,
 				AddedAt:             time.Now(),
 			})
 		}
