@@ -61,7 +61,6 @@ Production: https://api.vibez.app/api/v1
     "skipVoteThreshold": 0.5,
     "maxContinuousAdds": 3,
     "removeOnPlay": true,
-    "loopQueue": false,
     "allowDuplicates": false,
     "enabledSources": ["youtube", "soundcloud"],
     "onlyAdminAddSongs": false
