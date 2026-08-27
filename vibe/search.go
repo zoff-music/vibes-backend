@@ -8,6 +8,7 @@ import (
 	"html"
 	"sort"
 	"strings"
+	"time"
 	"unicode"
 )
 
@@ -223,6 +224,29 @@ type CachedMusicTrackFetcherCreator interface {
 type MusicSearchCache interface {
 	CachedSearchFetcherCreator
 	CachedMusicTrackCreator
+	ProviderQuotaResetFetcherCreator
+}
+
+type ProviderQuotaResetFetcher interface {
+	GetProviderQuotaReset(
+		ctx context.Context,
+		provider string,
+		operation string,
+	) (time.Time, error)
+}
+
+type ProviderQuotaResetCreator interface {
+	CacheProviderQuotaReset(
+		ctx context.Context,
+		provider string,
+		operation string,
+		resetAt time.Time,
+	) error
+}
+
+type ProviderQuotaResetFetcherCreator interface {
+	ProviderQuotaResetFetcher
+	ProviderQuotaResetCreator
 }
 
 type SearchUsageCreator interface {
@@ -231,3 +255,4 @@ type SearchUsageCreator interface {
 
 const SourceTypeYouTube = "youtube"
 const SourceTypeSoundCloud = "soundcloud"
+const ProviderQuotaOperationSearch = "search"
