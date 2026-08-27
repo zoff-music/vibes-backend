@@ -65,9 +65,19 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	}
 
 	item := result.Items[0]
+	if item.isLiveVideo() {
+		return nil, internalerror.ErrLiveVideo{
+			Err: fmt.Errorf("error getting youtube track in GetTrack: live videos are not supported"),
+		}
+	}
 	durationSeconds, err := youtubeDurationSeconds(item.ContentDetails.Duration)
 	if err != nil {
 		return nil, fmt.Errorf("error parsing youtube track duration in GetTrack: %w", err)
+	}
+	if vibe.IsLiveVideo(vibe.SourceTypeYouTube, durationSeconds) {
+		return nil, internalerror.ErrLiveVideo{
+			Err: fmt.Errorf("error getting youtube track in GetTrack: live videos are not supported"),
+		}
 	}
 
 	return &vibe.MusicTrack{
@@ -96,10 +106,11 @@ type videoItem struct {
 }
 
 type videoSnippet struct {
-	Title        string           `json:"title"`
-	ChannelTitle string           `json:"channelTitle"`
-	CategoryID   string           `json:"categoryId"`
-	Thumbnails   searchThumbnails `json:"thumbnails"`
+	Title                string           `json:"title"`
+	ChannelTitle         string           `json:"channelTitle"`
+	CategoryID           string           `json:"categoryId"`
+	LiveBroadcastContent string           `json:"liveBroadcastContent"`
+	Thumbnails           searchThumbnails `json:"thumbnails"`
 }
 
 type videoContentDetails struct {
@@ -119,6 +130,12 @@ type videoRegionRestriction struct {
 
 type videoStatus struct {
 	Embeddable bool `json:"embeddable"`
+}
+
+func (v videoItem) isLiveVideo() bool {
+	return v.Snippet.LiveBroadcastContent == youtubeLiveBroadcastContent ||
+		v.Snippet.LiveBroadcastContent == youtubeUpcomingBroadcastContent ||
+		v.ContentDetails.Duration == youtubeZeroDuration
 }
 
 func (v videoItem) playbackRestriction() string {
@@ -149,5 +166,9 @@ type videoStatistics struct {
 }
 
 const youtubeAgeRestricted = "ytAgeRestricted"
+
+const youtubeLiveBroadcastContent = "live"
+
+const youtubeUpcomingBroadcastContent = "upcoming"
 
 const youtubeRegionRestrictionCountryThreshold = 100

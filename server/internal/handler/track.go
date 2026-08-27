@@ -2,11 +2,14 @@ package handler
 
 import (
 	"encoding/json/v2"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -42,6 +45,25 @@ func GetMusicTrack(
 
 		track, err := ms.GetTrack(ctx, id)
 		if err != nil {
+			var liveVideoError internalerror.ErrLiveVideo
+			if errors.As(err, &liveVideoError) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: liveVideoError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "youtube_live_video_not_supported",
+							Message:   liveVideoErrorMessage,
+							Propagate: true,
+						},
+						StatusCode: http.StatusBadRequest,
+					},
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
 			handleError(
 				w,
 				fmt.Errorf("error failed to get track: %w", err),
@@ -193,3 +215,5 @@ func ResolveSoundCloudTrack(
 		_, _ = w.Write(body)
 	}
 }
+
+const liveVideoErrorMessage = "Live videos cannot be added to rooms."

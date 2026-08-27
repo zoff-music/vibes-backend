@@ -63,6 +63,19 @@ func (e ErrMusicTrackNotFound) Unwrap() error {
 	return e.Err
 }
 
+// ErrLiveVideo indicates that a provider track is a live or upcoming video.
+type ErrLiveVideo struct {
+	Err error
+}
+
+func (e ErrLiveVideo) Error() string {
+	return fmt.Sprintf("error live video: %v", e.Err)
+}
+
+func (e ErrLiveVideo) Unwrap() error {
+	return e.Err
+}
+
 // ErrAlreadyVoted is an error type for errors where a user has already voted on a song.
 type ErrAlreadyVoted struct {
 	Err error
