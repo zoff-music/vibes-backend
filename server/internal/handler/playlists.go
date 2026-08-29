@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"encoding/json/v2"
 	"fmt"
 	"log"
@@ -149,8 +148,7 @@ func ResolveSoundCloudPlaylist(
 //	@Produce	json
 //	@Param		id		path		string					true	"Room ID"
 //	@Param		request	body		vibe.AddPlaylistRequest	true	"Playlist tracks"
-//	@Success	200		{object}	vibe.AddPlaylistResult
-//	@Success	201		{object}	vibe.AddPlaylistResult
+//	@Success	202		{object}	vibe.AddPlaylistResult
 //	@Failure	400		{object}	map[string]string
 //	@Failure	401		{object}	map[string]string
 //	@Failure	403		{object}	map[string]string
@@ -158,8 +156,7 @@ func ResolveSoundCloudPlaylist(
 //	@Failure	500		{object}	map[string]string
 //	@Router		/api/v1/rooms/{id}/playlists [post]
 func AddPlaylist(
-	db vibe.SongQueueAdder,
-	notifier vibe.RoomBatchEventNotifier,
+	db vibe.PlaylistImportRoomCreator,
 	cache vibe.CachedMusicTrackFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -245,17 +242,6 @@ func AddPlaylist(
 				fmt.Errorf("error only admins can add songs in this room"),
 				http.StatusForbidden,
 				false,
-			)
-			return
-		}
-
-		queuedSongs, err := db.GetSongs(ctx, roomID)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error fetching songs before playlist import: %w", err),
-				http.StatusInternalServerError,
-				true,
 			)
 			return
 		}
@@ -371,95 +357,31 @@ func AddPlaylist(
 			})
 		}
 
-		results := make([]*vibe.AddSongResult, 0, len(songs))
-		var firstAddedSong *vibe.Song
-		for _, song := range songs {
-			result, err := db.AddSong(ctx, song)
-			if err != nil {
-				handleError(
-					w,
-					fmt.Errorf("error adding playlist song: %w", err),
-					http.StatusInternalServerError,
-					true,
-				)
-				return
-			}
-			results = append(results, result)
-			if firstAddedSong == nil && result.Outcome == vibe.AddSongOutcomeAdded {
-				addedSong := result.Song
-				firstAddedSong = &addedSong
-			}
-		}
-
-		updatedSongs, err := db.GetSongs(ctx, roomID)
+		importID := uuid.NewString()
+		err = db.CreatePlaylistImport(ctx, importID, songs)
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error fetching songs after playlist import: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
-		}
-		songsPayload, err := json.Marshal(updatedSongs)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error marshaling songs after playlist import: %w", err),
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error creating playlist import: %w", err),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "playlist_import_failed",
+						Message:   "The playlist could not be queued. Please try again.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusInternalServerError,
+				},
 				http.StatusInternalServerError,
 				true,
 			)
 			return
 		}
 
-		events := []vibe.RoomEvent{{
-			Type:    vibe.QueueReordered,
-			Payload: songsPayload,
-			Origin:  session.EventOrigin,
-		}}
-		if len(queuedSongs) == 0 && firstAddedSong != nil {
-			playbackState := &vibe.PlaybackState{
-				RoomID:       roomID,
-				CurrentSong:  firstAddedSong,
-				IsPlaying:    true,
-				PositionMs:   0,
-				UpdatedAt:    time.Now(),
-				ServerTimeMs: int(time.Now().UnixMilli()),
-			}
-			err = db.UpsertPlaybackState(ctx, playbackState)
-			if err != nil {
-				handleError(
-					w,
-					fmt.Errorf("error auto-playing imported playlist: %w", err),
-					http.StatusInternalServerError,
-					true,
-				)
-				return
-			}
-
-			playbackPayload, err := json.Marshal(playbackState)
-			if err != nil {
-				handleError(
-					w,
-					fmt.Errorf("error marshaling imported playlist playback: %w", err),
-					http.StatusInternalServerError,
-					true,
-				)
-				return
-			}
-			events = append(events, vibe.RoomEvent{
-				Type:    vibe.PlaybackUpdate,
-				Payload: playbackPayload,
-				Origin:  session.EventOrigin,
-			})
+		response := vibe.AddPlaylistResult{
+			ImportID:    importID,
+			QueuedCount: len(songs),
 		}
-
-		err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, events)
-		if err != nil {
-			log.Printf("failed to notify room after playlist import: %v", err)
-		}
-
-		response := vibe.AddPlaylistResult{Results: results}
 		body, err := json.Marshal(response)
 		if err != nil {
 			handleError(
@@ -471,12 +393,8 @@ func AddPlaylist(
 			return
 		}
 
-		status := http.StatusOK
-		if firstAddedSong != nil {
-			status = http.StatusCreated
-		}
 		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(status)
+		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write(body)
 	}
 }
