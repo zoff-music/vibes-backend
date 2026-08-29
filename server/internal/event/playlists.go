@@ -32,11 +32,6 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 		return nil
 	}
 
-	queuedSongs, err := h.Queue.GetSongs(ctx, playlistImport.RoomID)
-	if err != nil {
-		return fmt.Errorf("error getting songs before playlist import item in Handle: %w", err)
-	}
-
 	result, err := h.Queue.AddSong(ctx, &playlistImport.Song)
 	if err != nil {
 		addSongErr := err
@@ -82,7 +77,7 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 			Payload: queuePayload,
 		})
 	}
-	if len(queuedSongs) == 0 && result.Outcome == vibe.AddSongOutcomeAdded {
+	if playlistImport.NextPosition == 0 && result.Outcome == vibe.AddSongOutcomeAdded {
 		playbackState, err := h.Queue.StartPlaybackIfIdle(ctx, playlistImport.RoomID)
 		if err != nil {
 			return fmt.Errorf("error starting playlist import playback in Handle: %w", err)
