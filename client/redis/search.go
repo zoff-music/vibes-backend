@@ -183,6 +183,56 @@ func (c *Client) GetCachedMusicTrack(
 	return &track, nil
 }
 
+func (c *Client) GetCachedMusicTracks(
+	ctx context.Context,
+	keys []vibe.CachedMusicTrackKey,
+) ([]vibe.MusicTrack, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedMusicTracks")
+	defer span.End()
+
+	tracks := make([]vibe.MusicTrack, len(keys))
+	if c.Redis == nil || len(keys) == 0 {
+		return tracks, nil
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	connection, err := c.Redis.GetContext(cctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting redis connection in GetCachedMusicTracks: %w", err)
+	}
+	defer connection.Close()
+
+	cacheKeys := make(redis.Args, 0, len(keys))
+	for _, key := range keys {
+		cacheKeys = append(cacheKeys, c.musicTrackCacheKey(key.Provider, key.ID))
+	}
+
+	values, err := redis.Values(redis.DoContext(connection, cctx, "MGET", cacheKeys...))
+	if err != nil {
+		return nil, fmt.Errorf("error getting cached music tracks in GetCachedMusicTracks: %w", err)
+	}
+
+	for index, value := range values {
+		if value == nil {
+			continue
+		}
+
+		body, err := redis.Bytes(value, nil)
+		if err != nil {
+			return nil, fmt.Errorf("error reading cached music track in GetCachedMusicTracks: %w", err)
+		}
+
+		err = json.Unmarshal(body, &tracks[index])
+		if err != nil {
+			return nil, fmt.Errorf("error unmarshaling cached music track in GetCachedMusicTracks: %w", err)
+		}
+	}
+
+	return tracks, nil
+}
+
 func (c *Client) CacheMusicTracks(
 	ctx context.Context,
 	source string,
