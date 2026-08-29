@@ -63,9 +63,7 @@ type PlaylistImportProcessor interface {
 }
 
 type PlaylistImportSongQueue interface {
-	SongAdder
-	SongFetcher
-	SongsFetcher
+	AddPlaylistSong(ctx context.Context, song *Song) (*AddSongResult, error)
 	StartPlaybackIfIdle(ctx context.Context, roomID string) (*PlaybackState, error)
 }
 

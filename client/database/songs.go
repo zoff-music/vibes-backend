@@ -674,9 +674,38 @@ func (c *Client) prepareAddSongStmt() error {
 func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "AddSong")
 	defer span.End()
+
+	result, err := c.addSong(ctx, song, true)
+	if err != nil {
+		return nil, fmt.Errorf("error adding song in AddSong: %w", err)
+	}
+
+	return result, nil
+}
+
+func (c *Client) AddPlaylistSong(
+	ctx context.Context,
+	song *vibe.Song,
+) (*vibe.AddSongResult, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "AddPlaylistSong")
+	defer span.End()
+
+	result, err := c.addSong(ctx, song, false)
+	if err != nil {
+		return nil, fmt.Errorf("error adding playlist song in AddPlaylistSong: %w", err)
+	}
+
+	return result, nil
+}
+
+func (c *Client) addSong(
+	ctx context.Context,
+	song *vibe.Song,
+	addVote bool,
+) (*vibe.AddSongResult, error) {
 	if vibe.IsLiveVideo(song.SourceType, song.Duration) {
 		return nil, internalerror.ErrLiveVideo{
-			Err: fmt.Errorf("error adding song in AddSong: live videos are not supported"),
+			Err: fmt.Errorf("error adding song in addSong: live videos are not supported"),
 		}
 	}
 
@@ -694,7 +723,7 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongRes
 		song.AddedBySessionID,
 		song.AddedBy,
 		song.ID,
-		true,
+		addVote,
 		c.enabledProviders,
 		song.ProviderURL,
 		song.PlaybackRestriction,
@@ -703,21 +732,21 @@ func (c *Client) AddSong(ctx context.Context, song *vibe.Song) (*vibe.AddSongRes
 	var row addSongRow
 	err := row.scan(r)
 	if err != nil {
-		return nil, fmt.Errorf("error adding song atomically in AddSong: %w", err)
+		return nil, fmt.Errorf("error adding song atomically in addSong: %w", err)
 	}
 
 	if row.Result.String == addSongResultRoomNotFound {
-		return nil, fmt.Errorf("error adding song in AddSong: room %s not found", song.RoomID)
+		return nil, fmt.Errorf("error adding song in addSong: room %s not found", song.RoomID)
 	}
 	if row.Result.String == addSongResultProviderDisabled {
-		return nil, fmt.Errorf("error adding song in AddSong: provider %s is disabled", song.SourceType)
+		return nil, fmt.Errorf("error adding song in addSong: provider %s is disabled", song.SourceType)
 	}
 
 	outcome := row.Result.String
 	if outcome != vibe.AddSongOutcomeAdded &&
 		outcome != vibe.AddSongOutcomeDuplicateVoted &&
 		outcome != vibe.AddSongOutcomeDuplicateAlreadyVoted {
-		return nil, fmt.Errorf("error adding song in AddSong: unknown outcome %s", outcome)
+		return nil, fmt.Errorf("error adding song in addSong: unknown outcome %s", outcome)
 	}
 
 	return &vibe.AddSongResult{

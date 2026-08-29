@@ -157,7 +157,7 @@ func ResolveSoundCloudPlaylist(
 //	@Router		/api/v1/rooms/{id}/playlists [post]
 func AddPlaylist(
 	db vibe.PlaylistImportRoomCreator,
-	cache vibe.CachedMusicTrackFetcher,
+	cache vibe.CachedMusicTracksFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -246,7 +246,7 @@ func AddPlaylist(
 			return
 		}
 
-		songs := make([]*vibe.Song, 0, len(req.Songs))
+		cacheKeys := make([]vibe.CachedMusicTrackKey, 0, len(req.Songs))
 		for _, requestedSong := range req.Songs {
 			if requestedSong == nil {
 				handleError(
@@ -296,6 +296,21 @@ func AddPlaylist(
 				return
 			}
 
+			cacheKeys = append(cacheKeys, vibe.CachedMusicTrackKey{
+				Provider: requestedSong.SourceType,
+				ID:       requestedSong.SourceID,
+			})
+		}
+
+		cachedTracks, err := cache.GetCachedMusicTracks(ctx, cacheKeys)
+		if err != nil {
+			log.Printf("error getting cached provider playlist track metadata: %v", err)
+			cachedTracks = make([]vibe.MusicTrack, len(req.Songs))
+		}
+
+		songs := make([]*vibe.Song, 0, len(req.Songs))
+		for index, requestedSong := range req.Songs {
+
 			providerURL, err := requestedSong.CanonicalProviderURL()
 			if err != nil {
 				handleError(
@@ -308,15 +323,8 @@ func AddPlaylist(
 			}
 
 			playbackRestriction := ""
-			cachedTrack, err := cache.GetCachedMusicTrack(
-				ctx,
-				requestedSong.SourceType,
-				requestedSong.SourceID,
-			)
-			if err != nil {
-				log.Printf("error getting cached provider playlist track metadata: %v", err)
-			}
-			if err == nil && !cachedTrack.IsEmpty() {
+			cachedTrack := cachedTracks[index]
+			if !cachedTrack.IsEmpty() {
 				if vibe.IsLiveVideo(
 					requestedSong.SourceType,
 					cachedTrack.DurationSeconds,
