@@ -31,7 +31,7 @@ func GetAppEvents(
 	events := AppEvents{
 		{
 			Name:     "ImportPlaylistSong",
-			Rate:     25 * time.Millisecond,
+			Rate:     time.Millisecond,
 			IdleRate: 250 * time.Millisecond,
 			Handler: &ImportPlaylistSong{
 				Events:  redisClient,
