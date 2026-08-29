@@ -30,6 +30,15 @@ func GetAppEvents(
 ) AppEvents {
 	events := AppEvents{
 		{
+			Name: "ImportPlaylistSong",
+			Rate: 100 * time.Millisecond,
+			Handler: &ImportPlaylistSong{
+				Events:  redisClient,
+				Imports: db,
+				Queue:   db,
+			},
+		},
+		{
 			Name: "GenerateRoomPlaylist",
 			Rate: 5 * time.Second,
 			Handler: &GenerateRoomPlaylist{

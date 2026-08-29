@@ -41,7 +41,7 @@ func (s *Server) setupRoutes() {
 	// Song routes
 	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSongs")
 	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.Redis, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddSong")
-	api.HandleFunc("/rooms/{id}/playlists", handler.AddPlaylist(s.DB, s.Redis, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddPlaylist")
+	api.HandleFunc("/rooms/{id}/playlists", handler.AddPlaylist(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddPlaylist")
 	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.Redis)).Methods(http.MethodDelete, http.MethodOptions).Name("RemoveSong")
 	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.VoteSong(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("VoteSong")
 

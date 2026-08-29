@@ -113,6 +113,10 @@ type SongsFetcher interface {
 	GetSongs(ctx context.Context, roomID string) ([]Song, error)
 }
 
+type SongFetcher interface {
+	GetSong(ctx context.Context, roomID, songID string) (*Song, error)
+}
+
 // SongAdder adds songs to the queue
 type SongAdder interface {
 	AddSong(ctx context.Context, song *Song) (*AddSongResult, error)
