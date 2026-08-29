@@ -32,25 +32,9 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 		return nil
 	}
 
-	result, err := h.Queue.AddSong(ctx, &playlistImport.Song)
+	result, err := h.Queue.AddPlaylistSong(ctx, &playlistImport.Song)
 	if err != nil {
-		addSongErr := err
-		existingSong, err := h.Queue.GetSong(
-			ctx,
-			playlistImport.RoomID,
-			playlistImport.Song.ID,
-		)
-		if err != nil {
-			return fmt.Errorf("error checking playlist import item after add failure in Handle: %w", err)
-		}
-		if existingSong.IsEmpty() {
-			return fmt.Errorf("error adding playlist import item in Handle: %w", addSongErr)
-		}
-
-		result = &vibe.AddSongResult{
-			Song:    *existingSong,
-			Outcome: vibe.AddSongOutcomeAdded,
-		}
+		return fmt.Errorf("error adding playlist import item in Handle: %w", err)
 	}
 
 	var events []vibe.RoomEvent
@@ -62,19 +46,6 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 		events = append(events, vibe.RoomEvent{
 			Type:    vibe.SongAdded,
 			Payload: songPayload,
-		})
-	} else {
-		updatedSongs, err := h.Queue.GetSongs(ctx, playlistImport.RoomID)
-		if err != nil {
-			return fmt.Errorf("error getting songs after duplicate playlist import item in Handle: %w", err)
-		}
-		queuePayload, err := json.Marshal(updatedSongs)
-		if err != nil {
-			return fmt.Errorf("error marshaling playlist import queue in Handle: %w", err)
-		}
-		events = append(events, vibe.RoomEvent{
-			Type:    vibe.QueueReordered,
-			Payload: queuePayload,
 		})
 	}
 	if playlistImport.NextPosition == 0 && result.Outcome == vibe.AddSongOutcomeAdded {
@@ -101,9 +72,11 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 		return fmt.Errorf("error completing playlist import item in Handle: %w", err)
 	}
 
-	err = h.Events.NotifyRoomUpdates(ctx, playlistImport.RoomID, events)
-	if err != nil {
-		return fmt.Errorf("error notifying playlist import item in Handle: %w", err)
+	if len(events) > 0 {
+		err = h.Events.NotifyRoomUpdates(ctx, playlistImport.RoomID, events)
+		if err != nil {
+			return fmt.Errorf("error notifying playlist import item in Handle: %w", err)
+		}
 	}
 
 	return nil

@@ -17,42 +17,44 @@ type AppEvents []AppEvent
 
 // AppEvent contains the data for an in-app event type.
 type AppEvent struct {
-	Name    string
-	Rate    time.Duration
-	Handler Handler
+	Name     string
+	Rate     time.Duration
+	IdleRate time.Duration
+	Handler  Handler
 }
 
 // SubscribeAndListen subscribes to an AppEvent.
 func (e *AppEvent) SubscribeAndListen(ctx context.Context) {
-	ticker := time.NewTicker(e.Rate)
-	defer ticker.Stop()
+	timer := time.NewTimer(e.Rate)
+	defer timer.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
 			return
-		case t := <-ticker.C:
-			go func(t time.Time) {
-				span, ctx := tracing.StartSpanFromContext(ctx, e.Name)
-				defer span.End()
-				start := time.Now()
-				status := http.StatusOK
-				defer func() {
-					metrics.ObserveTaskDuration(e.Name, time.Since(start).Seconds())
-					metrics.ProcessedTask(status, e.Name)
-				}()
+		case t := <-timer.C:
+			span, handlerCtx := tracing.StartSpanFromContext(ctx, e.Name)
+			start := time.Now()
+			status := http.StatusOK
+			nextRate := e.Rate
 
-				var errExpected internalerror.ErrExpected
-				err := e.Handler.Handle(ctx, nil)
-				if err != nil && !errors.As(err, &errExpected) {
-					status = http.StatusInternalServerError
-					log.Printf("%v: %s", t, err.Error())
-					return
+			var errExpected internalerror.ErrExpected
+			err := e.Handler.Handle(handlerCtx, nil)
+			if err != nil && !errors.As(err, &errExpected) {
+				status = http.StatusInternalServerError
+				log.Printf("%v: %s", t, err.Error())
+			}
+			if err != nil && errors.As(err, &errExpected) {
+				status = http.StatusAccepted
+				if e.IdleRate > 0 {
+					nextRate = e.IdleRate
 				}
-				if err != nil {
-					status = http.StatusAccepted
-				}
-			}(t)
+			}
+
+			metrics.ObserveTaskDuration(e.Name, time.Since(start).Seconds())
+			metrics.ProcessedTask(status, e.Name)
+			span.End()
+			timer.Reset(nextRate)
 		}
 	}
 }

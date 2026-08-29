@@ -216,6 +216,18 @@ type CachedMusicTrackFetcher interface {
 	GetCachedMusicTrack(ctx context.Context, source string, sourceID string) (*MusicTrack, error)
 }
 
+type CachedMusicTracksFetcher interface {
+	GetCachedMusicTracks(
+		ctx context.Context,
+		keys []CachedMusicTrackKey,
+	) ([]MusicTrack, error)
+}
+
+type CachedMusicTrackKey struct {
+	Provider string
+	ID       string
+}
+
 type CachedMusicTrackCreator interface {
 	CacheMusicTracks(ctx context.Context, source string, tracks []MusicTrack) error
 }
