@@ -490,18 +490,65 @@ func (c *Client) prepareAddSongStmt() error {
 			AND $2 = ANY($12::text[])
 			FOR KEY SHARE OF a
 		),
-		session_profile_q AS (
+		existing_session_q AS MATERIALIZED (
+			SELECT name
+			FROM sessions
+			WHERE id = $8
+		),
+		generated_range_q AS MATERIALIZED (
+			SELECT id AS max_id
+			FROM room_name_pool
+			WHERE generated
+			AND NOT EXISTS (SELECT 1 FROM existing_session_q)
+			ORDER BY id DESC
+			LIMIT 1
+		),
+		target_q AS MATERIALIZED (
+			SELECT
+				MOD(
+					hashtextextended($8, 0) & 9223372036854775807,
+					max_id
+				) + 1 AS id
+			FROM generated_range_q
+		),
+		generated_name_q AS MATERIALIZED (
+			SELECT COALESCE(
+				(
+					SELECT name
+					FROM room_name_pool
+					WHERE generated
+					AND id >= (SELECT id FROM target_q)
+					ORDER BY id
+					LIMIT 1
+				),
+				(
+					SELECT name
+					FROM room_name_pool
+					WHERE generated
+					AND EXISTS (SELECT 1 FROM target_q)
+					ORDER BY id
+					LIMIT 1
+				)
+			) AS name
+		),
+		inserted_session_q AS (
 			INSERT INTO sessions (id, name)
 			SELECT
 				$8,
 				SPLIT_PART(a.name, '-', 1) || '-' || SPLIT_PART(a.name, '-', 2)
-			FROM room_name_pool a
-			WHERE a.generated
-			ORDER BY RANDOM()
-			LIMIT 1
+			FROM generated_name_q a
+			WHERE a.name IS NOT NULL
 			ON CONFLICT (id) DO UPDATE
 			SET name = sessions.name
 			RETURNING name
+		),
+		session_profile_q AS (
+			SELECT name
+			FROM existing_session_q
+			UNION ALL
+			SELECT name
+			FROM inserted_session_q
+			LIMIT 1
 		),
 		upserted_song_q AS (
 			INSERT INTO songs (
