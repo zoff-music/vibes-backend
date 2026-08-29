@@ -165,6 +165,13 @@ func (c *Client) prepareCompletePlaylistImportItemStmt() error {
 			AND position = $2
 			RETURNING import_id
 		),
+		remaining_item_q AS MATERIALIZED (
+			SELECT 1
+			FROM playlist_import_items
+			WHERE import_id = $1
+			AND position != $2
+			LIMIT 1
+		),
 		updated_import_q AS (
 			UPDATE playlist_imports a
 			SET
@@ -177,12 +184,7 @@ func (c *Client) prepareCompletePlaylistImportItemStmt() error {
 				FROM deleted_item_q b
 				WHERE b.import_id = a.id
 			)
-			AND EXISTS (
-				SELECT 1
-				FROM playlist_import_items c
-				WHERE c.import_id = a.id
-				AND c.position != $2
-			)
+			AND EXISTS (SELECT 1 FROM remaining_item_q)
 			RETURNING a.id
 		),
 		deleted_import_q AS (
@@ -193,12 +195,7 @@ func (c *Client) prepareCompletePlaylistImportItemStmt() error {
 				FROM deleted_item_q b
 				WHERE b.import_id = a.id
 			)
-			AND NOT EXISTS (
-				SELECT 1
-				FROM playlist_import_items c
-				WHERE c.import_id = a.id
-				AND c.position != $2
-			)
+			AND NOT EXISTS (SELECT 1 FROM remaining_item_q)
 			RETURNING a.id
 		)
 		SELECT
