@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+	"time"
 )
 
 type MusicPlaylist struct {
@@ -29,7 +30,43 @@ type AddPlaylistRequest struct {
 }
 
 type AddPlaylistResult struct {
-	Results []*AddSongResult `json:"results"`
+	ImportID    string `json:"importId"`
+	QueuedCount int    `json:"queuedCount"`
+}
+
+type PlaylistImport struct {
+	ID           string
+	RoomID       string
+	AddedBy      string
+	NextPosition int
+	Attempts     int
+	Exhausted    bool
+	Song         Song
+}
+
+type PlaylistImportCreator interface {
+	CreatePlaylistImport(ctx context.Context, importID string, songs []*Song) error
+}
+
+type PlaylistImportRoomCreator interface {
+	PlaylistImportCreator
+	RoomFetcher
+}
+
+type PlaylistImportProcessor interface {
+	ProcessNextPlaylistImport(
+		ctx context.Context,
+		retryAfter time.Duration,
+	) (*PlaylistImport, error)
+	CompletePlaylistImportItem(ctx context.Context, importID string, position int) error
+	DeletePlaylistImport(ctx context.Context, importID string) error
+}
+
+type PlaylistImportSongQueue interface {
+	SongAdder
+	SongFetcher
+	SongsFetcher
+	StartPlaybackIfIdle(ctx context.Context, roomID string) (*PlaybackState, error)
 }
 
 func ResolveSoundCloudPlaylistURL(value string) (string, error) {
