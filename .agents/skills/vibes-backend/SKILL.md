@@ -24,8 +24,8 @@ Use these rules for Go backend work in this repository.
 - `config`: env and `.env` backed configuration.
 - `vibe`: shared domain structs, request/response payloads, and minimal interfaces.
 - `server`: server setup, dependency injection, and top-level router.
-- `server/internal/handler`: HTTP handlers only.
-- `server/internal/event`: app-event wiring and handlers.
+- `server/internal/handler`: HTTP and scheduled app-event handlers.
+- `server/internal/event`: app-event dispatcher and wiring.
 - `client/database`: Postgres client split by mirrored feature files.
 - `client/redis`: required shared cache, rate limiting, and durable application-event streams.
 - `client/youtube` and `client/soundcloud`: external music provider clients.

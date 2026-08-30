@@ -60,9 +60,6 @@ type PlaylistImportProcessor interface {
 	) (*PlaylistImport, error)
 	CompletePlaylistImportItem(ctx context.Context, importID string, position int) error
 	DeletePlaylistImport(ctx context.Context, importID string) error
-}
-
-type PlaylistImportSongQueue interface {
 	AddPlaylistSong(ctx context.Context, song *Song) (*AddSongResult, error)
 	StartPlaybackIfIdle(ctx context.Context, roomID string) (*PlaybackState, error)
 }

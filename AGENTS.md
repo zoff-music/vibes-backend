@@ -58,7 +58,8 @@ client/                    # External integrations
 server/
 ├── server.go              # Client init, route wiring
 ├── router.go              # Route definitions
-└── internal/handler/      # HTTP handlers
+├── internal/event/        # App-event dispatcher and wiring
+└── internal/handler/      # HTTP and scheduled app-event handlers
     ├── rooms.go           # Room CRUD operations
     ├── songs.go           # Queue management
     ├── playback.go        # Playback control

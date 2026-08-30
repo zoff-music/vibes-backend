@@ -1,4 +1,4 @@
-package event
+package handler
 
 import (
 	"context"
@@ -10,13 +10,12 @@ import (
 )
 
 type ImportPlaylistSong struct {
-	Events  vibe.RoomBatchEventNotifier
-	Imports vibe.PlaylistImportProcessor
-	Queue   vibe.PlaylistImportSongQueue
+	DB     vibe.PlaylistImportProcessor
+	Events vibe.RoomBatchEventNotifier
 }
 
 func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
-	playlistImport, err := h.Imports.ProcessNextPlaylistImport(
+	playlistImport, err := h.DB.ProcessNextPlaylistImport(
 		ctx,
 		playlistImportRetryInterval,
 	)
@@ -24,7 +23,7 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 		return fmt.Errorf("error processing next playlist import in Handle: %w", err)
 	}
 	if playlistImport.Exhausted {
-		err = h.Imports.DeletePlaylistImport(ctx, playlistImport.ID)
+		err = h.DB.DeletePlaylistImport(ctx, playlistImport.ID)
 		if err != nil {
 			return fmt.Errorf("error deleting exhausted playlist import in Handle: %w", err)
 		}
@@ -32,7 +31,7 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 		return nil
 	}
 
-	result, err := h.Queue.AddPlaylistSong(ctx, &playlistImport.Song)
+	result, err := h.DB.AddPlaylistSong(ctx, &playlistImport.Song)
 	if err != nil {
 		return fmt.Errorf("error adding playlist import item in Handle: %w", err)
 	}
@@ -49,7 +48,7 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 		})
 	}
 	if playlistImport.NextPosition == 0 && result.Outcome == vibe.AddSongOutcomeAdded {
-		playbackState, err := h.Queue.StartPlaybackIfIdle(ctx, playlistImport.RoomID)
+		playbackState, err := h.DB.StartPlaybackIfIdle(ctx, playlistImport.RoomID)
 		if err != nil {
 			return fmt.Errorf("error starting playlist import playback in Handle: %w", err)
 		}
@@ -63,7 +62,7 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 		})
 	}
 
-	err = h.Imports.CompletePlaylistImportItem(
+	err = h.DB.CompletePlaylistImportItem(
 		ctx,
 		playlistImport.ID,
 		playlistImport.NextPosition,

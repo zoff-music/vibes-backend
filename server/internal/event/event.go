@@ -11,6 +11,7 @@ import (
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
 	"github.com/zoff-music/vibes-backend/client/youtube"
+	"github.com/zoff-music/vibes-backend/server/internal/handler"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -30,30 +31,27 @@ func GetAppEvents(
 ) AppEvents {
 	events := AppEvents{
 		{
-			Name:     "ImportPlaylistSong",
-			Rate:     100 * time.Millisecond,
-			IdleRate: 250 * time.Millisecond,
-			Handler: &ImportPlaylistSong{
-				Events:  redisClient,
-				Imports: db,
-				Queue:   db,
+			Name: "ImportPlaylistSong",
+			Rate: 100 * time.Millisecond,
+			Handler: &handler.ImportPlaylistSong{
+				DB:     db,
+				Events: redisClient,
 			},
 		},
 		{
 			Name: "GenerateRoomPlaylist",
 			Rate: 5 * time.Second,
-			Handler: &GenerateRoomPlaylist{
+			Handler: &handler.GenerateRoomPlaylist{
 				AI:       ai,
 				Cache:    redisClient,
 				DB:       db,
-				Events:   redisClient,
 				Searcher: youtubeClient,
 			},
 		},
 		{
 			Name: "ReviewRoomPlayback",
 			Rate: 100 * time.Millisecond,
-			Handler: &ReviewRoomPlayback{
+			Handler: &handler.ReviewRoomPlayback{
 				DB:     db,
 				Events: redisClient,
 			},
@@ -61,7 +59,7 @@ func GetAppEvents(
 		{
 			Name: "ReviewHostHealth",
 			Rate: 500 * time.Millisecond,
-			Handler: &ReviewHostHealth{
+			Handler: &handler.ReviewHostHealth{
 				DB:     db,
 				Events: redisClient,
 			},
@@ -69,42 +67,42 @@ func GetAppEvents(
 		{
 			Name: "CleanupInactiveParticipants",
 			Rate: 10 * time.Second,
-			Handler: &CleanupInactiveParticipants{
+			Handler: &handler.CleanupInactiveParticipants{
 				DB: db,
 			},
 		},
 		{
 			Name: "CleanupExpiredTokens",
 			Rate: 10 * time.Second,
-			Handler: &CleanupExpiredTokens{
+			Handler: &handler.CleanupExpiredTokens{
 				DB: db,
 			},
 		},
 		{
 			Name: "CleanupRoomGenerations",
 			Rate: 10 * time.Minute,
-			Handler: &CleanupRoomGenerations{
+			Handler: &handler.CleanupRoomGenerations{
 				DB: db,
 			},
 		},
 		{
 			Name: "CleanupRoomNameReservations",
 			Rate: time.Minute,
-			Handler: &CleanupRoomNameReservations{
+			Handler: &handler.CleanupRoomNameReservations{
 				DB: db,
 			},
 		},
 		{
 			Name: "TrackListenerUsage",
 			Rate: time.Minute,
-			Handler: &TrackListenerUsage{
+			Handler: &handler.TrackListenerUsage{
 				DB: db,
 			},
 		},
 		{
 			Name: "RefreshYouTubeTokens",
 			Rate: 10 * time.Second,
-			Handler: &RefreshYouTubeTokens{
+			Handler: &handler.RefreshYouTubeTokens{
 				DB:       db,
 				Provider: youtubeClient,
 			},
@@ -112,14 +110,14 @@ func GetAppEvents(
 		{
 			Name: "CleanupExpiredPendingOAuthStates",
 			Rate: 10 * time.Second,
-			Handler: &CleanupExpiredPendingOAuthStates{
+			Handler: &handler.CleanupExpiredPendingOAuthStates{
 				DB: db,
 			},
 		},
 		{
 			Name: "ReviewAdminRooms",
 			Rate: 15 * time.Second,
-			Handler: &ReviewAdminRooms{
+			Handler: &handler.ReviewAdminRooms{
 				DB:     db,
 				Events: redisClient,
 			},
@@ -132,7 +130,7 @@ func GetAppEvents(
 			events = append(events, AppEvent{
 				Name: "MetaRefreshYouTube",
 				Rate: time.Second,
-				Handler: &MetaRefresh{
+				Handler: &handler.MetaRefresh{
 					DB:           db,
 					Events:       redisClient,
 					Provider:     youtubeClient,
@@ -143,7 +141,7 @@ func GetAppEvents(
 			events = append(events, AppEvent{
 				Name: "MetaRefreshSoundCloud",
 				Rate: time.Second,
-				Handler: &MetaRefresh{
+				Handler: &handler.MetaRefresh{
 					DB:           db,
 					Events:       redisClient,
 					Provider:     soundcloudClient,
