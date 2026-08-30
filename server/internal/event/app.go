@@ -17,10 +17,9 @@ type AppEvents []AppEvent
 
 // AppEvent contains the data for an in-app event type.
 type AppEvent struct {
-	Name     string
-	Rate     time.Duration
-	IdleRate time.Duration
-	Handler  Handler
+	Name    string
+	Rate    time.Duration
+	Handler Handler
 }
 
 // SubscribeAndListen subscribes to an AppEvent.
@@ -36,7 +35,6 @@ func (e *AppEvent) SubscribeAndListen(ctx context.Context) {
 			span, handlerCtx := tracing.StartSpanFromContext(ctx, e.Name)
 			start := time.Now()
 			status := http.StatusOK
-			nextRate := e.Rate
 
 			var errExpected internalerror.ErrExpected
 			err := e.Handler.Handle(handlerCtx, nil)
@@ -46,15 +44,12 @@ func (e *AppEvent) SubscribeAndListen(ctx context.Context) {
 			}
 			if err != nil && errors.As(err, &errExpected) {
 				status = http.StatusAccepted
-				if e.IdleRate > 0 {
-					nextRate = e.IdleRate
-				}
 			}
 
 			metrics.ObserveTaskDuration(e.Name, time.Since(start).Seconds())
 			metrics.ProcessedTask(status, e.Name)
 			span.End()
-			timer.Reset(nextRate)
+			timer.Reset(e.Rate)
 		}
 	}
 }
