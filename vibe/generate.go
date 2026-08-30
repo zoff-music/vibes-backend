@@ -126,9 +126,10 @@ type GeneratedPlaylistSearcher interface {
 	) (*GeneratedPlaylistSearchResult, error)
 }
 
-type GeneratedPlaylistCache interface {
+type GeneratedPlaylistCacheNotifier interface {
 	CachedSearchFetcherCreator
 	ProviderQuotaResetFetcherCreator
+	RoomEventNotifier
 }
 
 type GeneratedSongAdder interface {

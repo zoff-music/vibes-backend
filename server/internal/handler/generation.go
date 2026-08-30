@@ -1,4 +1,4 @@
-package event
+package handler
 
 import (
 	"context"
@@ -15,9 +15,8 @@ import (
 
 type GenerateRoomPlaylist struct {
 	AI       vibe.PlaylistGenerator
-	Cache    vibe.GeneratedPlaylistCache
+	Cache    vibe.GeneratedPlaylistCacheNotifier
 	DB       vibe.RoomGenerationWorker
-	Events   vibe.RoomEventNotifier
 	Searcher vibe.GeneratedPlaylistSearcher
 }
 
@@ -35,7 +34,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 		if err != nil {
 			return fmt.Errorf("error marshaling failed room generation update in Handle: %w", err)
 		}
-		err = h.Events.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
+		err = h.Cache.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
 			Type:    vibe.GenerationUpdate,
 			Payload: payload,
 		})
@@ -128,7 +127,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 					err,
 				)
 			}
-			err = h.Events.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
+			err = h.Cache.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
 				Type:    vibe.GenerationUpdate,
 				Payload: payload,
 			})
@@ -188,7 +187,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 			return fmt.Errorf("error marshaling generated song in Handle: %w", err)
 		}
 
-		err = h.Events.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
+		err = h.Cache.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
 			Type:    vibe.SongAdded,
 			Payload: songPayload,
 		})
@@ -214,7 +213,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 			if err != nil {
 				return fmt.Errorf("error marshaling generated room playback in Handle: %w", err)
 			}
-			err = h.Events.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
+			err = h.Cache.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
 			})
@@ -235,7 +234,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 	if err != nil {
 		return fmt.Errorf("error marshaling completed room generation update in Handle: %w", err)
 	}
-	err = h.Events.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
+	err = h.Cache.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
 		Type:    vibe.GenerationUpdate,
 		Payload: payload,
 	})
