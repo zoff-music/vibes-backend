@@ -9,9 +9,11 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 	"time"
 
@@ -141,43 +143,54 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 
 	defer closer.Close()
 
-	go s.serveHTTP(ctx, errc)
-	go s.serveInternalHTTP(ctx, errc)
-	go s.subscribeAndListen(ctx)
+	s.HTTP.BaseContext = func(_ net.Listener) context.Context {
+		return ctx
+	}
+	s.InternalHTTP.BaseContext = func(_ net.Listener) context.Context {
+		return ctx
+	}
+
+	serverErrors := make(chan error, 2)
+	var running sync.WaitGroup
+	running.Add(2)
+	go func() {
+		defer running.Done()
+		s.serveHTTP(serverErrors)
+	}()
+	go func() {
+		defer running.Done()
+		s.serveInternalHTTP(serverErrors)
+	}()
+	s.subscribeAndListen(ctx, &running)
 
 	log.Println("Ready")
 
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(stop)
 
-	// Block until we receive sigterm or interrupt
-	<-stop
+	var serveErr error
+	select {
+	case <-stop:
+		log.Println("Main server has received a shutdown signal")
+	case serveErr = <-serverErrors:
+		log.Printf("Main server has received a server error: %v", serveErr)
+	}
 
-	log.Println("Main server has received a shutdown signal")
-	cancel() // Stop background jobs
+	cancel()
 
-	s.shutdown(ctx)
+	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 15*time.Second)
+	s.shutdownHTTP(shutdownCtx)
+	shutdownCancel()
+	running.Wait()
+	s.shutdown(context.Background())
+
+	errc <- serveErr
 }
 
-func (s *Server) serveInternalHTTP(ctx context.Context, errc chan<- error) {
-	go func(ctx context.Context, httpServ *http.Server) {
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-		// Block until we receive sigterm or interrupt
-		<-stop
-
-		log.Println("Internal HTTP server has received a shutdown signal")
-
-		err := httpServ.Shutdown(ctx)
-		if err != nil {
-			log.Println(err.Error())
-		}
-	}(ctx, s.InternalHTTP)
-
+func (s *Server) serveInternalHTTP(errc chan<- error) {
 	log.Printf("Internal ready at: %s", s.Config.InternalPort)
 
-	// Block until httpServ.Shutdown is called
 	err := s.InternalHTTP.ListenAndServe()
 	if err != http.ErrServerClosed {
 		errc <- fmt.Errorf("error unexpected internal server error: %w", err)
@@ -187,25 +200,9 @@ func (s *Server) serveInternalHTTP(ctx context.Context, errc chan<- error) {
 	log.Println("Internal HTTP server closed")
 }
 
-func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
-	go func(ctx context.Context, httpServ *http.Server) {
-		stop := make(chan os.Signal, 1)
-		signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-
-		// Block until we receive sigterm or interrupt
-		<-stop
-
-		log.Println("HTTP server has received a shutdown signal")
-
-		err := httpServ.Shutdown(ctx)
-		if err != nil {
-			log.Println(err.Error())
-		}
-	}(ctx, s.HTTP)
-
+func (s *Server) serveHTTP(errc chan<- error) {
 	log.Printf("Ready at: %s", s.Config.Port)
 
-	// Block until httpServ.Shutdown is called
 	err := s.HTTP.ListenAndServe()
 	if err != http.ErrServerClosed {
 		errc <- fmt.Errorf("error unexpected server error: %w", err)
@@ -215,7 +212,7 @@ func (s *Server) serveHTTP(ctx context.Context, errc chan<- error) {
 	log.Println("HTTP server closed")
 }
 
-func (s *Server) subscribeAndListen(ctx context.Context) {
+func (s *Server) subscribeAndListen(ctx context.Context, running *sync.WaitGroup) {
 	for _, e := range event.GetAppEvents(
 		s.DB,
 		s.Redis,
@@ -224,9 +221,31 @@ func (s *Server) subscribeAndListen(ctx context.Context) {
 		s.AI,
 		s.Config.EnabledProviders(),
 	) {
+		running.Add(1)
 		go func(e event.AppEvent) {
+			defer running.Done()
 			e.SubscribeAndListen(ctx)
 		}(e)
+	}
+}
+
+func (s *Server) shutdownHTTP(ctx context.Context) {
+	err := s.HTTP.Shutdown(ctx)
+	if err != nil {
+		log.Printf("error shutting down HTTP server: %v", err)
+		closeErr := s.HTTP.Close()
+		if closeErr != nil {
+			log.Printf("error closing HTTP server: %v", closeErr)
+		}
+	}
+
+	err = s.InternalHTTP.Shutdown(ctx)
+	if err != nil {
+		log.Printf("error shutting down internal HTTP server: %v", err)
+		closeErr := s.InternalHTTP.Close()
+		if closeErr != nil {
+			log.Printf("error closing internal HTTP server: %v", closeErr)
+		}
 	}
 }
 

@@ -47,6 +47,7 @@ Use these rules for Go backend work in this repository.
 - Handler request/response structs that cross package or API boundaries belong in `vibe`.
 - Routes are defined in `router.go`.
 - App events are defined in `server/internal/event/event.go`.
+- During process shutdown, cancel HTTP request and background-event contexts, drain the HTTP servers, and wait for those goroutines to exit before closing database, Redis, or provider clients. Do not hide shutdown races by merely suppressing closed-client errors.
 
 ## Go Style
 
