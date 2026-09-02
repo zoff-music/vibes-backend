@@ -59,6 +59,9 @@ func RoomEventsV2(
 		lastUsersCount := -1
 		notifyUsers := func(ctx context.Context) {
 			counts, err := state.GetActiveListenerCounts(ctx, roomID, 15*time.Second)
+			if err != nil && ctx.Err() != nil {
+				return
+			}
 			if err != nil {
 				log.Printf("failed to fetch active participants: %v", err)
 				return
@@ -290,6 +293,9 @@ func RoomEventsV2(
 		if userID != "" && !isRemoteController {
 			if !isNewSession {
 				err = state.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
+				if err != nil && ctx.Err() != nil {
+					return
+				}
 				if err != nil {
 					log.Printf("failed to update participant on connect: %v", err)
 				}
@@ -321,6 +327,9 @@ func RoomEventsV2(
 				// Update participant status independently from the wire keep-alive.
 				if userID != "" && !isRemoteController {
 					err = state.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
+					if err != nil && ctx.Err() != nil {
+						return
+					}
 					if err != nil {
 						log.Printf("failed to update participant on heartbeat: %v", err)
 					}
