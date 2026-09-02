@@ -10,14 +10,15 @@ type SkipVote struct {
 
 // SkipSongResult describes the result of a skip request.
 type SkipSongResult struct {
-	Action        string         `json:"action"`
-	Skipped       bool           `json:"skipped"`
-	Voted         bool           `json:"voted"`
-	AlreadyVoted  bool           `json:"alreadyVoted"`
-	CurrentVotes  int            `json:"currentVotes"`
-	RequiredVotes int            `json:"requiredVotes"`
-	NextSong      *Song          `json:"nextSong"`
-	Playback      *PlaybackState `json:"playback"`
+	Action         string         `json:"action"`
+	Skipped        bool           `json:"skipped"`
+	Voted          bool           `json:"voted"`
+	AlreadyVoted   bool           `json:"alreadyVoted"`
+	CurrentVotes   int            `json:"currentVotes"`
+	RequiredVotes  int            `json:"requiredVotes"`
+	NextSong       *Song          `json:"nextSong"`
+	Playback       *PlaybackState `json:"playback"`
+	PreviousSongID string         `json:"-"`
 }
 
 // SkipVoteUpdate describes a skip vote event.

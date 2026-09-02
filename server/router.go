@@ -16,6 +16,7 @@ import (
 // setupRoutes - the root route function.
 func (s *Server) setupRoutes() {
 	api := s.Router.PathPrefix(v1API).Subrouter()
+	v2 := s.Router.PathPrefix(v2API).Subrouter()
 	s.Router.Handle(swaggerAPI, http.RedirectHandler(swaggerAPI+"/", http.StatusPermanentRedirect)).Methods(http.MethodGet)
 	s.Router.PathPrefix(swaggerAPI + "/").Handler(httpSwagger.WrapHandler)
 
@@ -47,6 +48,7 @@ func (s *Server) setupRoutes() {
 
 	// SSE route
 	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.Redis, s.DB, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
+	v2.HandleFunc("/rooms/{id}/events", handler.RoomEventsV2(s.Redis, s.DB, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEventsV2")
 
 	// YouTube routes
 	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
@@ -104,15 +106,15 @@ func (s *Server) setupRoutes() {
 		api.HandleFunc("/admin/events", handler.AdminEvents(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
 	}
 
-	s.addSessionMiddleware(api)
+	s.addSessionMiddleware(api, v2)
 	if s.Config.RateLimitEnabled {
-		s.addRateLimitMiddleware(api)
+		s.addRateLimitMiddleware(api, v2)
 	}
-	s.addPermissionMiddleware(api)
+	s.addPermissionMiddleware(api, v2)
 	if s.Config.AdminPasswordPepper != "" {
 		s.addAdminMiddleware(api)
 	}
-	s.addTracingAndMetrics(api)
+	s.addTracingAndMetrics(api, v2)
 	s.addCORSMiddleware(s.Router)
 }
 
@@ -148,6 +150,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"RemoveSong":            {Rate: time.Minute, Limit: 60},
 			"VoteSong":              {Rate: time.Minute, Limit: 120},
 			"RoomEvents":            {Rate: time.Minute, Limit: 30},
+			"RoomEventsV2":          {Rate: time.Minute, Limit: 30},
 			"SearchMusic": {
 				Bucket:  "YouTubeSearch",
 				Rate:    time.Second,
@@ -298,4 +301,5 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 }
 
 const v1API string = "/api/v1"
+const v2API string = "/api/v2"
 const swaggerAPI string = "/api/swagger"

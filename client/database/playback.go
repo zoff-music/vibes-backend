@@ -166,6 +166,41 @@ type playbackSongRow struct {
 	Song                  songRow
 }
 
+type playbackAdvanceRow struct {
+	Playback       playbackSongRow
+	PreviousSongID sql.NullString
+}
+
+func (r *playbackAdvanceRow) scan(row *sql.Row) error {
+	err := row.Scan(
+		&r.Playback.PlaybackRoomID,
+		&r.Playback.PlaybackCurrentSongID,
+		&r.Playback.PlaybackIsPlaying,
+		&r.Playback.PlaybackPositionMs,
+		&r.Playback.PlaybackUpdatedAt,
+		&r.Playback.Song.ID,
+		&r.Playback.Song.RoomID,
+		&r.Playback.Song.SourceType,
+		&r.Playback.Song.SourceID,
+		&r.Playback.Song.ProviderURL,
+		&r.Playback.Song.PlaybackRestriction,
+		&r.Playback.Song.Title,
+		&r.Playback.Song.Artist,
+		&r.Playback.Song.ThumbnailURL,
+		&r.Playback.Song.Duration,
+		&r.Playback.Song.AddedBySessionID,
+		&r.Playback.Song.AddedBy,
+		&r.Playback.Song.AddedAt,
+		&r.Playback.Song.VoteCount,
+		&r.PreviousSongID,
+	)
+	if err != nil {
+		return fmt.Errorf("error scanning playback advance row: %w", err)
+	}
+
+	return nil
+}
+
 func (r *playbackSongRow) scan(row *sql.Row) error {
 	err := row.Scan(
 		&r.PlaybackRoomID,
@@ -342,7 +377,8 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 				b.added_by_nickname
 			) AS added_by_nickname,
 			b.added_at,
-			COALESCE(b.vote_count, 0) AS vote_count
+			COALESCE(b.vote_count, 0) AS vote_count,
+			(SELECT current_song_id FROM locked_playback_q) AS previous_song_id
 		FROM updated_playback_q a
 		LEFT JOIN next_song_q b ON b.id = a.current_song_id
 	`)
@@ -355,7 +391,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 	return nil
 }
 
-func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackState, error) {
+func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackAdvance, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "processNextExpiredPlayback")
 	defer span.End()
 
@@ -367,7 +403,7 @@ func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.Playback
 		c.enabledProviders,
 	)
 
-	var row playbackSongRow
+	var row playbackAdvanceRow
 	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -381,25 +417,28 @@ func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.Playback
 		return nil, fmt.Errorf("error scanning expired playback: %w", err)
 	}
 
-	state, err := row.toPlaybackState()
+	state, err := row.Playback.toPlaybackState()
 	if err != nil {
 		return nil, fmt.Errorf("error converting expired playback state: %w", err)
 	}
 
-	return state, nil
+	return &vibe.PlaybackAdvance{
+		Playback:       state,
+		PreviousSongID: row.PreviousSongID.String,
+	}, nil
 }
 
 // ProcessNextExpiredPlayback checks for an expired song, skips it, and returns the new state.
-func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackState, error) {
+func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackAdvance, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextExpiredPlayback")
 	defer span.End()
 
-	state, err := c.processNextExpiredPlayback(ctx)
+	advance, err := c.processNextExpiredPlayback(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error processing next expired playback: %w", err)
 	}
 
-	return state, nil
+	return advance, nil
 }
 
 // prepareUpsertPlaybackStateStmt prepares the UpsertPlaybackStateStatement.
@@ -575,7 +614,8 @@ func (c *Client) prepareSkipTrackStmt() error {
 				b.added_by_nickname
 			) AS added_by_nickname,
 			b.added_at,
-			COALESCE(b.vote_count, 0) AS vote_count
+			COALESCE(b.vote_count, 0) AS vote_count,
+			(SELECT current_song_id FROM locked_playback_q) AS previous_song_id
 		FROM updated_playback_q a
 		LEFT JOIN next_song_q b ON b.id = a.current_song_id
 	`)
@@ -589,7 +629,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 }
 
 // skipTrack skips the current track to the next one in the queue (internal).
-func (c *Client) skipTrack(ctx context.Context, roomID, restrictedSongID string) (*vibe.PlaybackState, error) {
+func (c *Client) skipTrack(ctx context.Context, roomID, restrictedSongID string) (*vibe.PlaybackAdvance, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "skipTrack")
 	defer span.End()
 
@@ -603,45 +643,48 @@ func (c *Client) skipTrack(ctx context.Context, roomID, restrictedSongID string)
 		restrictedSongID,
 	)
 
-	var row playbackSongRow
+	var row playbackAdvanceRow
 	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			if restrictedSongID != "" {
-				return &vibe.PlaybackState{}, nil
+				return &vibe.PlaybackAdvance{Playback: &vibe.PlaybackState{}}, nil
 			}
 
 			state, err := c.getPlaybackState(ctx, roomID)
 			if err != nil {
 				return nil, fmt.Errorf("error getting playback state in skipTrack: %w", err)
 			}
-			return state, nil
+			return &vibe.PlaybackAdvance{Playback: state}, nil
 		}
 		return nil, fmt.Errorf("error scanning playback state in skipTrack: %w", err)
 	}
 
-	state, err := row.toPlaybackState()
+	state, err := row.Playback.toPlaybackState()
 	if err != nil {
 		return nil, fmt.Errorf("error converting playback state in skipTrack: %w", err)
 	}
 
-	return state, nil
+	return &vibe.PlaybackAdvance{
+		Playback:       state,
+		PreviousSongID: row.PreviousSongID.String,
+	}, nil
 }
 
 func (c *Client) SkipRestrictedSong(
 	ctx context.Context,
 	roomID string,
 	songID string,
-) (*vibe.PlaybackState, error) {
+) (*vibe.PlaybackAdvance, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SkipRestrictedSong")
 	defer span.End()
 
-	state, err := c.skipTrack(ctx, roomID, songID)
+	advance, err := c.skipTrack(ctx, roomID, songID)
 	if err != nil {
 		return nil, fmt.Errorf("error skipping restricted song: %w", err)
 	}
 
-	return state, nil
+	return advance, nil
 }
 
 // UpdatePlayback updates the playback state based on the action (play/pause/seek).
