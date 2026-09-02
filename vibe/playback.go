@@ -15,6 +15,12 @@ type PlaybackState struct {
 	ServerTimeMs int       `json:"serverTimeMs"`
 }
 
+// PlaybackAdvance describes one automatic queue advance and the resulting playback state.
+type PlaybackAdvance struct {
+	Playback       *PlaybackState
+	PreviousSongID string
+}
+
 func (p *PlaybackState) IsEmpty() bool {
 	return p.RoomID == ""
 }
@@ -47,7 +53,7 @@ type PlaybackController interface {
 }
 
 type RestrictedPlaybackSkipper interface {
-	SkipRestrictedSong(ctx context.Context, roomID string, songID string) (*PlaybackState, error)
+	SkipRestrictedSong(ctx context.Context, roomID string, songID string) (*PlaybackAdvance, error)
 }
 
 type SongPlaybackRestrictionUpdater interface {
@@ -68,7 +74,7 @@ type PlaybackFailureStorage interface {
 
 // ExpiredPlaybackProcessor defines interfaces needed for background room playback automation
 type ExpiredPlaybackProcessor interface {
-	ProcessNextExpiredPlayback(ctx context.Context) (*PlaybackState, error)
+	ProcessNextExpiredPlayback(ctx context.Context) (*PlaybackAdvance, error)
 }
 
 type ExpiredPlaybackSongFetcher interface {

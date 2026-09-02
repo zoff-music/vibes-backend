@@ -195,7 +195,7 @@ func ReportPlaybackFailure(
 			}
 		}
 
-		state, err = db.SkipRestrictedSong(ctx, roomID, request.SongID)
+		advance, err := db.SkipRestrictedSong(ctx, roomID, request.SongID)
 		if err != nil {
 			handleError(
 				w,
@@ -205,7 +205,7 @@ func ReportPlaybackFailure(
 			)
 			return
 		}
-		if state.IsEmpty() {
+		if advance.Playback.IsEmpty() {
 			handleError(
 				w,
 				fmt.Errorf("error song is no longer the current restricted song"),
@@ -215,8 +215,8 @@ func ReportPlaybackFailure(
 			return
 		}
 
-		state.ServerTimeMs = int(time.Now().UnixMilli())
-		stateBody, err := json.Marshal(state)
+		advance.Playback.ServerTimeMs = int(time.Now().UnixMilli())
+		stateBody, err := json.Marshal(advance.Playback)
 		if err != nil {
 			handleError(
 				w,
@@ -247,11 +247,22 @@ func ReportPlaybackFailure(
 			)
 			return
 		}
+		v2Event, err := songPositionV2(songs, advance.PreviousSongID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error creating compact restricted skip event: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
 
 		err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
 			{
 				Type:    vibe.QueueReordered,
 				Payload: songsBody,
+				V2:      v2Event,
 			},
 			{
 				Type:    vibe.PlaybackUpdate,
