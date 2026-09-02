@@ -88,7 +88,8 @@ Use these rules for Go backend work in this repository.
 - Pass each concrete dependency to a handler at most once. When one client provides multiple capabilities used by that handler, define one narrow domain interface containing exactly those methods and inject the client once.
 - Keep each HTTP handler's control flow explicit in its exported handler function. Do not create handler receiver structs with shared `handle` methods, dispatch behavior through boolean mode arguments, call one handler from another, or return calls such as `h.handle(true)`.
 - Prefer separate, verbose handler implementations when API versions or routes behave differently. Keep versioned handlers in matching files such as `events.go` and `eventsv2.go` so their flows can be reviewed independently.
-- Handler helpers must not receive injected dependencies. Use dependencies directly in the handler closure, and keep helpers limited to dependency-free transformations or output formatting.
+- Do not extract handler business steps, event construction, serialization, response writing, SSE framing, or cursor writing into helper functions merely to reduce duplication. Keep those steps inline in each HTTP or scheduled handler so the full flow is visible, even when the result is deliberately verbose across handlers or API versions.
+- Handler helper functions are allowed only for a genuinely reusable, dependency-free domain transformation that is not part of the handler's control flow. Do not use helpers as abbreviated handler fragments, output writers, or version switches.
 - Config values must come from `config.Config` and be passed through client init or handler params.
 - Set `Content-Type: application/json` for JSON responses.
 - Use the existing error helper for HTTP errors.

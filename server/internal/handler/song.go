@@ -85,14 +85,15 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 				err,
 			)
 		}
-		v2Event, err := songRemovedV2(refresh.SongID)
+		v2Payload, err := json.Marshal(vibe.SongIDUpdate{ID: refresh.SongID})
 		if err != nil {
 			return fmt.Errorf(
-				"error creating compact unavailable %s song event in MetaRefresh.Handle: %w",
+				"error marshaling compact unavailable %s song event in MetaRefresh.Handle: %w",
 				h.ProviderName,
 				err,
 			)
 		}
+		v2Event := &vibe.RoomEventV2Payload{Type: vibe.SongRemoved, Payload: v2Payload}
 
 		err = h.Events.NotifyRoomUpdate(ctx, refresh.RoomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
