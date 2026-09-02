@@ -161,6 +161,13 @@ type SongQueueAdder interface {
 	PlaybackController
 }
 
+// CachedMusicTrackRoomEventNotifier defines the Redis capabilities used while
+// adding one song.
+type CachedMusicTrackRoomEventNotifier interface {
+	CachedMusicTrackFetcher
+	RoomEventNotifier
+}
+
 // SongQueueRemover defines the exact operations used when removing a song.
 type SongQueueRemover interface {
 	SongRemover
