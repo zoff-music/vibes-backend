@@ -5,6 +5,7 @@ go 1.27.0
 require (
 	github.com/gomodule/redigo v1.9.3
 	github.com/google/uuid v1.6.0
+	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/joho/godotenv v1.5.1
