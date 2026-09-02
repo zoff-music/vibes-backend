@@ -265,19 +265,53 @@ func AddSong(
 
 		var v2Event *vibe.RoomEventV2Payload
 		if result.Outcome == vibe.AddSongOutcomeAdded {
-			v2Event, err = songAddedV2(result.Song)
+			v2Payload, marshalErr := json.Marshal(result.Song)
+			if marshalErr != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshaling compact added song event: %w", marshalErr),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+			v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongAdded, Payload: v2Payload}
 		}
 		if result.Outcome == vibe.AddSongOutcomeDuplicateVoted {
-			v2Event, err = songPositionV2(songs, result.Song.ID)
-		}
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error creating compact add song event: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
+			for position, song := range songs {
+				if song.ID != result.Song.ID {
+					continue
+				}
+
+				v2Payload, marshalErr := json.Marshal(vibe.SongPositionUpdate{
+					Song:     song,
+					Position: position,
+				})
+				if marshalErr != nil {
+					handleError(
+						w,
+						fmt.Errorf("error marshaling compact duplicate-voted song event: %w", marshalErr),
+						http.StatusInternalServerError,
+						true,
+					)
+					return
+				}
+				v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongUpdated, Payload: v2Payload}
+				break
+			}
+			if v2Event == nil {
+				v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: result.Song.ID})
+				if marshalErr != nil {
+					handleError(
+						w,
+						fmt.Errorf("error marshaling compact duplicate-voted song removal fallback: %w", marshalErr),
+						http.StatusInternalServerError,
+						true,
+					)
+					return
+				}
+				v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongRemoved, Payload: v2Payload}
+			}
 		}
 
 		err = events.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
@@ -448,16 +482,17 @@ func RemoveSong(
 			return
 		}
 
-		v2Event, err := songRemovedV2(songID)
+		v2Payload, err := json.Marshal(vibe.SongIDUpdate{ID: songID})
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error creating compact remove song event: %w", err),
+				fmt.Errorf("error marshaling compact remove song event: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
 			return
 		}
+		v2Event := &vibe.RoomEventV2Payload{Type: vibe.SongRemoved, Payload: v2Payload}
 
 		err = notifier.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
@@ -559,15 +594,40 @@ func VoteSong(
 			return
 		}
 
-		v2Event, err := songPositionV2(songs, songID)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error creating compact vote song event: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
+		var v2Event *vibe.RoomEventV2Payload
+		for position, song := range songs {
+			if song.ID != songID {
+				continue
+			}
+
+			v2Payload, marshalErr := json.Marshal(vibe.SongPositionUpdate{
+				Song:     song,
+				Position: position,
+			})
+			if marshalErr != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshaling compact vote song event: %w", marshalErr),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+			v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongUpdated, Payload: v2Payload}
+			break
+		}
+		if v2Event == nil {
+			v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: songID})
+			if marshalErr != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshaling compact vote song removal fallback: %w", marshalErr),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+			v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongRemoved, Payload: v2Payload}
 		}
 
 		err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{

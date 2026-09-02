@@ -35,9 +35,28 @@ func (h *ReviewRoomPlayback) Handle(ctx context.Context, _ []byte) error {
 	if err != nil {
 		return fmt.Errorf("error marshaling songs payload: %w", err)
 	}
-	v2Event, err := songPositionV2(songs, advance.PreviousSongID)
-	if err != nil {
-		return fmt.Errorf("error creating compact playback advance event: %w", err)
+	var v2Event *vibe.RoomEventV2Payload
+	for position, song := range songs {
+		if song.ID != advance.PreviousSongID {
+			continue
+		}
+
+		v2Payload, marshalErr := json.Marshal(vibe.SongPositionUpdate{
+			Song:     song,
+			Position: position,
+		})
+		if marshalErr != nil {
+			return fmt.Errorf("error marshaling compact playback advance event: %w", marshalErr)
+		}
+		v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongUpdated, Payload: v2Payload}
+		break
+	}
+	if v2Event == nil {
+		v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: advance.PreviousSongID})
+		if marshalErr != nil {
+			return fmt.Errorf("error marshaling compact playback advance removal fallback: %w", marshalErr)
+		}
+		v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongRemoved, Payload: v2Payload}
 	}
 
 	err = h.Events.NotifyRoomUpdates(ctx, advance.Playback.RoomID, []vibe.RoomEvent{
