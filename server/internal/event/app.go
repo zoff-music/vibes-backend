@@ -38,6 +38,10 @@ func (e *AppEvent) SubscribeAndListen(ctx context.Context) {
 
 			var errExpected internalerror.ErrExpected
 			err := e.Handler.Handle(handlerCtx, nil)
+			if err != nil && ctx.Err() != nil {
+				span.End()
+				return
+			}
 			if err != nil && !errors.As(err, &errExpected) {
 				status = http.StatusInternalServerError
 				log.Printf("%v: %s", t, err.Error())
