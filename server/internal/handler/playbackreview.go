@@ -16,27 +16,31 @@ type ReviewRoomPlayback struct {
 
 // Handle checks for rooms that need to auto-advance.
 func (h *ReviewRoomPlayback) Handle(ctx context.Context, _ []byte) error {
-	state, err := h.DB.ProcessNextExpiredPlayback(ctx)
+	advance, err := h.DB.ProcessNextExpiredPlayback(ctx)
 	if err != nil {
 		return fmt.Errorf("error processing next expired playback: %w", err)
 	}
 
-	statePayload, err := json.Marshal(state)
+	statePayload, err := json.Marshal(advance.Playback)
 	if err != nil {
 		return fmt.Errorf("error marshaling playback state payload: %w", err)
 	}
 
-	songs, err := h.DB.GetSongs(ctx, state.RoomID)
+	songs, err := h.DB.GetSongs(ctx, advance.Playback.RoomID)
 	if err != nil {
-		return fmt.Errorf("error fetching songs for room %s: %w", state.RoomID, err)
+		return fmt.Errorf("error fetching songs for room %s: %w", advance.Playback.RoomID, err)
 	}
 
 	songsPayload, err := json.Marshal(songs)
 	if err != nil {
 		return fmt.Errorf("error marshaling songs payload: %w", err)
 	}
+	v2Event, err := songPositionV2(songs, advance.PreviousSongID)
+	if err != nil {
+		return fmt.Errorf("error creating compact playback advance event: %w", err)
+	}
 
-	err = h.Events.NotifyRoomUpdates(ctx, state.RoomID, []vibe.RoomEvent{
+	err = h.Events.NotifyRoomUpdates(ctx, advance.Playback.RoomID, []vibe.RoomEvent{
 		{
 			Type:    vibe.PlaybackUpdate,
 			Payload: statePayload,
@@ -44,10 +48,11 @@ func (h *ReviewRoomPlayback) Handle(ctx context.Context, _ []byte) error {
 		{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
+			V2:      v2Event,
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("error notifying room %s update: %w", state.RoomID, err)
+		return fmt.Errorf("error notifying room %s update: %w", advance.Playback.RoomID, err)
 	}
 
 	return nil

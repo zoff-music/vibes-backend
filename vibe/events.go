@@ -48,11 +48,29 @@ type RoomEventConnection struct {
 
 // RoomEvent represents an SSE event for a room
 type RoomEvent struct {
-	ID      string `json:"id,omitempty"`
+	ID      string              `json:"id,omitempty"`
+	Type    string              `json:"type"`
+	Payload []byte              `json:"payload"`
+	UserID  string              `json:"userId,omitempty"` // ID of user who triggered this event
+	Origin  string              `json:"origin,omitempty"`
+	V2      *RoomEventV2Payload `json:"v2,omitempty"`
+}
+
+// RoomEventV2Payload is the compact event representation exposed by the v2 SSE endpoint.
+type RoomEventV2Payload struct {
 	Type    string `json:"type"`
 	Payload []byte `json:"payload"`
-	UserID  string `json:"userId,omitempty"` // ID of user who triggered this event
-	Origin  string `json:"origin,omitempty"`
+}
+
+// SongIDUpdate identifies one song removed from a queue.
+type SongIDUpdate struct {
+	ID string `json:"id"`
+}
+
+// SongPositionUpdate replaces and repositions one song in a queue.
+type SongPositionUpdate struct {
+	Song     Song `json:"song"`
+	Position int  `json:"position"`
 }
 
 type RoomEventCursor struct {
@@ -72,7 +90,9 @@ type RoomBatchEventNotifier interface {
 const PlaybackUpdate = "playback_update"
 const SongAdded = "song_added"
 const SongRemoved = "song_removed"
+const SongUpdated = "song_updated"
 const QueueReordered = "songs_update"
+const QueueSnapshot = "songs_snapshot"
 const SkipVoteEvent = "skip_vote"
 const NewHost = "new_host"
 const UserJoined = "user_joined"

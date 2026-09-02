@@ -13,6 +13,12 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
+type roomEventsHandler struct {
+	Events       vibe.RoomEventReplayNotifier
+	Participants vibe.RoomEventParticipantFetcherUpdater
+	Snapshot     vibe.RoomEventSnapshotFetcher
+}
+
 // RoomEvents handles GET /api/v1/rooms/:id/events (SSE)
 //
 //	@Summary	Subscribe to room events
@@ -27,6 +33,39 @@ func RoomEvents(
 	participants vibe.RoomEventParticipantFetcherUpdater,
 	snapshot vibe.RoomEventSnapshotFetcher,
 ) http.HandlerFunc {
+	h := roomEventsHandler{
+		Events:       events,
+		Participants: participants,
+		Snapshot:     snapshot,
+	}
+
+	return h.handle(false)
+}
+
+// RoomEventsV2 handles GET /api/v2/rooms/:id/events (SSE).
+//
+//	@Summary	Subscribe to compact room events
+//	@Tags		events
+//	@Produce	text/event-stream
+//	@Param		id	path	string	true	"Room ID"
+//	@Success	200	{string}	string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/api/v2/rooms/{id}/events [get]
+func RoomEventsV2(
+	events vibe.RoomEventReplayNotifier,
+	participants vibe.RoomEventParticipantFetcherUpdater,
+	snapshot vibe.RoomEventSnapshotFetcher,
+) http.HandlerFunc {
+	h := roomEventsHandler{
+		Events:       events,
+		Participants: participants,
+		Snapshot:     snapshot,
+	}
+
+	return h.handle(true)
+}
+
+func (h roomEventsHandler) handle(v2 bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		vars := mux.Vars(r)
@@ -59,7 +98,7 @@ func RoomEvents(
 
 		lastUsersCount := -1
 		notifyUsers := func(ctx context.Context) {
-			counts, err := participants.GetActiveListenerCounts(ctx, roomID, 15*time.Second)
+			counts, err := h.Participants.GetActiveListenerCounts(ctx, roomID, 15*time.Second)
 			if err != nil {
 				log.Printf("failed to fetch active participants: %v", err)
 				return
@@ -79,7 +118,7 @@ func RoomEvents(
 				return
 			}
 
-			err = events.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+			err = h.Events.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 				Type:    vibe.UsersUpdate,
 				Payload: payload,
 			})
@@ -99,7 +138,7 @@ func RoomEvents(
 		w.Header().Set("Connection", "keep-alive")
 
 		topicName := fmt.Sprintf("room:%s", roomID)
-		replay, err := events.PrepareReplay(ctx, topicName, lastEventIDFromRequest(r))
+		replay, err := h.Events.PrepareReplay(ctx, topicName, lastEventIDFromRequest(r))
 		if err != nil {
 			handleError(
 				w,
@@ -109,7 +148,7 @@ func RoomEvents(
 			)
 			return
 		}
-		container, err := events.SubscribeFrom(ctx, topicName, replay.AfterID)
+		container, err := h.Events.SubscribeFrom(ctx, topicName, replay.AfterID)
 		if err != nil {
 			handleError(
 				w,
@@ -150,7 +189,7 @@ func RoomEvents(
 		}
 
 		if replay.RequiresSnapshot {
-			room, err := snapshot.GetRoom(ctx, roomID, userID)
+			room, err := h.Snapshot.GetRoom(ctx, roomID, userID)
 			if err != nil {
 				log.Printf("error fetching room snapshot in RoomEvents: %v", err)
 				return
@@ -165,7 +204,7 @@ func RoomEvents(
 				return
 			}
 
-			songs, err := snapshot.GetSongs(ctx, roomID)
+			songs, err := h.Snapshot.GetSongs(ctx, roomID)
 			if err != nil {
 				log.Printf("error fetching songs snapshot in RoomEvents: %v", err)
 				return
@@ -179,7 +218,7 @@ func RoomEvents(
 				return
 			}
 
-			state, err := snapshot.GetPlaybackState(ctx, roomID)
+			state, err := h.Snapshot.GetPlaybackState(ctx, roomID)
 			if err != nil {
 				log.Printf("error fetching playback snapshot in RoomEvents: %v", err)
 				return
@@ -204,7 +243,11 @@ func RoomEvents(
 				log.Printf("error writing room snapshot in RoomEvents: %v", err)
 				return
 			}
-			err = writeRoomEvent(w, flusher, vibe.QueueReordered, songsData, replay.AfterID)
+			queueEventType := vibe.QueueReordered
+			if v2 {
+				queueEventType = vibe.QueueSnapshot
+			}
+			err = writeRoomEvent(w, flusher, queueEventType, songsData, replay.AfterID)
 			if err != nil {
 				log.Printf("error writing songs snapshot in RoomEvents: %v", err)
 				return
@@ -223,7 +266,7 @@ func RoomEvents(
 		// become listeners so short probes cannot manufacture participant rows.
 		if userID != "" && !isRemoteController {
 			if !isNewSession {
-				err = participants.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
+				err = h.Participants.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
 				if err != nil {
 					log.Printf("failed to update participant on connect: %v", err)
 				}
@@ -240,8 +283,10 @@ func RoomEvents(
 			}()
 		}
 
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
+		presenceTicker := time.NewTicker(5 * time.Second)
+		defer presenceTicker.Stop()
+		keepAliveTicker := time.NewTicker(roomEventKeepAliveInterval(v2))
+		defer keepAliveTicker.Stop()
 
 		messages := container.Subscription.Listen()
 
@@ -249,10 +294,10 @@ func RoomEvents(
 			select {
 			case <-ctx.Done():
 				return
-			case <-ticker.C:
-				// Keep-alive heartbeat AND update participant status
+			case <-presenceTicker.C:
+				// Update participant status independently from the wire keep-alive.
 				if userID != "" && !isRemoteController {
-					err = participants.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
+					err = h.Participants.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
 					if err != nil {
 						log.Printf("failed to update participant on heartbeat: %v", err)
 					}
@@ -263,7 +308,7 @@ func RoomEvents(
 						notifyUsers(ctx)
 					}
 				}
-
+			case <-keepAliveTicker.C:
 				_, err = fmt.Fprint(w, ": heartbeat\n\n")
 				if err != nil {
 					log.Printf("error writing heartbeat in RoomEvents: %v", err)
@@ -304,9 +349,22 @@ func RoomEvents(
 					continue
 				}
 
-				// payloadData is already []byte (JSON), so we can just use it.
-				// However, if we print it as %s, it works.
-				err = writeRoomEvent(w, flusher, event.Type, event.Payload, event.ID)
+				eventType := event.Type
+				payload := event.Payload
+				if v2 && event.V2 != nil {
+					eventType = event.V2.Type
+					payload = event.V2.Payload
+				}
+				if v2 && event.Type == vibe.QueueReordered && event.V2 == nil {
+					err = writeRoomEventCursor(w, flusher, event.ID)
+					if err != nil {
+						log.Printf("error writing v2 filtered event cursor in RoomEvents: %v", err)
+						return
+					}
+					continue
+				}
+
+				err = writeRoomEvent(w, flusher, eventType, payload, event.ID)
 				if err != nil {
 					log.Printf("error writing event in RoomEvents: %v", err)
 					return
@@ -314,6 +372,57 @@ func RoomEvents(
 			}
 		}
 	}
+}
+
+func roomEventKeepAliveInterval(v2 bool) time.Duration {
+	if v2 {
+		return 15 * time.Second
+	}
+
+	return 5 * time.Second
+}
+
+func songAddedV2(song vibe.Song) (*vibe.RoomEventV2Payload, error) {
+	payload, err := json.Marshal(song)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling v2 added song: %w", err)
+	}
+
+	return &vibe.RoomEventV2Payload{Type: vibe.SongAdded, Payload: payload}, nil
+}
+
+func songRemovedV2(songID string) (*vibe.RoomEventV2Payload, error) {
+	payload, err := json.Marshal(vibe.SongIDUpdate{ID: songID})
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling v2 removed song: %w", err)
+	}
+
+	return &vibe.RoomEventV2Payload{Type: vibe.SongRemoved, Payload: payload}, nil
+}
+
+func songPositionV2(songs []vibe.Song, songID string) (*vibe.RoomEventV2Payload, error) {
+	for position, song := range songs {
+		if song.ID != songID {
+			continue
+		}
+
+		payload, err := json.Marshal(vibe.SongPositionUpdate{
+			Song:     song,
+			Position: position,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling v2 positioned song: %w", err)
+		}
+
+		return &vibe.RoomEventV2Payload{Type: vibe.SongUpdated, Payload: payload}, nil
+	}
+
+	payload, err := songRemovedV2(songID)
+	if err != nil {
+		return nil, fmt.Errorf("error creating v2 removed song fallback: %w", err)
+	}
+
+	return payload, nil
 }
 
 func writeRoomEvent(

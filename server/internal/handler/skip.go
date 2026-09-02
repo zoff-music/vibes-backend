@@ -154,11 +154,23 @@ func SkipSong(
 				return
 			}
 
+			v2Event, err := songPositionV2(songs, result.PreviousSongID)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error creating compact skipped song event: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
 			err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
 				{
 					Type:    vibe.QueueReordered,
 					Payload: songsPayload,
 					Origin:  session.EventOrigin,
+					V2:      v2Event,
 				},
 				{
 					Type:    vibe.PlaybackUpdate,

@@ -264,10 +264,28 @@ func AddSong(
 			return
 		}
 
+		var v2Event *vibe.RoomEventV2Payload
+		if result.Outcome == vibe.AddSongOutcomeAdded {
+			v2Event, err = songAddedV2(result.Song)
+		}
+		if result.Outcome == vibe.AddSongOutcomeDuplicateVoted {
+			v2Event, err = songPositionV2(songs, result.Song.ID)
+		}
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error creating compact add song event: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
 		err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
 			Origin:  session.EventOrigin,
+			V2:      v2Event,
 		})
 		if err != nil {
 			log.Printf("failed to notify room: %v", err)
@@ -431,10 +449,22 @@ func RemoveSong(
 			return
 		}
 
+		v2Event, err := songRemovedV2(songID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error creating compact remove song event: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
 		err = notifier.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
 			Origin:  session.EventOrigin,
+			V2:      v2Event,
 		})
 		if err != nil {
 			log.Printf("failed to notify room in remove song: %v", err)
@@ -530,10 +560,22 @@ func VoteSong(
 			return
 		}
 
+		v2Event, err := songPositionV2(songs, songID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error creating compact vote song event: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
 		err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
 			Origin:  session.EventOrigin,
+			V2:      v2Event,
 		})
 		if err != nil {
 			log.Printf("failed to notify room in vote song: %v", err)
