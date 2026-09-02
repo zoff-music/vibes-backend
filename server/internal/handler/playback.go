@@ -295,8 +295,7 @@ func ReportPlaybackFailure(
 //	@Router		/api/v1/rooms/{id}/states [put]
 func UpdatePlaybackState(
 	db vibe.RoomGetterPlaybackUpdater,
-	notifier vibe.RoomEventNotifier,
-	remoteNotifier vibe.RemoteEventNotifier,
+	events vibe.RoomRemoteEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -379,7 +378,7 @@ func UpdatePlaybackState(
 				currentSongID = state.CurrentSong.ID
 			}
 
-			err = remoteNotifier.NotifyRemoteUpdate(context.WithoutCancel(ctx), session.RemoteID, vibe.RemoteEvent{
+			err = events.NotifyRemoteUpdate(context.WithoutCancel(ctx), session.RemoteID, vibe.RemoteEvent{
 				Type:               vibe.RemoteStateUpdate,
 				RoomID:             roomID,
 				Origin:             vibe.RemoteOriginController,
@@ -452,7 +451,7 @@ func UpdatePlaybackState(
 				return
 			}
 
-			err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+			err = events.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 				Type:    vibe.PlaybackUpdate,
 				Payload: statePayload,
 				Origin:  session.EventOrigin,

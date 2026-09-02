@@ -15,106 +15,106 @@ import (
 
 // setupRoutes - the root route function.
 func (s *Server) setupRoutes() {
-	api := s.Router.PathPrefix(v1API).Subrouter()
-	v2 := s.Router.PathPrefix(v2API).Subrouter()
+	apiV1 := s.Router.PathPrefix(v1API).Subrouter()
+	apiV2 := s.Router.PathPrefix(v2API).Subrouter()
 	s.Router.Handle(swaggerAPI, http.RedirectHandler(swaggerAPI+"/", http.StatusPermanentRedirect)).Methods(http.MethodGet)
 	s.Router.PathPrefix(swaggerAPI + "/").Handler(httpSwagger.WrapHandler)
 
 	// Room routes
-	api.HandleFunc("/rooms", handler.CreateRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
-	api.HandleFunc("/rooms/reservations", handler.ReserveRoomName(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("ReserveRoomName")
-	api.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
-	api.HandleFunc("/rooms/public", handler.GetPublicRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetPublicRooms")
-	api.HandleFunc("/rooms/generation", handler.CreateGeneratedRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoom")
-	api.HandleFunc("/rooms/{id}/generations", handler.CreateRoomGeneration(s.DB, s.Config.RoomGenerationMaxExistingSongs)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomGeneration")
-	api.HandleFunc("/rooms/{id}", handler.RoomExists(s.DB)).Methods(http.MethodHead).Name("RoomExists")
-	api.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoom")
-	api.HandleFunc("/rooms/{id}/settings", handler.UpdateRoomSettings(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoomSettings")
-	api.HandleFunc("/rooms/{id}/skips", handler.SkipSong(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("SkipSong")
-	api.HandleFunc("/rooms/{id}/states", handler.GetPlaybackState(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetPlaybackState")
-	api.HandleFunc("/rooms/{id}/states", handler.UpdatePlaybackState(s.DB, s.Redis, s.Redis)).Methods(http.MethodPut, http.MethodOptions).Name("UpdatePlaybackState")
-	api.HandleFunc("/rooms/{id}/playbackfailures", handler.ReportPlaybackFailure(s.DB, s.YouTube, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("ReportPlaybackFailure")
-	api.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
-	api.HandleFunc("/rooms/{id}/sessions", handler.DeleteRoomAdminSession(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRoomAdminSession")
-	api.HandleFunc("/sessions", handler.GetSessionProfile(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSessionProfile")
-	api.HandleFunc("/sessions", handler.UpdateSessionProfile(s.DB)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateSessionProfile")
+	apiV1.HandleFunc("/rooms", handler.CreateRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
+	apiV1.HandleFunc("/rooms/reservations", handler.ReserveRoomName(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("ReserveRoomName")
+	apiV1.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
+	apiV1.HandleFunc("/rooms/public", handler.GetPublicRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetPublicRooms")
+	apiV1.HandleFunc("/rooms/generation", handler.CreateGeneratedRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoom")
+	apiV1.HandleFunc("/rooms/{id}/generations", handler.CreateRoomGeneration(s.DB, s.Config.RoomGenerationMaxExistingSongs)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomGeneration")
+	apiV1.HandleFunc("/rooms/{id}", handler.RoomExists(s.DB)).Methods(http.MethodHead).Name("RoomExists")
+	apiV1.HandleFunc("/rooms/{id}", handler.GetRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoom")
+	apiV1.HandleFunc("/rooms/{id}/settings", handler.UpdateRoomSettings(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRoomSettings")
+	apiV1.HandleFunc("/rooms/{id}/skips", handler.SkipSong(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("SkipSong")
+	apiV1.HandleFunc("/rooms/{id}/states", handler.GetPlaybackState(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetPlaybackState")
+	apiV1.HandleFunc("/rooms/{id}/states", handler.UpdatePlaybackState(s.DB, s.Redis)).Methods(http.MethodPut, http.MethodOptions).Name("UpdatePlaybackState")
+	apiV1.HandleFunc("/rooms/{id}/playbackfailures", handler.ReportPlaybackFailure(s.DB, s.YouTube, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("ReportPlaybackFailure")
+	apiV1.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
+	apiV1.HandleFunc("/rooms/{id}/sessions", handler.DeleteRoomAdminSession(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRoomAdminSession")
+	apiV1.HandleFunc("/sessions", handler.GetSessionProfile(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSessionProfile")
+	apiV1.HandleFunc("/sessions", handler.UpdateSessionProfile(s.DB)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateSessionProfile")
 
 	// Song routes
-	api.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSongs")
-	api.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.Redis, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddSong")
-	api.HandleFunc("/rooms/{id}/playlists", handler.AddPlaylist(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddPlaylist")
-	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.Redis)).Methods(http.MethodDelete, http.MethodOptions).Name("RemoveSong")
-	api.HandleFunc("/rooms/{id}/songs/{songId}", handler.VoteSong(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("VoteSong")
+	apiV1.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSongs")
+	apiV1.HandleFunc("/rooms/{id}/songs", handler.AddSong(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddSong")
+	apiV1.HandleFunc("/rooms/{id}/playlists", handler.AddPlaylist(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddPlaylist")
+	apiV1.HandleFunc("/rooms/{id}/songs/{songId}", handler.RemoveSong(s.DB, s.Redis)).Methods(http.MethodDelete, http.MethodOptions).Name("RemoveSong")
+	apiV1.HandleFunc("/rooms/{id}/songs/{songId}", handler.VoteSong(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("VoteSong")
 
 	// SSE route
-	api.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.Redis, s.DB, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
-	v2.HandleFunc("/rooms/{id}/events", handler.RoomEventsV2(s.Redis, s.DB, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEventsV2")
+	apiV1.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
+	apiV2.HandleFunc("/rooms/{id}/events", handler.RoomEventsV2(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEventsV2")
 
 	// YouTube routes
-	api.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
-	api.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube, s.Redis, vibe.SourceTypeYouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetMusicTrack")
-	api.HandleFunc("/youtube/playlists/{id}", handler.GetMusicPlaylist(s.YouTube, s.Redis, vibe.SourceTypeYouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubePlaylist")
+	apiV1.HandleFunc("/youtube/search", handler.SearchMusic(s.YouTube, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchMusic")
+	apiV1.HandleFunc("/youtube/videos/{id}", handler.GetMusicTrack(s.YouTube, s.Redis, vibe.SourceTypeYouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetMusicTrack")
+	apiV1.HandleFunc("/youtube/playlists/{id}", handler.GetMusicPlaylist(s.YouTube, s.Redis, vibe.SourceTypeYouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubePlaylist")
 
 	// SoundCloud routes
-	api.HandleFunc("/soundcloud/search", handler.SearchSoundCloud(s.SoundCloud, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSoundCloud")
-	api.HandleFunc("/soundcloud/tracks", handler.ResolveSoundCloudTrack(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudTrack")
-	api.HandleFunc("/soundcloud/tracks/{id}", handler.GetSoundCloudTrack(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudTrack")
-	api.HandleFunc("/soundcloud/playlists", handler.ResolveSoundCloudPlaylist(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudPlaylist")
+	apiV1.HandleFunc("/soundcloud/search", handler.SearchSoundCloud(s.SoundCloud, s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SearchSoundCloud")
+	apiV1.HandleFunc("/soundcloud/tracks", handler.ResolveSoundCloudTrack(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudTrack")
+	apiV1.HandleFunc("/soundcloud/tracks/{id}", handler.GetSoundCloudTrack(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudTrack")
+	apiV1.HandleFunc("/soundcloud/playlists", handler.ResolveSoundCloudPlaylist(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudPlaylist")
 
-	api.HandleFunc("/tokens/soundcloud", handler.GetToken(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudToken")
-	api.HandleFunc("/tokens/youtube", handler.GetToken(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubeToken")
+	apiV1.HandleFunc("/tokens/soundcloud", handler.GetToken(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudToken")
+	apiV1.HandleFunc("/tokens/youtube", handler.GetToken(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubeToken")
 
 	// Authorization routes
-	api.HandleFunc("/authorizations/soundcloud", handler.Authorize(s.DB, s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
-	api.HandleFunc("/authorizations/youtube", handler.Authorize(s.DB, s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
+	apiV1.HandleFunc("/authorizations/soundcloud", handler.Authorize(s.DB, s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
+	apiV1.HandleFunc("/authorizations/youtube", handler.Authorize(s.DB, s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
 	// Callbacks
-	api.HandleFunc("/callbacks/soundcloud", handler.OAuthCallback(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("SoundCloudCallback")
-	api.HandleFunc("/callbacks/youtube", handler.OAuthCallback(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("YouTubeCallback")
+	apiV1.HandleFunc("/callbacks/soundcloud", handler.OAuthCallback(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("SoundCloudCallback")
+	apiV1.HandleFunc("/callbacks/youtube", handler.OAuthCallback(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("YouTubeCallback")
 
 	// Config routes
-	api.HandleFunc("/providers", handler.GetProviders(s.Config)).Methods(http.MethodGet, http.MethodOptions).Name("GetProviders")
+	apiV1.HandleFunc("/providers", handler.GetProviders(s.Config)).Methods(http.MethodGet, http.MethodOptions).Name("GetProviders")
 
 	// Stats routes
-	api.HandleFunc("/stats", handler.GetStats(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("GetStats")
+	apiV1.HandleFunc("/stats", handler.GetStats(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("GetStats")
 
 	// Cast token endpoint (cookie-auth only)
-	api.HandleFunc("/tokens/casting", handler.CreateCastingToken(s.DB, s.Config.CastTokenSecret)).Methods(http.MethodPost, http.MethodOptions).Name("CreateCastingToken")
+	apiV1.HandleFunc("/tokens/casting", handler.CreateCastingToken(s.DB, s.Config.CastTokenSecret)).Methods(http.MethodPost, http.MethodOptions).Name("CreateCastingToken")
 
 	// Remote control routes
-	api.HandleFunc("/remotes", handler.CreateRemoteControl(s.DB, s.Redis, s.Config.CookieSecret, s.Config.RemotePairingTTL)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRemoteControl")
-	api.HandleFunc("/remotes", handler.GetOwnedRemoteControl(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetOwnedRemoteControl")
-	api.HandleFunc("/remotes/{id}", handler.GetRemoteControl(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRemoteControl")
-	api.HandleFunc("/remotes/{id}", handler.UpdateRemoteControl(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRemoteControl")
-	api.HandleFunc("/remotes/{id}", handler.DeleteRemoteControl(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRemoteControl")
-	api.HandleFunc("/remotes/{id}/sessions", handler.PairRemoteControl(s.DB, s.Redis, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("PairRemoteControl")
-	api.HandleFunc("/remotes/{id}/events", handler.RemoteEvents(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RemoteEvents")
+	apiV1.HandleFunc("/remotes", handler.CreateRemoteControl(s.DB, s.Redis, s.Config.CookieSecret, s.Config.RemotePairingTTL)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRemoteControl")
+	apiV1.HandleFunc("/remotes", handler.GetOwnedRemoteControl(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetOwnedRemoteControl")
+	apiV1.HandleFunc("/remotes/{id}", handler.GetRemoteControl(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRemoteControl")
+	apiV1.HandleFunc("/remotes/{id}", handler.UpdateRemoteControl(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateRemoteControl")
+	apiV1.HandleFunc("/remotes/{id}", handler.DeleteRemoteControl(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRemoteControl")
+	apiV1.HandleFunc("/remotes/{id}/sessions", handler.PairRemoteControl(s.DB, s.Redis, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("PairRemoteControl")
+	apiV1.HandleFunc("/remotes/{id}/events", handler.RemoteEvents(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RemoteEvents")
 
 	// Admin routes
 	if s.Config.AdminPasswordPepper != "" {
-		api.HandleFunc("/admin/sessions", handler.AdminLogin(s.DB, s.Config.AdminPasswordPepper, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
-		api.HandleFunc("/admin/sessions", handler.AdminSession()).Methods(http.MethodGet, http.MethodOptions).Name("AdminSession")
-		api.HandleFunc("/admin/sessions", handler.AdminLogout()).Methods(http.MethodDelete, http.MethodOptions).Name("AdminLogout")
-		api.HandleFunc("/admin/users", handler.AdminUsers(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminUsers")
-		api.HandleFunc("/admin/users", handler.AdminCreateUser(s.DB, s.Config.AdminPasswordPepper)).Methods(http.MethodPost, http.MethodOptions).Name("AdminCreateUser")
-		api.HandleFunc("/admin/users/{id}", handler.AdminUpdateUser(s.DB, s.Config.AdminPasswordPepper)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateUser")
-		api.HandleFunc("/admin/users/{id}", handler.AdminDeleteUser(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteUser")
-		api.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
-		api.HandleFunc("/admin/searches/usage", handler.AdminSearchUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminSearchUsage")
-		api.HandleFunc("/admin/listeners/usage", handler.AdminListenerUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminListenerUsage")
-		api.HandleFunc("/admin/rooms/{id}", handler.AdminUpdateRoom(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateRoom")
-		api.HandleFunc("/admin/rooms/{id}", handler.AdminDeleteRoom(s.DB, s.Redis)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteRoom")
-		api.HandleFunc("/admin/events", handler.AdminEvents(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
+		apiV1.HandleFunc("/admin/sessions", handler.AdminLogin(s.DB, s.Config.AdminPasswordPepper, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
+		apiV1.HandleFunc("/admin/sessions", handler.AdminSession()).Methods(http.MethodGet, http.MethodOptions).Name("AdminSession")
+		apiV1.HandleFunc("/admin/sessions", handler.AdminLogout()).Methods(http.MethodDelete, http.MethodOptions).Name("AdminLogout")
+		apiV1.HandleFunc("/admin/users", handler.AdminUsers(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminUsers")
+		apiV1.HandleFunc("/admin/users", handler.AdminCreateUser(s.DB, s.Config.AdminPasswordPepper)).Methods(http.MethodPost, http.MethodOptions).Name("AdminCreateUser")
+		apiV1.HandleFunc("/admin/users/{id}", handler.AdminUpdateUser(s.DB, s.Config.AdminPasswordPepper)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateUser")
+		apiV1.HandleFunc("/admin/users/{id}", handler.AdminDeleteUser(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteUser")
+		apiV1.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
+		apiV1.HandleFunc("/admin/searches/usage", handler.AdminSearchUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminSearchUsage")
+		apiV1.HandleFunc("/admin/listeners/usage", handler.AdminListenerUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminListenerUsage")
+		apiV1.HandleFunc("/admin/rooms/{id}", handler.AdminUpdateRoom(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateRoom")
+		apiV1.HandleFunc("/admin/rooms/{id}", handler.AdminDeleteRoom(s.DB, s.Redis)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteRoom")
+		apiV1.HandleFunc("/admin/events", handler.AdminEvents(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEvents")
 	}
 
-	s.addSessionMiddleware(api, v2)
+	s.addSessionMiddleware(apiV1, apiV2)
 	if s.Config.RateLimitEnabled {
-		s.addRateLimitMiddleware(api, v2)
+		s.addRateLimitMiddleware(apiV1, apiV2)
 	}
-	s.addPermissionMiddleware(api, v2)
+	s.addPermissionMiddleware(apiV1, apiV2)
 	if s.Config.AdminPasswordPepper != "" {
-		s.addAdminMiddleware(api)
+		s.addAdminMiddleware(apiV1)
 	}
-	s.addTracingAndMetrics(api, v2)
+	s.addTracingAndMetrics(apiV1, apiV2)
 	s.addCORSMiddleware(s.Router)
 }
 

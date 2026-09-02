@@ -80,8 +80,7 @@ func GetSongs(
 //	@Router		/api/v1/rooms/{id}/songs [post]
 func AddSong(
 	db vibe.SongQueueAdder,
-	notifier vibe.RoomEventNotifier,
-	cache vibe.CachedMusicTrackFetcher,
+	events vibe.CachedMusicTrackRoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -191,7 +190,7 @@ func AddSong(
 
 		artist := req.Artist
 		playbackRestriction := ""
-		cachedTrack, err := cache.GetCachedMusicTrack(ctx, req.SourceType, req.SourceID)
+		cachedTrack, err := events.GetCachedMusicTrack(ctx, req.SourceType, req.SourceID)
 		if err != nil {
 			log.Printf("error getting cached provider track metadata: %v", err)
 		}
@@ -281,7 +280,7 @@ func AddSong(
 			return
 		}
 
-		err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+		err = events.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 			Type:    vibe.QueueReordered,
 			Payload: songsPayload,
 			Origin:  session.EventOrigin,
@@ -322,7 +321,7 @@ func AddSong(
 				return
 			}
 
-			err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+			err = events.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
 				Origin:  session.EventOrigin,

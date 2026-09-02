@@ -123,7 +123,7 @@ func TestUpdatePlaybackStateTargetsRemoteMachine(t *testing.T) {
 			})
 			response := httptest.NewRecorder()
 
-			UpdatePlaybackState(storage, notifier, notifier).ServeHTTP(
+			UpdatePlaybackState(storage, notifier).ServeHTTP(
 				response,
 				request.WithContext(ctx),
 			)
