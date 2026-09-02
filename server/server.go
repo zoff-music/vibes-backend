@@ -26,6 +26,7 @@ import (
 	"github.com/zoff-music/vibes-backend/monitoring/metrics"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/server/internal/event"
+	"github.com/zoff-music/vibes-backend/server/internal/middleware"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -110,7 +111,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.InternalRouter = mux.NewRouter()
 	s.HTTP = &http.Server{
 		Addr:              fmt.Sprintf(":%s", s.Config.Port),
-		Handler:           s.Router,
+		Handler:           middleware.CompressionMiddleware(s.Router),
 		ReadHeaderTimeout: 2 * time.Second, // prevent slowloris attacks
 	}
 	s.InternalHTTP = &http.Server{
