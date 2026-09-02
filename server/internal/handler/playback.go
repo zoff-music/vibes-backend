@@ -247,15 +247,40 @@ func ReportPlaybackFailure(
 			)
 			return
 		}
-		v2Event, err := songPositionV2(songs, advance.PreviousSongID)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error creating compact restricted skip event: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
+		var v2Event *vibe.RoomEventV2Payload
+		for position, song := range songs {
+			if song.ID != advance.PreviousSongID {
+				continue
+			}
+
+			v2Payload, marshalErr := json.Marshal(vibe.SongPositionUpdate{
+				Song:     song,
+				Position: position,
+			})
+			if marshalErr != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshaling compact restricted skip event: %w", marshalErr),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+			v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongUpdated, Payload: v2Payload}
+			break
+		}
+		if v2Event == nil {
+			v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: advance.PreviousSongID})
+			if marshalErr != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshaling compact restricted skip removal fallback: %w", marshalErr),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+			v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongRemoved, Payload: v2Payload}
 		}
 
 		err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
