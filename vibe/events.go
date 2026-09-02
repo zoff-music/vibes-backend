@@ -41,6 +41,13 @@ type RoomEventSnapshotFetcher interface {
 	PlaybackFetcher
 }
 
+// RoomEventStateFetcherUpdater defines the persisted room state and presence
+// operations used by one room event stream handler.
+type RoomEventStateFetcherUpdater interface {
+	RoomEventParticipantFetcherUpdater
+	RoomEventSnapshotFetcher
+}
+
 // RoomEventConnection describes when an SSE connection was established.
 type RoomEventConnection struct {
 	Time int64 `json:"time"`
@@ -80,6 +87,12 @@ type RoomEventCursor struct {
 // RoomEventNotifier broadcasts events to room subscribers
 type RoomEventNotifier interface {
 	NotifyRoomUpdate(ctx context.Context, roomID string, event RoomEvent) error
+}
+
+// RoomRemoteEventNotifier emits the two event types used by playback updates.
+type RoomRemoteEventNotifier interface {
+	RoomEventNotifier
+	RemoteEventNotifier
 }
 
 // RoomBatchEventNotifier broadcasts events to room subscribers in batches
