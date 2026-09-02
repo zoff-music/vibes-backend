@@ -154,15 +154,40 @@ func SkipSong(
 				return
 			}
 
-			v2Event, err := songPositionV2(songs, result.PreviousSongID)
-			if err != nil {
-				handleError(
-					w,
-					fmt.Errorf("error creating compact skipped song event: %w", err),
-					http.StatusInternalServerError,
-					true,
-				)
-				return
+			var v2Event *vibe.RoomEventV2Payload
+			for position, song := range songs {
+				if song.ID != result.PreviousSongID {
+					continue
+				}
+
+				v2Payload, marshalErr := json.Marshal(vibe.SongPositionUpdate{
+					Song:     song,
+					Position: position,
+				})
+				if marshalErr != nil {
+					handleError(
+						w,
+						fmt.Errorf("error marshaling compact skipped song event: %w", marshalErr),
+						http.StatusInternalServerError,
+						true,
+					)
+					return
+				}
+				v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongUpdated, Payload: v2Payload}
+				break
+			}
+			if v2Event == nil {
+				v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: result.PreviousSongID})
+				if marshalErr != nil {
+					handleError(
+						w,
+						fmt.Errorf("error marshaling compact skipped song removal fallback: %w", marshalErr),
+						http.StatusInternalServerError,
+						true,
+					)
+					return
+				}
+				v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongRemoved, Payload: v2Payload}
 			}
 
 			err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{
