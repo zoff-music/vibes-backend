@@ -236,16 +236,17 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 	if shouldForce {
 		log.Printf("[DEBUG-SKIP] Room: %s, User: %s, Force Skip (Host: %v, Admin: %v, User: %s, HostID: %s)\n", roomID, userID, isHost, isAdmin, userID, room.HostID)
 
-		state, err := c.skipTrack(ctx, roomID, "")
+		advance, err := c.skipTrack(ctx, roomID, "")
 		if err != nil {
 			return nil, fmt.Errorf("error skipping track in shouldForce: %w", err)
 		}
 
 		return &vibe.SkipSongResult{
-			Action:   vibe.RoomActionSkip,
-			Skipped:  true,
-			NextSong: state.CurrentSong,
-			Playback: state,
+			Action:         vibe.RoomActionSkip,
+			Skipped:        true,
+			NextSong:       advance.Playback.CurrentSong,
+			Playback:       advance.Playback,
+			PreviousSongID: advance.PreviousSongID,
 		}, nil
 	}
 
@@ -330,19 +331,20 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 		return nil, fmt.Errorf("error clearing votes for song: %w", err)
 	}
 
-	newState, err := c.skipTrack(ctx, roomID, "")
+	advance, err := c.skipTrack(ctx, roomID, "")
 	if err != nil {
 		return nil, fmt.Errorf("error skipping track after vote: %w", err)
 	}
 
 	return &vibe.SkipSongResult{
-		Action:        vibe.RoomActionSkip,
-		Skipped:       true,
-		Voted:         true,
-		CurrentVotes:  voteCount,
-		RequiredVotes: requiredVotes,
-		NextSong:      newState.CurrentSong,
-		Playback:      newState,
+		Action:         vibe.RoomActionSkip,
+		Skipped:        true,
+		Voted:          true,
+		CurrentVotes:   voteCount,
+		RequiredVotes:  requiredVotes,
+		NextSong:       advance.Playback.CurrentSong,
+		Playback:       advance.Playback,
+		PreviousSongID: advance.PreviousSongID,
 	}, nil
 }
 
