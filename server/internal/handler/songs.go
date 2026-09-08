@@ -92,7 +92,16 @@ func AddSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error decoding request body: %w", err),
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error decoding request body: %w", err),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_request_invalid",
+						Message:   "The song details could not be read. Search for the song again and retry.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
 				http.StatusBadRequest,
 				true,
 			)
@@ -103,7 +112,16 @@ func AddSong(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("error unauthorized"),
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error unauthorized"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_session_required",
+						Message:   "Your room session is missing. Rejoin the room and try adding the song again.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusUnauthorized,
+				},
 				http.StatusUnauthorized,
 				false,
 			)
@@ -124,7 +142,16 @@ func AddSong(
 		if room.IsEmpty() {
 			handleError(
 				w,
-				fmt.Errorf("error room not found"),
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error room not found"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_room_not_found",
+						Message:   "This room no longer exists. Join another room to add songs.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusNotFound,
+				},
 				http.StatusNotFound,
 				false,
 			)
@@ -134,7 +161,16 @@ func AddSong(
 		if room.Settings.OnlyAdminAddSongs && !room.IsAdmin {
 			handleError(
 				w,
-				fmt.Errorf("error only admins can add songs in this room"),
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error only admins can add songs in this room"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_room_admin_required",
+						Message:   "Only room admins can add songs here. Log in as a room admin in room settings, or ask an admin to allow everyone to add songs.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusForbidden,
+				},
 				http.StatusForbidden,
 				false,
 			)
@@ -152,7 +188,16 @@ func AddSong(
 		if !sourceEnabled {
 			handleError(
 				w,
-				fmt.Errorf("error source type %s is not enabled for this room", req.SourceType),
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error source type %s is not enabled for this room", req.SourceType),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_provider_disabled",
+						Message:   "This music provider is not enabled for this room. Choose another provider or ask a room admin to enable it.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
 				http.StatusBadRequest,
 				false,
 			)
@@ -181,7 +226,16 @@ func AddSong(
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error getting canonical provider URL: %w", err),
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error getting canonical provider URL: %w", err),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_provider_url_invalid",
+						Message:   "The song link is not valid for this provider. Search for the song again or paste a valid track link.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
 				http.StatusBadRequest,
 				false,
 			)
