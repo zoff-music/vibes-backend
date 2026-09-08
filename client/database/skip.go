@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -204,7 +203,7 @@ func (c *Client) clearSkipVotes(ctx context.Context, roomID, songID string) erro
 }
 
 // SkipSong skips the current track to the next one in the queue, either immediately (if host/admin/forced) or by voting.
-func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bool) (*vibe.SkipSongResult, error) {
+func (c *Client) SkipSong(ctx context.Context, roomID, userID string) (*vibe.SkipSongResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SkipSong")
 	defer span.End()
 
@@ -213,12 +212,12 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 		return nil, fmt.Errorf("error fetching room in SkipSong: %w", err)
 	}
 
-	isHost := room.HostID == userID
-	log.Printf("room.HostID: %s, userID: %s, isHost: %v", room.HostID, userID, isHost)
+	isAdmin := room.IsAdmin
+	isHost := room.Mode == vibe.RoomModeHost && room.HostID == userID
 
-	if !room.Settings.SkipAllowed && !isHost && !isAdmin {
+	if !room.Settings.SkipAllowed && !isAdmin {
 		return nil, internalerror.ErrSkipDisabled{
-			Err: fmt.Errorf("error skipping is disabled in this room"),
+			Err: fmt.Errorf("error skipping requires room admin"),
 		}
 	}
 
@@ -234,8 +233,6 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 	}
 
 	if shouldForce {
-		log.Printf("[DEBUG-SKIP] Room: %s, User: %s, Force Skip (Host: %v, Admin: %v, User: %s, HostID: %s)\n", roomID, userID, isHost, isAdmin, userID, room.HostID)
-
 		advance, err := c.skipTrack(ctx, roomID, "")
 		if err != nil {
 			return nil, fmt.Errorf("error skipping track in shouldForce: %w", err)
@@ -250,14 +247,10 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 		}, nil
 	}
 
-	log.Printf("[DEBUG-SKIP] Room: %s, User: %s, Voting to Skip\n", roomID, userID)
-
 	state, err := c.GetPlaybackState(ctx, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("error skipping song: get playback state: %w", err)
 	}
-
-	log.Printf("[DEBUG-SKIP] Current-playing %+v", state.CurrentSong)
 
 	if state.CurrentSong == nil {
 		return &vibe.SkipSongResult{
@@ -273,7 +266,6 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 	}
 
 	if voted {
-		log.Printf("[DEBUG-SKIP] User has voted %+v", voted)
 		votes, err := c.GetSkipVotes(ctx, roomID, songID)
 		if err != nil {
 			return nil, fmt.Errorf("error fetching skip votes for already voted result: %w", err)
@@ -319,8 +311,6 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string, isAdmin bo
 		}, nil
 	}
 
-	log.Printf("[DEBUG-SKIP] Room: %s, Threshold met. Skipping.\n", roomID)
-
 	err = c.clearSkipVotes(ctx, roomID, songID)
 	if err != nil {
 		return nil, fmt.Errorf("error clearing skip votes: %w", err)
@@ -363,7 +353,6 @@ func (c *Client) getRequiredSkipVotes(ctx context.Context, roomID string, thresh
 	}
 
 	requiredVotes := int(float64(participantCount) * threshold)
-	log.Printf("[DEBUG-SKIP] Room: %s, Participants: %d, Threshold: %f, Required: %d\n", roomID, participantCount, threshold, requiredVotes)
 
 	if participantCount == 1 {
 		return 1, nil
