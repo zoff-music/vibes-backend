@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -39,7 +40,16 @@ func SkipSong(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("error unauthorized"),
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error missing skip session"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "skip_session_required",
+						Message:   "Rejoin the room before skipping songs.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusUnauthorized,
+				},
 				http.StatusUnauthorized,
 				false,
 			)
@@ -47,15 +57,22 @@ func SkipSong(
 		}
 		userID := session.UserID
 
-		isAdmin := false
-
-		result, err := db.SkipSong(ctx, roomID, userID, isAdmin)
+		result, err := db.SkipSong(ctx, roomID, userID)
 		if err != nil {
 			var errHostMode internalerror.ErrHostModeSkipOnly
 			if errors.As(err, &errHostMode) {
 				handleError(
 					w,
-					fmt.Errorf("error only hosts can skip in host mode"),
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error host mode skip permission: %w", err),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "skip_host_required",
+							Message:   "Only the host or a room admin can skip songs in host mode.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusForbidden,
+					},
 					http.StatusForbidden,
 					false,
 				)
@@ -66,7 +83,16 @@ func SkipSong(
 			if errors.As(err, &errDisabled) {
 				handleError(
 					w,
-					fmt.Errorf("error skipping is disabled in this room"),
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error skipping requires room admin: %w", err),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "skip_room_admin_required",
+							Message:   "Only room admins can skip songs here. Log in as a room admin in room settings.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusForbidden,
+					},
 					http.StatusForbidden,
 					false,
 				)
