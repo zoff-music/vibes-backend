@@ -744,9 +744,10 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH locked_playback_q AS (
-			SELECT a.room_id
-			FROM playback_state a
-			WHERE a.room_id = $1
+			SELECT r.id AS room_id
+			FROM rooms r
+			LEFT JOIN playback_state a ON a.room_id = r.id
+			WHERE r.id = $1
 			AND (
 				a.current_song_id IS NULL
 				OR NOT EXISTS (
@@ -757,7 +758,7 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 					AND b.source_type = ANY($2::text[])
 				)
 			)
-			FOR UPDATE OF a SKIP LOCKED
+			FOR UPDATE OF r SKIP LOCKED
 		),
 		next_song_q AS (
 			SELECT
@@ -789,15 +790,22 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			LIMIT 1
 		),
 		updated_playback_q AS (
-			UPDATE playback_state a
-			SET current_song_id = b.id,
-			is_playing = b.id IS NOT NULL,
-			position_ms = 0,
-			updated_at = NOW()
-			FROM locked_playback_q c
-			LEFT JOIN next_song_q b ON b.room_id = c.room_id
-			WHERE a.room_id = c.room_id
-			RETURNING a.room_id, a.current_song_id, a.is_playing, a.position_ms, a.updated_at
+			INSERT INTO playback_state (room_id, current_song_id, is_playing, position_ms, updated_at)
+			SELECT room_id, id, TRUE, 0, NOW()
+			FROM next_song_q
+			ON CONFLICT (room_id) DO UPDATE
+			SET current_song_id = EXCLUDED.current_song_id,
+				is_playing = TRUE,
+				position_ms = 0,
+				updated_at = EXCLUDED.updated_at
+			WHERE playback_state.current_song_id IS NULL
+			OR NOT EXISTS (
+				SELECT 1 FROM songs s
+				WHERE s.room_id = playback_state.room_id
+				AND s.id = playback_state.current_song_id
+				AND s.source_type = ANY($2::text[])
+			)
+			RETURNING room_id, current_song_id, is_playing, position_ms, updated_at
 		)
 		SELECT
 			a.room_id,

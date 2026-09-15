@@ -443,3 +443,16 @@ func (c *Client) DeletePlaylistImport(ctx context.Context, importID string) erro
 const playlistImportDatabaseTimeout = 15 * time.Second
 
 const playlistImportMaxAttempts = 5
+
+// StartPlaylistPlayback returns a state only when the import starts idle playback.
+func (c *Client) StartPlaylistPlayback(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "StartPlaylistPlayback")
+	defer span.End()
+
+	state, err := c.startPlaybackIfIdle(ctx, roomID)
+	if err != nil {
+		return nil, fmt.Errorf("error starting playlist playback: %w", err)
+	}
+
+	return state, nil
+}

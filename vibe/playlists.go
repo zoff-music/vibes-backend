@@ -61,7 +61,7 @@ type PlaylistImportProcessor interface {
 	CompletePlaylistImportItem(ctx context.Context, importID string, position int) error
 	DeletePlaylistImport(ctx context.Context, importID string) error
 	AddPlaylistSong(ctx context.Context, song *Song) (*AddSongResult, error)
-	StartPlaybackIfIdle(ctx context.Context, roomID string) (*PlaybackState, error)
+	StartPlaylistPlayback(ctx context.Context, roomID string) (*PlaybackState, error)
 }
 
 func ResolveSoundCloudPlaylistURL(value string) (string, error) {
