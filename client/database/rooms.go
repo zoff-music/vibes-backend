@@ -765,6 +765,12 @@ func (c *Client) prepareCreateRoomStmt() error {
 			)
 			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 FROM created_room_q
 		),
+		created_admin_q AS (
+			INSERT INTO room_users (id, room_id, is_admin, is_active_listener, joined_at, last_seen_at)
+			SELECT $4, id, TRUE, FALSE, $6, $6
+			FROM created_room_q
+			WHERE $4 != '' AND $5 != ''
+		),
 		consumed_name_q AS (
 			INSERT INTO room_name_pool (name, generated, consumed_at)
 			SELECT
@@ -840,6 +846,8 @@ func (c *Client) CreateRoom(
 	}
 
 	createdRoom := *room
+	createdRoom.UserID = room.HostID
+	createdRoom.IsAdmin = room.HostID != "" && room.AdminPasswordHash != ""
 	createdSettings := room.Settings
 	createdSettings.EnabledSources = []string{}
 	for _, source := range room.Settings.EnabledSources {
