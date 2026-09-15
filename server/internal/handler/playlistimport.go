@@ -47,19 +47,21 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 			Payload: songPayload,
 		})
 	}
-	if playlistImport.NextPosition == 0 && result.Outcome == vibe.AddSongOutcomeAdded {
-		playbackState, err := h.DB.StartPlaybackIfIdle(ctx, playlistImport.RoomID)
+	if result.Outcome == vibe.AddSongOutcomeAdded || playlistImport.Attempts > 1 {
+		playbackState, err := h.DB.StartPlaylistPlayback(ctx, playlistImport.RoomID)
 		if err != nil {
 			return fmt.Errorf("error starting playlist import playback in Handle: %w", err)
 		}
-		playbackPayload, err := json.Marshal(playbackState)
-		if err != nil {
-			return fmt.Errorf("error marshaling playlist import playback in Handle: %w", err)
+		if playbackState.CurrentSong != nil {
+			playbackPayload, err := json.Marshal(playbackState)
+			if err != nil {
+				return fmt.Errorf("error marshaling playlist import playback in Handle: %w", err)
+			}
+			events = append(events, vibe.RoomEvent{
+				Type:    vibe.PlaybackUpdate,
+				Payload: playbackPayload,
+			})
 		}
-		events = append(events, vibe.RoomEvent{
-			Type:    vibe.PlaybackUpdate,
-			Payload: playbackPayload,
-		})
 	}
 
 	err = h.DB.CompletePlaylistImportItem(

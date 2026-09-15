@@ -192,7 +192,16 @@ func AddPlaylist(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				fmt.Errorf("error unauthorized"),
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error importing playlist: missing session"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "playlist_session_required",
+						Message:   "Rejoin the room before importing a playlist.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusUnauthorized,
+				},
 				http.StatusUnauthorized,
 				false,
 			)
@@ -239,7 +248,16 @@ func AddPlaylist(
 		if room.Settings.OnlyAdminAddSongs && !room.IsAdmin {
 			handleError(
 				w,
-				fmt.Errorf("error only admins can add songs in this room"),
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error only admins can import playlists in this room"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_room_admin_required",
+						Message:   "Only room admins can import playlists here. Log in as a room admin in room settings.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusForbidden,
+				},
 				http.StatusForbidden,
 				false,
 			)
