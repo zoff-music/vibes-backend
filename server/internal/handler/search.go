@@ -63,7 +63,8 @@ func SearchMusic(
 		if cacheHit {
 			cachedTracks := cachedSearches[0].GetMusicTracks()
 			for _, track := range cachedTracks {
-				if vibe.IsLiveVideo(track.Source, track.DurationSeconds) {
+				if vibe.IsLiveVideo(track.Source, track.DurationSeconds) ||
+					track.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding {
 					continue
 				}
 				tracks = append(tracks, track)

@@ -91,6 +91,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 
 		videoItem, ok := videoItems[item.ID.VideoID]
 		if !ok ||
+			!videoItem.Status.Embeddable ||
 			videoItem.Snippet.CategoryID != youtubeMusicCategoryID ||
 			videoItem.isLiveVideo() {
 			continue
