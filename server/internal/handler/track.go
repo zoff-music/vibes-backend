@@ -73,6 +73,26 @@ func GetMusicTrack(
 			return
 		}
 
+		if provider == vibe.SourceTypeYouTube &&
+			track.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error getting youtube track in GetMusicTrack handler: embedding is disabled"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "youtube_embedding_not_allowed",
+						Message:   "This video cannot play outside YouTube. Try another version of the song.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
 		err = cache.CacheMusicTracks(ctx, provider, []vibe.MusicTrack{*track})
 		if err != nil {
 			log.Printf("error caching provider track metadata: %v", err)
