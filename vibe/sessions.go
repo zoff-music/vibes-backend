@@ -11,13 +11,13 @@ type SessionProfile struct {
 }
 
 type UpdateSessionProfileRequest struct {
-	Name string `json:"name"`
+	Name string `json:"name" minLength:"1" maxLength:"30"`
 }
 
 func (r UpdateSessionProfileRequest) Validate() bool {
 	name := strings.TrimSpace(r.Name)
 	length := utf8.RuneCountInString(name)
-	return length >= minimumSessionNameLength && length <= maximumSessionNameLength
+	return length >= minimumSessionNameLength && length <= SessionNameMaxLength
 }
 
 type SessionProfileFetcherCreator interface {
@@ -63,4 +63,4 @@ type RoomAdminSessionDeleter interface {
 
 const minimumSessionNameLength = 1
 
-const maximumSessionNameLength = 30
+const SessionNameMaxLength = 30

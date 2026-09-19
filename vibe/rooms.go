@@ -2,8 +2,12 @@ package vibe
 
 import (
 	"context"
+	"strings"
 	"time"
+	"unicode/utf8"
 )
+
+const RoomNameMaxLength = 100
 
 // RoomSettings holds configuration for a room
 type RoomSettings struct {
@@ -79,7 +83,15 @@ type RoomNameReservation struct {
 
 // RoomNameReservationRequest requests a custom or generated room name.
 type RoomNameReservationRequest struct {
-	Name string `json:"name,omitempty"`
+	Name string `json:"name,omitempty" maxLength:"100"`
+}
+
+func (r RoomNameReservationRequest) Validate() bool {
+	if r.Name == "" {
+		return true
+	}
+	length := utf8.RuneCountInString(strings.TrimSpace(r.Name))
+	return length > 0 && length <= RoomNameMaxLength
 }
 
 // RoomHostInfo holds info about a host update
@@ -125,11 +137,16 @@ type PublicRoomsSearcher interface {
 
 // CreateRoomRequest is the request payload for creating a room.
 type CreateRoomRequest struct {
-	Name             string        `json:"name"`
+	Name             string        `json:"name" minLength:"1" maxLength:"100"`
 	Mode             string        `json:"mode,omitempty"`
 	Password         string        `json:"password,omitempty"`
 	ReservationToken string        `json:"reservationToken,omitempty"`
 	Settings         *RoomSettings `json:"settings,omitempty"`
+}
+
+func (r CreateRoomRequest) Validate() bool {
+	length := utf8.RuneCountInString(strings.TrimSpace(r.Name))
+	return length > 0 && length <= RoomNameMaxLength
 }
 
 // UpdateRoomRequest is the request payload for updating a room.

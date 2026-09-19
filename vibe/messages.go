@@ -9,6 +9,8 @@ import (
 
 const MessageEvent = "message"
 
+const MessageMaxLength = 500
+
 type RoomMessage struct {
 	ID        string `json:"id"`
 	UserID    string `json:"userId"`
@@ -20,12 +22,12 @@ type RoomMessage struct {
 }
 
 type CreateMessageRequest struct {
-	Text string `json:"text"`
+	Text string `json:"text" minLength:"1" maxLength:"500"`
 }
 
 func (r CreateMessageRequest) Validate() bool {
 	length := utf8.RuneCountInString(strings.TrimSpace(r.Text))
-	return length > 0 && length <= 500
+	return length > 0 && length <= MessageMaxLength
 }
 
 type MessageAuthorFetcher interface {

@@ -48,6 +48,12 @@ Copy and configure the environment file:
 
 ## Architecture
 
+Chat messages are limited to 500 characters, display names to 30, and new room
+names/reservations to 100 after trimming whitespace. The API validates these
+limits before writing data and returns a readable 400 error for invalid input.
+Keep the matching request schemas and input limits in `zoff-music/vibes-frontend`
+in sync. Existing room reads are not rejected based on these creation limits.
+
 - **`cmd/server`**: Application entrypoint and dependency injection
 - **`client/`**: External integrations (Database, Redis, YouTube, SoundCloud)
 - **`server/`**: Dependency injection, HTTP routing, middleware, and app-event wiring
