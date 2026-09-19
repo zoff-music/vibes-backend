@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -29,7 +30,7 @@ import (
 //	@Router		/api/v1/rooms/{id}/skips [post]
 func SkipSong(
 	db vibe.RoomSkipper,
-	notifier vibe.RoomBatchEventNotifier,
+	notifier vibe.RoomEventBatchNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -57,6 +58,7 @@ func SkipSong(
 		}
 		userID := session.UserID
 
+		previous, previousErr := db.GetPlaybackState(ctx, roomID)
 		result, err := db.SkipSong(ctx, roomID, userID)
 		if err != nil {
 			var errHostMode internalerror.ErrHostModeSkipOnly
@@ -231,6 +233,40 @@ func SkipSong(
 			})
 			if err != nil {
 				log.Printf("failed to notify room updates: %v", err)
+			}
+		}
+
+		if !result.AlreadyVoted && (result.Skipped || result.Voted) {
+			kind := "skipvoted"
+			title := "the current song"
+			if result.Skipped {
+				kind = "skipped"
+			}
+			if previousErr == nil && previous != nil && previous.CurrentSong != nil &&
+				(!result.Skipped || previous.CurrentSong.ID == result.PreviousSongID) {
+				title = previous.CurrentSong.Title
+			}
+			room, roomErr := db.GetRoom(ctx, roomID, userID)
+			profile, profileErr := db.GetOrCreateSessionProfile(ctx, userID)
+			if roomErr == nil && profileErr == nil && room != nil && profile != nil {
+				message := vibe.RoomMessage{
+					ID:        uuid.NewString(),
+					UserID:    userID,
+					Name:      profile.Name,
+					IsAdmin:   room.IsAdmin,
+					Kind:      kind,
+					Text:      title,
+					CreatedAt: time.Now().UTC().UnixMilli(),
+				}
+				payload, chatErr := json.Marshal(message)
+				if chatErr == nil {
+					chatErr = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{Type: vibe.MessageEvent, Payload: payload})
+				}
+				if chatErr != nil {
+					log.Printf("error publishing skip chat activity: %v", chatErr)
+				}
+			} else {
+				log.Printf("error fetching skip chat author: room=%v profile=%v", roomErr, profileErr)
 			}
 		}
 

@@ -31,6 +31,8 @@ type SkipVoteUpdate struct {
 
 // RoomSkipper defines actions related to skipping tracks
 type RoomSkipper interface {
+	MessageAuthorFetcher
+	PlaybackFetcher
 	GetSongs(ctx context.Context, roomID string) ([]Song, error)
 	SkipSong(ctx context.Context, roomID string, userID string) (*SkipSongResult, error)
 }
