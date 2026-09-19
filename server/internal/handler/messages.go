@@ -24,7 +24,7 @@ import (
 // @Success 201 {object} vibe.RoomMessage
 // @Failure 400,401,404,500 {object} vibe.ErrorResponse
 // @Router /api/v1/rooms/{id}/messages [post]
-func CreateMessages(db vibe.MessageAuthorFetcher, events vibe.RoomEventNotifier) http.HandlerFunc {
+func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEventNotifier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		roomID := mux.Vars(r)["id"]
@@ -71,6 +71,10 @@ func CreateMessages(db vibe.MessageAuthorFetcher, events vibe.RoomEventNotifier)
 		if err != nil {
 			handleError(w, fmt.Errorf("error retaining message: %w", err), http.StatusServiceUnavailable, true)
 			return
+		}
+		err = db.CreateMessageUsage(ctx, roomID, time.UnixMilli(message.CreatedAt))
+		if err != nil {
+			log.Printf("error recording sent chat message usage: %v", err)
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
@@ -170,6 +174,34 @@ func Messages(db vibe.RoomFetcher, events vibe.ReplaySubscriber) http.HandlerFun
 				}
 				flusher.Flush()
 			}
+		}
+	}
+}
+
+// AdminMessageUsage returns sent message counts.
+// @Summary Get chat usage overall or for one room
+// @Tags admin
+// @Produce json
+// @Param roomId query string false "Room ID; omitted for all rooms"
+// @Success 200 {object} vibe.AdminMessageUsage
+// @Failure 400,401,403,500 {object} vibe.ErrorResponse
+// @Router /api/v1/admin/messages/usage [get]
+func AdminMessageUsage(db vibe.AdminMessageUsageLister) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		roomID := strings.TrimSpace(r.URL.Query().Get("roomId"))
+		if len(roomID) > 200 {
+			handleError(w, fmt.Errorf("error reading message usage: room ID too long"), http.StatusBadRequest, false)
+			return
+		}
+		usage, err := db.ListAdminMessageUsage(r.Context(), roomID)
+		if err != nil {
+			handleError(w, fmt.Errorf("error reading message usage: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		err = json.MarshalWrite(w, usage)
+		if err != nil {
+			log.Printf("error writing message usage: %v", err)
 		}
 	}
 }

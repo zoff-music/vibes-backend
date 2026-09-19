@@ -3,6 +3,7 @@ package vibe
 import (
 	"context"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -37,4 +38,30 @@ type SessionProfileRoomUpdater interface {
 	SessionProfileFetcherCreator
 	RoomFetcher
 	GetSessionRooms(ctx context.Context, userID string) ([]string, error)
+}
+
+type MessageUsageCreator interface {
+	CreateMessageUsage(ctx context.Context, roomID string, sentAt time.Time) error
+}
+
+type MessageAuthorFetcherUsageCreator interface {
+	MessageAuthorFetcher
+	MessageUsageCreator
+}
+
+type MessageUsagePoint struct {
+	Window    string    `json:"window"`
+	Timestamp time.Time `json:"timestamp"`
+	Messages  int64     `json:"messages"`
+}
+
+type AdminMessageUsage struct {
+	RoomID      string              `json:"roomId"`
+	Total       int64               `json:"total"`
+	Points      []MessageUsagePoint `json:"points"`
+	GeneratedAt time.Time           `json:"generatedAt"`
+}
+
+type AdminMessageUsageLister interface {
+	ListAdminMessageUsage(ctx context.Context, roomID string) (*AdminMessageUsage, error)
 }
