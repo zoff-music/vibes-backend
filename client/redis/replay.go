@@ -73,7 +73,11 @@ func (c *Client) NotifyRoomUpdate(
 		return fmt.Errorf("error marshaling room event in NotifyRoomUpdate: %w", err)
 	}
 
-	err = c.appendRoomEvent(ctx, roomTopicName(roomID), data)
+	topic := roomTopicName(roomID)
+	if event.Type == vibe.MessageEvent {
+		topic = "chat:" + roomID
+	}
+	err = c.appendRoomEvent(ctx, topic, data)
 	if err != nil {
 		return fmt.Errorf("error appending room event in NotifyRoomUpdate: %w", err)
 	}

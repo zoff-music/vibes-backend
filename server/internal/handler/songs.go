@@ -365,6 +365,32 @@ func AddSong(
 			log.Printf("failed to notify room: %v", err)
 		}
 
+		kind := "added"
+		if result.Outcome == vibe.AddSongOutcomeDuplicateVoted {
+			kind = "voted"
+		}
+		if result.Outcome != vibe.AddSongOutcomeDuplicateAlreadyVoted {
+			profile, profileErr := db.GetOrCreateSessionProfile(ctx, session.UserID)
+			if profileErr == nil && profile != nil {
+				message := vibe.RoomMessage{
+					ID:        uuid.NewString(),
+					UserID:    session.UserID,
+					Name:      profile.Name,
+					IsAdmin:   room.IsAdmin,
+					Kind:      kind,
+					Text:      result.Song.Title,
+					CreatedAt: time.Now().UnixMilli(),
+				}
+				chatPayload, chatErr := json.Marshal(message)
+				if chatErr == nil {
+					chatErr = events.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{Type: vibe.MessageEvent, Payload: chatPayload})
+				}
+				if chatErr != nil {
+					log.Printf("error publishing AddSong chat activity: %v", chatErr)
+				}
+			}
+		}
+
 		if result.Outcome == vibe.AddSongOutcomeAdded && len(songs) == 1 {
 			playbackState := &vibe.PlaybackState{
 				RoomID:       roomID,
@@ -490,6 +516,11 @@ func RemoveSong(
 			return
 		}
 
+		removedSong, err := db.GetSong(ctx, roomID, songID)
+		if err != nil || removedSong == nil {
+			handleError(w, fmt.Errorf("error finding song to remove"), http.StatusNotFound, false)
+			return
+		}
 		err = db.RemoveSong(ctx, roomID, songID)
 		if err != nil {
 			handleError(
@@ -543,6 +574,26 @@ func RemoveSong(
 		})
 		if err != nil {
 			log.Printf("failed to notify room in remove song: %v", err)
+		}
+
+		profile, profileErr := db.GetOrCreateSessionProfile(ctx, session.UserID)
+		if profileErr == nil && profile != nil {
+			message := vibe.RoomMessage{
+				ID:        uuid.NewString(),
+				UserID:    session.UserID,
+				Name:      profile.Name,
+				IsAdmin:   room.IsAdmin,
+				Kind:      "deleted",
+				Text:      removedSong.Title,
+				CreatedAt: time.Now().UnixMilli(),
+			}
+			chatPayload, chatErr := json.Marshal(message)
+			if chatErr == nil {
+				chatErr = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{Type: vibe.MessageEvent, Payload: chatPayload})
+			}
+			if chatErr != nil {
+				log.Printf("error publishing RemoveSong chat activity: %v", chatErr)
+			}
 		}
 
 		w.WriteHeader(http.StatusNoContent)
@@ -679,6 +730,35 @@ func VoteSong(
 		})
 		if err != nil {
 			log.Printf("failed to notify room in vote song: %v", err)
+		}
+
+		chatRoom, roomErr := db.GetRoom(ctx, roomID, userID)
+		votedTitle := "song"
+		for _, queuedSong := range songs {
+			if queuedSong.ID == songID {
+				votedTitle = queuedSong.Title
+			}
+		}
+		if roomErr == nil && chatRoom != nil {
+			profile, profileErr := db.GetOrCreateSessionProfile(ctx, session.UserID)
+			if profileErr == nil && profile != nil {
+				message := vibe.RoomMessage{
+					ID:        uuid.NewString(),
+					UserID:    session.UserID,
+					Name:      profile.Name,
+					IsAdmin:   chatRoom.IsAdmin,
+					Kind:      "voted",
+					Text:      votedTitle,
+					CreatedAt: time.Now().UnixMilli(),
+				}
+				chatPayload, chatErr := json.Marshal(message)
+				if chatErr == nil {
+					chatErr = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{Type: vibe.MessageEvent, Payload: chatPayload})
+				}
+				if chatErr != nil {
+					log.Printf("error publishing VoteSong chat activity: %v", chatErr)
+				}
+			}
 		}
 
 		w.WriteHeader(http.StatusNoContent)

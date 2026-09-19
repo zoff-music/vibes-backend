@@ -138,3 +138,7 @@ func TestAddSongRejectionMessages(t *testing.T) {
 		})
 	}
 }
+
+func (s *addSongStorageStub) GetOrCreateSessionProfile(_ context.Context, _ string) (*vibe.SessionProfile, error) {
+	return &vibe.SessionProfile{Name: "Listener"}, nil
+}

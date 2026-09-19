@@ -38,7 +38,7 @@ func (s *Server) setupRoutes() {
 	apiV1.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
 	apiV1.HandleFunc("/rooms/{id}/sessions", handler.DeleteRoomAdminSession(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRoomAdminSession")
 	apiV1.HandleFunc("/sessions", handler.GetSessionProfile(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSessionProfile")
-	apiV1.HandleFunc("/sessions", handler.UpdateSessionProfile(s.DB)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateSessionProfile")
+	apiV1.HandleFunc("/sessions", handler.UpdateSessionProfile(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateSessionProfile")
 
 	// Song routes
 	apiV1.HandleFunc("/rooms/{id}/songs", handler.GetSongs(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetSongs")
@@ -48,6 +48,8 @@ func (s *Server) setupRoutes() {
 	apiV1.HandleFunc("/rooms/{id}/songs/{songId}", handler.VoteSong(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("VoteSong")
 
 	// SSE route
+	apiV1.HandleFunc("/rooms/{id}/messages", handler.CreateMessages(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("CreateMessages")
+	apiV1.HandleFunc("/rooms/{id}/messages", handler.Messages(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("Messages")
 	apiV1.HandleFunc("/rooms/{id}/events", handler.RoomEvents(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEvents")
 	apiV2.HandleFunc("/rooms/{id}/events", handler.RoomEventsV2(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEventsV2")
 
@@ -151,6 +153,8 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"AddPlaylist":           {Rate: time.Minute, Limit: 6},
 			"RemoveSong":            {Rate: time.Minute, Limit: 60},
 			"VoteSong":              {Rate: time.Minute, Limit: 120},
+			"CreateMessages":        {Rate: time.Minute, Limit: 20},
+			"Messages":              {Rate: time.Minute, Limit: 30},
 			"RoomEvents":            {Rate: time.Minute, Limit: 30},
 			"RoomEventsV2":          {Rate: time.Minute, Limit: 30},
 			"SearchMusic": {
