@@ -117,3 +117,9 @@ const Connected = "connected"
 const EventCursor = "event_cursor"
 
 const RoomEventOriginRemote = "remote"
+
+// RoomEventBatchNotifier supports independent room and chat streams.
+type RoomEventBatchNotifier interface {
+	RoomEventNotifier
+	RoomBatchEventNotifier
+}
