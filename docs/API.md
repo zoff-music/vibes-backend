@@ -46,6 +46,46 @@ Production: https://api.vibez.app/api/v1
 
 ### Room Management
 
+#### Browse Public Rooms (v2)
+`GET /api/v2/rooms/public?live=true&from=0&to=9`
+
+Returns public rooms with password-protected admin controls. The password is
+not required to listen. Private rooms are never included.
+
+| Parameter | Meaning | Default |
+| --- | --- | --- |
+| `q` | Case-insensitive, literal substring of the room name; up to 100 characters | Empty |
+| `live` | `true` limits results to rooms with active listeners; `false` includes empty rooms | `false` |
+| `from` | First row, zero-based | `0` |
+| `to` | Last row, inclusive; at most 100 rooms per request | `from + 9` |
+
+Rooms are ordered by listener count, song count, then ID, all descending.
+Song counts include enabled providers. Listener counts use current presence;
+cast receivers only count as one listener when there are no other listeners.
+
+```json
+{
+  "rooms": [
+    { "id": "electro", "name": "electro", "listenerCount": 3, "songCount": 24 }
+  ],
+  "from": 0,
+  "to": 0,
+  "total": 1,
+  "count": 1
+}
+```
+
+`to` identifies the last returned row. With no matches, `rooms` is an empty
+array, `count` is zero, and `to` equals `from`. `total` remains available for
+requests beyond the last page. Invalid filters and ranges return `400`.
+The v1 public list keeps its existing top-three live-room contract.
+
+Deploy migration 0025 from `zoff-music/vibes-migrator` for indexed room-name
+search, then the backend, then clients using this endpoint. The index is
+additive; this query also works before the migration is applied.
+
+---
+
 #### Create Room
 `POST /rooms`
 

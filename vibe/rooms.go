@@ -93,12 +93,34 @@ type NewHostUpdate struct {
 	Message string `json:"message"`
 }
 
-// PublicRoom is a password-protected room with active listeners.
+// PublicRoom is a publicly listed room with protected admin controls.
 type PublicRoom struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
 	ListenerCount int    `json:"listenerCount"`
 	SongCount     int    `json:"songCount"`
+}
+
+// PublicRoomSearch selects a zero-based, inclusive range of public rooms.
+type PublicRoomSearch struct {
+	Query string
+	Live  bool
+	From  int
+	To    int
+}
+
+// PublicRoomResult contains a page of rooms and the full matching count.
+type PublicRoomResult struct {
+	Rooms []PublicRoom `json:"rooms"`
+	From  int          `json:"from"`
+	To    int          `json:"to"`
+	Total int          `json:"total"`
+	Count int          `json:"count"`
+}
+
+// PublicRoomsSearcher searches public rooms with or without listeners.
+type PublicRoomsSearcher interface {
+	SearchPublicRooms(ctx context.Context, search PublicRoomSearch) (*PublicRoomResult, error)
 }
 
 // CreateRoomRequest is the request payload for creating a room.
