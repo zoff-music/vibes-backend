@@ -9,13 +9,22 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-type messageStorageStub struct{ room vibe.Room }
+type messageStorageStub struct {
+	room   vibe.Room
+	usages int
+}
+
+func (s *messageStorageStub) CreateMessageUsage(_ context.Context, roomID string, _ time.Time) error {
+	s.usages++
+	return nil
+}
 
 func (s *messageStorageStub) GetRoom(_ context.Context, _, _ string) (*vibe.Room, error) {
 	return &s.room, nil
@@ -84,6 +93,13 @@ func TestCreateMessages(t *testing.T) {
 			CreateMessages(db, events).ServeHTTP(response, request)
 			if response.Code != tt.status {
 				t.Fatalf("status %d, want %d: %s", response.Code, tt.status, response.Body.String())
+			}
+			expectedUsages := 0
+			if tt.status == 201 {
+				expectedUsages = 1
+			}
+			if db.usages != expectedUsages {
+				t.Fatalf("recorded %d usages, want %d", db.usages, expectedUsages)
 			}
 			if tt.status != 201 {
 				if events.event.Type != "" {

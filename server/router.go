@@ -102,6 +102,7 @@ func (s *Server) setupRoutes() {
 		apiV1.HandleFunc("/admin/users/{id}", handler.AdminUpdateUser(s.DB, s.Config.AdminPasswordPepper)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateUser")
 		apiV1.HandleFunc("/admin/users/{id}", handler.AdminDeleteUser(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteUser")
 		apiV1.HandleFunc("/admin/rooms", handler.AdminRooms(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminRooms")
+		apiV1.HandleFunc("/admin/messages/usage", handler.AdminMessageUsage(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminMessageUsage")
 		apiV1.HandleFunc("/admin/searches/usage", handler.AdminSearchUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminSearchUsage")
 		apiV1.HandleFunc("/admin/listeners/usage", handler.AdminListenerUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminListenerUsage")
 		apiV1.HandleFunc("/admin/rooms/{id}", handler.AdminUpdateRoom(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateRoom")
@@ -220,6 +221,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"AdminUpdateUser":    {Rate: 10 * time.Minute, Limit: 10},
 			"AdminDeleteUser":    {Rate: 10 * time.Minute, Limit: 10},
 			"AdminRooms":         {Rate: time.Minute, Limit: 120},
+			"AdminMessageUsage":  {Rate: time.Minute, Limit: 120},
 			"AdminSearchUsage":   {Rate: time.Minute, Limit: 120},
 			"AdminListenerUsage": {Rate: time.Minute, Limit: 120},
 			"AdminUpdateRoom":    {Rate: time.Minute, Limit: 30},
@@ -293,6 +295,7 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 			"AdminUpdateUser":    true,
 			"AdminDeleteUser":    true,
 			"AdminRooms":         true,
+			"AdminMessageUsage":  true,
 			"AdminSearchUsage":   true,
 			"AdminListenerUsage": true,
 			"AdminUpdateRoom":    true,
