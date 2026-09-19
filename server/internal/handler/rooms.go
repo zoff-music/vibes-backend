@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -36,7 +37,7 @@ func CreateRoom(
 		ctx := r.Context()
 
 		var req vibe.CreateRoomRequest
-		err := json.UnmarshalRead(r.Body, &req)
+		err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 8192), &req)
 		if err != nil {
 			handleError(
 				w,
@@ -47,15 +48,25 @@ func CreateRoom(
 			return
 		}
 
-		if req.Name == "" {
+		if !req.Validate() {
 			handleError(
 				w,
-				fmt.Errorf("error room name is required"),
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error validating room name"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "room_name_invalid",
+						Message:   fmt.Sprintf("Use between 1 and %d characters for the room name.", vibe.RoomNameMaxLength),
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
 				http.StatusBadRequest,
 				false,
 			)
 			return
 		}
+		req.Name = strings.TrimSpace(req.Name)
 
 		session, _ := helper.GetSessionFromContext(ctx)
 
@@ -208,7 +219,7 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 		ctx := r.Context()
 
 		var req vibe.RoomNameReservationRequest
-		err := json.UnmarshalRead(r.Body, &req)
+		err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 4096), &req)
 		if err != nil {
 			handleError(
 				w,
@@ -216,6 +227,19 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 				http.StatusBadRequest,
 				true,
 			)
+			return
+		}
+		if !req.Validate() {
+			handleError(w, client.ErrorCodeWrapper{
+				Err: fmt.Errorf("error validating room name reservation"),
+				ResponseBody: client.ErrorCodeResponseBody{
+					Namespace: "vibes-backend",
+					Error:     "room_name_invalid",
+					Message:   fmt.Sprintf("Use between 1 and %d characters for the room name.", vibe.RoomNameMaxLength),
+					Propagate: true,
+				},
+				StatusCode: http.StatusBadRequest,
+			}, http.StatusBadRequest, false)
 			return
 		}
 

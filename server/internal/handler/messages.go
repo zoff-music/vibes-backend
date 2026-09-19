@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -36,7 +37,16 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 		var request vibe.CreateMessageRequest
 		err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 4096), &request)
 		if err != nil || !request.Validate() {
-			handleError(w, fmt.Errorf("error sending message: use between 1 and 500 characters"), http.StatusBadRequest, false)
+			handleError(w, client.ErrorCodeWrapper{
+				Err: fmt.Errorf("error validating chat message"),
+				ResponseBody: client.ErrorCodeResponseBody{
+					Namespace: "vibes-backend",
+					Error:     "chat_message_invalid",
+					Message:   fmt.Sprintf("Use between 1 and %d characters for your message.", vibe.MessageMaxLength),
+					Propagate: true,
+				},
+				StatusCode: http.StatusBadRequest,
+			}, http.StatusBadRequest, false)
 			return
 		}
 		room, err := db.GetRoom(ctx, roomID, session.UserID)
