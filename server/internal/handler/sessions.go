@@ -1,10 +1,14 @@
 package handler
 
 import (
+	"context"
 	"encoding/json/v2"
 	"fmt"
+	"github.com/google/uuid"
+	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -73,7 +77,7 @@ func GetSessionProfile(db vibe.SessionProfileFetcherCreator) http.HandlerFunc {
 //	@Failure	401		{object}	vibe.ErrorResponse
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/sessions [patch]
-func UpdateSessionProfile(db vibe.SessionProfileUpdater) http.HandlerFunc {
+func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEventNotifier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		session, ok := helper.GetSessionFromContext(ctx)
@@ -108,6 +112,11 @@ func UpdateSessionProfile(db vibe.SessionProfileUpdater) http.HandlerFunc {
 			return
 		}
 
+		previous, err := db.GetOrCreateSessionProfile(ctx, session.UserID)
+		if err != nil {
+			handleError(w, fmt.Errorf("error reading previous profile: %w", err), http.StatusInternalServerError, true)
+			return
+		}
 		profile, err := db.UpdateSessionProfile(ctx, session.UserID, strings.TrimSpace(request.Name))
 		if err != nil {
 			handleError(
@@ -117,6 +126,35 @@ func UpdateSessionProfile(db vibe.SessionProfileUpdater) http.HandlerFunc {
 				true,
 			)
 			return
+		}
+
+		if previous.Name != profile.Name {
+			rooms, roomsErr := db.GetSessionRooms(ctx, session.UserID)
+			if roomsErr != nil {
+				log.Printf("error fetching rooms for name change: %v", roomsErr)
+			}
+			for _, roomID := range rooms {
+				room, roomErr := db.GetRoom(ctx, roomID, session.UserID)
+				if roomErr != nil || room == nil {
+					continue
+				}
+				message := vibe.RoomMessage{
+					ID:        uuid.NewString(),
+					UserID:    session.UserID,
+					Name:      previous.Name,
+					IsAdmin:   room.IsAdmin,
+					Kind:      "renamed",
+					Text:      profile.Name,
+					CreatedAt: time.Now().UnixMilli(),
+				}
+				payload, chatErr := json.Marshal(message)
+				if chatErr == nil {
+					chatErr = events.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{Type: vibe.MessageEvent, Payload: payload})
+				}
+				if chatErr != nil {
+					log.Printf("error publishing name change: %v", chatErr)
+				}
+			}
 		}
 
 		body, err := json.Marshal(profile)

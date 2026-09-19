@@ -155,6 +155,7 @@ type SongVoter interface {
 
 // SongQueueAdder defines the exact operations used when adding a song.
 type SongQueueAdder interface {
+	SessionProfileFetcherCreator
 	SongAdder
 	SongsFetcher
 	RoomFetcher
@@ -170,6 +171,8 @@ type CachedMusicTrackRoomEventNotifier interface {
 
 // SongQueueRemover defines the exact operations used when removing a song.
 type SongQueueRemover interface {
+	SessionProfileFetcherCreator
+	SongFetcher
 	SongRemover
 	SongsFetcher
 	RoomFetcher
@@ -177,6 +180,7 @@ type SongQueueRemover interface {
 
 // SongQueueVoter defines the exact operations used when voting for a song.
 type SongQueueVoter interface {
+	MessageAuthorFetcher
 	SongVoter
 	SongsFetcher
 }
