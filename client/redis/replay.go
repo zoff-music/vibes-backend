@@ -77,6 +77,7 @@ func (c *Client) NotifyRoomUpdate(
 	if event.Type == vibe.MessageEvent {
 		topic = "chat:" + roomID
 	}
+
 	err = c.appendRoomEvent(ctx, topic, data)
 	if err != nil {
 		return fmt.Errorf("error appending room event in NotifyRoomUpdate: %w", err)

@@ -39,6 +39,7 @@ func GetPublicRoomsV2(db vibe.PublicRoomsSearcher) http.HandlerFunc {
 			handleError(w, fmt.Errorf("error invalid room search text"), http.StatusBadRequest, false)
 			return
 		}
+
 		if utf8.RuneCountInString(query) > publicRoomMaximumQueryLength {
 			handleError(w, fmt.Errorf("error room search is too long"), http.StatusBadRequest, false)
 			return
@@ -70,6 +71,7 @@ func GetPublicRoomsV2(db vibe.PublicRoomsSearcher) http.HandlerFunc {
 				return
 			}
 		}
+
 		if to-from+1 > publicRoomMaximumPageSize {
 			handleError(w, fmt.Errorf("error room page is too large"), http.StatusBadRequest, false)
 			return
