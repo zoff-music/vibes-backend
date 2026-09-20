@@ -66,6 +66,7 @@ func CreateRoom(
 			)
 			return
 		}
+
 		req.Name = strings.TrimSpace(req.Name)
 
 		session, _ := helper.GetSessionFromContext(ctx)
@@ -229,6 +230,7 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 			)
 			return
 		}
+
 		if !req.Validate() {
 			handleError(w, client.ErrorCodeWrapper{
 				Err: fmt.Errorf("error validating room name reservation"),

@@ -19,19 +19,24 @@ func (c *Client) prepareCreateMessageUsageStmt() error {
 	if err != nil {
 		return fmt.Errorf("error preparing CreateMessageUsageStatement: %w", err)
 	}
+
 	c.CreateMessageUsageStatement = stmt
+
 	return nil
 }
 
 func (c *Client) CreateMessageUsage(ctx context.Context, roomID string, sentAt time.Time) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "CreateMessageUsage")
 	defer span.End()
+
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+
 	_, err := c.CreateMessageUsageStatement.ExecContext(cctx, roomID, sentAt)
 	if err != nil {
 		return fmt.Errorf("error recording message usage in CreateMessageUsage: %w", err)
 	}
+
 	return nil
 }
 
@@ -56,25 +61,32 @@ func (c *Client) prepareListAdminMessageUsageStmt() error {
 	if err != nil {
 		return fmt.Errorf("error preparing ListAdminMessageUsageStatement: %w", err)
 	}
+
 	c.ListAdminMessageUsageStatement = stmt
+
 	return nil
 }
 
 func (c *Client) ListAdminMessageUsage(ctx context.Context, roomID string) (*vibe.AdminMessageUsage, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ListAdminMessageUsage")
 	defer span.End()
+
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+
 	rows, err := c.ListAdminMessageUsageStatement.QueryContext(cctx, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("error querying usage in ListAdminMessageUsage: %w", err)
 	}
+
 	defer rows.Close()
+
 	usage := &vibe.AdminMessageUsage{
 		RoomID:      roomID,
 		Points:      make([]vibe.MessageUsagePoint, 0),
 		GeneratedAt: time.Now().UTC(),
 	}
+
 	for rows.Next() {
 		var period string
 		var timestamp *time.Time
@@ -83,17 +95,25 @@ func (c *Client) ListAdminMessageUsage(ctx context.Context, roomID string) (*vib
 		if err != nil {
 			return nil, fmt.Errorf("error scanning usage in ListAdminMessageUsage: %w", err)
 		}
+
 		if period == "total" {
 			usage.Total = count
 			continue
 		}
+
 		if timestamp != nil {
-			usage.Points = append(usage.Points, vibe.MessageUsagePoint{Window: period, Timestamp: *timestamp, Messages: count})
+			usage.Points = append(usage.Points, vibe.MessageUsagePoint{
+				Window:    period,
+				Timestamp: *timestamp,
+				Messages:  count,
+			})
 		}
 	}
+
 	err = rows.Err()
 	if err != nil {
 		return nil, fmt.Errorf("error iterating usage in ListAdminMessageUsage: %w", err)
 	}
+
 	return usage, nil
 }

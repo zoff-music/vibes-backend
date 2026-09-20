@@ -56,9 +56,14 @@ func SkipSong(
 			)
 			return
 		}
+
 		userID := session.UserID
 
 		previous, previousErr := db.GetPlaybackState(ctx, roomID)
+		if previousErr != nil {
+			log.Printf("error fetching previous playback for skip chat activity: %v", previousErr)
+		}
+
 		result, err := db.SkipSong(ctx, roomID, userID)
 		if err != nil {
 			var errHostMode internalerror.ErrHostModeSkipOnly
@@ -120,6 +125,7 @@ func SkipSong(
 				CurrentVotes:  result.CurrentVotes,
 				RequiredVotes: result.RequiredVotes,
 			}
+
 			if result.Playback != nil && result.Playback.CurrentSong != nil {
 				payload.SongID = result.Playback.CurrentSong.ID
 			}
@@ -201,9 +207,11 @@ func SkipSong(
 					)
 					return
 				}
+
 				v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongUpdated, Payload: v2Payload}
 				break
 			}
+
 			if v2Event == nil {
 				v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: result.PreviousSongID})
 				if marshalErr != nil {
@@ -215,6 +223,7 @@ func SkipSong(
 					)
 					return
 				}
+
 				v2Event = &vibe.RoomEventV2Payload{Type: vibe.SongRemoved, Payload: v2Payload}
 			}
 
@@ -242,12 +251,22 @@ func SkipSong(
 			if result.Skipped {
 				kind = "skipped"
 			}
+
 			if previousErr == nil && previous != nil && previous.CurrentSong != nil &&
 				(!result.Skipped || previous.CurrentSong.ID == result.PreviousSongID) {
 				title = previous.CurrentSong.Title
 			}
+
 			room, roomErr := db.GetRoom(ctx, roomID, userID)
+			if roomErr != nil {
+				log.Printf("error fetching skip chat room: %v", roomErr)
+			}
+
 			profile, profileErr := db.GetOrCreateSessionProfile(ctx, userID)
+			if profileErr != nil {
+				log.Printf("error fetching skip chat author: %v", profileErr)
+			}
+
 			if roomErr == nil && profileErr == nil && room != nil && profile != nil {
 				message := vibe.RoomMessage{
 					ID:        uuid.NewString(),
@@ -258,15 +277,18 @@ func SkipSong(
 					Text:      title,
 					CreatedAt: time.Now().UTC().UnixMilli(),
 				}
+
 				payload, chatErr := json.Marshal(message)
 				if chatErr == nil {
-					chatErr = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{Type: vibe.MessageEvent, Payload: payload})
+					chatErr = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+						Type:    vibe.MessageEvent,
+						Payload: payload,
+					})
 				}
+
 				if chatErr != nil {
 					log.Printf("error publishing skip chat activity: %v", chatErr)
 				}
-			} else {
-				log.Printf("error fetching skip chat author: room=%v profile=%v", roomErr, profileErr)
 			}
 		}
 

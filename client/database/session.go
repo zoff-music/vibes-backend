@@ -147,24 +147,36 @@ func (c *Client) UpdateSessionProfile(
 }
 
 func (c *Client) prepareGetSessionRoomsStmt() error {
-	stmt, err := c.DB.Prepare(`SELECT room_id FROM room_users WHERE id = $1 AND last_seen_at > $2 ORDER BY room_id`)
+	stmt, err := c.DB.Prepare(`
+		SELECT room_id
+		FROM room_users
+		WHERE id = $1
+		AND last_seen_at > $2
+		ORDER BY room_id
+	`)
 	if err != nil {
-		return fmt.Errorf("error preparing GetSessionRooms: %w", err)
+		return fmt.Errorf("error preparing GetSessionRoomsStatement: %w", err)
 	}
+
 	c.GetSessionRoomsStatement = stmt
+
 	return nil
 }
 
 func (c *Client) GetSessionRooms(ctx context.Context, userID string) ([]string, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetSessionRooms")
 	defer span.End()
+
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
+
 	rows, err := c.GetSessionRoomsStatement.QueryContext(cctx, userID, time.Now().Add(-time.Minute))
 	if err != nil {
 		return nil, fmt.Errorf("error querying GetSessionRooms: %w", err)
 	}
+
 	defer rows.Close()
+
 	rooms := []string{}
 	for rows.Next() {
 		var roomID string
@@ -172,11 +184,14 @@ func (c *Client) GetSessionRooms(ctx context.Context, userID string) ([]string, 
 		if err != nil {
 			return nil, fmt.Errorf("error scanning GetSessionRooms: %w", err)
 		}
+
 		rooms = append(rooms, roomID)
 	}
+
 	err = rows.Err()
 	if err != nil {
 		return nil, fmt.Errorf("error reading GetSessionRooms: %w", err)
 	}
+
 	return rooms, nil
 }
