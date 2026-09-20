@@ -107,9 +107,11 @@ func (c *Client) providerQuotaKey(provider string, operation string) string {
 		return ""
 	}
 
-	return c.getKeyWithPrefix(
+	key := c.getKeyWithPrefix(
 		providerQuotaKeyPrefix + ":" + provider + ":" + operation,
 	)
+
+	return key
 }
 
 const providerQuotaKeyPrefix = "provider:quota"

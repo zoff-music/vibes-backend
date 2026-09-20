@@ -47,7 +47,8 @@ type SearchUsage struct {
 }
 
 func (s CachedSearch) GetMusicTracks() []MusicTrack {
-	return append([]MusicTrack{}, s.Tracks...)
+	tracks := append([]MusicTrack{}, s.Tracks...)
+	return tracks
 }
 
 func GenerateCachedSearch(
@@ -117,7 +118,8 @@ func NormalizeSearch(query string) string {
 		normalizedTokens = append(normalizedTokens, current)
 	}
 
-	return strings.Join(normalizedTokens, " ")
+	normalizedQuery := strings.Join(normalizedTokens, " ")
+	return normalizedQuery
 }
 
 func isSearchNoise(value string) bool {
@@ -130,8 +132,8 @@ func isSearchNoise(value string) bool {
 	}
 }
 
-func (t GeneratedTrack) MusicTrack() MusicTrack {
-	return MusicTrack{
+func (t GeneratedTrack) ToMusicTrack() (*MusicTrack, error) {
+	return &MusicTrack{
 		ID:                  t.YouTubeID,
 		Source:              SourceTypeYouTube,
 		ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", t.YouTubeID),
@@ -143,11 +145,11 @@ func (t GeneratedTrack) MusicTrack() MusicTrack {
 		ViewCount:           t.ViewCount,
 		LikeCount:           t.LikeCount,
 		PlaybackRestriction: t.PlaybackRestriction,
-	}
+	}, nil
 }
 
-func (t MusicTrack) GeneratedTrack(query string) GeneratedTrack {
-	return GeneratedTrack{
+func (t MusicTrack) ToGeneratedTrack(query string) (*GeneratedTrack, error) {
+	return &GeneratedTrack{
 		Artist:              t.ChannelTitle,
 		Title:               t.Title,
 		YouTubeID:           t.ID,
@@ -157,7 +159,7 @@ func (t MusicTrack) GeneratedTrack(query string) GeneratedTrack {
 		LikeCount:           t.LikeCount,
 		SearchQuery:         query,
 		PlaybackRestriction: t.PlaybackRestriction,
-	}
+	}, nil
 }
 
 func durationISO8601(seconds int) string {

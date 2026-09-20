@@ -25,12 +25,17 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		MaxIdle:   80,
 		MaxActive: 1200,
 		Dial: func() (redis.Conn, error) {
-			return redis.DialURL(
+			connection, err := redis.DialURL(
 				cfg.RedisURL,
 				redis.DialConnectTimeout(5*time.Second),
 				redis.DialReadTimeout(5*time.Second),
 				redis.DialWriteTimeout(5*time.Second),
 			)
+			if err != nil {
+				return nil, fmt.Errorf("error dialing redis in Init: %w", err)
+			}
+
+			return connection, nil
 		},
 		TestOnBorrow: func(connection redis.Conn, lastUsed time.Time) error {
 			if time.Since(lastUsed) < time.Minute {

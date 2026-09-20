@@ -170,7 +170,11 @@ func (c *Client) GetAccessToken(ctx context.Context, userID, provider string) (*
 		}
 		return nil, fmt.Errorf("error in db: get access token: %w", err)
 	}
-	token := row.toAccessToken()
+	token, err := row.toAccessToken()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping token: %w", err)
+	}
+
 	return token, nil
 }
 
@@ -199,7 +203,7 @@ func (a *accessTokenRow) scan(rows *sql.Row) error {
 	return nil
 }
 
-func (a *accessTokenRow) toAccessToken() *vibe.AccessToken {
+func (a *accessTokenRow) toAccessToken() (*vibe.AccessToken, error) {
 	return &vibe.AccessToken{
 		UserID:           a.UserID.String,
 		Provider:         a.Provider.String,
@@ -207,7 +211,7 @@ func (a *accessTokenRow) toAccessToken() *vibe.AccessToken {
 		RefreshToken:     a.RefreshToken.String,
 		ExpiresAt:        a.ExpiresAt.Time,
 		RefreshExpiresAt: a.RefreshExpiresAt.Time,
-	}
+	}, nil
 }
 
 func (c *Client) prepareDeleteExpiredAuthTokensStmt() error {
@@ -222,7 +226,7 @@ func (c *Client) prepareDeleteExpiredAuthTokensStmt() error {
 }
 
 // DeleteExpiredAuthTokens removes all expired auth tokens records from the database.
-func (c *Client) DeleteExpiredAuthTokens(ctx context.Context) (int64, error) {
+func (c *Client) DeleteExpiredAuthTokens(ctx context.Context) (int, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteExpiredAuthTokens")
 	defer span.End()
 
@@ -239,7 +243,8 @@ func (c *Client) DeleteExpiredAuthTokens(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("error in db: get rows affected: %w", err)
 	}
 
-	return rowsAffected, nil
+	count := int(rowsAffected)
+	return count, nil
 }
 
 func (c *Client) prepareDeleteExpiredAccessTokensStmt() error {
@@ -254,7 +259,7 @@ func (c *Client) prepareDeleteExpiredAccessTokensStmt() error {
 }
 
 // DeleteExpiredAccessTokens removes all expired access tokens records from the database.
-func (c *Client) DeleteExpiredAccessTokens(ctx context.Context) (int64, error) {
+func (c *Client) DeleteExpiredAccessTokens(ctx context.Context) (int, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteExpiredAccessTokens")
 	defer span.End()
 
@@ -271,7 +276,8 @@ func (c *Client) DeleteExpiredAccessTokens(ctx context.Context) (int64, error) {
 		return 0, fmt.Errorf("error in db: get rows affected: %w", err)
 	}
 
-	return rowsAffected, nil
+	count := int(rowsAffected)
+	return count, nil
 }
 
 func (c *Client) prepareSavePendingOAuthStateStmt() error {
@@ -336,7 +342,11 @@ func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (*
 		return nil, fmt.Errorf("error in db: validate pending oauth state: %w", err)
 	}
 
-	pendingState := row.toPendingOAuthState()
+	pendingState, err := row.toPendingOAuthState()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping pendingState: %w", err)
+	}
+
 	return pendingState, nil
 }
 
@@ -357,11 +367,11 @@ func (p *pendingOAuthStateRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (p *pendingOAuthStateRow) toPendingOAuthState() *vibe.PendingOAuthState {
+func (p *pendingOAuthStateRow) toPendingOAuthState() (*vibe.PendingOAuthState, error) {
 	return &vibe.PendingOAuthState{
 		UserID:       p.UserID.String,
 		CodeVerifier: p.CodeVerifier.String,
-	}
+	}, nil
 }
 
 func (c *Client) prepareDeletePendingOAuthStateStmt() error {
@@ -421,7 +431,7 @@ func (c *Client) prepareDeleteExpiredPendingOAuthStatesStmt() error {
 }
 
 // DeleteExpiredPendingOAuthStates removes all expired pending OAuth states.
-func (c *Client) DeleteExpiredPendingOAuthStates(ctx context.Context) (int64, error) {
+func (c *Client) DeleteExpiredPendingOAuthStates(ctx context.Context) (int, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteExpiredPendingOAuthStates")
 	defer span.End()
 
@@ -438,7 +448,8 @@ func (c *Client) DeleteExpiredPendingOAuthStates(ctx context.Context) (int64, er
 		return 0, fmt.Errorf("error in db: get rows affected: %w", err)
 	}
 
-	return rowsAffected, nil
+	count := int(rowsAffected)
+	return count, nil
 }
 
 func (c *Client) prepareClaimAndGetExpiredTokenForRefreshStmt() error {
@@ -489,7 +500,10 @@ func (c *Client) ClaimAndGetExpiredTokenForRefresh(ctx context.Context, provider
 		return nil, fmt.Errorf("error in db: get expired token for refresh: %w", err)
 	}
 
-	token := row.toAccessToken()
+	token, err := row.toAccessToken()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping token: %w", err)
+	}
 
 	return token, nil
 }

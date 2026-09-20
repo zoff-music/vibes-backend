@@ -58,9 +58,12 @@ func (c *Client) GetAdminUser(
 		)
 	}
 
-	admin := rowData.toAdminUser()
+	admin, err := rowData.toAdminUser()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping admin: %w", err)
+	}
 
-	return &admin, nil
+	return admin, nil
 }
 
 type adminUserRow struct {
@@ -104,15 +107,15 @@ func (r *adminUserRow) scanRows(rows *sql.Rows) error {
 	return nil
 }
 
-func (r *adminUserRow) toAdminUser() vibe.AdminUser {
-	return vibe.AdminUser{
+func (r *adminUserRow) toAdminUser() (*vibe.AdminUser, error) {
+	return &vibe.AdminUser{
 		ID:             r.ID,
 		Username:       r.Username,
 		PasswordHash:   r.PasswordHash,
 		SessionVersion: r.SessionVersion,
 		CreatedAt:      r.CreatedAt,
 		UpdatedAt:      r.UpdatedAt,
-	}
+	}, nil
 }
 
 func (c *Client) prepareGetAdminUserByUsernameStmt() error {
@@ -163,9 +166,12 @@ func (c *Client) GetAdminUserByUsername(
 		)
 	}
 
-	admin := rowData.toAdminUser()
+	admin, err := rowData.toAdminUser()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping admin: %w", err)
+	}
 
-	return &admin, nil
+	return admin, nil
 }
 
 func (c *Client) prepareListAdminUsersStmt() error {
@@ -218,8 +224,12 @@ func (c *Client) ListAdminUsers(
 			)
 		}
 
-		admin := rowData.toAdminUser()
-		users = append(users, admin)
+		admin, err := rowData.toAdminUser()
+		if err != nil {
+			return nil, fmt.Errorf("error mapping admin: %w", err)
+		}
+
+		users = append(users, *admin)
 	}
 
 	err = rows.Err()
@@ -294,9 +304,12 @@ func (c *Client) CreateAdminUser(
 		)
 	}
 
-	admin := rowData.toAdminUser()
+	admin, err := rowData.toAdminUser()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping admin: %w", err)
+	}
 
-	return &admin, nil
+	return admin, nil
 }
 
 func (c *Client) prepareUpdateAdminUserPasswordStmt() error {

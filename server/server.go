@@ -171,6 +171,8 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 
 	var serveErr error
 	select {
+	case <-ctx.Done():
+		log.Println("Main server context was cancelled")
 	case <-stop:
 		log.Println("Main server has received a shutdown signal")
 	case serveErr = <-serverErrors:
@@ -230,6 +232,9 @@ func (s *Server) subscribeAndListen(ctx context.Context, running *sync.WaitGroup
 }
 
 func (s *Server) shutdownHTTP(ctx context.Context) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "shutdownHTTP")
+	defer span.End()
+
 	err := s.HTTP.Shutdown(ctx)
 	if err != nil {
 		log.Printf("error shutting down HTTP server: %v", err)
