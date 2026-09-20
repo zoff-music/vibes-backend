@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -24,7 +25,7 @@ import (
 //	@Failure	500	{object}	map[string]string
 //	@Router		/api/v1/authorizations/soundcloud [get]
 //	@Router		/api/v1/authorizations/youtube [get]
-func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.HandlerFunc {
+func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer, providerName string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		state, err := generateRandomString(32)
@@ -60,6 +61,7 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer) http.Han
 			return
 		}
 
+		state = providerName + "." + state
 		err = db.SavePendingOAuthState(ctx, session.UserID, state, codeVerifier)
 		if err != nil {
 			handleError(
@@ -99,7 +101,28 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 		code := query.Get("code")
 		state := query.Get("state")
 
-		pendingState, err := db.ValidateAndDeletePendingOAuthState(ctx, state)
+		session, ok := helper.GetSessionFromContext(ctx)
+		if !ok || session.UserID == "" || session.AuthType != "cookie" {
+			handleError(
+				w,
+				fmt.Errorf("error OAuth callback requires the initiating browser session"),
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+
+		if code == "" || !strings.HasPrefix(state, providerName+".") {
+			handleError(
+				w,
+				fmt.Errorf("error invalid OAuth callback parameters"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		pendingState, err := db.ConsumePendingOAuthState(ctx, session.UserID, state)
 		if err != nil {
 			handleError(
 				w,

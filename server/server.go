@@ -110,11 +110,14 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.SoundCloud = &soundcloudClient
 	s.AI = ai
 	s.Router = mux.NewRouter()
+	s.Router.Use(middleware.RequestBodyMiddleware{MaxBytes: config.RequestBodyMaxBytes}.Middleware)
 	s.InternalRouter = mux.NewRouter()
 	s.HTTP = &http.Server{
 		Addr:              fmt.Sprintf(":%s", s.Config.Port),
 		Handler:           middleware.CompressionMiddleware(s.Router),
 		ReadHeaderTimeout: 2 * time.Second, // prevent slowloris attacks
+		ReadTimeout:       30 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 	s.InternalHTTP = &http.Server{
 		Addr:              fmt.Sprintf(":%s", s.Config.InternalPort),
