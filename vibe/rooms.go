@@ -225,6 +225,7 @@ type RoomUpdater interface {
 type RoomSettingsUpdater interface {
 	RoomFetcher
 	RoomUpdater
+	SessionProfileFetcherCreator
 }
 
 // RoomModeServer is the mode where the server controls playback
