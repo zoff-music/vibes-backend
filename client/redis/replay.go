@@ -74,7 +74,7 @@ func (c *Client) NotifyRoomUpdate(
 	}
 
 	topic := roomTopicName(roomID)
-	if event.Type == vibe.MessageEvent {
+	if event.Type == vibe.MessageEvent || event.Type == vibe.SettingsActivityEvent {
 		topic = "chat:" + roomID
 	}
 
@@ -101,7 +101,7 @@ func (c *Client) NotifyRoomUpdates(
 		}
 
 		topic := roomTopicName(roomID)
-		if event.Type == vibe.MessageEvent {
+		if event.Type == vibe.MessageEvent || event.Type == vibe.SettingsActivityEvent {
 			topic = "chat:" + roomID
 		}
 

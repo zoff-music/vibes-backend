@@ -212,7 +212,12 @@ func Messages(db vibe.RoomFetcher, events vibe.ReplaySubscriber) http.HandlerFun
 					return
 				}
 
-				_, err = fmt.Fprintf(w, "id: %s\nevent: message\ndata: %s\n\nid: %s\nevent: event_cursor\ndata: %s\n\n", event.ID, event.Payload, event.ID, cursorData)
+				eventType := vibe.MessageEvent
+				if event.Type == vibe.SettingsActivityEvent {
+					eventType = vibe.SettingsActivityEvent
+				}
+
+				_, err = fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\nid: %s\nevent: event_cursor\ndata: %s\n\n", event.ID, eventType, event.Payload, event.ID, cursorData)
 				if err != nil {
 					return
 				}
