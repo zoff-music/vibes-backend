@@ -191,7 +191,7 @@ func SearchMusic(
 //	@Router		/api/v1/soundcloud/search [get]
 func SearchSoundCloud(
 	ms vibe.MusicSearcher,
-	cache vibe.MusicSearchCache,
+	cache vibe.CachedSearchTrackFetcherCreator,
 	usageCreator vibe.SearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

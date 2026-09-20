@@ -146,23 +146,13 @@ func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEve
 				log.Printf("error fetching rooms for name change: %v", roomsErr)
 			}
 
-			for _, roomID := range rooms {
-				room, roomErr := db.GetRoom(ctx, roomID, session.UserID)
-				if roomErr != nil {
-					log.Printf("error fetching room for name change: %v", roomErr)
-					continue
-				}
-
-				if room.IsEmpty() {
-					continue
-				}
-
+			for _, room := range rooms {
 				message := vibe.RoomMessage{
 					ID:        uuid.NewString(),
 					UserID:    session.UserID,
 					Name:      previous.Name,
 					IsAdmin:   room.IsAdmin,
-					Kind:      "renamed",
+					Kind:      vibe.MessageKindRenamed,
 					Text:      profile.Name,
 					CreatedAt: time.Now().UnixMilli(),
 				}
@@ -173,7 +163,7 @@ func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEve
 					continue
 				}
 
-				chatErr = events.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+				chatErr = events.NotifyRoomUpdate(context.WithoutCancel(ctx), room.ID, vibe.RoomEvent{
 					Type:    vibe.MessageEvent,
 					Payload: payload,
 				})

@@ -78,7 +78,7 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 			UserID:    session.UserID,
 			Name:      profile.Name,
 			IsAdmin:   room.IsAdmin,
-			Kind:      "chat",
+			Kind:      vibe.MessageKindChat,
 			Text:      strings.TrimSpace(request.Text),
 			CreatedAt: time.Now().UnixMilli(),
 		}
@@ -166,6 +166,7 @@ func Messages(db vibe.RoomFetcher, events vibe.ReplaySubscriber) http.HandlerFun
 
 		flusher, ok := w.(http.Flusher)
 		if !ok {
+			handleError(w, fmt.Errorf("error streaming messages: response flushing unavailable"), http.StatusInternalServerError, true)
 			return
 		}
 
@@ -207,6 +208,7 @@ func Messages(db vibe.RoomFetcher, events vibe.ReplaySubscriber) http.HandlerFun
 
 				cursorData, err := json.Marshal(vibe.RoomEventCursor{ID: event.ID})
 				if err != nil {
+					log.Printf("error marshaling chat event cursor: %v", err)
 					return
 				}
 
@@ -243,10 +245,14 @@ func AdminMessageUsage(db vibe.AdminMessageUsageLister) http.HandlerFunc {
 			return
 		}
 
-		w.Header().Set("Content-Type", "application/json")
-		err = json.MarshalWrite(w, usage)
+		body, err := json.Marshal(usage)
 		if err != nil {
-			log.Printf("error writing message usage: %v", err)
+			handleError(w, fmt.Errorf("error marshaling message usage: %w", err), http.StatusInternalServerError, true)
+			return
 		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
 	}
 }

@@ -77,7 +77,7 @@ func (c *Client) GetPlaylist(
 		nextPageToken = page.NextPageToken
 	}
 
-	tracks := make([]*vibe.MusicTrack, 0, len(videoIDs))
+	tracks := make([]vibe.MusicTrack, 0, len(videoIDs))
 	for start := 0; start < len(videoIDs); start += youtubePlaylistPageSize {
 		end := start + youtubePlaylistPageSize
 		if end > len(videoIDs) {
@@ -135,7 +135,7 @@ func (c *Client) GetPlaylist(
 				thumbnailURL = item.Snippet.Thumbnails.Default.URL
 			}
 
-			tracks = append(tracks, &vibe.MusicTrack{
+			tracks = append(tracks, vibe.MusicTrack{
 				ID:                  item.ID,
 				Source:              vibe.SourceTypeYouTube,
 				ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID),
@@ -158,8 +158,8 @@ func (c *Client) GetPlaylist(
 }
 
 type youtubePlaylistItemsResponse struct {
-	Items         []*youtubePlaylistItem `json:"items"`
-	NextPageToken string                 `json:"nextPageToken"`
+	Items         []youtubePlaylistItem `json:"items"`
+	NextPageToken string                `json:"nextPageToken"`
 }
 
 type youtubePlaylistItem struct {

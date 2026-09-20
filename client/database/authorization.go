@@ -73,12 +73,13 @@ func (c *Client) GetAuthProviders(ctx context.Context, userID string) ([]string,
 
 	var providers []string
 	for rows.Next() {
-		var provider string
-		err := rows.Scan(&provider)
+		var row authProviderRow
+		err = row.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error in db: scan auth provider: %w", err)
 		}
-		providers = append(providers, provider)
+
+		providers = append(providers, row.Provider)
 	}
 
 	err = rows.Err()
@@ -87,6 +88,19 @@ func (c *Client) GetAuthProviders(ctx context.Context, userID string) ([]string,
 	}
 
 	return providers, nil
+}
+
+type authProviderRow struct {
+	Provider string
+}
+
+func (r *authProviderRow) scanRows(rows *sql.Rows) error {
+	err := rows.Scan(&r.Provider)
+	if err != nil {
+		return fmt.Errorf("error scanning authorization provider row: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) prepareUpsertAccessTokenStmt() error {

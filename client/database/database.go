@@ -59,10 +59,12 @@ type Client struct {
 	UpdateSongPlaybackRestrictionStatement *sql.Stmt
 
 	// Playlist import statements
-	CreatePlaylistImportStatement       *sql.Stmt
-	ProcessNextPlaylistImportStatement  *sql.Stmt
-	CompletePlaylistImportItemStatement *sql.Stmt
-	DeletePlaylistImportStatement       *sql.Stmt
+	CreatePlaylistImportStatement               *sql.Stmt
+	CreatePlaylistImportItemStatement           *sql.Stmt
+	DeleteAbandonedPlaylistImportItemsStatement *sql.Stmt
+	ProcessNextPlaylistImportStatement          *sql.Stmt
+	CompletePlaylistImportItemStatement         *sql.Stmt
+	DeletePlaylistImportStatement               *sql.Stmt
 
 	// Playback statements
 	GetPlaybackStateStatement           *sql.Stmt
@@ -241,6 +243,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareUpdateSongPlaybackRestrictionStmt,
 		// Playlist import statements
 		c.prepareCreatePlaylistImportStmt,
+		c.prepareCreatePlaylistImportItemStmt,
+		c.prepareDeleteAbandonedPlaylistImportItemsStmt,
 		c.prepareProcessNextPlaylistImportStmt,
 		c.prepareCompletePlaylistImportItemStmt,
 		c.prepareDeletePlaylistImportStmt,
@@ -336,6 +340,8 @@ func (c *Client) Close() error {
 		c.RefreshSongMetadataStatement,
 		c.DeferSongMetadataRefreshStatement,
 		c.CreatePlaylistImportStatement,
+		c.CreatePlaylistImportItemStatement,
+		c.DeleteAbandonedPlaylistImportItemsStatement,
 		c.ProcessNextPlaylistImportStatement,
 		c.CompletePlaylistImportItemStatement,
 		c.DeletePlaylistImportStatement,

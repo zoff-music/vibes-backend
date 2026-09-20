@@ -56,7 +56,12 @@ func GetPublicRoomsV2(db vibe.PublicRoomsSearcher) http.HandlerFunc {
 		fromValue := r.URL.Query().Get("from")
 		if fromValue != "" {
 			from, err = strconv.ParseInt(fromValue, 10, 32)
-			if err != nil || from < 0 {
+			if err != nil {
+				handleError(w, fmt.Errorf("error parsing first room row: %w", err), http.StatusBadRequest, false)
+				return
+			}
+
+			if from < 0 {
 				handleError(w, fmt.Errorf("error invalid first room row"), http.StatusBadRequest, false)
 				return
 			}
@@ -66,7 +71,12 @@ func GetPublicRoomsV2(db vibe.PublicRoomsSearcher) http.HandlerFunc {
 		toValue := r.URL.Query().Get("to")
 		if toValue != "" {
 			to, err = strconv.ParseInt(toValue, 10, 32)
-			if err != nil || to < from {
+			if err != nil {
+				handleError(w, fmt.Errorf("error parsing last room row: %w", err), http.StatusBadRequest, false)
+				return
+			}
+
+			if to < from {
 				handleError(w, fmt.Errorf("error invalid last room row"), http.StatusBadRequest, false)
 				return
 			}
