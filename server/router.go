@@ -68,8 +68,8 @@ func (s *Server) setupRoutes() {
 	apiV1.HandleFunc("/tokens/youtube", handler.GetToken(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubeToken")
 
 	// Authorization routes
-	apiV1.HandleFunc("/authorizations/soundcloud", handler.Authorize(s.DB, s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
-	apiV1.HandleFunc("/authorizations/youtube", handler.Authorize(s.DB, s.YouTube)).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
+	apiV1.HandleFunc("/authorizations/soundcloud", handler.Authorize(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
+	apiV1.HandleFunc("/authorizations/youtube", handler.Authorize(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("Authorize")
 	// Callbacks
 	apiV1.HandleFunc("/callbacks/soundcloud", handler.OAuthCallback(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("SoundCloudCallback")
 	apiV1.HandleFunc("/callbacks/youtube", handler.OAuthCallback(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("YouTubeCallback")
@@ -111,9 +111,7 @@ func (s *Server) setupRoutes() {
 	}
 
 	s.addSessionMiddleware(apiV1, apiV2)
-	if s.Config.RateLimitEnabled {
-		s.addRateLimitMiddleware(apiV1, apiV2)
-	}
+	s.addRateLimitMiddleware(apiV1, apiV2)
 	s.addPermissionMiddleware(apiV1, apiV2)
 	if s.Config.AdminPasswordPepper != "" {
 		s.addAdminMiddleware(apiV1)
@@ -124,6 +122,10 @@ func (s *Server) setupRoutes() {
 
 func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 	rm := middleware.RateLimitMiddleware{
+		Enabled: s.Config.RateLimitEnabled,
+		RequiredRoutes: map[string]bool{
+			"AdminLogin": true,
+		},
 		Checker: s.Redis,
 		Policies: map[string]vibe.RateLimitPolicy{
 			"CreateRoom": {Rate: time.Minute, Limit: 10},
@@ -242,6 +244,15 @@ func (s *Server) setupInternalRoutes() {
 
 func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 	sm := middleware.SessionMiddleware{
+		CastRouteNames: map[string]bool{
+			"GetProviders":          true,
+			"GetRoom":               true,
+			"GetSongs":              true,
+			"GetPlaybackState":      true,
+			"ReportPlaybackFailure": true,
+			"RoomEvents":            true,
+			"RoomEventsV2":          true,
+		},
 		RemoteRouteNames: map[string]bool{
 			"GetRemoteControl":          true,
 			"UpdateRemoteControl":       true,

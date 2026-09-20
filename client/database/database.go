@@ -101,8 +101,7 @@ type Client struct {
 
 	// Pending OAuth state statements
 	SavePendingOAuthStateStatement           *sql.Stmt
-	ValidatePendingOAuthStateStatement       *sql.Stmt
-	DeletePendingOAuthStateStatement         *sql.Stmt
+	ConsumePendingOAuthStateStatement        *sql.Stmt
 	DeleteExpiredPendingOAuthStatesStatement *sql.Stmt
 
 	// Token cleanup statements
@@ -276,8 +275,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareGetAccessTokenStmt,
 		c.prepareDeleteExpiredAccessTokensStmt,
 		c.prepareSavePendingOAuthStateStmt,
-		c.prepareValidatePendingOAuthStateStmt,
-		c.prepareDeletePendingOAuthStateStmt,
+		c.prepareConsumePendingOAuthStateStmt,
 		c.prepareDeleteExpiredPendingOAuthStatesStmt,
 		c.prepareClaimAndGetExpiredTokenForRefreshStmt,
 		// Participant statements
@@ -367,8 +365,7 @@ func (c *Client) Close() error {
 		c.GetAccessTokenStatement,
 		c.DeleteExpiredAccessTokensStatement,
 		c.SavePendingOAuthStateStatement,
-		c.ValidatePendingOAuthStateStatement,
-		c.DeletePendingOAuthStateStatement,
+		c.ConsumePendingOAuthStateStatement,
 		c.DeleteExpiredPendingOAuthStatesStatement,
 		c.ClaimAndGetExpiredTokenForRefreshStatement,
 		c.UpdateParticipantStatement,
