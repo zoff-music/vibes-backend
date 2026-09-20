@@ -82,7 +82,7 @@
 
   <rect class="node frontend" x="55" y="105" width="175" height="65" rx="9"/>
   <text class="title" x="142.5" y="132">Platform</text>
-  <text class="detail" x="142.5" y="153">Rooms · queue · playback</text>
+  <text class="detail" x="142.5" y="153">Rooms · queues · chat</text>
 
   <rect class="node frontend" x="250" y="105" width="175" height="65" rx="9"/>
   <text class="title" x="337.5" y="132">Admin</text>
@@ -132,13 +132,14 @@
   <text class="detail" x="695" y="164">Rooms · songs · playlists · search</text>
   <text class="detail" x="695" y="185">playback · settings · authorization</text>
   <text class="detail" x="695" y="206">remote pairing and control</text>
-  <text class="detail" x="695" y="242">HTTP endpoints and SSE updates</text>
+  <text class="detail" x="695" y="225">chat and public-room discovery</text>
+  <text class="detail" x="695" y="242">REST · snapshots · incremental SSE</text>
   <text class="detail" x="695" y="263">shared by every frontend application</text>
 
   <rect class="node backend" x="550" y="325" width="290" height="110" rx="10"/>
   <text class="title" x="695" y="357">Application events</text>
-  <text class="detail" x="695" y="382">Playlist generation · playback progression</text>
-  <text class="detail" x="695" y="403">provider refresh · cleanup · maintenance</text>
+  <text class="detail" x="695" y="382">Playlist imports · generation · playback</text>
+  <text class="detail" x="695" y="403">Provider refresh · cleanup · maintenance</text>
 
   <rect class="node backend" x="550" y="470" width="290" height="100" rx="10"/>
   <text class="title" x="695" y="502">External integrations</text>
@@ -146,7 +147,7 @@
   <text class="detail" x="695" y="548">Playlist-generation providers</text>
 
   <rect class="node backend" x="550" y="605" width="290" height="80" rx="10"/>
-  <text class="title" x="695" y="636">Server wiring and domain interfaces</text>
+  <text class="title" x="695" y="636">Server wiring and domain</text>
   <text class="detail" x="695" y="660">Handlers depend on minimal vibe interfaces</text>
 
   <!-- External platforms and providers -->
@@ -196,7 +197,7 @@
   <ellipse class="node storage" cx="930" cy="839" rx="140" ry="20"/>
   <path class="boundary" d="M 790 901 C 790 921, 1070 921, 1070 901"/>
   <text class="title" x="930" y="871">Redis</text>
-  <text class="detail" x="930" y="893">App-event streams · cache · rate limits · statistics</text>
+  <text class="detail" x="930" y="893">Replay streams · cache · rate limits · statistics</text>
 
   <path class="connector" d="M 295 880 L 390 880"/>
   <path class="connector-both" d="M 650 745 L 650 790 L 520 790 L 520 819"/>

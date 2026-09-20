@@ -11,7 +11,7 @@ sequenceDiagram
     participant Platform
     participant API as Vibes backend
     participant DB as PostgreSQL
-    participant Events as Room event stream
+    participant Events as Redis room stream
 
     Listener->>Platform: Open room
     Platform->>API: GET /rooms/{id}
@@ -19,18 +19,34 @@ sequenceDiagram
     DB-->>API: Room
     API-->>Platform: Room response
 
-    Platform->>API: GET /rooms/{id}/events
-    API->>Events: Subscribe connection to room topic
-    API->>DB: Load current playback state
-    API-->>Platform: Connected event and playback state
+    Platform->>API: GET /api/v2/rooms/{id}/events with optional cursor
+    API->>Events: Prepare replay and subscribe after cursor
+    API-->>Platform: Connected event
+
+    alt New connection or cursor outside retention
+        API->>DB: Load queue, playback and listener state
+        API-->>Platform: Initial snapshot and event cursor
+    else Retained cursor
+        Events-->>API: Events after last received ID
+        API-->>Platform: Replay incremental updates
+    end
 
     loop Every five seconds while connected
         API->>DB: Update participant heartbeat
     end
 
     API->>Events: Publish listener count
-    Events-->>Platform: users_update
+    Events-->>API: users_update and subsequent room mutations
+    API-->>Platform: Incremental events with IDs
 ```
+
+The v1 stream remains available for clients using full queue updates. The v2
+stream starts with `songs_snapshot` when necessary, then delivers individual
+queue changes. Clients persist the delivered cursor and reconnect using
+`Last-Event-ID` or `lastEventId`. A heartbeat is not a queue snapshot.
+
+Chat uses a separate messages stream, so clients can opt out of that UI without
+dropping room playback updates. See [chat and room activity](messages.md).
 
 ## Set a room password or authenticate as room administrator
 
