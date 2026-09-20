@@ -1,4 +1,4 @@
-# Vibez API Contract
+# Zoff API Contract
 
 High-level API contract for frontend-backend communication. The generated
 Swagger document at `/api/swagger/` is the exhaustive route and schema reference.
@@ -9,8 +9,13 @@ Swagger document at `/api/swagger/` is the exhaustive route and schema reference
 
 ```
 Development: http://localhost:8080/api/v1
-Production: https://api.vibez.app/api/v1
+Production: https://zoff.me/api/v1
 ```
+
+The incremental room stream is available separately at
+`/api/v2/rooms/{id}/events`; paginated public-room browsing also has a
+`/api/v2/rooms/public` endpoint. Most REST operations retain their v1 paths. See
+[sessions and live updates](flows/sessions.md) for snapshot and replay behavior.
 
 ---
 
