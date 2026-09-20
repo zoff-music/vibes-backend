@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json/v2"
 	"fmt"
 	"log"
@@ -266,7 +267,7 @@ func AddPlaylist(
 
 		cacheKeys := make([]vibe.CachedMusicTrackKey, 0, len(req.Songs))
 		for _, requestedSong := range req.Songs {
-			if requestedSong == nil {
+			if requestedSong.SourceID == "" || requestedSong.SourceType == "" {
 				handleError(
 					w,
 					fmt.Errorf("error playlist contains an empty song"),
@@ -326,7 +327,7 @@ func AddPlaylist(
 			cachedTracks = make([]vibe.MusicTrack, len(req.Songs))
 		}
 
-		songs := make([]*vibe.Song, 0, len(req.Songs))
+		songs := make([]vibe.Song, 0, len(req.Songs))
 		for index, requestedSong := range req.Songs {
 
 			providerURL, err := requestedSong.CanonicalProviderURL()
@@ -367,7 +368,7 @@ func AddPlaylist(
 				playbackRestriction = cachedTrack.PlaybackRestriction
 			}
 
-			songs = append(songs, &vibe.Song{
+			songs = append(songs, vibe.Song{
 				ID:                  uuid.New().String(),
 				RoomID:              roomID,
 				SourceType:          requestedSong.SourceType,
@@ -384,7 +385,49 @@ func AddPlaylist(
 		}
 
 		importID := uuid.NewString()
-		err = db.CreatePlaylistImport(ctx, importID, songs)
+		// Staged items are invisible to the worker until the import is published.
+		// Bound the entire enqueue so disconnected requests cannot leave work running.
+		importCtx, cancelImport := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancelImport()
+
+		published := false
+		defer func() {
+			if published {
+				return
+			}
+
+			cleanupCtx, cancelCleanup := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Second)
+			defer cancelCleanup()
+
+			cleanupErr := db.DeletePlaylistImport(cleanupCtx, importID)
+			if cleanupErr != nil {
+				log.Printf("error cleaning incomplete playlist import %s: %v", importID, cleanupErr)
+			}
+		}()
+
+		for position, song := range songs {
+			err = db.CreatePlaylistImportItem(importCtx, importID, position, song)
+			if err != nil {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error staging playlist item %d: %w", position, err),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "playlist_import_failed",
+							Message:   "The playlist could not be queued. Please try again.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusInternalServerError,
+					},
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+		}
+
+		err = db.CreatePlaylistImport(importCtx, importID, roomID, session.UserID, len(songs))
 		if err != nil {
 			handleError(
 				w,
@@ -403,6 +446,8 @@ func AddPlaylist(
 			)
 			return
 		}
+
+		published = true
 
 		response := vibe.AddPlaylistResult{
 			ImportID:    importID,

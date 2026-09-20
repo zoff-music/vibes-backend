@@ -86,6 +86,13 @@ func GetAppEvents(
 			},
 		},
 		{
+			Name: "CleanupPlaylistImportItems",
+			Rate: 10 * time.Minute,
+			Handler: &handler.CleanupPlaylistImportItems{
+				DB: db,
+			},
+		},
+		{
 			Name: "CleanupRoomNameReservations",
 			Rate: time.Minute,
 			Handler: &handler.CleanupRoomNameReservations{

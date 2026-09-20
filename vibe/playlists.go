@@ -9,24 +9,21 @@ import (
 )
 
 type MusicPlaylist struct {
-	ID        string        `json:"id"`
-	Source    string        `json:"source"`
-	Title     string        `json:"title,omitempty"`
-	Tracks    []*MusicTrack `json:"tracks"`
-	Truncated bool          `json:"truncated"`
+	ID        string       `json:"id"`
+	Source    string       `json:"source"`
+	Title     string       `json:"title,omitempty"`
+	Tracks    []MusicTrack `json:"tracks"`
+	Truncated bool         `json:"truncated"`
 }
 
 func (p *MusicPlaylist) GetMusicTracks() []MusicTrack {
-	tracks := make([]MusicTrack, 0, len(p.Tracks))
-	for _, track := range p.Tracks {
-		tracks = append(tracks, *track)
-	}
+	tracks := append([]MusicTrack{}, p.Tracks...)
 
 	return tracks
 }
 
 type AddPlaylistRequest struct {
-	Songs []*AddSongRequest `json:"songs"`
+	Songs []AddSongRequest `json:"songs"`
 }
 
 type AddPlaylistResult struct {
@@ -45,7 +42,13 @@ type PlaylistImport struct {
 }
 
 type PlaylistImportCreator interface {
-	CreatePlaylistImport(ctx context.Context, importID string, songs []*Song) error
+	CreatePlaylistImportItem(ctx context.Context, importID string, position int, song Song) error
+	CreatePlaylistImport(ctx context.Context, importID string, roomID string, userID string, count int) error
+	DeletePlaylistImport(ctx context.Context, importID string) error
+}
+
+type AbandonedPlaylistImportItemDeleter interface {
+	DeleteAbandonedPlaylistImportItems(ctx context.Context) error
 }
 
 type PlaylistImportRoomCreator interface {

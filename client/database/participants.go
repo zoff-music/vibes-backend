@@ -101,7 +101,7 @@ func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activ
 	var participants []vibe.Participant
 	for rows.Next() {
 		var row participantRow
-		err := row.scan(rows)
+		err := row.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning participant: %w", err)
 		}
@@ -125,7 +125,7 @@ type participantRow struct {
 	CastOwner  sql.NullString
 }
 
-func (p *participantRow) scan(rows *sql.Rows) error {
+func (p *participantRow) scanRows(rows *sql.Rows) error {
 	err := rows.Scan(
 		&p.RoomID,
 		&p.UserID,

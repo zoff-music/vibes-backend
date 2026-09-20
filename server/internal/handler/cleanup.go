@@ -96,6 +96,19 @@ type CleanupRoomGenerations struct {
 	DB vibe.RoomGenerationCleaner
 }
 
+type CleanupPlaylistImportItems struct {
+	DB vibe.AbandonedPlaylistImportItemDeleter
+}
+
+func (h *CleanupPlaylistImportItems) Handle(ctx context.Context, _ []byte) error {
+	err := h.DB.DeleteAbandonedPlaylistImportItems(ctx)
+	if err != nil {
+		return fmt.Errorf("error deleting abandoned playlist items in CleanupPlaylistImportItems.Handle: %w", err)
+	}
+
+	return nil
+}
+
 func (h *CleanupRoomGenerations) Handle(ctx context.Context, _ []byte) error {
 	deleted, err := h.DB.DeleteExpiredRoomGenerations(
 		ctx,

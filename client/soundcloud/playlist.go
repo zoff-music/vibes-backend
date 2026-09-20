@@ -62,7 +62,7 @@ func (c *Client) ResolvePlaylist(
 		)
 	}
 
-	tracks := make([]*vibe.MusicTrack, 0)
+	tracks := make([]vibe.MusicTrack, 0)
 	truncated := false
 	nextURL := fmt.Sprintf("%s/playlists/%s/tracks", c.Endpoint, url.PathEscape(resolved.URN))
 	firstPage := true
@@ -101,7 +101,7 @@ func (c *Client) ResolvePlaylist(
 			)
 		}
 		for _, item := range page.Collection {
-			if item == nil || item.ID == 0 || item.Title == "" || item.PermalinkURL == "" {
+			if item.ID == 0 || item.Title == "" || item.PermalinkURL == "" {
 				continue
 			}
 			if len(tracks) == playlistTrackLimit {
@@ -109,7 +109,7 @@ func (c *Client) ResolvePlaylist(
 				break
 			}
 			track := item.MusicTrack()
-			tracks = append(tracks, &track)
+			tracks = append(tracks, track)
 		}
 		if truncated {
 			break
@@ -133,8 +133,8 @@ type soundCloudPlaylistResponse struct {
 }
 
 type soundCloudPlaylistTracksResponse struct {
-	Collection []*trackResponse `json:"collection"`
-	NextHref   string           `json:"next_href"`
+	Collection []trackResponse `json:"collection"`
+	NextHref   string          `json:"next_href"`
 }
 
 const soundCloudPlaylistPageSize = 200
