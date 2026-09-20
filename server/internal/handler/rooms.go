@@ -817,8 +817,7 @@ func UpdateRoomSettings(
 				UserID:    session.UserID,
 				Name:      profile.Name,
 				IsAdmin:   updated.IsAdmin,
-				Kind:      vibe.MessageKindChat,
-				Activity:  true,
+				Kind:      vibe.MessageKindSettings,
 				Text:      change,
 				CreatedAt: time.Now().UnixMilli(),
 			}
@@ -829,7 +828,7 @@ func UpdateRoomSettings(
 				return
 			}
 
-			events = append(events, vibe.RoomEvent{Type: vibe.MessageEvent, Payload: payload})
+			events = append(events, vibe.RoomEvent{Type: vibe.SettingsActivityEvent, Payload: payload})
 		}
 
 		err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, events)

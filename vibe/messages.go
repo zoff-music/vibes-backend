@@ -9,6 +9,8 @@ import (
 
 const MessageEvent = "message"
 
+const SettingsActivityEvent = "settings_activity"
+
 const MessageMaxLength = 500
 
 const MessageKindChat = "chat"
@@ -24,6 +26,8 @@ const MessageKindSkipped = "skipped"
 const MessageKindSkipVoted = "skipvoted"
 
 const MessageKindRenamed = "renamed"
+
+const MessageKindSettings = "settings"
 
 type RoomMessage struct {
 	ID        string `json:"id"`
