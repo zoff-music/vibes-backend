@@ -114,7 +114,8 @@ func (c *Client) ReserveRoomName(
 		int64(c.roomNameReservationTTL/time.Second),
 	)
 
-	reservation, err := scanRoomNameReservation(row)
+	var rowData roomNameReservationRow
+	err := rowData.scan(row)
 	if err != nil {
 		var postgresError *pgconn.PgError
 		if errors.As(err, &postgresError) &&
@@ -131,6 +132,11 @@ func (c *Client) ReserveRoomName(
 		}
 
 		return nil, fmt.Errorf("error scanning room name reservation: %w", err)
+	}
+
+	reservation, err := rowData.toRoomNameReservation()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping room name reservation in ReserveRoomName: %w", err)
 	}
 
 	return reservation, nil
@@ -252,7 +258,8 @@ func (c *Client) ReserveSuggestedRoomName(
 		int64(c.roomNameReservationTTL/time.Second),
 	)
 
-	reservation, err := scanRoomNameReservation(row)
+	var rowData roomNameReservationRow
+	err := rowData.scan(row)
 	if err != nil {
 		var postgresError *pgconn.PgError
 		if errors.As(err, &postgresError) &&
@@ -271,22 +278,39 @@ func (c *Client) ReserveSuggestedRoomName(
 		return nil, fmt.Errorf("error scanning suggested room name reservation: %w", err)
 	}
 
+	reservation, err := rowData.toRoomNameReservation()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping suggested reservation in ReserveSuggestedRoomName: %w", err)
+	}
+
 	return reservation, nil
 }
 
-func scanRoomNameReservation(row *sql.Row) (*vibe.RoomNameReservation, error) {
-	var reservation vibe.RoomNameReservation
+type roomNameReservationRow struct {
+	Name      string
+	Token     string
+	ExpiresAt time.Time
+}
 
+func (r *roomNameReservationRow) scan(row *sql.Row) error {
 	err := row.Scan(
-		&reservation.Name,
-		&reservation.Token,
-		&reservation.ExpiresAt,
+		&r.Name,
+		&r.Token,
+		&r.ExpiresAt,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error scanning room name reservation row: %w", err)
+		return fmt.Errorf("error scanning room name reservation row: %w", err)
 	}
 
-	return &reservation, nil
+	return nil
+}
+
+func (r *roomNameReservationRow) toRoomNameReservation() (*vibe.RoomNameReservation, error) {
+	return &vibe.RoomNameReservation{
+		Name:      r.Name,
+		Token:     r.Token,
+		ExpiresAt: r.ExpiresAt,
+	}, nil
 }
 
 func (c *Client) prepareDeleteExpiredRoomNameReservationsStmt() error {
