@@ -20,6 +20,7 @@ import (
 )
 
 type SessionMiddleware struct {
+	CastRouteNames             map[string]bool
 	RemoteRouteNames           map[string]bool
 	RemoteRoomRouteNames       map[string]bool
 	Secret                     string
@@ -35,6 +36,12 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 		// 1) If caller provides a Bearer token, it must be valid (no silent fallback).
 		authz := r.Header.Get("Authorization")
 		if authz != "" {
+			currentRoute := mux.CurrentRoute(r)
+			if currentRoute == nil || !m.CastRouteNames[currentRoute.GetName()] {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
+
 			if !strings.HasPrefix(authz, "Bearer ") {
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
@@ -238,6 +245,10 @@ func (m *SessionMiddleware) setSessionCookie(
 	sameSite http.SameSite,
 	payload vibe.SessionPayload,
 ) error {
+	if m.Secret == "" {
+		return fmt.Errorf("error setting session cookie: signing secret is required")
+	}
+
 	sessionJSON, err := json.Marshal(payload)
 	if err != nil {
 		return fmt.Errorf("error marshaling session in setSessionCookie: %w", err)
@@ -264,9 +275,6 @@ func (m *SessionMiddleware) setSessionCookie(
 }
 
 func (m *SessionMiddleware) sign(value string) string {
-	if m.Secret == "" {
-		return value
-	}
 	mac := hmac.New(sha256.New, []byte(m.Secret))
 	mac.Write([]byte(value))
 	signature := base64.StdEncoding.EncodeToString(mac.Sum(nil))
@@ -275,7 +283,7 @@ func (m *SessionMiddleware) sign(value string) string {
 
 func (m *SessionMiddleware) unsign(value string) (string, bool) {
 	if m.Secret == "" {
-		return value, true
+		return "", false
 	}
 
 	parts := strings.SplitN(value, ".", 2)

@@ -19,8 +19,10 @@ import (
 )
 
 type RateLimitMiddleware struct {
-	Checker  vibe.RateLimitChecker
-	Policies map[string]vibe.RateLimitPolicy
+	Enabled        bool
+	RequiredRoutes map[string]bool
+	Checker        vibe.RateLimitChecker
+	Policies       map[string]vibe.RateLimitPolicy
 }
 
 func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
@@ -30,12 +32,12 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		if r.Header.Get(rateLimitRequestOriginHeader) != rateLimitExternalRequestOrigin {
+		routeName := mux.CurrentRoute(r).GetName()
+		if !m.RequiredRoutes[routeName] && (!m.Enabled || r.Header.Get(rateLimitRequestOriginHeader) != rateLimitExternalRequestOrigin) {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		routeName := mux.CurrentRoute(r).GetName()
 		policy, ok := m.Policies[routeName]
 		if !ok {
 			policy = vibe.RateLimitPolicy{

@@ -3,6 +3,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -26,6 +27,7 @@ type Config struct {
 	DatabaseMaxIdleConns     int           `envconfig:"DATABASE_MAX_IDLE_CONNECTIONS" default:"2"`
 	RedisURL                 string        `envconfig:"REDIS_URL" required:"true"`
 	RateLimitEnabled         bool          `envconfig:"RATE_LIMIT_ENABLED" default:"false"`
+	RequestBodyMaxBytes      int           `envconfig:"REQUEST_BODY_MAX_BYTES" default:"1048576"`
 	RoomEventReplayMaxEvents int           `envconfig:"ROOM_EVENT_REPLAY_MAX_EVENTS" default:"1000"`
 	RoomEventReplayMaxAge    time.Duration `envconfig:"ROOM_EVENT_REPLAY_MAX_AGE" default:"2h"`
 	MaxNameLength            int           `envconfig:"MAX_NAME_LENGTH" default:"100"`
@@ -62,7 +64,7 @@ type Config struct {
 	// User session settings
 	UserInactivityTimeout time.Duration `envconfig:"USER_INACTIVITY_TIMEOUT" default:"30m"`
 	SessionCookieMaxAge   time.Duration `envconfig:"SESSION_COOKIE_MAX_AGE" default:"87600h"`
-	CookieSecret          string        `envconfig:"COOKIE_SECRET" default:"vibes-default-secret-change-me"`
+	CookieSecret          string        `envconfig:"COOKIE_SECRET" required:"true"`
 	AdminPasswordPepper   string        `envconfig:"ADMIN_PASSWORD_PEPPER" default:""`
 	EmbedBasePath         string        `envconfig:"EMBED_BASE_PATH" default:"/embed"`
 	RemotePairingTTL      time.Duration `envconfig:"REMOTE_PAIRING_TTL" default:"5m"`
@@ -99,6 +101,15 @@ func LoadConfig() (*Config, error) {
 	err := envconfig.Process("", &c)
 	if err != nil {
 		return nil, fmt.Errorf("error processing env: %w", err)
+	}
+	if len(strings.TrimSpace(c.CookieSecret)) < 32 || c.CookieSecret == "vibes-default-secret-change-me" {
+		return nil, fmt.Errorf("error validating cookie secret: configure a random secret of at least 32 bytes")
+	}
+	if c.CastTokenSecret != "" && len(strings.TrimSpace(c.CastTokenSecret)) < 32 {
+		return nil, fmt.Errorf("error validating cast token secret: configure a random secret of at least 32 bytes")
+	}
+	if c.RequestBodyMaxBytes < 1 {
+		return nil, fmt.Errorf("error validating request body limit: must be greater than zero")
 	}
 	if c.GeneratedPlaylistTrackCount < 1 {
 		return nil, fmt.Errorf("error validating generated playlist track count: must be greater than zero")

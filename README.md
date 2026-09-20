@@ -58,9 +58,11 @@ export GROK_API_KEY='your-grok-api-key'
 make dev
 ```
 
-Use deployment-specific secrets in production. Never reuse the built-in
-development cookie secret. Review [config/config.go](config/config.go) for the
-complete configuration and validation rules.
+Use deployment-specific random secrets. `COOKIE_SECRET` is required and must
+contain at least 32 bytes; the old development default is rejected. A configured
+`CAST_TOKEN_SECRET` must also contain at least 32 bytes. Review
+[config/config.go](config/config.go) for the complete configuration and validation
+rules.
 
 ### Environment Configuration
 
@@ -69,11 +71,12 @@ complete configuration and validation rules.
 | `DATABASE_URL`, `REDIS_URL` | Required storage connections |
 | `PORT`, `INTERNAL_PORT` | Public API and internal health/metrics listeners; defaults 8080 and 8081 |
 | `COOKIE_SECRET`, `ADMIN_PASSWORD_PEPPER`, `CAST_TOKEN_SECRET` | Session signing, global-admin password protection, and Cast token signing |
+| `REQUEST_BODY_MAX_BYTES` | API request body limit, including chunked bodies; defaults to 1 MiB |
 | `YOUTUBE_API_KEY` | Enables YouTube; OAuth client settings are separate |
 | `SOUNDCLOUD_CLIENT_ID`, `SOUNDCLOUD_CLIENT_SECRET` | SoundCloud provider credentials |
 | `AI_MODEL` | `PROVIDER:model` selection; default is defined in config |
 | `GROK_API_KEY`, `GEMINI_API_KEY` | Credential for the selected generation provider |
-| `RATE_LIMIT_ENABLED` | Enables route-policy rate limiting; defaults to false |
+| `RATE_LIMIT_ENABLED` | Enables general route-policy rate limiting; defaults to false. Admin sign-in is always rate-limited, including internal requests |
 | `ROOM_EVENT_REPLAY_MAX_EVENTS`, `ROOM_EVENT_REPLAY_MAX_AGE` | Replay bounds; defaults 1000 events and 2h |
 | `CORS_ALLOWED_ORIGINS` | Allowed browser origins |
 | `OTEL_*` | Telemetry endpoint, service identity, sampling, and export timing |

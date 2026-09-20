@@ -311,35 +311,36 @@ func (c *Client) SavePendingOAuthState(ctx context.Context, userID, state, codeV
 	return nil
 }
 
-func (c *Client) prepareValidatePendingOAuthStateStmt() error {
+func (c *Client) prepareConsumePendingOAuthStateStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT user_id, COALESCE(code_verifier, '') FROM pending_oauth_state 
-		WHERE state = $1 AND expires_at > CURRENT_TIMESTAMP
+		DELETE FROM pending_oauth_state
+		WHERE user_id = $1 AND state = $2 AND expires_at > CURRENT_TIMESTAMP
+		RETURNING user_id, COALESCE(code_verifier, '')
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing ValidatePendingOAuthStateStatement (Select): %w", err)
+		return fmt.Errorf("error preparing ConsumePendingOAuthStateStatement: %w", err)
 	}
-	c.ValidatePendingOAuthStateStatement = stmt
+	c.ConsumePendingOAuthStateStatement = stmt
 	return nil
 }
 
-func (c *Client) validatePendingOAuthState(ctx context.Context, state string) (*vibe.PendingOAuthState, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "validatePendingOAuthState")
+func (c *Client) ConsumePendingOAuthState(ctx context.Context, userID, state string) (*vibe.PendingOAuthState, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ConsumePendingOAuthState")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.ValidatePendingOAuthStateStatement.QueryRowContext(cctx, state)
+	r := c.ConsumePendingOAuthStateStatement.QueryRowContext(cctx, userID, state)
 
 	var row pendingOAuthStateRow
 	err := row.scan(r)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return &vibe.PendingOAuthState{}, nil
 		}
 
-		return nil, fmt.Errorf("error in db: validate pending oauth state: %w", err)
+		return nil, fmt.Errorf("error scanning pending OAuth state in ConsumePendingOAuthState: %w", err)
 	}
 
 	pendingState, err := row.toPendingOAuthState()
@@ -372,51 +373,6 @@ func (p *pendingOAuthStateRow) toPendingOAuthState() (*vibe.PendingOAuthState, e
 		UserID:       p.UserID.String,
 		CodeVerifier: p.CodeVerifier.String,
 	}, nil
-}
-
-func (c *Client) prepareDeletePendingOAuthStateStmt() error {
-	stmt, err := c.DB.Prepare(`
-		DELETE FROM pending_oauth_state WHERE user_id = $1 AND state = $2
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing DeletePendingOAuthStateStatement: %w", err)
-	}
-	c.DeletePendingOAuthStateStatement = stmt
-	return nil
-}
-
-func (c *Client) deletePendingOAuthState(ctx context.Context, userID, state string) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "deletePendingOAuthState")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	_, err := c.DeletePendingOAuthStateStatement.ExecContext(cctx, userID, state)
-	if err != nil {
-		return fmt.Errorf("error in db: delete pending oauth state: %w", err)
-	}
-	return nil
-}
-
-// ValidateAndDeletePendingOAuthState checks if the state exists and is valid, then deletes it.
-func (c *Client) ValidateAndDeletePendingOAuthState(ctx context.Context, state string) (*vibe.PendingOAuthState, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ValidateAndDeletePendingOAuthState")
-	defer span.End()
-
-	pendingState, err := c.validatePendingOAuthState(ctx, state)
-	if err != nil {
-		return nil, fmt.Errorf("error in db: validate pending oauth state: %w", err)
-	}
-
-	if !pendingState.IsEmpty() {
-		err = c.deletePendingOAuthState(ctx, pendingState.UserID, state)
-		if err != nil {
-			return nil, fmt.Errorf("error in db: delete pending oauth state: %w", err)
-		}
-	}
-
-	return pendingState, nil
 }
 
 func (c *Client) prepareDeleteExpiredPendingOAuthStatesStmt() error {

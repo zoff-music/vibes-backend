@@ -14,15 +14,16 @@ import (
 )
 
 func SignAdminAuthPayload(payload vibe.AdminAuthPayload, secret string) (string, error) {
+	if secret == "" {
+		return "", fmt.Errorf("error signing admin payload: secret is required")
+	}
+
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return "", fmt.Errorf("error marshaling admin payload: %w", err)
 	}
 
 	encoded := base64.StdEncoding.EncodeToString(raw)
-	if secret == "" {
-		return encoded, nil
-	}
 
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(encoded))
@@ -136,7 +137,7 @@ func VerifyCastToken(secret string, token string, now time.Time) (*vibe.CastToke
 
 func unsignAdminPayload(value string, secret string) (string, error) {
 	if secret == "" {
-		return value, nil
+		return "", fmt.Errorf("error verifying admin payload: secret is required")
 	}
 
 	parts := strings.SplitN(value, ".", 2)
