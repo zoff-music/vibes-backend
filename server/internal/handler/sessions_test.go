@@ -38,7 +38,7 @@ func (s *roomSessionDeleterStub) GetRoom(
 
 type deleteSessionTest struct {
 	name           string
-	session        helper.SessionPayload
+	session        vibe.SessionPayload
 	expectedStatus int
 	expectedClear  bool
 }
@@ -47,7 +47,7 @@ func TestDeleteRoomAdminSession(t *testing.T) {
 	tests := []deleteSessionTest{
 		{
 			name: "clears room admin access",
-			session: helper.SessionPayload{
+			session: vibe.SessionPayload{
 				UserID: "user-1",
 			},
 			expectedStatus: http.StatusOK,
@@ -60,7 +60,7 @@ func TestDeleteRoomAdminSession(t *testing.T) {
 		},
 		{
 			name: "rejects a remote session",
-			session: helper.SessionPayload{
+			session: vibe.SessionPayload{
 				UserID:   "user-1",
 				AuthType: "remote",
 			},

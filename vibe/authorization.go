@@ -18,8 +18,8 @@ type AccessTokenUpserterGetter interface {
 
 // AuthTokenCleaner handles cleaning up expired auth and access tokens.
 type AuthTokenCleaner interface {
-	DeleteExpiredAuthTokens(ctx context.Context) (int64, error)
-	DeleteExpiredAccessTokens(ctx context.Context) (int64, error)
+	DeleteExpiredAuthTokens(ctx context.Context) (int, error)
+	DeleteExpiredAccessTokens(ctx context.Context) (int, error)
 }
 
 // AuthToken represents a user's initial auth code/state
@@ -76,5 +76,5 @@ type ExpiredTokenClaimUpdater interface {
 
 // ExpiredPendingOAuthStateCleaner deletes expired pending OAuth states
 type ExpiredPendingOAuthStateCleaner interface {
-	DeleteExpiredPendingOAuthStates(ctx context.Context) (int64, error)
+	DeleteExpiredPendingOAuthStates(ctx context.Context) (int, error)
 }

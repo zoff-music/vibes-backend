@@ -310,7 +310,11 @@ func (c *Client) ProcessNextRoomGeneration(
 		)
 	}
 
-	generation := generationRow.toRoomGeneration()
+	generation, err := generationRow.toRoomGeneration()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping generation: %w", err)
+	}
+
 	if generation.Exhausted {
 		return generation, nil
 	}
@@ -378,13 +382,13 @@ func (r *roomGenerationRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (r *roomGenerationRow) toRoomGeneration() *vibe.RoomGeneration {
+func (r *roomGenerationRow) toRoomGeneration() (*vibe.RoomGeneration, error) {
 	return &vibe.RoomGeneration{
 		RoomID:    r.RoomID.String,
 		Prompt:    r.Prompt.String,
 		Attempt:   int(r.Attempt.Int64),
 		Exhausted: r.Exhausted.Bool,
-	}
+	}, nil
 }
 
 func (c *Client) prepareCompleteRoomGenerationStmt() error {
@@ -491,7 +495,7 @@ func (c *Client) prepareDeleteExpiredRoomGenerationsStmt() error {
 func (c *Client) DeleteExpiredRoomGenerations(
 	ctx context.Context,
 	olderThan time.Duration,
-) (int64, error) {
+) (int, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteExpiredRoomGenerations")
 	defer span.End()
 
@@ -515,7 +519,8 @@ func (c *Client) DeleteExpiredRoomGenerations(
 		)
 	}
 
-	return rowsAffected, nil
+	count := int(rowsAffected)
+	return count, nil
 }
 
 func (c *Client) AddGeneratedSong(
@@ -571,9 +576,12 @@ func (c *Client) AddGeneratedSong(
 		return &vibe.Song{}, nil
 	}
 
-	generatedSong := rowData.toSong()
+	generatedSong, err := rowData.toSong()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping generatedSong: %w", err)
+	}
 
-	return &generatedSong, nil
+	return generatedSong, nil
 }
 
 const createRoomGenerationCreated = "created"

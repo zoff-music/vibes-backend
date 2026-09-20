@@ -74,7 +74,11 @@ func (c *Client) CreateRemoteControl(ctx context.Context, remoteID, ownerUserID,
 		return nil, fmt.Errorf("error creating remote control: %w", err)
 	}
 
-	remote := row.toRemoteControl()
+	remote, err := row.toRemoteControl()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping remote: %w", err)
+	}
+
 	return remote, nil
 }
 
@@ -114,7 +118,11 @@ func (c *Client) GetRemoteControlByOwner(ctx context.Context, ownerUserID string
 		return nil, fmt.Errorf("error getting remote control by owner: %w", err)
 	}
 
-	remote := row.toRemoteControl()
+	remote, err := row.toRemoteControl()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping remote: %w", err)
+	}
+
 	return remote, nil
 }
 
@@ -154,7 +162,11 @@ func (c *Client) GetRemoteControl(ctx context.Context, remoteID string) (*vibe.R
 		return nil, fmt.Errorf("error getting remote control: %w", err)
 	}
 
-	remote := row.toRemoteControl()
+	remote, err := row.toRemoteControl()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping remote: %w", err)
+	}
+
 	return remote, nil
 }
 
@@ -209,7 +221,11 @@ func (c *Client) PairRemoteControl(ctx context.Context, remoteID, pairingTokenHa
 		return nil, fmt.Errorf("error pairing remote control: %w", err)
 	}
 
-	remote := row.toRemoteControl()
+	remote, err := row.toRemoteControl()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping remote: %w", err)
+	}
+
 	return remote, nil
 }
 
@@ -254,7 +270,11 @@ func (c *Client) AuthenticateRemoteControl(ctx context.Context, remoteID, contro
 		return nil, fmt.Errorf("error authenticating remote control: %w", err)
 	}
 
-	remote := row.toRemoteControl()
+	remote, err := row.toRemoteControl()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping remote: %w", err)
+	}
+
 	return remote, nil
 }
 
@@ -309,7 +329,11 @@ func (c *Client) UpdateOwnedRemoteControl(ctx context.Context, remoteID, ownerUs
 		return nil, fmt.Errorf("error updating owned remote control: %w", err)
 	}
 
-	remote := row.toRemoteControl()
+	remote, err := row.toRemoteControl()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping remote: %w", err)
+	}
+
 	return remote, nil
 }
 
@@ -358,7 +382,11 @@ func (c *Client) UpdatePairedRemoteControl(ctx context.Context, remoteID string,
 		return nil, fmt.Errorf("error updating paired remote control: %w", err)
 	}
 
-	remote := row.toRemoteControl()
+	remote, err := row.toRemoteControl()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping remote: %w", err)
+	}
+
 	return remote, nil
 }
 
@@ -424,7 +452,7 @@ func (r *remoteControlRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (r *remoteControlRow) toRemoteControl() *vibe.RemoteControl {
+func (r *remoteControlRow) toRemoteControl() (*vibe.RemoteControl, error) {
 	return &vibe.RemoteControl{
 		ID:                 r.ID.String,
 		OwnerUserID:        r.OwnerUserID.String,
@@ -436,5 +464,5 @@ func (r *remoteControlRow) toRemoteControl() *vibe.RemoteControl {
 		Paired:             r.Paired.Bool,
 		PairingExpiresAt:   r.PairingExpiresAt.Time,
 		LastSeenAt:         r.LastSeenAt.Time,
-	}
+	}, nil
 }

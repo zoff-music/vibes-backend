@@ -59,7 +59,7 @@ func TestSkipChatActivity(t *testing.T) {
 			events := &chatSkipEvents{}
 			request := httptest.NewRequest(http.MethodPost, "/api/v1/rooms/electro/skips", nil)
 			request = mux.SetURLVars(request, map[string]string{"id": "electro"})
-			request = request.WithContext(context.WithValue(request.Context(), helper.SessionKey, helper.SessionPayload{UserID: "signed-session", AuthType: "cookie"}))
+			request = request.WithContext(context.WithValue(request.Context(), helper.SessionKey, vibe.SessionPayload{UserID: "signed-session", AuthType: "cookie"}))
 			response := httptest.NewRecorder()
 			SkipSong(db, events).ServeHTTP(response, request)
 			expectedStatus := http.StatusOK

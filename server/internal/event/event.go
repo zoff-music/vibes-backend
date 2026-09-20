@@ -4,7 +4,6 @@
 package event
 
 import (
-	"context"
 	"time"
 
 	"github.com/zoff-music/vibes-backend/client/database"
@@ -14,11 +13,6 @@ import (
 	"github.com/zoff-music/vibes-backend/server/internal/handler"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
-
-// Handler is an interface that all event handles must implement.
-type Handler interface {
-	Handle(ctx context.Context, data []byte) error
-}
 
 // GetAppEvents describes all the app events to listen to.
 func GetAppEvents(

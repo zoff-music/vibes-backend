@@ -244,8 +244,12 @@ func (r *playbackSongRow) toPlaybackState() (*vibe.PlaybackState, error) {
 		return state, nil
 	}
 
-	song := r.Song.toSong()
-	state.CurrentSong = &song
+	song, err := r.Song.toSong()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping song: %w", err)
+	}
+
+	state.CurrentSong = song
 
 	return state, nil
 }
