@@ -83,7 +83,7 @@ func TestCreateMessages(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, "/api/v1/rooms/electro/messages", bytes.NewReader(payload))
 			request = mux.SetURLVars(request, map[string]string{"id": "electro"})
 			if tt.session {
-				session := helper.SessionPayload{UserID: "signed-session", AuthType: "cookie"}
+				session := vibe.SessionPayload{UserID: "signed-session", AuthType: "cookie"}
 				if tt.cast {
 					session.AuthType = "cast"
 				}
@@ -175,7 +175,7 @@ func TestMessagesReplay(t *testing.T) {
 			request := httptest.NewRequest(http.MethodGet, "/?lastEventId="+tt.query, nil)
 			request.Header.Set("Last-Event-ID", tt.header)
 			request = mux.SetURLVars(request, map[string]string{"id": "electro"})
-			request = request.WithContext(context.WithValue(request.Context(), helper.SessionKey, helper.SessionPayload{UserID: "listener"}))
+			request = request.WithContext(context.WithValue(request.Context(), helper.SessionKey, vibe.SessionPayload{UserID: "listener"}))
 			response := httptest.NewRecorder()
 			Messages(&messageStorageStub{room: vibe.Room{ID: "electro"}}, replay).ServeHTTP(response, request)
 			if replay.topic != "chat:electro" || replay.after != tt.after || replay.cursor != tt.cursor {

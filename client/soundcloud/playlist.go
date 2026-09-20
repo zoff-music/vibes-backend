@@ -108,8 +108,12 @@ func (c *Client) ResolvePlaylist(
 				truncated = true
 				break
 			}
-			track := item.MusicTrack()
-			tracks = append(tracks, track)
+			track, err := item.toMusicTrack()
+			if err != nil {
+				return nil, fmt.Errorf("error converting soundcloud playlist track: %w", err)
+			}
+
+			tracks = append(tracks, *track)
 		}
 		if truncated {
 			break

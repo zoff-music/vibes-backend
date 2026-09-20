@@ -116,7 +116,7 @@ func TestUpdatePlaybackStateTargetsRemoteMachine(t *testing.T) {
 				strings.NewReader(`{"action":"`+tt.action+`","positionMs":2400}`),
 			)
 			request = mux.SetURLVars(request, map[string]string{"id": "electro"})
-			ctx := context.WithValue(request.Context(), helper.SessionKey, helper.SessionPayload{
+			ctx := context.WithValue(request.Context(), helper.SessionKey, vibe.SessionPayload{
 				AuthType: "remote",
 				RemoteID: "remote-1",
 				UserID:   "owner-1",

@@ -123,9 +123,14 @@ func CreateRoom(
 			mode = vibe.RoomModeServer
 		}
 
-		settings := vibe.DefaultRoomSettings()
+		settings, err := vibe.DefaultRoomSettings()
+		if err != nil {
+			handleError(w, fmt.Errorf("error getting default room settings: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+
 		if req.Settings != nil {
-			settings = *req.Settings
+			settings = req.Settings
 		}
 
 		if req.Settings != nil && req.Settings.OnlyAdminAddSongs && req.Password == "" {
@@ -166,14 +171,30 @@ func CreateRoom(
 			HostID:            session.UserID,
 			AdminPasswordHash: passwordHash,
 			HasPassword:       passwordHash != "",
-			Settings:          settings,
+			Settings:          *settings,
 			CreatedAt:         time.Now(),
 			ActiveSources:     []string{},
 		}
 
 		created, err := db.CreateRoom(ctx, room, req.ReservationToken)
 		if err != nil {
-			if handleRoomNameUnavailable(w, err) {
+			var unavailableError internalerror.ErrRoomNameUnavailable
+			if errors.As(err, &unavailableError) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: unavailableError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_name_unavailable",
+							Message:   "This room name is unavailable or its reservation expired.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusConflict,
+					},
+					http.StatusConflict,
+					false,
+				)
 				return
 			}
 
@@ -281,7 +302,23 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 			)
 		}
 		if err != nil {
-			if handleRoomNameUnavailable(w, err) {
+			var unavailableError internalerror.ErrRoomNameUnavailable
+			if errors.As(err, &unavailableError) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: unavailableError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_name_unavailable",
+							Message:   "This room name is unavailable or its reservation expired.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusConflict,
+					},
+					http.StatusConflict,
+					false,
+				)
 				return
 			}
 
@@ -336,7 +373,23 @@ func SuggestRoomName(db vibe.RoomNameSuggester) http.HandlerFunc {
 
 		suggestion, err := db.ReserveSuggestedRoomName(ctx, session.UserID)
 		if err != nil {
-			if handleRoomNameUnavailable(w, err) {
+			var unavailableError internalerror.ErrRoomNameUnavailable
+			if errors.As(err, &unavailableError) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: unavailableError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_name_unavailable",
+							Message:   "This room name is unavailable or its reservation expired.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusConflict,
+					},
+					http.StatusConflict,
+					false,
+				)
 				return
 			}
 
@@ -364,31 +417,6 @@ func SuggestRoomName(db vibe.RoomNameSuggester) http.HandlerFunc {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
 	}
-}
-
-func handleRoomNameUnavailable(w http.ResponseWriter, err error) bool {
-	var unavailableError internalerror.ErrRoomNameUnavailable
-	if !errors.As(err, &unavailableError) {
-		return false
-	}
-
-	handleError(
-		w,
-		client.ErrorCodeWrapper{
-			Err: unavailableError,
-			ResponseBody: client.ErrorCodeResponseBody{
-				Namespace: "vibes-backend",
-				Error:     "room_name_unavailable",
-				Message:   "This room name is unavailable or its reservation expired.",
-				Propagate: true,
-			},
-			StatusCode: http.StatusConflict,
-		},
-		http.StatusConflict,
-		false,
-	)
-
-	return true
 }
 
 // RoomExists handles HEAD /api/v1/rooms/{id}.

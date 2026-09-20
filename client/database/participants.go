@@ -105,7 +105,12 @@ func (c *Client) GetActiveParticipants(ctx context.Context, roomID string, activ
 		if err != nil {
 			return nil, fmt.Errorf("error scanning participant: %w", err)
 		}
-		participants = append(participants, row.toParticipant())
+		participant, err := row.toParticipant()
+		if err != nil {
+			return nil, fmt.Errorf("error mapping participant: %w", err)
+		}
+
+		participants = append(participants, *participant)
 	}
 
 	err = rows.Err()
@@ -141,15 +146,15 @@ func (p *participantRow) scanRows(rows *sql.Rows) error {
 	return nil
 }
 
-func (p *participantRow) toParticipant() vibe.Participant {
-	return vibe.Participant{
+func (p *participantRow) toParticipant() (*vibe.Participant, error) {
+	return &vibe.Participant{
 		RoomID:           p.RoomID,
 		UserID:           p.UserID,
 		LastSeenAt:       p.LastSeenAt,
 		IsActiveListener: p.IsActive.Bool,
 		IsCastReceiver:   p.IsCast.Bool,
 		CastOwnerID:      p.CastOwner.String,
-	}
+	}, nil
 }
 
 func (c *Client) prepareGetActiveListenerCountsStmt() error {
@@ -168,7 +173,7 @@ func (c *Client) prepareGetActiveListenerCountsStmt() error {
 }
 
 // GetActiveListenerCounts returns listener counts within the duration.
-func (c *Client) GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (vibe.ListenerCounts, error) {
+func (c *Client) GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (*vibe.ListenerCounts, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetActiveListenerCounts")
 	defer span.End()
 
@@ -182,10 +187,14 @@ func (c *Client) GetActiveListenerCounts(ctx context.Context, roomID string, act
 	var listenerCountsRow listenerCountsRow
 	err := listenerCountsRow.scan(row)
 	if err != nil {
-		return vibe.ListenerCounts{}, fmt.Errorf("error scanning listener counts: %w", err)
+		return nil, fmt.Errorf("error scanning listener counts: %w", err)
 	}
 
-	listenerCounts := listenerCountsRow.toListenerCounts()
+	listenerCounts, err := listenerCountsRow.toListenerCounts()
+	if err != nil {
+		return nil, fmt.Errorf("error converting listener counts: %w", err)
+	}
+
 	return listenerCounts, nil
 }
 
@@ -206,11 +215,11 @@ func (l *listenerCountsRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (l *listenerCountsRow) toListenerCounts() vibe.ListenerCounts {
-	return vibe.ListenerCounts{
+func (l *listenerCountsRow) toListenerCounts() (*vibe.ListenerCounts, error) {
+	return &vibe.ListenerCounts{
 		ActiveListeners:     int(l.ActiveListeners.Int64),
 		ActiveCastReceivers: int(l.ActiveCastReceivers.Int64),
-	}
+	}, nil
 }
 
 func (c *Client) prepareSetRoomHostStmt() error {

@@ -80,7 +80,12 @@ func (c *Client) GetSongs(ctx context.Context, roomID string) ([]vibe.Song, erro
 			return nil, fmt.Errorf("error scanning song row: %w", err)
 		}
 
-		songs = append(songs, row.toSong())
+		song, err := row.toSong()
+		if err != nil {
+			return nil, fmt.Errorf("error mapping song: %w", err)
+		}
+
+		songs = append(songs, *song)
 	}
 
 	err = rows.Err()
@@ -156,8 +161,8 @@ func (r *songRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (r *songRow) toSong() vibe.Song {
-	return vibe.Song{
+func (r *songRow) toSong() (*vibe.Song, error) {
+	return &vibe.Song{
 		ID:                  r.ID.String,
 		RoomID:              r.RoomID.String,
 		SourceType:          r.SourceType.String,
@@ -172,7 +177,7 @@ func (r *songRow) toSong() vibe.Song {
 		AddedBy:             r.AddedBy.String,
 		AddedAt:             r.AddedAt.Time,
 		VoteCount:           int(r.VoteCount.Int64),
-	}
+	}, nil
 }
 
 // prepareGetSongStmt prepares the GetSongStatement.
@@ -240,8 +245,12 @@ func (c *Client) GetSong(ctx context.Context, roomID, songID string) (*vibe.Song
 		return nil, fmt.Errorf("error fetching song: %w", err)
 	}
 
-	song := row.toSong()
-	return &song, nil
+	song, err := row.toSong()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping song: %w", err)
+	}
+
+	return song, nil
 }
 
 func (c *Client) prepareUpdateSongPlaybackRestrictionStmt() error {
@@ -353,7 +362,11 @@ func (c *Client) ClaimSongMetadataRefresh(
 		)
 	}
 
-	refresh := refreshRow.toSongMetadataRefresh()
+	refresh, err := refreshRow.toSongMetadataRefresh()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping refresh: %w", err)
+	}
+
 	return refresh, nil
 }
 
@@ -376,12 +389,12 @@ func (r *songMetadataRefreshRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (r *songMetadataRefreshRow) toSongMetadataRefresh() *vibe.SongMetadataRefresh {
+func (r *songMetadataRefreshRow) toSongMetadataRefresh() (*vibe.SongMetadataRefresh, error) {
 	return &vibe.SongMetadataRefresh{
 		SongID:   r.SongID.String,
 		RoomID:   r.RoomID.String,
 		SourceID: r.SourceID.String,
-	}
+	}, nil
 }
 
 func (c *Client) prepareRefreshSongMetadataStmt() error {
@@ -749,8 +762,13 @@ func (c *Client) addSong(
 		return nil, fmt.Errorf("error adding song in addSong: unknown outcome %s", outcome)
 	}
 
+	convertedSong, err := row.toSong()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping added song: %w", err)
+	}
+
 	return &vibe.AddSongResult{
-		Song:    row.toSong(),
+		Song:    *convertedSong,
 		Outcome: outcome,
 	}, nil
 }
@@ -798,8 +816,8 @@ func (r *addSongRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (r *addSongRow) toSong() vibe.Song {
-	return vibe.Song{
+func (r *addSongRow) toSong() (*vibe.Song, error) {
+	return &vibe.Song{
 		ID:                  r.ID.String,
 		RoomID:              r.RoomID.String,
 		SourceType:          r.SourceType.String,
@@ -814,7 +832,7 @@ func (r *addSongRow) toSong() vibe.Song {
 		AddedBy:             r.AddedBy.String,
 		AddedAt:             r.AddedAt.Time,
 		VoteCount:           int(r.VoteCount.Int64),
-	}
+	}, nil
 }
 
 // prepareRemoveSongStmt prepares the RemoveSongStatement.

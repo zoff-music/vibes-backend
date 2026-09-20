@@ -77,7 +77,11 @@ func (c *Client) processNextAbandonedHost(ctx context.Context) (*vibe.RoomHostIn
 		return nil, fmt.Errorf("error scanning abandoned host: %w", err)
 	}
 
-	hostInfo := row.toRoomHostInfo()
+	hostInfo, err := row.toRoomHostInfo()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping hostInfo: %w", err)
+	}
+
 	return hostInfo, nil
 }
 
@@ -95,11 +99,11 @@ func (r *abandonedHostRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (r *abandonedHostRow) toRoomHostInfo() *vibe.RoomHostInfo {
+func (r *abandonedHostRow) toRoomHostInfo() (*vibe.RoomHostInfo, error) {
 	return &vibe.RoomHostInfo{
 		RoomID:    r.RoomID.String,
 		NewHostID: r.HostID.String,
-	}
+	}, nil
 }
 
 // ProcessNextAbandonedHost finds a room with an inactive host, elects a new one, and returns info.
@@ -600,7 +604,12 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 }
 
 func (r *roomRow) toRoom(enabledProviders []string) (*vibe.Room, error) {
-	storedSources := vibe.DefaultRoomSettings().EnabledSources
+	defaultSettings, err := vibe.DefaultRoomSettings()
+	if err != nil {
+		return nil, fmt.Errorf("error getting default room settings in toRoom: %w", err)
+	}
+
+	storedSources := defaultSettings.EnabledSources
 	if r.EnabledSources.Valid {
 		storedSources = []string{}
 		if r.EnabledSources.String != "" {

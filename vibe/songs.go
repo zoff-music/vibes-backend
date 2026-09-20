@@ -39,7 +39,8 @@ type AddSongRequest struct {
 
 func (r AddSongRequest) CanonicalProviderURL() (string, error) {
 	if r.SourceType == SourceTypeYouTube {
-		return fmt.Sprintf("https://www.youtube.com/watch?v=%s", r.SourceID), nil
+		providerURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", r.SourceID)
+		return providerURL, nil
 	}
 
 	if r.SourceType != SourceTypeSoundCloud || r.ProviderURL == "" {

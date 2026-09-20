@@ -29,5 +29,5 @@ type InactiveParticipantCleaner interface {
 // RoomEventParticipantFetcherUpdater maintains listener presence for room events.
 type RoomEventParticipantFetcherUpdater interface {
 	UpdateParticipant(ctx context.Context, roomID, userID string, isActiveListener bool, isCastReceiver bool, castOwnerID string) error
-	GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (ListenerCounts, error)
+	GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (*ListenerCounts, error)
 }

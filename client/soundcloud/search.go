@@ -64,7 +64,12 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 
 	tracks := make([]vibe.MusicTrack, 0, len(results))
 	for _, res := range results {
-		tracks = append(tracks, res.MusicTrack())
+		track, err := res.toMusicTrack()
+		if err != nil {
+			return nil, fmt.Errorf("error converting soundcloud track in Search: %w", err)
+		}
+
+		tracks = append(tracks, *track)
 	}
 
 	return tracks, nil
@@ -85,7 +90,7 @@ type user struct {
 	Username string `json:"username"`
 }
 
-func (r trackResponse) MusicTrack() vibe.MusicTrack {
+func (r trackResponse) toMusicTrack() (*vibe.MusicTrack, error) {
 	username := "Unknown"
 	if r.User != nil {
 		username = r.User.Username
@@ -96,7 +101,7 @@ func (r trackResponse) MusicTrack() vibe.MusicTrack {
 		artworkURL = *r.ArtworkURL
 	}
 
-	return vibe.MusicTrack{
+	return &vibe.MusicTrack{
 		ID:              fmt.Sprintf("%d", r.ID),
 		Source:          vibe.SourceTypeSoundCloud,
 		ProviderURL:     r.PermalinkURL,
@@ -105,5 +110,5 @@ func (r trackResponse) MusicTrack() vibe.MusicTrack {
 		ThumbnailURL:    artworkURL,
 		Duration:        fmt.Sprintf("PT%dM%dS", (r.Duration/1000)/60, (r.Duration/1000)%60),
 		DurationSeconds: r.Duration / 1000,
-	}
+	}, nil
 }

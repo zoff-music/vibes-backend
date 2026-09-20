@@ -10,6 +10,7 @@ import (
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/metrics"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // AppEvents contains a slice of AppEvent.
@@ -19,7 +20,7 @@ type AppEvents []AppEvent
 type AppEvent struct {
 	Name    string
 	Rate    time.Duration
-	Handler Handler
+	Handler vibe.AppEventHandler
 }
 
 // SubscribeAndListen subscribes to an AppEvent.

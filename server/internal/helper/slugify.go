@@ -24,5 +24,6 @@ func Slugify(s string) string {
 		}
 	}
 
-	return strings.TrimSuffix(slug.String(), "-")
+	result := strings.TrimSuffix(slug.String(), "-")
+	return result
 }

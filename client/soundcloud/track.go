@@ -86,8 +86,12 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 		}
 	}
 
-	track := res.MusicTrack()
-	return &track, nil
+	track, err := res.toMusicTrack()
+	if err != nil {
+		return nil, fmt.Errorf("error converting soundcloud track in GetTrack: %w", err)
+	}
+
+	return track, nil
 }
 
 func (c *Client) ResolveTrack(
@@ -164,6 +168,10 @@ func (c *Client) ResolveTrack(
 		}
 	}
 
-	track := res.MusicTrack()
-	return &track, nil
+	track, err := res.toMusicTrack()
+	if err != nil {
+		return nil, fmt.Errorf("error converting soundcloud track in ResolveTrack: %w", err)
+	}
+
+	return track, nil
 }

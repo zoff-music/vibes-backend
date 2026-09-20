@@ -164,7 +164,7 @@ type RoomGenerationFailer interface {
 }
 
 type RoomGenerationCleaner interface {
-	DeleteExpiredRoomGenerations(ctx context.Context, olderThan time.Duration) (int64, error)
+	DeleteExpiredRoomGenerations(ctx context.Context, olderThan time.Duration) (int, error)
 }
 
 type RoomGenerationWorker interface {
@@ -214,11 +214,13 @@ func GeneratePlaylistPrompt(
 }
 
 func GeneratedPlaylistSystemInstruction(trackCount int) string {
-	return strings.ReplaceAll(
+	instruction := strings.ReplaceAll(
 		generatedPlaylistSystemInstruction,
 		"{trackCount}",
 		fmt.Sprintf("%d", trackCount),
 	)
+
+	return instruction
 }
 
 const AIProviderGrok = "GROK"

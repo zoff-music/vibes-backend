@@ -138,7 +138,12 @@ func (c *Client) SearchAdminRooms(
 		}
 
 		total = int(row.TotalCount.Int64)
-		rooms = append(rooms, row.toSummary())
+		summary, err := row.toSummary()
+		if err != nil {
+			return nil, fmt.Errorf("error mapping summary: %w", err)
+		}
+
+		rooms = append(rooms, *summary)
 	}
 
 	err = rows.Err()
@@ -188,20 +193,20 @@ func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
 	return nil
 }
 
-func (r *adminRoomRow) toSummary() vibe.AdminRoomSummary {
+func (r *adminRoomRow) toSummary() (*vibe.AdminRoomSummary, error) {
 	sources := []string{}
 	if r.ActiveSources.Valid && r.ActiveSources.String != "" {
 		sources = strings.Split(r.ActiveSources.String, ",")
 	}
 
-	return vibe.AdminRoomSummary{
+	return &vibe.AdminRoomSummary{
 		ID:               r.ID.String,
 		Name:             r.Name.String,
 		UserCount:        int(r.UserCount.Int64),
 		SongCount:        int(r.SongCount.Int64),
 		ActiveSources:    sources,
 		HasAdminPassword: r.HasAdminPassword.Bool,
-	}
+	}, nil
 }
 
 func (c *Client) prepareUpdateAdminRoomStmt() error {

@@ -81,7 +81,12 @@ func TestAddSongRejectionMessages(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			room := vibe.Room{ID: "room", IsAdmin: tt.admin, Settings: vibe.DefaultRoomSettings()}
+			settings, err := vibe.DefaultRoomSettings()
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			room := vibe.Room{ID: "room", IsAdmin: tt.admin, Settings: *settings}
 			room.Settings.OnlyAdminAddSongs = tt.adminOnly
 			if tt.missingRoom {
 				room.ID = ""
@@ -107,7 +112,7 @@ func TestAddSongRejectionMessages(t *testing.T) {
 			request := httptest.NewRequest(http.MethodPost, "/rooms/room/songs", bytes.NewReader(body))
 			request = mux.SetURLVars(request, map[string]string{"id": "room"})
 			if !tt.noSession {
-				ctx := context.WithValue(request.Context(), helper.SessionKey, helper.SessionPayload{UserID: "listener"})
+				ctx := context.WithValue(request.Context(), helper.SessionKey, vibe.SessionPayload{UserID: "listener"})
 				request = request.WithContext(ctx)
 			}
 			db := &addSongStorageStub{room: room, fail: tt.fail}

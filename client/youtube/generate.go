@@ -100,7 +100,11 @@ func (c *Client) SearchGeneratedPlaylist(
 				),
 			)
 			for _, cachedTrack := range cachedSearch.Tracks {
-				track := cachedTrack.GeneratedTrack(query)
+				track, err := cachedTrack.ToGeneratedTrack(query)
+				if err != nil {
+					return nil, fmt.Errorf("error converting cached generated track: %w", err)
+				}
+
 				if track.Duration <= 0 ||
 					track.Duration > generatedTrackMaxDurationSeconds ||
 					track.PlaybackRestriction == vibe.PlaybackRestrictionAge ||
@@ -110,7 +114,7 @@ func (c *Client) SearchGeneratedPlaylist(
 				}
 
 				seen[track.YouTubeID] = true
-				found = append(found, track)
+				found = append(found, *track)
 				break
 			}
 			continue
@@ -129,10 +133,15 @@ func (c *Client) SearchGeneratedPlaylist(
 		track.SearchQuery = query
 		seen[track.YouTubeID] = true
 		found = append(found, track)
+		musicTrack, err := track.ToMusicTrack()
+		if err != nil {
+			return nil, fmt.Errorf("error converting generated track for cache: %w", err)
+		}
+
 		searchesToCache = append(searchesToCache, vibe.CachedSearch{
 			Query: query,
 			Tracks: []vibe.MusicTrack{
-				track.MusicTrack(),
+				*musicTrack,
 			},
 		})
 	}
@@ -223,9 +232,14 @@ func (c *Client) SearchGeneratedPlaylist(
 			}
 
 			track.SearchQuery = search.Query
+			musicTrack, err := track.ToMusicTrack()
+			if err != nil {
+				return nil, fmt.Errorf("error converting fallback generated track: %w", err)
+			}
+
 			cachedTracks = append(
 				cachedTracks,
-				track.MusicTrack(),
+				*musicTrack,
 			)
 			if selected || seen[track.YouTubeID] {
 				continue

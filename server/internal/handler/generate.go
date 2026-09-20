@@ -140,7 +140,23 @@ func CreateGeneratedRoom(
 
 		reservation, err := db.ReserveSuggestedRoomName(ctx, session.UserID)
 		if err != nil {
-			if handleRoomNameUnavailable(w, err) {
+			var unavailableError internalerror.ErrRoomNameUnavailable
+			if errors.As(err, &unavailableError) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: unavailableError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_name_unavailable",
+							Message:   "This room name is unavailable or its reservation expired.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusConflict,
+					},
+					http.StatusConflict,
+					false,
+				)
 				return
 			}
 
@@ -156,19 +172,40 @@ func CreateGeneratedRoom(
 			return
 		}
 
-		settings := vibe.DefaultRoomSettings()
+		settings, err := vibe.DefaultRoomSettings()
+		if err != nil {
+			handleError(w, fmt.Errorf("error getting generated room defaults: %w", err), http.StatusInternalServerError, true)
+			return
+		}
+
 		room := vibe.Room{
 			ID:            helper.Slugify(reservation.Name),
 			Name:          reservation.Name,
 			Mode:          vibe.RoomModeServer,
 			HostID:        session.UserID,
-			Settings:      settings,
+			Settings:      *settings,
 			CreatedAt:     time.Now(),
 			ActiveSources: settings.EnabledSources,
 		}
 		createdRoom, err := db.CreateRoom(ctx, &room, reservation.Token)
 		if err != nil {
-			if handleRoomNameUnavailable(w, err) {
+			var unavailableError internalerror.ErrRoomNameUnavailable
+			if errors.As(err, &unavailableError) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: unavailableError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_name_unavailable",
+							Message:   "This room name is unavailable or its reservation expired.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusConflict,
+					},
+					http.StatusConflict,
+					false,
+				)
 				return
 			}
 

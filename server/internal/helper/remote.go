@@ -18,7 +18,8 @@ func GenerateRemoteToken() (string, error) {
 		return "", fmt.Errorf("error generating remote token: %w", err)
 	}
 
-	return base64.RawURLEncoding.EncodeToString(value), nil
+	token := base64.RawURLEncoding.EncodeToString(value)
+	return token, nil
 }
 
 func GenerateRemoteCode() (string, error) {
@@ -30,14 +31,16 @@ func GenerateRemoteCode() (string, error) {
 
 	code := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(value)
 
-	return strings.ToUpper(code), nil
+	normalizedCode := strings.ToUpper(code)
+	return normalizedCode, nil
 }
 
 func HashRemoteCredential(secret, value string) string {
 	mac := hmac.New(sha256.New, []byte(secret))
 	_, _ = mac.Write([]byte(value))
 
-	return hex.EncodeToString(mac.Sum(nil))
+	hash := hex.EncodeToString(mac.Sum(nil))
+	return hash
 }
 
 const remoteTokenBytes = 32

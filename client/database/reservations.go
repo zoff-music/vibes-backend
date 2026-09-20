@@ -308,7 +308,7 @@ func (c *Client) prepareDeleteExpiredRoomNameReservationsStmt() error {
 
 func (c *Client) DeleteExpiredRoomNameReservations(
 	ctx context.Context,
-) (int64, error) {
+) (int, error) {
 	span, ctx := tracing.StartSpanFromContext(
 		ctx,
 		"DeleteExpiredRoomNameReservations",
@@ -331,5 +331,6 @@ func (c *Client) DeleteExpiredRoomNameReservations(
 		)
 	}
 
-	return deleted, nil
+	count := int(deleted)
+	return count, nil
 }

@@ -37,8 +37,8 @@ func (r RoomSettings) IsEmpty() bool {
 }
 
 // DefaultRoomSettings returns sensible defaults
-func DefaultRoomSettings() RoomSettings {
-	return RoomSettings{
+func DefaultRoomSettings() (*RoomSettings, error) {
+	return &RoomSettings{
 		SkipAllowed:       true,
 		DemocraticSkip:    true,
 		SkipVoteThreshold: 0.5,
@@ -49,7 +49,7 @@ func DefaultRoomSettings() RoomSettings {
 		OnlyAdminAddSongs: false,
 		Public:            false,
 		PlaylistImport:    true,
-	}
+	}, nil
 }
 
 // Room represents a music room
@@ -193,7 +193,7 @@ type RoomNameSuggester interface {
 
 // RoomNameReservationDeleter deletes expired room name reservations.
 type RoomNameReservationDeleter interface {
-	DeleteExpiredRoomNameReservations(ctx context.Context) (int64, error)
+	DeleteExpiredRoomNameReservations(ctx context.Context) (int, error)
 }
 
 // RoomExistenceChecker checks whether a room ID is already in use.

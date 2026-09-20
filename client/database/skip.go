@@ -49,7 +49,12 @@ func (c *Client) GetSkipVotes(ctx context.Context, roomID, songID string) ([]vib
 			return nil, fmt.Errorf("error scanning skip vote row: %w", err)
 		}
 
-		votes = append(votes, row.toSkipVote())
+		vote, err := row.toSkipVote()
+		if err != nil {
+			return nil, fmt.Errorf("error mapping vote: %w", err)
+		}
+
+		votes = append(votes, *vote)
 	}
 
 	err = rows.Err()
@@ -77,11 +82,11 @@ func (r *skipVoteRow) scanRows(rows *sql.Rows) error {
 	return nil
 }
 
-func (r *skipVoteRow) toSkipVote() vibe.SkipVote {
-	return vibe.SkipVote{
+func (r *skipVoteRow) toSkipVote() (*vibe.SkipVote, error) {
+	return &vibe.SkipVote{
 		SongID: r.SongID.String,
 		UserID: r.UserID.String,
-	}
+	}, nil
 }
 
 // prepareHasUserVotedStmt prepares the HasUserVotedStatement.

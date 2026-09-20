@@ -61,7 +61,10 @@ func (c *Client) GetStats(ctx context.Context) (*vibe.Stats, error) {
 		return nil, fmt.Errorf("error scanning stats in GetStats: %w", err)
 	}
 
-	stats := statsRow.toStats()
+	stats, err := statsRow.toStats()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping stats: %w", err)
+	}
 
 	return stats, nil
 }
@@ -85,10 +88,10 @@ func (s *statsRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (s *statsRow) toStats() *vibe.Stats {
+func (s *statsRow) toStats() (*vibe.Stats, error) {
 	return &vibe.Stats{
 		TotalListeners: int(s.TotalListeners.Int64),
 		TotalSongs:     int(s.TotalSongs.Int64),
 		TotalRooms:     int(s.TotalRooms.Int64),
-	}
+	}, nil
 }

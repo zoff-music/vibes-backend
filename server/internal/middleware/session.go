@@ -20,6 +20,8 @@ import (
 )
 
 type SessionMiddleware struct {
+	RemoteRouteNames           map[string]bool
+	RemoteRoomRouteNames       map[string]bool
 	Secret                     string
 	CookieMaxAge               time.Duration
 	CastTokenSecret            string
@@ -49,7 +51,7 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 				return
 			}
 
-			payload := helper.SessionPayload{
+			payload := vibe.SessionPayload{
 				UserID:     castPayload.UserID,
 				AuthType:   "cast",
 				CastRoomID: castPayload.RoomID,
@@ -79,7 +81,7 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 			}
 
 			routeName := currentRoute.GetName()
-			if !remoteRouteNames[routeName] {
+			if !m.RemoteRouteNames[routeName] {
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
@@ -110,7 +112,7 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 				return
 			}
 
-			if remoteRoomRouteNames[routeName] {
+			if m.RemoteRoomRouteNames[routeName] {
 				vars := mux.Vars(r)
 				roomID := vars["id"]
 				if roomID == "" || roomID != remote.CurrentRoomID {
@@ -119,7 +121,7 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 				}
 			}
 
-			payload := helper.SessionPayload{
+			payload := vibe.SessionPayload{
 				UserID:       remote.OwnerUserID,
 				AuthType:     "remote",
 				RemoteID:     remote.ID,
@@ -177,33 +179,33 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 	})
 }
 
-func (m *SessionMiddleware) extractSession(r *http.Request, cookieName string) (helper.SessionPayload, bool) {
+func (m *SessionMiddleware) extractSession(r *http.Request, cookieName string) (vibe.SessionPayload, bool) {
 	cookie, err := r.Cookie(cookieName)
 	if err != nil {
-		return helper.SessionPayload{}, false
+		return vibe.SessionPayload{}, false
 	}
 
 	raw, ok := m.unsign(cookie.Value)
 	if !ok {
 		log.Printf("SessionMiddleware: cookie signature invalid")
-		return helper.SessionPayload{}, false
+		return vibe.SessionPayload{}, false
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(raw)
 	if err != nil {
 		log.Printf("SessionMiddleware: invalid base64: %v", err)
-		return helper.SessionPayload{}, false
+		return vibe.SessionPayload{}, false
 	}
 
-	var payload helper.SessionPayload
+	var payload vibe.SessionPayload
 	err = json.Unmarshal(decoded, &payload)
 	if err != nil {
 		log.Printf("SessionMiddleware: invalid json: %v", err)
-		return helper.SessionPayload{}, false
+		return vibe.SessionPayload{}, false
 	}
 
 	if payload.UserID == "" {
-		return helper.SessionPayload{}, false
+		return vibe.SessionPayload{}, false
 	}
 
 	// Backwards compatibility: old cookies may not have AuthType.
@@ -214,9 +216,9 @@ func (m *SessionMiddleware) extractSession(r *http.Request, cookieName string) (
 	return payload, true
 }
 
-func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, cookieName string, sameSite http.SameSite) (*helper.SessionPayload, error) {
+func (m *SessionMiddleware) createNewSession(w http.ResponseWriter, cookieName string, sameSite http.SameSite) (*vibe.SessionPayload, error) {
 	userID := uuid.New().String()
-	payload := helper.SessionPayload{
+	payload := vibe.SessionPayload{
 		UserID:   userID,
 		IsNew:    true,
 		AuthType: "cookie",
@@ -234,7 +236,7 @@ func (m *SessionMiddleware) setSessionCookie(
 	w http.ResponseWriter,
 	cookieName string,
 	sameSite http.SameSite,
-	payload helper.SessionPayload,
+	payload vibe.SessionPayload,
 ) error {
 	sessionJSON, err := json.Marshal(payload)
 	if err != nil {
@@ -299,44 +301,3 @@ const remoteRequestHeader = "X-Zoff-Remote-ID"
 const remoteSessionHeader = "X-Zoff-Remote-Token"
 
 const remoteSessionCookieName = "remote_session"
-
-var remoteRouteNames = map[string]bool{
-	"GetRemoteControl":          true,
-	"UpdateRemoteControl":       true,
-	"RemoteEvents":              true,
-	"GetRoom":                   true,
-	"UpdateRoomSettings":        true,
-	"SkipSong":                  true,
-	"GetPlaybackState":          true,
-	"UpdatePlaybackState":       true,
-	"CreateSession":             true,
-	"GetSongs":                  true,
-	"AddSong":                   true,
-	"AddPlaylist":               true,
-	"RemoveSong":                true,
-	"VoteSong":                  true,
-	"RoomEvents":                true,
-	"SearchMusic":               true,
-	"GetMusicTrack":             true,
-	"GetYouTubePlaylist":        true,
-	"SearchSoundCloud":          true,
-	"ResolveSoundCloudTrack":    true,
-	"GetSoundCloudTrack":        true,
-	"ResolveSoundCloudPlaylist": true,
-	"GetProviders":              true,
-}
-
-var remoteRoomRouteNames = map[string]bool{
-	"GetRoom":             true,
-	"UpdateRoomSettings":  true,
-	"SkipSong":            true,
-	"GetPlaybackState":    true,
-	"UpdatePlaybackState": true,
-	"CreateSession":       true,
-	"GetSongs":            true,
-	"AddSong":             true,
-	"AddPlaylist":         true,
-	"RemoveSong":          true,
-	"VoteSong":            true,
-	"RoomEvents":          true,
-}

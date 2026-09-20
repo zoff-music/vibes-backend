@@ -125,7 +125,7 @@ func AdminLogin(
 			return
 		}
 
-		payload := helper.AdminAuthPayload{
+		payload := vibe.AdminAuthPayload{
 			UserID:         session.UserID,
 			AdminID:        admin.ID,
 			SessionVersion: admin.SessionVersion,

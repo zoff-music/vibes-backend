@@ -95,7 +95,7 @@ func CreateCastingToken(
 
 		now := time.Now()
 		expiresAt := now.Add(castTokenTTL)
-		token, err := helper.SignCastToken(castTokenSecret, helper.CastTokenPayload{
+		token, err := helper.SignCastToken(castTokenSecret, vibe.CastTokenPayload{
 			RoomID: req.RoomID,
 			UserID: session.UserID,
 			Iat:    now.Unix(),

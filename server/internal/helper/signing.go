@@ -10,25 +10,10 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
+	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-type AdminAuthPayload struct {
-	UserID         string `json:"user_id"`
-	AdminID        string `json:"admin_id"`
-	SessionVersion int64  `json:"session_version"`
-	IssuedAt       int64  `json:"issued_at"`
-}
-
-type CastTokenPayload struct {
-	V      int    `json:"v"`
-	Typ    string `json:"typ"`
-	RoomID string `json:"roomId"`
-	UserID string `json:"userId"`
-	Iat    int64  `json:"iat"`
-	Exp    int64  `json:"exp"`
-}
-
-func SignAdminAuthPayload(payload AdminAuthPayload, secret string) (string, error) {
+func SignAdminAuthPayload(payload vibe.AdminAuthPayload, secret string) (string, error) {
 	raw, err := json.Marshal(payload)
 	if err != nil {
 		return "", fmt.Errorf("error marshaling admin payload: %w", err)
@@ -45,34 +30,34 @@ func SignAdminAuthPayload(payload AdminAuthPayload, secret string) (string, erro
 	return encoded + "." + signature, nil
 }
 
-func ParseAdminAuthPayload(value string, secret string) (AdminAuthPayload, error) {
+func ParseAdminAuthPayload(value string, secret string) (*vibe.AdminAuthPayload, error) {
 	unsigned, err := unsignAdminPayload(value, secret)
 	if err != nil {
-		return AdminAuthPayload{}, fmt.Errorf("error verifying admin payload signature: %w", err)
+		return nil, fmt.Errorf("error verifying admin payload signature: %w", err)
 	}
 
 	decoded, err := base64.StdEncoding.DecodeString(unsigned)
 	if err != nil {
-		return AdminAuthPayload{}, fmt.Errorf("error decoding admin payload: %w", err)
+		return nil, fmt.Errorf("error decoding admin payload: %w", err)
 	}
 
-	var payload AdminAuthPayload
+	var payload vibe.AdminAuthPayload
 	err = json.Unmarshal(decoded, &payload)
 	if err != nil {
-		return AdminAuthPayload{}, fmt.Errorf("error unmarshaling admin payload: %w", err)
+		return nil, fmt.Errorf("error unmarshaling admin payload: %w", err)
 	}
 
 	if payload.UserID == "" ||
 		payload.AdminID == "" ||
 		payload.SessionVersion < 1 ||
 		payload.IssuedAt < 1 {
-		return AdminAuthPayload{}, fmt.Errorf("error invalid admin payload")
+		return nil, fmt.Errorf("error invalid admin payload")
 	}
 
-	return payload, nil
+	return &payload, nil
 }
 
-func SignCastToken(secret string, payload CastTokenPayload) (string, error) {
+func SignCastToken(secret string, payload vibe.CastTokenPayload) (string, error) {
 	if secret == "" {
 		return "", fmt.Errorf("error cast token secret is required")
 	}
@@ -103,50 +88,50 @@ func SignCastToken(secret string, payload CastTokenPayload) (string, error) {
 	return payloadB64 + "." + sigB64, nil
 }
 
-func VerifyCastToken(secret string, token string, now time.Time) (CastTokenPayload, error) {
+func VerifyCastToken(secret string, token string, now time.Time) (*vibe.CastTokenPayload, error) {
 	if secret == "" {
-		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error missing cast token secret")}
+		return nil, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error missing cast token secret")}
 	}
 
 	parts := strings.SplitN(token, ".", 2)
 	if len(parts) != 2 {
-		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error malformed cast token")}
+		return nil, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error malformed cast token")}
 	}
 	payloadB64 := parts[0]
 	sigB64 := parts[1]
 
 	sig, err := base64.RawURLEncoding.DecodeString(sigB64)
 	if err != nil {
-		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error decoding cast token signature: %w", err)}
+		return nil, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error decoding cast token signature: %w", err)}
 	}
 
 	mac := hmac.New(sha256.New, []byte(secret))
 	mac.Write([]byte(payloadB64))
 	expected := mac.Sum(nil)
 	if !hmac.Equal(sig, expected) {
-		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error invalid cast token signature")}
+		return nil, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error invalid cast token signature")}
 	}
 
 	raw, err := base64.RawURLEncoding.DecodeString(payloadB64)
 	if err != nil {
-		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error decoding cast token payload: %w", err)}
+		return nil, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error decoding cast token payload: %w", err)}
 	}
 
-	var out CastTokenPayload
+	var out vibe.CastTokenPayload
 	err = json.Unmarshal(raw, &out)
 	if err != nil {
-		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error unmarshaling cast token payload: %w", err)}
+		return nil, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error unmarshaling cast token payload: %w", err)}
 	}
 
 	if out.V != 1 || out.Typ != "cast" || out.RoomID == "" || out.UserID == "" {
-		return CastTokenPayload{}, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error invalid cast token payload")}
+		return nil, internalerror.ErrCastTokenInvalid{Err: fmt.Errorf("error invalid cast token payload")}
 	}
 
 	if out.Exp <= now.Unix() {
-		return CastTokenPayload{}, internalerror.ErrCastTokenExpired{Err: fmt.Errorf("error expired cast token")}
+		return nil, internalerror.ErrCastTokenExpired{Err: fmt.Errorf("error expired cast token")}
 	}
 
-	return out, nil
+	return &out, nil
 }
 
 func unsignAdminPayload(value string, secret string) (string, error) {
