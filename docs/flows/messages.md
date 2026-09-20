@@ -43,9 +43,13 @@ chat presentation without requiring clients to infer actions from queue diffs.
 Settings activity compares the previous values with the saved room and emits
 one entry per changed setting. Unchanged values, reordered provider lists,
 failed updates, and rejected permissions do not produce activity. The author's
-name comes from the session profile, not the request. Setting entries keep the
-existing `chat` kind with an optional `activity` flag, so older clients can still
-show their text; newer clients can apply the same styling as other activity.
+name comes from the session profile, not the request. Setting entries use the
+`settings` kind, not `chat`, so clients render them as room activity alongside
+skips and votes. The text includes the action and its resulting value. They use
+the `settings_activity` SSE event in the same retained chat stream. Older clients
+ignore this additive event instead of rejecting an unknown message kind or
+showing it as user-written chat. Updated clients handle both SSE event names and
+recognize the legacy `activity` flag when replaying older setting entries.
 
 First-time password setup emits an `added` entry saying "a password to the room".
 Signing in with an existing password produces no entry. Neither the password
