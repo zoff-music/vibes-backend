@@ -62,6 +62,7 @@ type AdminAuthResult struct {
 
 // AdminSessionCreator authenticates an admin and fetches its room.
 type AdminSessionCreator interface {
+	SessionProfileFetcherCreator
 	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
 	AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (*AdminAuthResult, error)
 }

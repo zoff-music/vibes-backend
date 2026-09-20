@@ -35,9 +35,23 @@ administration. Clients bound their in-memory history as well.
 
 ## Show room activity
 
-Song additions, deletions, votes, skips, skip votes, and display-name changes
+Song additions, deletions, votes, skips, skip votes, display-name changes, room
+settings changes, and initial password setup
 publish activity entries from their existing backend flows. They use the same
 chat presentation without requiring clients to infer actions from queue diffs.
+
+Settings activity compares the previous values with the saved room and emits
+one entry per changed setting. Unchanged values, reordered provider lists,
+failed updates, and rejected permissions do not produce activity. The author's
+name comes from the session profile, not the request. Setting entries keep the
+existing `chat` kind with an optional `activity` flag, so older clients can still
+show their text; newer clients can apply the same styling as other activity.
+
+First-time password setup emits an `added` entry saying "a password to the room".
+Signing in with an existing password produces no entry. Neither the password
+nor its hash is included. Activity does not increment user-sent message usage.
+Both single and batch notifications route message events to the retained chat
+stream, separate from playback updates.
 
 Disabling chat is a device preference. It removes that device's chat interface
 without disabling the shared room or its playback stream.
