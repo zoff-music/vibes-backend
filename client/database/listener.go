@@ -173,7 +173,13 @@ func (c *Client) ListAdminListenerUsage(
 				err,
 			)
 		}
-		points = append(points, row.listenerUsagePoint())
+
+		point, err := row.toListenerUsagePoint()
+		if err != nil {
+			return nil, fmt.Errorf("error converting listener usage in ListAdminListenerUsage: %w", err)
+		}
+
+		points = append(points, *point)
 	}
 
 	err = rows.Err()
@@ -206,10 +212,10 @@ func (r *listenerUsageRow) scanRows(rows *sql.Rows) error {
 	return nil
 }
 
-func (r *listenerUsageRow) listenerUsagePoint() vibe.ListenerUsagePoint {
-	return vibe.ListenerUsagePoint{
+func (r *listenerUsageRow) toListenerUsagePoint() (*vibe.ListenerUsagePoint, error) {
+	return &vibe.ListenerUsagePoint{
 		Window:    r.Window.String,
 		Timestamp: r.Timestamp.Time,
-		Listeners: r.Listeners.Int64,
-	}
+		Listeners: int(r.Listeners.Int64),
+	}, nil
 }

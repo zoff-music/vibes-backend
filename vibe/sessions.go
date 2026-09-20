@@ -31,8 +31,12 @@ type SessionProfileUpdater interface {
 type SessionProfileRoomUpdater interface {
 	SessionProfileUpdater
 	SessionProfileFetcherCreator
-	RoomFetcher
-	GetSessionRooms(ctx context.Context, userID string) ([]string, error)
+	GetSessionRooms(ctx context.Context, userID string) ([]SessionRoom, error)
+}
+
+type SessionRoom struct {
+	ID      string
+	IsAdmin bool
 }
 
 // CreateSessionRequest is the request payload for creating a session.

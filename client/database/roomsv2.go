@@ -115,15 +115,22 @@ func (c *Client) SearchPublicRooms(
 
 	for rows.Next() {
 		var row publicRoomResultRow
-		err = row.scan(rows)
+		err = row.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning public room result: %w", err)
 		}
 
 		result.Total = int(row.Total.Int64)
-		if row.ID.Valid {
-			result.Rooms = append(result.Rooms, row.toPublicRoom())
+		if !row.ID.Valid {
+			continue
 		}
+
+		room, err := row.toPublicRoom()
+		if err != nil {
+			return nil, fmt.Errorf("error converting public room in SearchPublicRooms: %w", err)
+		}
+
+		result.Rooms = append(result.Rooms, *room)
 	}
 
 	err = rows.Err()
@@ -144,7 +151,7 @@ type publicRoomResultRow struct {
 	Total sql.NullInt64
 }
 
-func (r *publicRoomResultRow) scan(rows *sql.Rows) error {
+func (r *publicRoomResultRow) scanRows(rows *sql.Rows) error {
 	err := rows.Scan(&r.ID, &r.Name, &r.ListenerCount, &r.SongCount, &r.Total)
 	if err != nil {
 		return fmt.Errorf("error scanning public room result row: %w", err)

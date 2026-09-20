@@ -8,7 +8,7 @@ import (
 type ListenerUsagePoint struct {
 	Window    string    `json:"window"`
 	Timestamp time.Time `json:"timestamp"`
-	Listeners int64     `json:"listeners"`
+	Listeners int       `json:"listeners"`
 }
 
 type AdminListenerUsage struct {

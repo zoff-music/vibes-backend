@@ -181,7 +181,13 @@ func (c *Client) ListAdminSearchUsage(
 				err,
 			)
 		}
-		points = append(points, row.adminSearchUsagePoint())
+
+		point, err := row.toAdminSearchUsagePoint()
+		if err != nil {
+			return nil, fmt.Errorf("error converting search usage in ListAdminSearchUsage: %w", err)
+		}
+
+		points = append(points, *point)
 	}
 
 	err = rows.Err()
@@ -222,14 +228,14 @@ func (r *adminSearchUsageRow) scanRows(rows *sql.Rows) error {
 	return nil
 }
 
-func (r *adminSearchUsageRow) adminSearchUsagePoint() vibe.AdminSearchUsagePoint {
-	return vibe.AdminSearchUsagePoint{
+func (r *adminSearchUsageRow) toAdminSearchUsagePoint() (*vibe.AdminSearchUsagePoint, error) {
+	return &vibe.AdminSearchUsagePoint{
 		Window:    r.Window.String,
 		Timestamp: r.Timestamp.Time,
 		Provider:  r.Provider.String,
-		Total:     r.Total.Int64,
-		Unique:    r.Unique.Int64,
-		Cached:    r.Cached.Int64,
-		Live:      r.Live.Int64,
-	}
+		Total:     int(r.Total.Int64),
+		Unique:    int(r.Unique.Int64),
+		Cached:    int(r.Cached.Int64),
+		Live:      int(r.Live.Int64),
+	}, nil
 }

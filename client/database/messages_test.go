@@ -48,7 +48,7 @@ func TestMessageUsage(t *testing.T) {
 	}
 	tests := []struct {
 		name, room    string
-		total, recent int64
+		total, recent int
 	}{
 		{name: "overall", total: 6, recent: 4},
 		{name: "per room", room: "electro", total: 3, recent: 2},
@@ -63,7 +63,7 @@ func TestMessageUsage(t *testing.T) {
 			if usage.Total != tt.total {
 				t.Fatalf("total %d, want %d", usage.Total, tt.total)
 			}
-			totals := map[string]int64{}
+			totals := map[string]int{}
 			for _, point := range usage.Points {
 				totals[point.Window] += point.Messages
 			}

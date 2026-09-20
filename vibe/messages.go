@@ -11,6 +11,20 @@ const MessageEvent = "message"
 
 const MessageMaxLength = 500
 
+const MessageKindChat = "chat"
+
+const MessageKindAdded = "added"
+
+const MessageKindVoted = "voted"
+
+const MessageKindDeleted = "deleted"
+
+const MessageKindSkipped = "skipped"
+
+const MessageKindSkipVoted = "skipvoted"
+
+const MessageKindRenamed = "renamed"
+
 type RoomMessage struct {
 	ID        string `json:"id"`
 	UserID    string `json:"userId"`
@@ -48,12 +62,12 @@ type MessageAuthorFetcherUsageCreator interface {
 type MessageUsagePoint struct {
 	Window    string    `json:"window"`
 	Timestamp time.Time `json:"timestamp"`
-	Messages  int64     `json:"messages"`
+	Messages  int       `json:"messages"`
 }
 
 type AdminMessageUsage struct {
 	RoomID      string              `json:"roomId"`
-	Total       int64               `json:"total"`
+	Total       int                 `json:"total"`
 	Points      []MessageUsagePoint `json:"points"`
 	GeneratedAt time.Time           `json:"generatedAt"`
 }

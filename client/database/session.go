@@ -91,10 +91,10 @@ func (c *Client) GetOrCreateSessionProfile(
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.GetOrCreateSessionProfileStatement.QueryRowContext(cctx, id)
+	r := c.GetOrCreateSessionProfileStatement.QueryRowContext(cctx, id)
 
-	var profile vibe.SessionProfile
-	err := row.Scan(&profile.Name)
+	var row sessionProfileRow
+	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("error creating session profile in GetOrCreateSessionProfile: no generated names available")
@@ -103,7 +103,29 @@ func (c *Client) GetOrCreateSessionProfile(
 		return nil, fmt.Errorf("error scanning session profile in GetOrCreateSessionProfile: %w", err)
 	}
 
-	return &profile, nil
+	profile, err := row.toSessionProfile()
+	if err != nil {
+		return nil, fmt.Errorf("error converting session profile in GetOrCreateSessionProfile: %w", err)
+	}
+
+	return profile, nil
+}
+
+type sessionProfileRow struct {
+	Name sql.NullString
+}
+
+func (r *sessionProfileRow) scan(row *sql.Row) error {
+	err := row.Scan(&r.Name)
+	if err != nil {
+		return fmt.Errorf("error scanning session profile row: %w", err)
+	}
+
+	return nil
+}
+
+func (r *sessionProfileRow) toSessionProfile() (*vibe.SessionProfile, error) {
+	return &vibe.SessionProfile{Name: r.Name.String}, nil
 }
 
 func (c *Client) prepareUpdateSessionProfileStmt() error {
@@ -135,24 +157,31 @@ func (c *Client) UpdateSessionProfile(
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.UpdateSessionProfileStatement.QueryRowContext(cctx, id, name)
+	r := c.UpdateSessionProfileStatement.QueryRowContext(cctx, id, name)
 
-	var profile vibe.SessionProfile
-	err := row.Scan(&profile.Name)
+	var row sessionProfileRow
+	err := row.scan(r)
 	if err != nil {
 		return nil, fmt.Errorf("error scanning session profile in UpdateSessionProfile: %w", err)
 	}
 
-	return &profile, nil
+	profile, err := row.toSessionProfile()
+	if err != nil {
+		return nil, fmt.Errorf("error converting session profile in UpdateSessionProfile: %w", err)
+	}
+
+	return profile, nil
 }
 
 func (c *Client) prepareGetSessionRoomsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT room_id
-		FROM room_users
-		WHERE id = $1
-		AND last_seen_at > $2
-		ORDER BY room_id
+		SELECT a.room_id, COALESCE(a.is_admin, FALSE)
+		FROM room_users a
+		JOIN rooms b ON b.id = a.room_id
+		JOIN room_settings c ON c.room_id = b.id
+		WHERE a.id = $1
+		AND a.last_seen_at > $2
+		ORDER BY a.room_id
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSessionRoomsStatement: %w", err)
@@ -163,7 +192,7 @@ func (c *Client) prepareGetSessionRoomsStmt() error {
 	return nil
 }
 
-func (c *Client) GetSessionRooms(ctx context.Context, userID string) ([]string, error) {
+func (c *Client) GetSessionRooms(ctx context.Context, userID string) ([]vibe.SessionRoom, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetSessionRooms")
 	defer span.End()
 
@@ -177,15 +206,20 @@ func (c *Client) GetSessionRooms(ctx context.Context, userID string) ([]string, 
 
 	defer rows.Close()
 
-	rooms := []string{}
+	rooms := []vibe.SessionRoom{}
 	for rows.Next() {
-		var roomID string
-		err = rows.Scan(&roomID)
+		var row sessionRoomRow
+		err = row.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning GetSessionRooms: %w", err)
 		}
 
-		rooms = append(rooms, roomID)
+		room, err := row.toSessionRoom()
+		if err != nil {
+			return nil, fmt.Errorf("error converting session room in GetSessionRooms: %w", err)
+		}
+
+		rooms = append(rooms, *room)
 	}
 
 	err = rows.Err()
@@ -194,4 +228,25 @@ func (c *Client) GetSessionRooms(ctx context.Context, userID string) ([]string, 
 	}
 
 	return rooms, nil
+}
+
+type sessionRoomRow struct {
+	ID      sql.NullString
+	IsAdmin sql.NullBool
+}
+
+func (r *sessionRoomRow) scanRows(rows *sql.Rows) error {
+	err := rows.Scan(&r.ID, &r.IsAdmin)
+	if err != nil {
+		return fmt.Errorf("error scanning session room row: %w", err)
+	}
+
+	return nil
+}
+
+func (r *sessionRoomRow) toSessionRoom() (*vibe.SessionRoom, error) {
+	return &vibe.SessionRoom{
+		ID:      r.ID.String,
+		IsAdmin: r.IsAdmin.Bool,
+	}, nil
 }

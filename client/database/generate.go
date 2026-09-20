@@ -42,13 +42,13 @@ func (c *Client) HasActiveRoomGeneration(ctx context.Context) (bool, error) {
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.HasActiveRoomGenerationStatement.QueryRowContext(
+	r := c.HasActiveRoomGenerationStatement.QueryRowContext(
 		cctx,
 		c.roomGenerationMaxAttempts,
 	)
 
-	var hasActiveGeneration bool
-	err := row.Scan(&hasActiveGeneration)
+	var row activeRoomGenerationRow
+	err := row.scan(r)
 	if err != nil {
 		return false, fmt.Errorf(
 			"error scanning active room generation in HasActiveRoomGeneration: %w",
@@ -56,7 +56,20 @@ func (c *Client) HasActiveRoomGeneration(ctx context.Context) (bool, error) {
 		)
 	}
 
-	return hasActiveGeneration, nil
+	return row.Active, nil
+}
+
+type activeRoomGenerationRow struct {
+	Active bool
+}
+
+func (r *activeRoomGenerationRow) scan(row *sql.Row) error {
+	err := row.Scan(&r.Active)
+	if err != nil {
+		return fmt.Errorf("error scanning active room generation row: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) prepareCreateRoomGenerationStmt() error {
@@ -129,7 +142,7 @@ func (c *Client) CreateRoomGeneration(
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.CreateRoomGenerationStatement.QueryRowContext(
+	r := c.CreateRoomGenerationStatement.QueryRowContext(
 		cctx,
 		roomID,
 		prompt,
@@ -138,8 +151,8 @@ func (c *Client) CreateRoomGeneration(
 		c.enabledProviders,
 	)
 
-	var outcome string
-	err := row.Scan(&outcome)
+	var row createRoomGenerationRow
+	err := row.scan(r)
 	if err != nil {
 		var postgresError *pgconn.PgError
 		if errors.As(err, &postgresError) &&
@@ -158,6 +171,7 @@ func (c *Client) CreateRoomGeneration(
 		)
 	}
 
+	outcome := row.Outcome
 	if outcome == createRoomGenerationSongLimit {
 		return internalerror.ErrRoomGenerationSongLimit{
 			Err: fmt.Errorf(
@@ -179,6 +193,19 @@ func (c *Client) CreateRoomGeneration(
 			"error validating outcome in CreateRoomGeneration: received %s",
 			outcome,
 		)
+	}
+
+	return nil
+}
+
+type createRoomGenerationRow struct {
+	Outcome string
+}
+
+func (r *createRoomGenerationRow) scan(row *sql.Row) error {
+	err := row.Scan(&r.Outcome)
+	if err != nil {
+		return fmt.Errorf("error scanning created room generation row: %w", err)
 	}
 
 	return nil

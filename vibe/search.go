@@ -237,9 +237,13 @@ type CachedMusicTrackFetcherCreator interface {
 	CachedMusicTrackCreator
 }
 
-type MusicSearchCache interface {
+type CachedSearchTrackFetcherCreator interface {
 	CachedSearchFetcherCreator
 	CachedMusicTrackCreator
+}
+
+type MusicSearchCache interface {
+	CachedSearchTrackFetcherCreator
 	ProviderQuotaResetFetcherCreator
 }
 

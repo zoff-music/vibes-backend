@@ -2,6 +2,7 @@ package database
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"time"
 
@@ -88,26 +89,27 @@ func (c *Client) ListAdminMessageUsage(ctx context.Context, roomID string) (*vib
 	}
 
 	for rows.Next() {
-		var period string
-		var timestamp *time.Time
-		var count int64
-		err = rows.Scan(&period, &timestamp, &count)
+		var row messageUsageRow
+		err = row.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning usage in ListAdminMessageUsage: %w", err)
 		}
 
-		if period == "total" {
-			usage.Total = count
+		if row.Window.String == "total" {
+			usage.Total = int(row.Messages.Int64)
 			continue
 		}
 
-		if timestamp != nil {
-			usage.Points = append(usage.Points, vibe.MessageUsagePoint{
-				Window:    period,
-				Timestamp: *timestamp,
-				Messages:  count,
-			})
+		if !row.Timestamp.Valid {
+			continue
 		}
+
+		point, err := row.toMessageUsagePoint()
+		if err != nil {
+			return nil, fmt.Errorf("error converting message usage in ListAdminMessageUsage: %w", err)
+		}
+
+		usage.Points = append(usage.Points, *point)
 	}
 
 	err = rows.Err()
@@ -116,4 +118,27 @@ func (c *Client) ListAdminMessageUsage(ctx context.Context, roomID string) (*vib
 	}
 
 	return usage, nil
+}
+
+type messageUsageRow struct {
+	Window    sql.NullString
+	Timestamp sql.NullTime
+	Messages  sql.NullInt64
+}
+
+func (r *messageUsageRow) scanRows(rows *sql.Rows) error {
+	err := rows.Scan(&r.Window, &r.Timestamp, &r.Messages)
+	if err != nil {
+		return fmt.Errorf("error scanning message usage row: %w", err)
+	}
+
+	return nil
+}
+
+func (r *messageUsageRow) toMessageUsagePoint() (*vibe.MessageUsagePoint, error) {
+	return &vibe.MessageUsagePoint{
+		Window:    r.Window.String,
+		Timestamp: r.Timestamp.Time,
+		Messages:  int(r.Messages.Int64),
+	}, nil
 }

@@ -245,53 +245,6 @@ func SkipSong(
 			}
 		}
 
-		if !result.AlreadyVoted && (result.Skipped || result.Voted) {
-			kind := "skipvoted"
-			title := "the current song"
-			if result.Skipped {
-				kind = "skipped"
-			}
-
-			if previousErr == nil && previous != nil && previous.CurrentSong != nil &&
-				(!result.Skipped || previous.CurrentSong.ID == result.PreviousSongID) {
-				title = previous.CurrentSong.Title
-			}
-
-			room, roomErr := db.GetRoom(ctx, roomID, userID)
-			if roomErr != nil {
-				log.Printf("error fetching skip chat room: %v", roomErr)
-			}
-
-			profile, profileErr := db.GetOrCreateSessionProfile(ctx, userID)
-			if profileErr != nil {
-				log.Printf("error fetching skip chat author: %v", profileErr)
-			}
-
-			if roomErr == nil && profileErr == nil && room != nil && profile != nil {
-				message := vibe.RoomMessage{
-					ID:        uuid.NewString(),
-					UserID:    userID,
-					Name:      profile.Name,
-					IsAdmin:   room.IsAdmin,
-					Kind:      kind,
-					Text:      title,
-					CreatedAt: time.Now().UTC().UnixMilli(),
-				}
-
-				payload, chatErr := json.Marshal(message)
-				if chatErr == nil {
-					chatErr = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
-						Type:    vibe.MessageEvent,
-						Payload: payload,
-					})
-				}
-
-				if chatErr != nil {
-					log.Printf("error publishing skip chat activity: %v", chatErr)
-				}
-			}
-		}
-
 		body, err := json.Marshal(result)
 		if err != nil {
 			handleError(
@@ -306,5 +259,60 @@ func SkipSong(
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
+
+		if result.AlreadyVoted || (!result.Skipped && !result.Voted) {
+			return
+		}
+
+		kind := vibe.MessageKindSkipVoted
+		title := "the current song"
+		if result.Skipped {
+			kind = vibe.MessageKindSkipped
+		}
+
+		if previousErr == nil && previous.CurrentSong != nil &&
+			(!result.Skipped || previous.CurrentSong.ID == result.PreviousSongID) {
+			title = previous.CurrentSong.Title
+		}
+
+		room, err := db.GetRoom(ctx, roomID, userID)
+		if err != nil {
+			log.Printf("error fetching skip chat room: %v", err)
+			return
+		}
+
+		if room.IsEmpty() {
+			return
+		}
+
+		profile, err := db.GetOrCreateSessionProfile(ctx, userID)
+		if err != nil {
+			log.Printf("error fetching skip chat author: %v", err)
+			return
+		}
+
+		message := vibe.RoomMessage{
+			ID:        uuid.NewString(),
+			UserID:    userID,
+			Name:      profile.Name,
+			IsAdmin:   room.IsAdmin,
+			Kind:      kind,
+			Text:      title,
+			CreatedAt: time.Now().UnixMilli(),
+		}
+
+		payload, err := json.Marshal(message)
+		if err != nil {
+			log.Printf("error marshaling skip chat activity: %v", err)
+			return
+		}
+
+		err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+			Type:    vibe.MessageEvent,
+			Payload: payload,
+		})
+		if err != nil {
+			log.Printf("error publishing skip chat activity: %v", err)
+		}
 	}
 }

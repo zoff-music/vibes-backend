@@ -115,10 +115,10 @@ type AdminSearchUsagePoint struct {
 	Window    string    `json:"window"`
 	Timestamp time.Time `json:"timestamp"`
 	Provider  string    `json:"provider"`
-	Total     int64     `json:"total"`
-	Unique    int64     `json:"unique"`
-	Cached    int64     `json:"cached"`
-	Live      int64     `json:"live"`
+	Total     int       `json:"total"`
+	Unique    int       `json:"unique"`
+	Cached    int       `json:"cached"`
+	Live      int       `json:"live"`
 }
 
 type AdminSearchUsage struct {

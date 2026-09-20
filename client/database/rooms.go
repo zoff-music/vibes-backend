@@ -442,12 +442,17 @@ func (c *Client) GetPublicRooms(ctx context.Context) ([]vibe.PublicRoom, error) 
 	publicRooms := []vibe.PublicRoom{}
 	for rows.Next() {
 		var row publicRoomRow
-		err = row.scan(rows)
+		err = row.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error scanning public room: %w", err)
 		}
 
-		publicRooms = append(publicRooms, row.toPublicRoom())
+		room, err := row.toPublicRoom()
+		if err != nil {
+			return nil, fmt.Errorf("error converting public room in GetPublicRooms: %w", err)
+		}
+
+		publicRooms = append(publicRooms, *room)
 	}
 
 	err = rows.Err()
@@ -465,7 +470,7 @@ type publicRoomRow struct {
 	SongCount     sql.NullInt64
 }
 
-func (r *publicRoomRow) scan(rows *sql.Rows) error {
+func (r *publicRoomRow) scanRows(rows *sql.Rows) error {
 	err := rows.Scan(
 		&r.ID,
 		&r.Name,
@@ -479,13 +484,13 @@ func (r *publicRoomRow) scan(rows *sql.Rows) error {
 	return nil
 }
 
-func (r *publicRoomRow) toPublicRoom() vibe.PublicRoom {
-	return vibe.PublicRoom{
+func (r *publicRoomRow) toPublicRoom() (*vibe.PublicRoom, error) {
+	return &vibe.PublicRoom{
 		ID:            r.ID.String,
 		Name:          r.Name.String,
 		ListenerCount: int(r.ListenerCount.Int64),
 		SongCount:     int(r.SongCount.Int64),
-	}
+	}, nil
 }
 
 // prepareRoomExistsStmt prepares the RoomExistsStatement.
@@ -517,15 +522,28 @@ func (c *Client) RoomExists(
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.RoomExistsStatement.QueryRowContext(cctx, roomID)
+	r := c.RoomExistsStatement.QueryRowContext(cctx, roomID)
 
-	var exists bool
-	err := row.Scan(&exists)
+	var row roomExistsRow
+	err := row.scan(r)
 	if err != nil {
 		return false, fmt.Errorf("error scanning room existence: %w", err)
 	}
 
-	return exists, nil
+	return row.Exists, nil
+}
+
+type roomExistsRow struct {
+	Exists bool
+}
+
+func (r *roomExistsRow) scan(row *sql.Row) error {
+	err := row.Scan(&r.Exists)
+	if err != nil {
+		return fmt.Errorf("error scanning room existence row: %w", err)
+	}
+
+	return nil
 }
 
 type roomRow struct {
@@ -674,7 +692,7 @@ func (c *Client) fillActiveSources(ctx context.Context, room vibe.Room) (*vibe.R
 	sources := []string{}
 	for rows.Next() {
 		var row activeSourceRow
-		err := row.scan(rows)
+		err := row.scanRows(rows)
 		if err != nil {
 			return nil, fmt.Errorf("error in db: scan active source: %w", err)
 		}
@@ -694,7 +712,7 @@ type activeSourceRow struct {
 	Source sql.NullString
 }
 
-func (a *activeSourceRow) scan(rows *sql.Rows) error {
+func (a *activeSourceRow) scanRows(rows *sql.Rows) error {
 	err := rows.Scan(&a.Source)
 	if err != nil {
 		return fmt.Errorf("error scanning active source row: %w", err)

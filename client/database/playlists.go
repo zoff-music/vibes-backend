@@ -12,67 +12,114 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
+func (c *Client) prepareCreatePlaylistImportItemStmt() error {
+	stmt, err := c.DB.Prepare(`
+		INSERT INTO playlist_import_items (
+			id, import_id, position, source_type, source_id, provider_url,
+			playback_restriction, title, artist, thumbnail_url, duration
+		)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing CreatePlaylistImportItemStatement: %w", err)
+	}
+
+	c.CreatePlaylistImportItemStatement = stmt
+
+	return nil
+}
+
+func (c *Client) CreatePlaylistImportItem(ctx context.Context, importID string, position int, song vibe.Song) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "CreatePlaylistImportItem")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
+	defer cancel()
+
+	_, err := c.CreatePlaylistImportItemStatement.ExecContext(
+		cctx, song.ID, importID, position, song.SourceType, song.SourceID,
+		song.ProviderURL, song.PlaybackRestriction, song.Title, song.Artist,
+		song.ThumbnailURL, song.Duration,
+	)
+	if err != nil {
+		return fmt.Errorf("error creating playlist import item: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Client) prepareCreatePlaylistImportStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH inserted_import_q AS (
-			INSERT INTO playlist_imports (id, room_id, added_by)
-			VALUES ($1, $2, $3)
-			RETURNING id
-		)
-		INSERT INTO playlist_import_items (
-			id,
-			import_id,
-			position,
-			source_type,
-			source_id,
-			provider_url,
-			playback_restriction,
-			title,
-			artist,
-			thumbnail_url,
-			duration
-		)
-		SELECT
-			a.id,
-			b.id,
-			a.position - 1,
-			a.source_type,
-			a.source_id,
-			a.provider_url,
-			a.playback_restriction,
-			a.title,
-			a.artist,
-			a.thumbnail_url,
-			a.duration
-		FROM inserted_import_q b
-		CROSS JOIN UNNEST(
-			$4::text[],
-			$5::text[],
-			$6::text[],
-			$7::text[],
-			$8::text[],
-			$9::text[],
-			$10::text[],
-			$11::text[],
-			$12::integer[]
-		) WITH ORDINALITY AS a(
-			id,
-			source_type,
-			source_id,
-			provider_url,
-			playback_restriction,
-			title,
-			artist,
-			thumbnail_url,
-			duration,
-			position
-		)
+		INSERT INTO playlist_imports (id, room_id, added_by)
+		SELECT $1, $2, $3
+		FROM playlist_import_items
+		WHERE import_id = $1
+		HAVING COUNT(*) = $4 AND MIN(position) = 0 AND MAX(position) = $4 - 1
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreatePlaylistImportStatement: %w", err)
 	}
 
 	c.CreatePlaylistImportStatement = stmt
+
+	return nil
+}
+
+// CreatePlaylistImport makes a fully staged import visible to the app-event worker.
+func (c *Client) CreatePlaylistImport(ctx context.Context, importID string, roomID string, userID string, count int) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "CreatePlaylistImport")
+	defer span.End()
+
+	if count <= 0 {
+		return fmt.Errorf("error creating playlist import: playlist has no songs")
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
+	defer cancel()
+
+	result, err := c.CreatePlaylistImportStatement.ExecContext(cctx, importID, roomID, userID, count)
+	if err != nil {
+		return fmt.Errorf("error creating playlist import: %w", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("error reading created playlist import count: %w", err)
+	}
+
+	if affected != 1 {
+		return fmt.Errorf("error creating playlist import: staged items are incomplete")
+	}
+
+	return nil
+}
+
+func (c *Client) prepareDeleteAbandonedPlaylistImportItemsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		DELETE FROM playlist_import_items a
+		WHERE a.created_at < NOW() - INTERVAL '1 day'
+		AND NOT EXISTS (SELECT 1 FROM playlist_imports b WHERE b.id = a.import_id)
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing DeleteAbandonedPlaylistImportItemsStatement: %w", err)
+	}
+
+	c.DeleteAbandonedPlaylistImportItemsStatement = stmt
+
+	return nil
+}
+
+func (c *Client) DeleteAbandonedPlaylistImportItems(ctx context.Context) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteAbandonedPlaylistImportItems")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := c.DeleteAbandonedPlaylistImportItemsStatement.ExecContext(cctx)
+	if err != nil {
+		return fmt.Errorf("error deleting abandoned playlist import items: %w", err)
+	}
 
 	return nil
 }
@@ -157,6 +204,114 @@ func (c *Client) prepareProcessNextPlaylistImportStmt() error {
 	return nil
 }
 
+func (c *Client) ProcessNextPlaylistImport(
+	ctx context.Context,
+	retryAfter time.Duration,
+) (*vibe.PlaylistImport, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextPlaylistImport")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
+	defer cancel()
+
+	row := c.ProcessNextPlaylistImportStatement.QueryRowContext(
+		cctx,
+		playlistImportMaxAttempts,
+		retryAfter.Milliseconds(),
+	)
+
+	var playlistImportRow playlistImportRow
+	err := playlistImportRow.scan(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, internalerror.ErrExpected{
+				Err: internalerror.ErrNonRecoverable{
+					Err: fmt.Errorf("error processing playlist import: no imports ready"),
+				},
+			}
+		}
+
+		return nil, fmt.Errorf("error scanning playlist import in ProcessNextPlaylistImport: %w", err)
+	}
+
+	playlistImport, err := playlistImportRow.toPlaylistImport()
+	if err != nil {
+		return nil, fmt.Errorf("error converting playlist import in ProcessNextPlaylistImport: %w", err)
+	}
+
+	return playlistImport, nil
+}
+
+type playlistImportRow struct {
+	ID                  sql.NullString
+	RoomID              sql.NullString
+	AddedBy             sql.NullString
+	NextPosition        sql.NullInt64
+	Attempts            sql.NullInt64
+	Exhausted           sql.NullBool
+	SongID              sql.NullString
+	SourceType          sql.NullString
+	SourceID            sql.NullString
+	ProviderURL         sql.NullString
+	PlaybackRestriction sql.NullString
+	Title               sql.NullString
+	Artist              sql.NullString
+	ThumbnailURL        sql.NullString
+	Duration            sql.NullInt64
+	AddedAt             sql.NullTime
+}
+
+func (r *playlistImportRow) scan(row *sql.Row) error {
+	err := row.Scan(
+		&r.ID,
+		&r.RoomID,
+		&r.AddedBy,
+		&r.NextPosition,
+		&r.Attempts,
+		&r.Exhausted,
+		&r.SongID,
+		&r.SourceType,
+		&r.SourceID,
+		&r.ProviderURL,
+		&r.PlaybackRestriction,
+		&r.Title,
+		&r.Artist,
+		&r.ThumbnailURL,
+		&r.Duration,
+		&r.AddedAt,
+	)
+	if err != nil {
+		return fmt.Errorf("error scanning playlist import row in scan: %w", err)
+	}
+
+	return nil
+}
+
+func (r *playlistImportRow) toPlaylistImport() (*vibe.PlaylistImport, error) {
+	return &vibe.PlaylistImport{
+		ID:           r.ID.String,
+		RoomID:       r.RoomID.String,
+		AddedBy:      r.AddedBy.String,
+		NextPosition: int(r.NextPosition.Int64),
+		Attempts:     int(r.Attempts.Int64),
+		Exhausted:    r.Exhausted.Bool,
+		Song: vibe.Song{
+			ID:                  r.SongID.String,
+			RoomID:              r.RoomID.String,
+			SourceType:          r.SourceType.String,
+			SourceID:            r.SourceID.String,
+			ProviderURL:         r.ProviderURL.String,
+			PlaybackRestriction: r.PlaybackRestriction.String,
+			Title:               r.Title.String,
+			Artist:              r.Artist.String,
+			ThumbnailURL:        r.ThumbnailURL.String,
+			Duration:            int(r.Duration.Int64),
+			AddedBySessionID:    r.AddedBy.String,
+			AddedAt:             r.AddedAt.Time,
+		},
+	}, nil
+}
+
 func (c *Client) prepareCompletePlaylistImportItemStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH deleted_item_q AS (
@@ -211,6 +366,49 @@ func (c *Client) prepareCompletePlaylistImportItemStmt() error {
 	return nil
 }
 
+func (c *Client) CompletePlaylistImportItem(
+	ctx context.Context,
+	importID string,
+	position int,
+) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "CompletePlaylistImportItem")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
+	defer cancel()
+
+	r := c.CompletePlaylistImportItemStatement.QueryRowContext(
+		cctx,
+		importID,
+		position,
+	)
+
+	var row completedPlaylistImportRow
+	err := row.scan(r)
+	if err != nil {
+		return fmt.Errorf("error completing playlist import item in CompletePlaylistImportItem: %w", err)
+	}
+
+	if row.UpdatedCount != 1 {
+		return fmt.Errorf("error completing playlist import item: import item was not claimed")
+	}
+
+	return nil
+}
+
+type completedPlaylistImportRow struct {
+	UpdatedCount int
+}
+
+func (r *completedPlaylistImportRow) scan(row *sql.Row) error {
+	err := row.Scan(&r.UpdatedCount)
+	if err != nil {
+		return fmt.Errorf("error scanning completed playlist import row: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Client) prepareDeletePlaylistImportStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH deleted_items_q AS (
@@ -225,202 +423,6 @@ func (c *Client) prepareDeletePlaylistImportStmt() error {
 	}
 
 	c.DeletePlaylistImportStatement = stmt
-
-	return nil
-}
-
-func (c *Client) CreatePlaylistImport(
-	ctx context.Context,
-	importID string,
-	songs []*vibe.Song,
-) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "CreatePlaylistImport")
-	defer span.End()
-
-	if len(songs) == 0 {
-		return fmt.Errorf("error creating playlist import: playlist has no songs")
-	}
-
-	ids := make([]string, 0, len(songs))
-	sourceTypes := make([]string, 0, len(songs))
-	sourceIDs := make([]string, 0, len(songs))
-	providerURLs := make([]string, 0, len(songs))
-	playbackRestrictions := make([]string, 0, len(songs))
-	titles := make([]string, 0, len(songs))
-	artists := make([]string, 0, len(songs))
-	thumbnailURLs := make([]string, 0, len(songs))
-	durations := make([]int, 0, len(songs))
-	for _, song := range songs {
-		if song == nil {
-			return fmt.Errorf("error creating playlist import: playlist contains an empty song")
-		}
-		if song.RoomID != songs[0].RoomID ||
-			song.AddedBySessionID != songs[0].AddedBySessionID {
-			return fmt.Errorf("error creating playlist import: songs do not share room and session")
-		}
-
-		ids = append(ids, song.ID)
-		sourceTypes = append(sourceTypes, song.SourceType)
-		sourceIDs = append(sourceIDs, song.SourceID)
-		providerURLs = append(providerURLs, song.ProviderURL)
-		playbackRestrictions = append(playbackRestrictions, song.PlaybackRestriction)
-		titles = append(titles, song.Title)
-		artists = append(artists, song.Artist)
-		thumbnailURLs = append(thumbnailURLs, song.ThumbnailURL)
-		durations = append(durations, song.Duration)
-	}
-
-	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
-	defer cancel()
-
-	_, err := c.CreatePlaylistImportStatement.ExecContext(
-		cctx,
-		importID,
-		songs[0].RoomID,
-		songs[0].AddedBySessionID,
-		ids,
-		sourceTypes,
-		sourceIDs,
-		providerURLs,
-		playbackRestrictions,
-		titles,
-		artists,
-		thumbnailURLs,
-		durations,
-	)
-	if err != nil {
-		return fmt.Errorf("error creating playlist import in CreatePlaylistImport: %w", err)
-	}
-
-	return nil
-}
-
-func (c *Client) ProcessNextPlaylistImport(
-	ctx context.Context,
-	retryAfter time.Duration,
-) (*vibe.PlaylistImport, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextPlaylistImport")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
-	defer cancel()
-
-	row := c.ProcessNextPlaylistImportStatement.QueryRowContext(
-		cctx,
-		playlistImportMaxAttempts,
-		retryAfter.Milliseconds(),
-	)
-
-	var playlistImportRow playlistImportRow
-	err := playlistImportRow.scan(row)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return nil, internalerror.ErrExpected{
-				Err: internalerror.ErrNonRecoverable{
-					Err: fmt.Errorf("error processing playlist import: no imports ready"),
-				},
-			}
-		}
-
-		return nil, fmt.Errorf("error scanning playlist import in ProcessNextPlaylistImport: %w", err)
-	}
-
-	return playlistImportRow.toPlaylistImport(), nil
-}
-
-type playlistImportRow struct {
-	ID                  sql.NullString
-	RoomID              sql.NullString
-	AddedBy             sql.NullString
-	NextPosition        sql.NullInt64
-	Attempts            sql.NullInt64
-	Exhausted           sql.NullBool
-	SongID              sql.NullString
-	SourceType          sql.NullString
-	SourceID            sql.NullString
-	ProviderURL         sql.NullString
-	PlaybackRestriction sql.NullString
-	Title               sql.NullString
-	Artist              sql.NullString
-	ThumbnailURL        sql.NullString
-	Duration            sql.NullInt64
-	AddedAt             sql.NullTime
-}
-
-func (r *playlistImportRow) scan(row *sql.Row) error {
-	err := row.Scan(
-		&r.ID,
-		&r.RoomID,
-		&r.AddedBy,
-		&r.NextPosition,
-		&r.Attempts,
-		&r.Exhausted,
-		&r.SongID,
-		&r.SourceType,
-		&r.SourceID,
-		&r.ProviderURL,
-		&r.PlaybackRestriction,
-		&r.Title,
-		&r.Artist,
-		&r.ThumbnailURL,
-		&r.Duration,
-		&r.AddedAt,
-	)
-	if err != nil {
-		return fmt.Errorf("error scanning playlist import row in scan: %w", err)
-	}
-
-	return nil
-}
-
-func (r *playlistImportRow) toPlaylistImport() *vibe.PlaylistImport {
-	return &vibe.PlaylistImport{
-		ID:           r.ID.String,
-		RoomID:       r.RoomID.String,
-		AddedBy:      r.AddedBy.String,
-		NextPosition: int(r.NextPosition.Int64),
-		Attempts:     int(r.Attempts.Int64),
-		Exhausted:    r.Exhausted.Bool,
-		Song: vibe.Song{
-			ID:                  r.SongID.String,
-			RoomID:              r.RoomID.String,
-			SourceType:          r.SourceType.String,
-			SourceID:            r.SourceID.String,
-			ProviderURL:         r.ProviderURL.String,
-			PlaybackRestriction: r.PlaybackRestriction.String,
-			Title:               r.Title.String,
-			Artist:              r.Artist.String,
-			ThumbnailURL:        r.ThumbnailURL.String,
-			Duration:            int(r.Duration.Int64),
-			AddedBySessionID:    r.AddedBy.String,
-			AddedAt:             r.AddedAt.Time,
-		},
-	}
-}
-
-func (c *Client) CompletePlaylistImportItem(
-	ctx context.Context,
-	importID string,
-	position int,
-) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "CompletePlaylistImportItem")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
-	defer cancel()
-
-	var updatedCount int
-	err := c.CompletePlaylistImportItemStatement.QueryRowContext(
-		cctx,
-		importID,
-		position,
-	).Scan(&updatedCount)
-	if err != nil {
-		return fmt.Errorf("error completing playlist import item in CompletePlaylistImportItem: %w", err)
-	}
-	if updatedCount != 1 {
-		return fmt.Errorf("error completing playlist import item: import item was not claimed")
-	}
 
 	return nil
 }
@@ -440,10 +442,6 @@ func (c *Client) DeletePlaylistImport(ctx context.Context, importID string) erro
 	return nil
 }
 
-const playlistImportDatabaseTimeout = 15 * time.Second
-
-const playlistImportMaxAttempts = 5
-
 // StartPlaylistPlayback returns a state only when the import starts idle playback.
 func (c *Client) StartPlaylistPlayback(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "StartPlaylistPlayback")
@@ -456,3 +454,8 @@ func (c *Client) StartPlaylistPlayback(ctx context.Context, roomID string) (*vib
 
 	return state, nil
 }
+
+const playlistImportMaxAttempts = 5
+
+// Imports can contain large batches, so retain their longer database deadline.
+const playlistImportDatabaseTimeout = 15 * time.Second
