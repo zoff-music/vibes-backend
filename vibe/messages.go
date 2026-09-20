@@ -31,6 +31,7 @@ type RoomMessage struct {
 	Name      string `json:"name"`
 	IsAdmin   bool   `json:"isAdmin"`
 	Kind      string `json:"kind"`
+	Activity  bool   `json:"activity,omitempty"`
 	Text      string `json:"text"`
 	CreatedAt int64  `json:"createdAt"`
 }

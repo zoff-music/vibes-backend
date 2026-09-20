@@ -7,9 +7,11 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -567,7 +569,7 @@ func GetPublicRooms(db vibe.PublicRoomFetcher) http.HandlerFunc {
 //	@Router		/api/v1/rooms/{id}/settings [patch]
 func UpdateRoomSettings(
 	db vibe.RoomSettingsUpdater,
-	notifier vibe.RoomEventNotifier,
+	notifier vibe.RoomBatchEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -586,7 +588,12 @@ func UpdateRoomSettings(
 			return
 		}
 
-		session, _ := helper.GetSessionFromContext(ctx)
+		session, ok := helper.GetSessionFromContext(ctx)
+		if !ok || session.UserID == "" {
+			handleError(w, fmt.Errorf("error updating room settings: missing session"), http.StatusUnauthorized, false)
+			return
+		}
+
 		room, err := db.GetRoom(ctx, roomID, session.UserID)
 		if err != nil {
 			handleError(
@@ -607,6 +614,14 @@ func UpdateRoomSettings(
 			)
 			return
 		}
+
+		if room.HasPassword && !room.IsAdmin {
+			handleError(w, fmt.Errorf("error updating room settings: admin required"), http.StatusForbidden, false)
+			return
+		}
+
+		previousSettings := room.Settings
+		previousMode := room.Mode
 
 		if req.Settings != nil && !req.Settings.IsEmpty() {
 			room.Settings = *req.Settings
@@ -668,11 +683,11 @@ func UpdateRoomSettings(
 			return
 		}
 
-		err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+		err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, []vibe.RoomEvent{{
 			Type:    vibe.SettingsUpdate,
 			Payload: body,
 			Origin:  session.EventOrigin,
-		})
+		}})
 		if err != nil {
 			handleError(
 				w,
@@ -686,6 +701,141 @@ func UpdateRoomSettings(
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
+
+		changes := []string{}
+		if req.Settings != nil && previousSettings.RemoveOnPlay != updated.Settings.RemoveOnPlay &&
+			room.Settings.RemoveOnPlay == updated.Settings.RemoveOnPlay {
+			value := "OFF"
+			if updated.Settings.RemoveOnPlay {
+				value = "ON"
+			}
+
+			changes = append(changes, "set REMOVE AFTER PLAY to "+value)
+		}
+
+		if req.Settings != nil && previousSettings.OnlyAdminAddSongs != updated.Settings.OnlyAdminAddSongs &&
+			room.Settings.OnlyAdminAddSongs == updated.Settings.OnlyAdminAddSongs {
+			value := "OFF"
+			if updated.Settings.OnlyAdminAddSongs {
+				value = "ON"
+			}
+
+			changes = append(changes, "set ADMINS ONLY ADD to "+value)
+		}
+
+		if req.Settings != nil && previousSettings.SkipAllowed != updated.Settings.SkipAllowed &&
+			room.Settings.SkipAllowed == updated.Settings.SkipAllowed {
+			value := "OFF"
+			if !updated.Settings.SkipAllowed {
+				value = "ON"
+			}
+
+			changes = append(changes, "set ADMINS ONLY SKIP to "+value)
+		}
+
+		if req.Settings != nil && previousSettings.DemocraticSkip != updated.Settings.DemocraticSkip &&
+			room.Settings.DemocraticSkip == updated.Settings.DemocraticSkip {
+			value := "OFF"
+			if updated.Settings.DemocraticSkip {
+				value = "ON"
+			}
+
+			changes = append(changes, "set VOTE TO SKIP to "+value)
+		}
+
+		if req.Settings != nil && previousSettings.AllowDuplicates != updated.Settings.AllowDuplicates &&
+			room.Settings.AllowDuplicates == updated.Settings.AllowDuplicates {
+			value := "OFF"
+			if updated.Settings.AllowDuplicates {
+				value = "ON"
+			}
+
+			changes = append(changes, "set ALLOW DUPLICATES to "+value)
+		}
+
+		if req.Settings != nil && previousSettings.Public != updated.Settings.Public &&
+			room.Settings.Public == updated.Settings.Public {
+			value := "OFF"
+			if updated.Settings.Public {
+				value = "ON"
+			}
+
+			changes = append(changes, "set PUBLIC to "+value)
+		}
+
+		if req.Settings != nil && previousSettings.PlaylistImport != updated.Settings.PlaylistImport &&
+			room.Settings.PlaylistImport == updated.Settings.PlaylistImport {
+			value := "OFF"
+			if updated.Settings.PlaylistImport {
+				value = "ON"
+			}
+
+			changes = append(changes, "set PLAYLIST IMPORT to "+value)
+		}
+
+		if req.Settings != nil && previousSettings.SkipVoteThreshold != updated.Settings.SkipVoteThreshold &&
+			room.Settings.SkipVoteThreshold == updated.Settings.SkipVoteThreshold {
+			changes = append(changes, fmt.Sprintf("set SKIP VOTE THRESHOLD to %g%%", updated.Settings.SkipVoteThreshold*100))
+		}
+
+		if req.Settings != nil && previousSettings.MaxContinuousAdds != updated.Settings.MaxContinuousAdds &&
+			room.Settings.MaxContinuousAdds == updated.Settings.MaxContinuousAdds {
+			changes = append(changes, fmt.Sprintf("set MAX CONTINUOUS ADDS to %d", updated.Settings.MaxContinuousAdds))
+		}
+
+		previousSources := slices.Clone(previousSettings.EnabledSources)
+		updatedSources := slices.Clone(updated.Settings.EnabledSources)
+		slices.Sort(previousSources)
+		slices.Sort(updatedSources)
+		if req.Settings != nil && !slices.Equal(previousSources, updatedSources) {
+			value := strings.Join(updatedSources, ", ")
+			if value == "" {
+				value = "none"
+			}
+
+			changes = append(changes, "set MUSIC PROVIDERS to "+value)
+		}
+
+		if req.Mode != "" && previousMode != updated.Mode && req.Mode == updated.Mode {
+			changes = append(changes, "set ROOM MODE to "+strings.ToUpper(updated.Mode))
+		}
+
+		if len(changes) == 0 {
+			return
+		}
+
+		profile, err := db.GetOrCreateSessionProfile(ctx, session.UserID)
+		if err != nil {
+			log.Printf("error fetching room settings chat author: %v", err)
+			return
+		}
+
+		events := []vibe.RoomEvent{}
+		for _, change := range changes {
+			message := vibe.RoomMessage{
+				ID:        uuid.NewString(),
+				UserID:    session.UserID,
+				Name:      profile.Name,
+				IsAdmin:   updated.IsAdmin,
+				Kind:      vibe.MessageKindChat,
+				Activity:  true,
+				Text:      change,
+				CreatedAt: time.Now().UnixMilli(),
+			}
+
+			payload, err := json.Marshal(message)
+			if err != nil {
+				log.Printf("error marshaling room settings chat activity: %v", err)
+				return
+			}
+
+			events = append(events, vibe.RoomEvent{Type: vibe.MessageEvent, Payload: payload})
+		}
+
+		err = notifier.NotifyRoomUpdates(context.WithoutCancel(ctx), roomID, events)
+		if err != nil {
+			log.Printf("error publishing room settings chat activity: %v", err)
+		}
 	}
 }
 
@@ -822,6 +972,41 @@ func CreateSession(
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
+
+		if !isFirstTimeSetup {
+			return
+		}
+
+		profile, err := db.GetOrCreateSessionProfile(ctx, session.UserID)
+		if err != nil {
+			log.Printf("error fetching room password chat author: %v", err)
+			return
+		}
+
+		message := vibe.RoomMessage{
+			ID:        uuid.NewString(),
+			UserID:    session.UserID,
+			Name:      profile.Name,
+			IsAdmin:   true,
+			Kind:      vibe.MessageKindAdded,
+			Activity:  true,
+			Text:      "a password to the room",
+			CreatedAt: time.Now().UnixMilli(),
+		}
+
+		payload, err := json.Marshal(message)
+		if err != nil {
+			log.Printf("error marshaling room password chat activity: %v", err)
+			return
+		}
+
+		err = notifier.NotifyRoomUpdate(context.WithoutCancel(ctx), roomID, vibe.RoomEvent{
+			Type:    vibe.MessageEvent,
+			Payload: payload,
+		})
+		if err != nil {
+			log.Printf("error publishing room password chat activity: %v", err)
+		}
 	}
 }
 
