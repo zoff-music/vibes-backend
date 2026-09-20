@@ -76,6 +76,7 @@ func (c *Client) prepareSearchPublicRoomsStmt() error {
 	}
 
 	c.SearchPublicRoomsStatement = stmt
+
 	return nil
 }
 
@@ -103,6 +104,7 @@ func (c *Client) SearchPublicRooms(
 	if err != nil {
 		return nil, fmt.Errorf("error searching public rooms: %w", err)
 	}
+
 	defer rows.Close()
 
 	result := &vibe.PublicRoomResult{
@@ -110,6 +112,7 @@ func (c *Client) SearchPublicRooms(
 		From:  search.From,
 		To:    search.From,
 	}
+
 	for rows.Next() {
 		var row publicRoomResultRow
 		err = row.scan(rows)
@@ -132,6 +135,7 @@ func (c *Client) SearchPublicRooms(
 	if result.Count > 0 {
 		result.To = result.From + result.Count - 1
 	}
+
 	return result, nil
 }
 
@@ -145,5 +149,6 @@ func (r *publicRoomResultRow) scan(rows *sql.Rows) error {
 	if err != nil {
 		return fmt.Errorf("error scanning public room result row: %w", err)
 	}
+
 	return nil
 }

@@ -27,19 +27,13 @@ type CreateMessageRequest struct {
 
 func (r CreateMessageRequest) Validate() bool {
 	length := utf8.RuneCountInString(strings.TrimSpace(r.Text))
+
 	return length > 0 && length <= MessageMaxLength
 }
 
 type MessageAuthorFetcher interface {
 	RoomFetcher
 	SessionProfileFetcherCreator
-}
-
-type SessionProfileRoomUpdater interface {
-	SessionProfileUpdater
-	SessionProfileFetcherCreator
-	RoomFetcher
-	GetSessionRooms(ctx context.Context, userID string) ([]string, error)
 }
 
 type MessageUsageCreator interface {

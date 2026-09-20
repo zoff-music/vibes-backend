@@ -90,7 +90,9 @@ func (r RoomNameReservationRequest) Validate() bool {
 	if r.Name == "" {
 		return true
 	}
+
 	length := utf8.RuneCountInString(strings.TrimSpace(r.Name))
+
 	return length > 0 && length <= RoomNameMaxLength
 }
 
@@ -146,6 +148,7 @@ type CreateRoomRequest struct {
 
 func (r CreateRoomRequest) Validate() bool {
 	length := utf8.RuneCountInString(strings.TrimSpace(r.Name))
+
 	return length > 0 && length <= RoomNameMaxLength
 }
 

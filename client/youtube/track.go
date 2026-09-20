@@ -142,6 +142,7 @@ func (v videoItem) playbackRestriction() string {
 	if !v.Status.Embeddable {
 		return vibe.PlaybackRestrictionEmbedding
 	}
+
 	if v.ContentDetails.ContentRating.YouTubeRating == youtubeAgeRestricted {
 		return vibe.PlaybackRestrictionAge
 	}
@@ -156,6 +157,7 @@ func (v videoItem) playbackRestriction() string {
 			return vibe.PlaybackRestrictionRegion
 		}
 	}
+
 	return ""
 }
 

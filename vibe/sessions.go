@@ -28,6 +28,13 @@ type SessionProfileUpdater interface {
 	UpdateSessionProfile(ctx context.Context, id string, name string) (*SessionProfile, error)
 }
 
+type SessionProfileRoomUpdater interface {
+	SessionProfileUpdater
+	SessionProfileFetcherCreator
+	RoomFetcher
+	GetSessionRooms(ctx context.Context, userID string) ([]string, error)
+}
+
 // CreateSessionRequest is the request payload for creating a session.
 type CreateSessionRequest struct {
 	Nickname string `json:"nickname,omitempty"`
