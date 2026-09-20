@@ -4,6 +4,15 @@ Go API and background processing for [Zoff](https://zoff.me), a free shared
 music queue for listening together. Listeners join without creating an account;
 each room has its own settings and optional administrator password.
 
+## Architecture Overview
+
+[![Zoff application architecture](docs/architecture.svg)](docs/ARCHITECTURE.md)
+
+See the [full architecture](docs/ARCHITECTURE.md) for application boundaries,
+storage, permissions, event delivery, and deployment lifecycle. The
+[application flow diagrams](docs/FLOWS.md) walk through joining rooms, chat,
+playlist imports, generation, playback, and remote control.
+
 ## Features
 
 - Shared YouTube and SoundCloud queues, song voting, playlist imports, and
