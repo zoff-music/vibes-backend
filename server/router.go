@@ -124,7 +124,8 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 	rm := middleware.RateLimitMiddleware{
 		Enabled: s.Config.RateLimitEnabled,
 		RequiredRoutes: map[string]bool{
-			"AdminLogin": true,
+			"AdminLogin":     true,
+			"CreateMessages": true,
 		},
 		Checker: s.Redis,
 		Policies: map[string]vibe.RateLimitPolicy{
@@ -156,7 +157,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"AddPlaylist":           {Rate: time.Minute, Limit: 6},
 			"RemoveSong":            {Rate: time.Minute, Limit: 60},
 			"VoteSong":              {Rate: time.Minute, Limit: 120},
-			"CreateMessages":        {Rate: time.Minute, Limit: 20},
+			"CreateMessages":        {Rate: time.Second, Limit: 1},
 			"Messages":              {Rate: time.Minute, Limit: 30},
 			"RoomEvents":            {Rate: time.Minute, Limit: 30},
 			"RoomEventsV2":          {Rate: time.Minute, Limit: 30},
