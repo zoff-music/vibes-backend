@@ -27,12 +27,14 @@ func (c *Client) CheckRateLimit(ctx context.Context, request vibe.RateLimitReque
 	identityKey := c.getKeyWithPrefix(fmt.Sprintf("ratelimit:identity:{%s}:%s", request.IdentityHash, request.RouteName))
 	ipKey := c.getKeyWithPrefix(fmt.Sprintf("ratelimit:ip:{%s}:%s", request.IPIdentityHash, request.RouteName))
 
-	identityCount, err := getRateLimitCount(cctx, connection, identityKey)
-	if err != nil {
-		return nil, fmt.Errorf("error counting identity rate limits: %w", err)
-	}
-	if identityCount >= int64(request.Limit) {
-		return &vibe.RateLimitResult{RetryAfter: request.Rate}, nil
+	if request.Limit != 1 {
+		identityCount, err := getRateLimitCount(cctx, connection, identityKey)
+		if err != nil {
+			return nil, fmt.Errorf("error counting identity rate limits: %w", err)
+		}
+		if identityCount >= int64(request.Limit) {
+			return &vibe.RateLimitResult{RetryAfter: request.Rate}, nil
+		}
 	}
 
 	ipCount, err := getRateLimitCount(cctx, connection, ipKey)
@@ -44,9 +46,21 @@ func (c *Client) CheckRateLimit(ctx context.Context, request vibe.RateLimitReque
 	}
 
 	member := uuid.NewString()
-	err = setRateLimit(cctx, connection, identityKey, member, request.Rate)
-	if err != nil {
-		return nil, fmt.Errorf("error setting identity rate limit: %w", err)
+	if request.Limit == 1 {
+		// Claim a single expiring field atomically so concurrent requests cannot both pass.
+		expirationMilliseconds := max(request.Rate.Milliseconds(), int64(1))
+		claimed, err := redis.Int(redis.DoContext(connection, cctx, "HSETEX", identityKey, "FNX", "PX", expirationMilliseconds, "FIELDS", 1, "request", 1))
+		if err != nil {
+			return nil, fmt.Errorf("error claiming identity rate limit: %w", err)
+		}
+		if claimed == 0 {
+			return &vibe.RateLimitResult{RetryAfter: request.Rate}, nil
+		}
+	} else {
+		err = setRateLimit(cctx, connection, identityKey, member, request.Rate)
+		if err != nil {
+			return nil, fmt.Errorf("error setting identity rate limit: %w", err)
+		}
 	}
 	err = setRateLimit(cctx, connection, ipKey, member, request.Rate)
 	if err != nil {
