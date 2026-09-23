@@ -22,8 +22,8 @@ import (
 //	@Produce	json
 //	@Param		id	path		string	true	"Playlist ID"
 //	@Success	200	{object}	vibe.MusicPlaylist
-//	@Failure	400	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/youtube/playlists/{id} [get]
 func GetMusicPlaylist(
 	fetcher vibe.MusicPlaylistFetcher,
@@ -94,8 +94,8 @@ func GetMusicPlaylist(
 //	@Produce	json
 //	@Param		url	query		string	true	"SoundCloud playlist URL"
 //	@Success	200	{object}	vibe.MusicPlaylist
-//	@Failure	400	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/soundcloud/playlists [get]
 func ResolveSoundCloudPlaylist(
 	resolver vibe.MusicPlaylistResolver,
@@ -150,11 +150,11 @@ func ResolveSoundCloudPlaylist(
 //	@Param		id		path		string					true	"Room ID"
 //	@Param		request	body		vibe.AddPlaylistRequest	true	"Playlist tracks"
 //	@Success	202		{object}	vibe.AddPlaylistResult
-//	@Failure	400		{object}	map[string]string
-//	@Failure	401		{object}	map[string]string
-//	@Failure	403		{object}	map[string]string
-//	@Failure	404		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	403		{object}	vibe.ErrorResponse
+//	@Failure	404		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/playlists [post]
 func AddPlaylist(
 	db vibe.PlaylistImportRoomCreator,

@@ -28,9 +28,9 @@ import (
 //	@Produce		json
 //	@Param			request	body		vibe.CreateRoomRequest	true	"Room creation payload"
 //	@Success		201		{object}	vibe.Room
-//	@Failure		400		{object}	map[string]string
-//	@Failure		409		{object}	map[string]string
-//	@Failure		500		{object}	map[string]string
+//	@Failure		400		{object}	vibe.ErrorResponse
+//	@Failure		409		{object}	vibe.ErrorResponse
+//	@Failure		500		{object}	vibe.ErrorResponse
 //	@Router			/api/v1/rooms [post]
 func CreateRoom(
 	db vibe.RoomCreatorExistenceChecker,
@@ -234,9 +234,10 @@ func CreateRoom(
 //	@Produce		json
 //	@Param			request	body		vibe.RoomNameReservationRequest	true	"Room name reservation request"
 //	@Success		201		{object}	vibe.RoomNameReservation
-//	@Failure		400		{object}	map[string]string
-//	@Failure		409		{object}	map[string]string
-//	@Failure		500		{object}	map[string]string
+//	@Failure		400		{object}	vibe.ErrorResponse
+//	@Failure		409		{object}	vibe.ErrorResponse
+//	@Failure		500		{object}	vibe.ErrorResponse
+//	@Failure	401	{object}	vibe.ErrorResponse
 //	@Router			/api/v1/rooms/reservations [post]
 func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -356,7 +357,9 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 //	@Tags			rooms
 //	@Produce		json
 //	@Success		200	{object}	vibe.RoomNameReservation
-//	@Failure		500	{object}	map[string]string
+//	@Failure		500	{object}	vibe.ErrorResponse
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	409	{object}	vibe.ErrorResponse
 //	@Router			/api/v1/rooms/suggestions [get]
 func SuggestRoomName(db vibe.RoomNameSuggester) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -428,7 +431,7 @@ func SuggestRoomName(db vibe.RoomNameSuggester) http.HandlerFunc {
 //	@Param			id	path	string	true	"Room ID"
 //	@Success		200
 //	@Failure		404
-//	@Failure		500		{object}	map[string]string
+//	@Failure		500
 //	@Router			/api/v1/rooms/{id} [head]
 func RoomExists(db vibe.RoomExistenceChecker) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -463,8 +466,8 @@ func RoomExists(db vibe.RoomExistenceChecker) http.HandlerFunc {
 //	@Produce	json
 //	@Param		id	path		string	true	"Room ID"
 //	@Success	200	{object}	vibe.Room
-//	@Failure	404	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	404	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id} [get]
 func GetRoom(
 	db vibe.RoomFetcher,
@@ -563,9 +566,11 @@ func GetPublicRooms(db vibe.PublicRoomFetcher) http.HandlerFunc {
 //	@Param		id		path		string					true	"Room ID"
 //	@Param		request	body		vibe.UpdateRoomRequest	true	"Room update payload"
 //	@Success	200		{object}	vibe.Room
-//	@Failure	400		{object}	map[string]string
-//	@Failure	404		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	404		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	403	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/settings [patch]
 func UpdateRoomSettings(
 	db vibe.RoomSettingsUpdater,
@@ -847,9 +852,10 @@ func UpdateRoomSettings(
 //	@Param		id		path		string						true	"Room ID"
 //	@Param		request	body		vibe.CreateSessionRequest	true	"Session payload"
 //	@Success	200		{object}	vibe.SessionResponse
-//	@Failure	401		{object}	map[string]string
-//	@Failure	403		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	403		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
+//	@Failure	400	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/sessions [post]
 func CreateSession(
 	db vibe.AdminSessionCreator,
@@ -1016,8 +1022,8 @@ func CreateSession(
 //	@Produce	json
 //	@Param		id	path		string	true	"Room ID"
 //	@Success	200	{object}	vibe.SessionResponse
-//	@Failure	401	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/sessions [delete]
 func DeleteRoomAdminSession(db vibe.RoomAdminSessionDeleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

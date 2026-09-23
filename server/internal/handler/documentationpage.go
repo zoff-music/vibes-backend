@@ -604,8 +604,8 @@ const documentationJS = `
       const spec = await response.json();
       if (!ui || isAdmin !== adminVisible) {
         ui = SwaggerUIBundle({
-          spec, dom_id: '#swagger-ui', deepLinking: true, docExpansion: 'full',
-          filter: true, tagsSorter: 'alpha', operationsSorter: 'alpha', displayRequestDuration: true, defaultModelsExpandDepth: 2,
+          spec, dom_id: '#swagger-ui', deepLinking: true, docExpansion: 'list',
+          filter: true, tagsSorter: 'alpha', operationsSorter: 'alpha', displayRequestDuration: true, defaultModelsExpandDepth: 1,
           validatorUrl: null, presets: [SwaggerUIBundle.presets.apis], layout: 'BaseLayout',
           requestInterceptor: (request) => { request.credentials = 'same-origin'; return request; },
           responseInterceptor: (response) => {

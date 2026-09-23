@@ -22,9 +22,9 @@ import (
 //	@Produce	json
 //	@Param		q	query		string	true	"Search query"
 //	@Success	200	{array}		vibe.MusicTrack
-//	@Failure	400	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
-//	@Failure	503	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
+//	@Failure	503	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/youtube/search [get]
 func SearchMusic(
 	ms vibe.MusicSearcher,
@@ -186,8 +186,8 @@ func SearchMusic(
 //	@Produce	json
 //	@Param		q	query		string	true	"Search query"
 //	@Success	200	{array}		vibe.MusicTrack
-//	@Failure	400	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/soundcloud/search [get]
 func SearchSoundCloud(
 	ms vibe.MusicSearcher,

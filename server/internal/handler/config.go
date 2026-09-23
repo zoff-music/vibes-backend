@@ -13,7 +13,7 @@ import (
 //	@Tags		config
 //	@Produce	json
 //	@Success	200	{array}		string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/providers [get]
 func GetProviders(cfg *config.Config) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

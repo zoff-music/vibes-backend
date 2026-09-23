@@ -24,9 +24,9 @@ import (
 //	@Produce	json
 //	@Param		id	path		string	true	"Room ID"
 //	@Success	200	{object}	vibe.SkipSongResult
-//	@Failure	401	{object}	map[string]string
-//	@Failure	403	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	403	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/skips [post]
 func SkipSong(
 	db vibe.RoomSkipper,

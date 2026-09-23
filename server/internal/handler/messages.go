@@ -111,11 +111,14 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 
 // Messages streams retained chat without registering a playback listener.
 // @Summary Subscribe to room messages and activity
+// @Description Returns an SSE stream. `message` and `settings_activity` events carry a RoomMessage as their JSON data payload; `event_cursor` carries {"id":"1700000000000-0"}. Frames contain an id, event, and data line separated from the next frame by a blank line.
+// @Description Reconnect with Last-Event-ID or lastEventId to resume retained messages. Comment-only connected and heartbeat frames have no JSON payload.
 // @Tags messages
 // @Produce text/event-stream
+// @Param Last-Event-ID header string false "Last received stream cursor"
 // @Param id path string true "Room ID"
 // @Param lastEventId query string false "Last received stream cursor"
-// @Success 200 {string} string
+// @Success 200 {string} string "SSE frames with event-specific JSON data; see the stream description"
 // @Failure 401,404,500 {object} vibe.ErrorResponse
 // @Router /api/v1/rooms/{id}/messages [get]
 func Messages(db vibe.RoomFetcher, events vibe.ReplaySubscriber) http.HandlerFunc {

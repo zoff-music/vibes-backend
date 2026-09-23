@@ -23,10 +23,10 @@ import (
 //	@Produce	json
 //	@Param		request	body		vibe.AdminLoginRequest	true	"Admin login payload"
 //	@Success	200		{object}	vibe.AdminSessionResponse
-//	@Failure	400		{object}	map[string]string
-//	@Failure	401		{object}	map[string]string
-//	@Failure	403		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	403		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/sessions [post]
 func AdminLogin(
 	fetcher vibe.AdminUserByUsernameFetcher,
@@ -181,7 +181,8 @@ func AdminLogin(
 //	@Tags		admin
 //	@Produce	json
 //	@Success	200	{object}	vibe.AdminSessionResponse
-//	@Failure	401	{object}	map[string]string
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/sessions [get]
 func AdminSession() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -224,7 +225,7 @@ func AdminSession() http.HandlerFunc {
 //	@Tags		admin
 //	@Produce	json
 //	@Success	200	{object}	vibe.AdminSessionResponse
-//	@Failure	500	{object}	map[string]string
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/sessions [delete]
 func AdminLogout() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -271,8 +272,8 @@ func AdminLogout() http.HandlerFunc {
 //	@Param		from	query		int		false	"Zero-based first row"
 //	@Param		to		query		int		false	"Zero-based last row"
 //	@Success	200	{object}	vibe.AdminRoomResult
-//	@Failure	400	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/rooms [get]
 func AdminRooms(
 	db vibe.AdminRoomSearcher,
@@ -414,7 +415,7 @@ func AdminRooms(
 //	@Tags		admin
 //	@Produce	json
 //	@Success	200	{object}	vibe.AdminSearchUsage
-//	@Failure	500	{object}	map[string]string
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/searches/usage [get]
 func AdminSearchUsage(
 	db vibe.AdminSearchUsageLister,
@@ -479,9 +480,9 @@ func AdminSearchUsage(
 //	@Param		id		path		string						true	"Room ID"
 //	@Param		request	body		vibe.AdminUpdateRoomRequest	true	"Room update payload"
 //	@Success	200		{array}		vibe.AdminRoomSummary
-//	@Failure	400		{object}	map[string]string
-//	@Failure	404		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	404		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/rooms/{id} [patch]
 func AdminUpdateRoom(
 	db vibe.AdminRoomUpdaterLister,
@@ -591,9 +592,9 @@ func AdminUpdateRoom(
 //	@Tags		admin
 //	@Param		id	path		string	true	"Room ID"
 //	@Success	204
-//	@Failure	400	{object}	map[string]string
-//	@Failure	404	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	404	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/rooms/{id} [delete]
 func AdminDeleteRoom(
 	db vibe.AdminRoomDeleterLister,
@@ -671,11 +672,15 @@ func AdminDeleteRoom(
 // AdminEvents handles GET /api/v1/admin/events (SSE)
 //
 //	@Summary		Subscribe to room administration events
+//
+// @Description Frames contain an `event` name and a JSON `data` payload, followed by a blank line. `connected` carries {"time":1700000000000}; `admin_rooms_update` carries an array of AdminRoomSummary objects. Heartbeats are SSE comments.
+// @Description This is an ongoing text/event-stream response, not a single JSON document.
+//
 //	@Description	Streams the initial room list and subsequent room summary updates to authenticated administrators.
 //	@Tags		admin
 //	@Produce	text/event-stream
-//	@Success	200	{string}	string
-//	@Failure	500	{object}	map[string]string
+//	@Success	200	{string}	string "SSE frames with event-specific JSON data; see the stream description"
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/events [get]
 func AdminEvents(
 	subscriber vibe.Subscriber,

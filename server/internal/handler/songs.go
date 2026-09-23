@@ -24,7 +24,7 @@ import (
 //	@Produce	json
 //	@Param		id	path		string	true	"Room ID"
 //	@Success	200	{array}		vibe.Song
-//	@Failure	500	{object}	map[string]string
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/songs [get]
 func GetSongs(
 	db vibe.SongsFetcher,
@@ -72,11 +72,11 @@ func GetSongs(
 //	@Param		request	body		vibe.AddSongRequest	true	"Song payload"
 //	@Success	200		{object}	vibe.AddSongResult
 //	@Success	201		{object}	vibe.AddSongResult
-//	@Failure	400		{object}	map[string]string
-//	@Failure	401		{object}	map[string]string
-//	@Failure	403		{object}	map[string]string
-//	@Failure	404		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	403		{object}	vibe.ErrorResponse
+//	@Failure	404		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/songs [post]
 func AddSong(
 	db vibe.SongQueueAdder,
@@ -483,10 +483,10 @@ func AddSong(
 //	@Param		id		path	string	true	"Room ID"
 //	@Param		songId	path	string	true	"Song ID"
 //	@Success	204
-//	@Failure	401	{object}	map[string]string
-//	@Failure	403	{object}	map[string]string
-//	@Failure	404	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	403	{object}	vibe.ErrorResponse
+//	@Failure	404	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/songs/{songId} [delete]
 func RemoveSong(
 	db vibe.SongQueueRemover,
@@ -648,9 +648,9 @@ func RemoveSong(
 //	@Param		id		path	string	true	"Room ID"
 //	@Param		songId	path	string	true	"Song ID"
 //	@Success	204
-//	@Failure	401	{object}	map[string]string
-//	@Failure	409	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	409	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/songs/{songId} [post]
 func VoteSong(
 	db vibe.SongQueueVoter,
