@@ -11,7 +11,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -41,14 +40,9 @@ func SkipSong(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
-					Err: fmt.Errorf("error missing skip session"),
-					ResponseBody: client.ErrorCodeResponseBody{
-						Namespace: "vibes-backend",
-						Error:     "skip_session_required",
-						Message:   "Rejoin the room before skipping songs.",
-						Propagate: true,
-					},
+				vibe.PublicError{
+					Err:        fmt.Errorf("error missing skip session"),
+					Kind:       vibe.PublicSkipSessionRequired,
 					StatusCode: http.StatusUnauthorized,
 				},
 				http.StatusUnauthorized,
@@ -70,14 +64,9 @@ func SkipSong(
 			if errors.As(err, &errHostMode) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
-						Err: fmt.Errorf("error host mode skip permission: %w", err),
-						ResponseBody: client.ErrorCodeResponseBody{
-							Namespace: "vibes-backend",
-							Error:     "skip_host_required",
-							Message:   "Only the host or a room admin can skip songs in host mode.",
-							Propagate: true,
-						},
+					vibe.PublicError{
+						Err:        fmt.Errorf("error host mode skip permission: %w", err),
+						Kind:       vibe.PublicSkipHostRequired,
 						StatusCode: http.StatusForbidden,
 					},
 					http.StatusForbidden,
@@ -90,14 +79,9 @@ func SkipSong(
 			if errors.As(err, &errDisabled) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
-						Err: fmt.Errorf("error skipping requires room admin: %w", err),
-						ResponseBody: client.ErrorCodeResponseBody{
-							Namespace: "vibes-backend",
-							Error:     "skip_room_admin_required",
-							Message:   "Only room admins can skip songs here. Log in as a room admin in room settings.",
-							Propagate: true,
-						},
+					vibe.PublicError{
+						Err:        fmt.Errorf("error skipping requires room admin: %w", err),
+						Kind:       vibe.PublicSkipRoomAdminRequired,
 						StatusCode: http.StatusForbidden,
 					},
 					http.StatusForbidden,

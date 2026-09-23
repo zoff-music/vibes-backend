@@ -11,7 +11,6 @@ import (
 	"testing"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -125,7 +124,7 @@ func TestAddSongRejectionMessages(t *testing.T) {
 				t.Fatal("unexpected song insertion")
 			}
 			if tt.code != "" {
-				var result client.ErrorCodeResponseBody
+				var result vibe.PublicErrorResponse
 				err = json.Unmarshal(response.Body.Bytes(), &result)
 				if err != nil {
 					t.Fatal(err)

@@ -465,7 +465,7 @@ func (c *Client) FailRoomGeneration(
 		cctx,
 		roomID,
 		c.roomGenerationMaxAttempts,
-		reason,
+		vibe.PublicGenerationError(reason),
 	)
 	if err != nil {
 		return fmt.Errorf("error failing room generation in FailRoomGeneration: %w", err)

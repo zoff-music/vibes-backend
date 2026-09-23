@@ -1,7 +1,6 @@
 package client
 
 import (
-	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -46,44 +45,6 @@ func TestRequestBytesSetsApplicationUserAgent(t *testing.T) {
 			}
 			if receivedUserAgent != tt.expectedUserAgent {
 				t.Fatalf("expected user agent %q, got %q", tt.expectedUserAgent, receivedUserAgent)
-			}
-		})
-	}
-}
-
-func TestErrorCodeWrapperUsesApplicationNamespace(t *testing.T) {
-	tests := []struct {
-		name              string
-		wrapper           ErrorCodeWrapper
-		expectedNamespace string
-	}{
-		{
-			name: "uses the vibes backend namespace by default",
-			wrapper: ErrorCodeWrapper{
-				Err: fmt.Errorf("error downstream request failed"),
-				ResponseBody: ErrorCodeResponseBody{
-					Error:   "downstream_error",
-					Message: "request failed",
-				},
-			},
-			expectedNamespace: applicationName,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			body, err := tt.wrapper.GetResponseBody()
-			if err != nil {
-				t.Fatalf("expected error response to marshal: %v", err)
-			}
-
-			var response ErrorCodeResponseBody
-			err = json.Unmarshal(body, &response)
-			if err != nil {
-				t.Fatalf("expected error response to unmarshal: %v", err)
-			}
-			if response.Namespace != tt.expectedNamespace {
-				t.Fatalf("expected namespace %q, got %q", tt.expectedNamespace, response.Namespace)
 			}
 		})
 	}
@@ -211,6 +172,11 @@ func TestRequestBytesOmitsHTTPErrorResponseBody(t *testing.T) {
 			responseBody:   `{"message":"response-body-secret"}`,
 			expectedAbsent: []string{"response-body-secret"},
 		},
+		{
+			name:           "upstream cannot opt into public error propagation",
+			responseBody:   `{"namespace":"database-secret","error":"sql-secret","message":"password-secret","propagate":true}`,
+			expectedAbsent: []string{"database-secret", "sql-secret", "password-secret"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -237,6 +203,10 @@ func TestRequestBytesOmitsHTTPErrorResponseBody(t *testing.T) {
 			var statusErr HTTPStatusCodeError
 			if !errors.As(err, &statusErr) {
 				t.Fatalf("expected HTTP status error, got %T", err)
+			}
+			_, directStatusError := err.(HTTPStatusCodeError)
+			if !directStatusError {
+				t.Fatalf("upstream returned a propagating wrapper: %T", err)
 			}
 			for _, secret := range append(tt.expectedAbsent, "status-query-secret") {
 				if strings.Contains(err.Error(), secret) || strings.Contains(statusErr.URL, secret) || strings.Contains(statusErr.Message, secret) {
