@@ -19,8 +19,8 @@ import (
 //	@Tags		admin
 //	@Produce	json
 //	@Success	200	{array}		vibe.AdminUser
-//	@Failure	401	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/users [get]
 func AdminUsers(lister vibe.AdminUserLister) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -60,10 +60,10 @@ func AdminUsers(lister vibe.AdminUserLister) http.HandlerFunc {
 //	@Produce	json
 //	@Param		request	body		vibe.AdminCreateUserRequest	true	"Admin user"
 //	@Success	201		{object}	vibe.AdminUser
-//	@Failure	400		{object}	map[string]string
-//	@Failure	401		{object}	map[string]string
-//	@Failure	409		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	409		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/users [post]
 func AdminCreateUser(
 	creator vibe.AdminUserCreator,
@@ -169,11 +169,11 @@ func AdminCreateUser(
 //	@Param		id		path	string						true	"Admin user ID"
 //	@Param		request	body	vibe.AdminUpdateUserRequest	true	"New password"
 //	@Success	204
-//	@Failure	400	{object}	map[string]string
-//	@Failure	401	{object}	map[string]string
-//	@Failure	403	{object}	map[string]string
-//	@Failure	404	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	403	{object}	vibe.ErrorResponse
+//	@Failure	404	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/users/{id} [patch]
 func AdminUpdateUser(
 	updater vibe.AdminUserPasswordUpdater,
@@ -282,11 +282,11 @@ func AdminUpdateUser(
 //	@Tags		admin
 //	@Param		id	path	string	true	"Admin user ID"
 //	@Success	204
-//	@Failure	400	{object}	map[string]string
-//	@Failure	401	{object}	map[string]string
-//	@Failure	403	{object}	map[string]string
-//	@Failure	404	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	403	{object}	vibe.ErrorResponse
+//	@Failure	404	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/users/{id} [delete]
 func AdminDeleteUser(deleter vibe.AdminUserDeleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

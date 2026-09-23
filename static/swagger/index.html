@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark light" />
+    <title>Zoff · API reference</title>
+    <link rel="icon" href="https://zoff.me/logo.png" />
+    <link rel="stylesheet" href="/api/swagger/swagger-ui.css" />
+    <link rel="stylesheet" href="/api/swagger/theme.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#api-reference">Skip to API reference</a>
+    <header class="site-header shell">
+      <a href="/" class="brand" aria-label="Zoff home"
+        ><img
+          src="https://zoff.me/logo.png"
+          alt=""
+          width="64"
+          height="64"
+        /><span class="brand-wordmark"
+          ><strong lang="ja" aria-hidden="true">ゾフ</strong
+          ><small>Shared rooms</small></span
+        ></a
+      >
+      <nav aria-label="Product navigation">
+        <a href="/explore/rooms">Rooms</a><a href="/#explore-zoff">Explore</a
+        ><a href="/discovery/apps">Apps</a
+        ><button
+          id="theme"
+          type="button"
+          aria-label="Switch color theme"
+          title="Switch color theme"
+        >
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path
+              d="M8 2h8v2h3v3h3v10h-3v3h-3v2H8v-2H5v-3H2V7h3V4h3zm4 4H8v2H6v8h2v2h4z"
+            />
+          </svg>
+        </button>
+      </nav>
+    </header>
+    <main class="shell" id="api-reference">
+      <section class="intro" aria-labelledby="page-title">
+        <div>
+          <p class="eyebrow"><span></span> BUILT FOR SHARED LISTENING</p>
+          <h1 id="page-title">
+            Good music.<br /><span>Great integrations.</span>
+          </h1>
+          <p class="lede">
+            Build your own way to listen together.<br />Explore rooms, queues,
+            playback, and everything in between.
+          </p>
+        </div>
+        <aside class="reference-card">
+          <span class="card-label">DEVELOPER REFERENCE</span>
+          <div class="card-title">Vibes API</div>
+          <p>REST endpoints &amp; live events</p>
+          <div class="card-footer">
+            <span id="access" role="status">Loading reference…</span
+            ><a id="spec-link" href="/api/swagger/doc.json">JSON ↗</a>
+          </div>
+        </aside>
+      </section>
+      <div class="reference-heading">
+        <div>
+          <span class="section-index">01 /</span>
+          <h2>API reference</h2>
+        </div>
+        <button id="refresh" type="button">Refresh access ↻</button>
+      </div>
+      <p id="docs-error" role="alert" hidden>
+        Could not load the API reference. Please refresh to try again.
+      </p>
+      <div id="swagger-ui"></div>
+      <noscript
+        >This interactive reference requires JavaScript.
+        <a href="/api/swagger/doc.json"
+          >Read the public JSON specification.</a
+        ></noscript
+      >
+      <footer>
+        <a href="/">ゾフ / Zoff</a><span>Made for listening together.</span
+        ><a href="https://github.com/zoff-music/vibes-backend"
+          >View on GitHub ↗</a
+        >
+      </footer>
+    </main>
+    <script src="/api/swagger/swagger-ui-bundle.js"></script>
+    <script src="/api/swagger/theme.js"></script>
+  </body>
+</html>

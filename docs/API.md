@@ -1,7 +1,26 @@
 # Zoff API Contract
 
 High-level API contract for frontend-backend communication. The generated
-Swagger document at `/api/swagger/` is the exhaustive route and schema reference.
+Swagger UI at `/api/swagger/` provides the route and schema reference with Zoff
+branding. It is served by the backend and loads the logo from
+`https://zoff.me/logo.png`. The header matches the platform navigation, wordmark,
+logo sizing, and pixel settings icon. Typography uses the frontend's `MSW98UI`
+font assets under `/assets/` on the same origin. Keep the content-hashed font URLs
+in `documentationpage.go` aligned with the frontend build when the fonts change;
+a standalone local preview must also serve those font assets. Endpoint categories start expanded; individual operations remain collapsed.
+
+`/api/swagger/doc.json` always returns the public specification, excluding admin
+operations and schemas used only by those operations. `/api/swagger/admin.json`
+returns the full specification only after the existing signed session and admin
+cookie checks, including expiry and database session-version validation. It is
+unavailable when admin authentication is disabled.
+
+The UI selects the appropriate specification on load, on window focus, after an
+admin session request in Swagger, and once a minute while visible. **Refresh
+access** also checks immediately after signing in or out elsewhere. Documentation
+responses use `Cache-Control: private, no-store`; admin API authorization remains
+unchanged. The public source annotations still describe the full API contract; documentation filtering is not a substitute for API access
+control.
 
 ---
 
@@ -295,11 +314,41 @@ event stream.
 
 ## Error Responses
 
-All endpoints return a consistent error format:
+Ordinary handler failures use `vibe.ErrorResponse`:
 
 ```json
 {
-  "error": "Error message",
-  "code": "ERROR_CODE"
+  "error": "something went wrong"
 }
 ```
+
+There is no `code` field. Detailed internal errors are logged, not returned to the
+caller. Swagger references this concrete schema instead of an arbitrary string
+map, so the example and model show the actual `error` field.
+
+Session, permission, and rate-limit middleware can reject requests with plain-text
+bodies such as `unauthorized` or `forbidden`. Locally defined public
+errors may include `namespace`, `error`, `message`,
+and `propagate`, with the `X-preserve-error: 1` response header. Clients must not
+assume every failed response is the standard JSON object.
+
+A `204` response and every HEAD response have no body. OAuth `307` responses
+redirect through the `Location` header. SSE endpoints return an ongoing sequence
+of event frames whose `data` values depend on the event type; the Swagger stream
+descriptions identify the payloads and replay cursor parameters.
+
+
+Error handling rules: use `handleError` for handler failures. Unexpected errors
+return the generic JSON message above; keep their causes in server logs. For an
+intentional user-facing message, use `client.ErrorCodeWrapper` with `ResponseBody.Propagate` set to `true`.
+Its internal `Err` is never serialized. Author safe response codes and messages
+locally; never populate them from database, provider, or request diagnostics.
+Wrappers without propagation and wrappers with invalid error statuses fall back
+to the generic response. Upstream HTTP
+error bodies cannot opt into propagation, even if they contain `propagate: true`.
+
+
+The documentation UI lives in `static/swagger/index.html`, `theme.css`, and
+`theme.js`. `DOCUMENTATION_DIRECTORY` defaults to `./static/swagger`; set it to an
+absolute path when running the binary from another working directory. The
+production image copies the static directory into `/app/static`.

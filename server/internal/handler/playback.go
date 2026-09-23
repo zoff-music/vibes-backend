@@ -20,8 +20,8 @@ import (
 //	@Produce	json
 //	@Param		id	path		string	true	"Room ID"
 //	@Success	200	{object}	vibe.PlaybackState
-//	@Failure	401	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/states [get]
 func GetPlaybackState(
 	db vibe.PlaybackFetcher,
@@ -81,10 +81,10 @@ func GetPlaybackState(
 //	@Param		id		path		string						true	"Room ID"
 //	@Param		request	body		vibe.PlaybackFailureRequest	true	"Failed song"
 //	@Success	200		{object}	vibe.PlaybackState
-//	@Failure	400		{object}	map[string]string
-//	@Failure	401		{object}	map[string]string
-//	@Failure	409		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	409		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/playbackfailures [post]
 func ReportPlaybackFailure(
 	db vibe.PlaybackFailureStorage,
@@ -313,10 +313,10 @@ func ReportPlaybackFailure(
 //	@Param		id		path		string					true	"Room ID"
 //	@Param		request	body		vibe.RoomActionRequest	true	"Playback action"
 //	@Success	200		{object}	vibe.PlaybackState
-//	@Failure	400		{object}	map[string]string
-//	@Failure	401		{object}	map[string]string
-//	@Failure	403		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	403		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/states [put]
 func UpdatePlaybackState(
 	db vibe.RoomGetterPlaybackUpdater,

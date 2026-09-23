@@ -16,7 +16,7 @@ import (
 //	@Tags		admin
 //	@Produce	json
 //	@Success	200	{object}	vibe.AdminListenerUsage
-//	@Failure	500	{object}	map[string]string
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/listeners/usage [get]
 func AdminListenerUsage(
 	db vibe.AdminListenerUsageLister,

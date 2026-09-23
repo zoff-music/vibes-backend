@@ -27,6 +27,9 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
+		w.Header().Set("Cache-Control", "private, no-store")
+		w.Header().Add("Vary", "Cookie")
+
 		ctx := r.Context()
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {

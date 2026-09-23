@@ -20,9 +20,10 @@ import (
 //	@Summary	Start provider authorization
 //	@Tags		authorization
 //	@Produce	json
-//	@Success	307
-//	@Failure	401	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Success	307	"Redirect; follow the Location response header"
+//	@Header	307	{string}	Location	"Redirect destination"
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/authorizations/soundcloud [get]
 //	@Router		/api/v1/authorizations/youtube [get]
 func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer, providerName string) http.HandlerFunc {
@@ -89,9 +90,11 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer, provider
 //	@Tags		authorization
 //	@Param		code	query	string	true	"Authorization code"
 //	@Param		state	query	string	true	"OAuth state"
-//	@Success	307
-//	@Failure	400	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Success	307	"Redirect; follow the Location response header"
+//	@Header	307	{string}	Location	"Redirect destination"
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
+//	@Failure	401	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/callbacks/soundcloud [get]
 //	@Router		/api/v1/callbacks/youtube [get]
 func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, providerName string) http.HandlerFunc {
@@ -195,10 +198,10 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 //	@Tags		authorization
 //	@Produce	json
 //	@Success	200	{object}	vibe.ProviderTokenResponse
-//	@Failure	401	{object}	map[string]string
-//	@Failure	403	{object}	map[string]string
-//	@Failure	412	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	403	{object}	vibe.ErrorResponse
+//	@Failure	412	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/tokens/soundcloud [get]
 //	@Router		/api/v1/tokens/youtube [get]
 func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, providerName string) http.HandlerFunc {
