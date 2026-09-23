@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/zoff-music/vibes-backend/vibe"
+	"github.com/zoff-music/vibes-backend/client"
 )
 
 func TestHandleErrorDoesNotExposeInternalDetails(t *testing.T) {
@@ -39,9 +39,12 @@ func TestHandleErrorDoesNotExposeInternalDetails(t *testing.T) {
 			expectedCode: "something went wrong",
 		},
 		{
-			name: "unknown public kind fails closed",
-			err: vibe.PublicError{
-				Kind:       "secret SQL error",
+			name: "wrapper without propagation stays private",
+			err: client.ErrorCodeWrapper{
+				ResponseBody: client.ErrorCodeResponseBody{
+					Error:   "secret SQL error",
+					Message: "secret database detail",
+				},
 				Err:        sql.ErrNoRows,
 				StatusCode: 400,
 			},
@@ -50,8 +53,12 @@ func TestHandleErrorDoesNotExposeInternalDetails(t *testing.T) {
 		},
 		{
 			name: "invalid public status fails closed",
-			err: vibe.PublicError{
-				Kind:       vibe.PublicSongVoteAlreadyExists,
+			err: client.ErrorCodeWrapper{
+				ResponseBody: client.ErrorCodeResponseBody{
+					Error:     "song_vote_already_exists",
+					Message:   "Your vote is already counted for this song.",
+					Propagate: true,
+				},
 				Err:        sql.ErrNoRows,
 				StatusCode: 200,
 			},
@@ -59,9 +66,13 @@ func TestHandleErrorDoesNotExposeInternalDetails(t *testing.T) {
 			expectedCode: "something went wrong",
 		},
 		{
-			name: "wrapped public error exposes only catalog message",
-			err: fmt.Errorf("error secret database context: %w", vibe.PublicError{
-				Kind:       vibe.PublicSongVoteAlreadyExists,
+			name: "wrapped public error preserves safe code and message",
+			err: fmt.Errorf("error secret database context: %w", client.ErrorCodeWrapper{
+				ResponseBody: client.ErrorCodeResponseBody{
+					Error:     "song_vote_already_exists",
+					Message:   "Your vote is already counted for this song.",
+					Propagate: true,
+				},
 				Err:        sql.ErrNoRows,
 				StatusCode: 409,
 			}),
@@ -71,9 +82,12 @@ func TestHandleErrorDoesNotExposeInternalDetails(t *testing.T) {
 		},
 		{
 			name: "public numeric limit",
-			err: vibe.PublicError{
-				Kind:       vibe.PublicRoomGenerationSongLimit,
-				Limit:      20,
+			err: client.ErrorCodeWrapper{
+				ResponseBody: client.ErrorCodeResponseBody{
+					Error:     "room_generation_song_limit",
+					Message:   "Playlists can only be generated when the room has 20 songs or fewer.",
+					Propagate: true,
+				},
 				Err:        sql.ErrNoRows,
 				StatusCode: 409,
 			},
@@ -103,7 +117,7 @@ func TestHandleErrorDoesNotExposeInternalDetails(t *testing.T) {
 				}
 			}
 
-			var response vibe.PublicErrorResponse
+			var response client.ErrorCodeResponseBody
 			err := json.Unmarshal(recorder.Body.Bytes(), &response)
 			if err != nil {
 				t.Fatal(err)

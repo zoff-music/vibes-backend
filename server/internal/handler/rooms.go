@@ -5,6 +5,7 @@ import (
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"golang.org/x/crypto/bcrypt"
 	"log"
 	"net/http"
 	"slices"
@@ -13,10 +14,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // CreateRoom handles POST /api/v1/rooms
@@ -52,9 +53,14 @@ func CreateRoom(
 		if !req.Validate() {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error validating room name"),
-					Kind:       vibe.PublicRoomNameInvalid,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error validating room name"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "room_name_invalid",
+						Message:   fmt.Sprintf("Use between 1 and %d characters for the room name.", vibe.RoomNameMaxLength),
+						Propagate: true,
+					},
 					StatusCode: http.StatusBadRequest,
 				},
 				http.StatusBadRequest,
@@ -142,11 +148,16 @@ func CreateRoom(
 		if req.Settings != nil && req.Settings.Public && req.Password == "" {
 			handleError(
 				w,
-				vibe.PublicError{
+				client.ErrorCodeWrapper{
 					Err: internalerror.ErrMissingAdminPassword{
 						Err: fmt.Errorf("error room must have a password to be public"),
 					},
-					Kind:       vibe.PublicRoomPasswordRequired,
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "public_room_password_required",
+						Message:   "Add an admin password before making this room public.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusBadRequest,
 				},
 				http.StatusBadRequest,
@@ -173,9 +184,14 @@ func CreateRoom(
 			if errors.As(err, &unavailableError) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        unavailableError,
-						Kind:       vibe.PublicRoomNameUnavailable,
+					client.ErrorCodeWrapper{
+						Err: unavailableError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_name_unavailable",
+							Message:   "This room name is unavailable or its reservation expired.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusConflict,
 					},
 					http.StatusConflict,
@@ -240,9 +256,14 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 		}
 
 		if !req.Validate() {
-			handleError(w, vibe.PublicError{
-				Err:        fmt.Errorf("error validating room name reservation"),
-				Kind:       vibe.PublicRoomNameInvalid,
+			handleError(w, client.ErrorCodeWrapper{
+				Err: fmt.Errorf("error validating room name reservation"),
+				ResponseBody: client.ErrorCodeResponseBody{
+					Namespace: "vibes-backend",
+					Error:     "room_name_invalid",
+					Message:   fmt.Sprintf("Use between 1 and %d characters for the room name.", vibe.RoomNameMaxLength),
+					Propagate: true,
+				},
 				StatusCode: http.StatusBadRequest,
 			}, http.StatusBadRequest, false)
 			return
@@ -288,9 +309,14 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 			if errors.As(err, &unavailableError) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        unavailableError,
-						Kind:       vibe.PublicRoomNameUnavailable,
+					client.ErrorCodeWrapper{
+						Err: unavailableError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_name_unavailable",
+							Message:   "This room name is unavailable or its reservation expired.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusConflict,
 					},
 					http.StatusConflict,
@@ -356,9 +382,14 @@ func SuggestRoomName(db vibe.RoomNameSuggester) http.HandlerFunc {
 			if errors.As(err, &unavailableError) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        unavailableError,
-						Kind:       vibe.PublicRoomNameUnavailable,
+					client.ErrorCodeWrapper{
+						Err: unavailableError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_name_unavailable",
+							Message:   "This room name is unavailable or its reservation expired.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusConflict,
 					},
 					http.StatusConflict,
@@ -617,11 +648,16 @@ func UpdateRoomSettings(
 		if room.Settings.Public && !room.HasPassword {
 			handleError(
 				w,
-				vibe.PublicError{
+				client.ErrorCodeWrapper{
 					Err: internalerror.ErrMissingAdminPassword{
 						Err: fmt.Errorf("error room must have a password to be public"),
 					},
-					Kind:       vibe.PublicRoomPasswordRequired,
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "public_room_password_required",
+						Message:   "Add an admin password before making this room public.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusBadRequest,
 				},
 				http.StatusBadRequest,

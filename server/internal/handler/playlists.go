@@ -10,6 +10,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -192,9 +193,14 @@ func AddPlaylist(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error importing playlist: missing session"),
-					Kind:       vibe.PublicPlaylistSessionRequired,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error importing playlist: missing session"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "playlist_session_required",
+						Message:   "Rejoin the room before importing a playlist.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusUnauthorized,
 				},
 				http.StatusUnauthorized,
@@ -225,9 +231,14 @@ func AddPlaylist(
 		if !room.Settings.PlaylistImport {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error playlist import is disabled for this room"),
-					Kind:       vibe.PublicRoomPlaylistImportDisabled,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error playlist import is disabled for this room"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "room_playlist_import_disabled",
+						Message:   "Playlist importing is disabled in this room.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusForbidden,
 				},
 				http.StatusForbidden,
@@ -238,9 +249,14 @@ func AddPlaylist(
 		if room.Settings.OnlyAdminAddSongs && !room.IsAdmin {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error only admins can import playlists in this room"),
-					Kind:       vibe.PublicPlaylistRoomAdminRequired,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error only admins can import playlists in this room"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_room_admin_required",
+						Message:   "Only room admins can import playlists here. Log in as a room admin in room settings.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusForbidden,
 				},
 				http.StatusForbidden,
@@ -283,9 +299,14 @@ func AddPlaylist(
 			if vibe.IsLiveVideo(requestedSong.SourceType, requestedSong.Duration) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        fmt.Errorf("error playlist contains a live video"),
-						Kind:       vibe.PublicYouTubeLiveVideoNotSupported,
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error playlist contains a live video"),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "youtube_live_video_not_supported",
+							Message:   "Live videos cannot be added to rooms.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusBadRequest,
 					},
 					http.StatusBadRequest,
@@ -329,9 +350,14 @@ func AddPlaylist(
 				) {
 					handleError(
 						w,
-						vibe.PublicError{
-							Err:        fmt.Errorf("error playlist contains a live video"),
-							Kind:       vibe.PublicYouTubeLiveVideoNotSupported,
+						client.ErrorCodeWrapper{
+							Err: fmt.Errorf("error playlist contains a live video"),
+							ResponseBody: client.ErrorCodeResponseBody{
+								Namespace: "vibes-backend",
+								Error:     "youtube_live_video_not_supported",
+								Message:   "Live videos cannot be added to rooms.",
+								Propagate: true,
+							},
 							StatusCode: http.StatusBadRequest,
 						},
 						http.StatusBadRequest,
@@ -384,9 +410,14 @@ func AddPlaylist(
 			if err != nil {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        fmt.Errorf("error staging playlist item %d: %w", position, err),
-						Kind:       vibe.PublicPlaylistImportFailed,
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error staging playlist item %d: %w", position, err),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "playlist_import_failed",
+							Message:   "The playlist could not be queued. Please try again.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusInternalServerError,
 					},
 					http.StatusInternalServerError,
@@ -400,9 +431,14 @@ func AddPlaylist(
 		if err != nil {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error creating playlist import: %w", err),
-					Kind:       vibe.PublicPlaylistImportFailed,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error creating playlist import: %w", err),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "playlist_import_failed",
+						Message:   "The playlist could not be queued. Please try again.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusInternalServerError,
 				},
 				http.StatusInternalServerError,

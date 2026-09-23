@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -106,9 +107,14 @@ func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEve
 		if !request.Validate() {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error validating session profile name"),
-					Kind:       vibe.PublicProfileNameInvalid,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error validating session profile name"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "profile_name_invalid",
+						Message:   fmt.Sprintf("Use between 1 and %d characters for your name.", vibe.SessionNameMaxLength),
+						Propagate: true,
+					},
 					StatusCode: http.StatusBadRequest,
 				},
 				http.StatusBadRequest,

@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -91,9 +92,14 @@ func AddSong(
 		if err != nil {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error decoding request body: %w", err),
-					Kind:       vibe.PublicSongRequestInvalid,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error decoding request body: %w", err),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_request_invalid",
+						Message:   "The song details could not be read. Search for the song again and retry.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusBadRequest,
 				},
 				http.StatusBadRequest,
@@ -106,9 +112,14 @@ func AddSong(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error unauthorized"),
-					Kind:       vibe.PublicSongSessionRequired,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error unauthorized"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_session_required",
+						Message:   "Your room session is missing. Rejoin the room and try adding the song again.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusUnauthorized,
 				},
 				http.StatusUnauthorized,
@@ -131,9 +142,14 @@ func AddSong(
 		if room.IsEmpty() {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error room not found"),
-					Kind:       vibe.PublicSongRoomNotFound,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error room not found"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_room_not_found",
+						Message:   "This room no longer exists. Join another room to add songs.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusNotFound,
 				},
 				http.StatusNotFound,
@@ -145,9 +161,14 @@ func AddSong(
 		if room.Settings.OnlyAdminAddSongs && !room.IsAdmin {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error only admins can add songs in this room"),
-					Kind:       vibe.PublicSongRoomAdminRequired,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error only admins can add songs in this room"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_room_admin_required",
+						Message:   "Only room admins can add songs here. Log in as a room admin in room settings, or ask an admin to allow everyone to add songs.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusForbidden,
 				},
 				http.StatusForbidden,
@@ -167,9 +188,14 @@ func AddSong(
 		if !sourceEnabled {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error source type %s is not enabled for this room", req.SourceType),
-					Kind:       vibe.PublicSongProviderDisabled,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error source type %s is not enabled for this room", req.SourceType),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_provider_disabled",
+						Message:   "This music provider is not enabled for this room. Choose another provider or ask a room admin to enable it.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusBadRequest,
 				},
 				http.StatusBadRequest,
@@ -181,9 +207,14 @@ func AddSong(
 		if vibe.IsLiveVideo(req.SourceType, req.Duration) {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error live videos cannot be added to rooms"),
-					Kind:       vibe.PublicYouTubeLiveVideoNotSupported,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error live videos cannot be added to rooms"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "youtube_live_video_not_supported",
+						Message:   "Live videos cannot be added to rooms.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusBadRequest,
 				},
 				http.StatusBadRequest,
@@ -196,9 +227,14 @@ func AddSong(
 		if err != nil {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error getting canonical provider URL: %w", err),
-					Kind:       vibe.PublicSongProviderURLInvalid,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error getting canonical provider URL: %w", err),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_provider_url_invalid",
+						Message:   "The song link is not valid for this provider. Search for the song again or paste a valid track link.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusBadRequest,
 				},
 				http.StatusBadRequest,
@@ -218,9 +254,14 @@ func AddSong(
 			if vibe.IsLiveVideo(req.SourceType, cachedTrack.DurationSeconds) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        fmt.Errorf("error live videos cannot be added to rooms"),
-						Kind:       vibe.PublicYouTubeLiveVideoNotSupported,
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error live videos cannot be added to rooms"),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "youtube_live_video_not_supported",
+							Message:   "Live videos cannot be added to rooms.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusBadRequest,
 					},
 					http.StatusBadRequest,
@@ -640,9 +681,14 @@ func VoteSong(
 			if errors.As(err, &alreadyVotedError) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        alreadyVotedError,
-						Kind:       vibe.PublicSongVoteAlreadyExists,
+					client.ErrorCodeWrapper{
+						Err: alreadyVotedError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "song_vote_already_exists",
+							Message:   "Your vote is already counted for this song.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusConflict,
 					},
 					http.StatusConflict,

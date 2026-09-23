@@ -11,6 +11,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -120,11 +121,16 @@ func CreateGeneratedRoom(
 			w.Header().Set("Retry-After", roomGenerationBusyRetryAfterSeconds)
 			handleError(
 				w,
-				vibe.PublicError{
+				client.ErrorCodeWrapper{
 					Err: fmt.Errorf(
 						"error validating room generation in CreateGeneratedRoom handler: active generation already exists",
 					),
-					Kind:       vibe.PublicRoomGenerationBusy,
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "room_generation_busy",
+						Message:   "A playlist is already being generated. Please wait and try again.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusTooManyRequests,
 				},
 				http.StatusTooManyRequests,
@@ -139,9 +145,14 @@ func CreateGeneratedRoom(
 			if errors.As(err, &unavailableError) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        unavailableError,
-						Kind:       vibe.PublicRoomNameUnavailable,
+					client.ErrorCodeWrapper{
+						Err: unavailableError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_name_unavailable",
+							Message:   "This room name is unavailable or its reservation expired.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusConflict,
 					},
 					http.StatusConflict,
@@ -183,9 +194,14 @@ func CreateGeneratedRoom(
 			if errors.As(err, &unavailableError) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        unavailableError,
-						Kind:       vibe.PublicRoomNameUnavailable,
+					client.ErrorCodeWrapper{
+						Err: unavailableError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_name_unavailable",
+							Message:   "This room name is unavailable or its reservation expired.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusConflict,
 					},
 					http.StatusConflict,
@@ -213,9 +229,14 @@ func CreateGeneratedRoom(
 				w.Header().Set("Retry-After", roomGenerationBusyRetryAfterSeconds)
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        busyError,
-						Kind:       vibe.PublicRoomGenerationBusy,
+					client.ErrorCodeWrapper{
+						Err: busyError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_generation_busy",
+							Message:   "A playlist is already being generated. Please wait and try again.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusTooManyRequests,
 					},
 					http.StatusTooManyRequests,
@@ -228,9 +249,14 @@ func CreateGeneratedRoom(
 			if errors.As(err, &dailyLimitError) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        dailyLimitError,
-						Kind:       vibe.PublicRoomGenerationDailyLimit,
+					client.ErrorCodeWrapper{
+						Err: dailyLimitError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_generation_daily_limit",
+							Message:   "This room has reached its daily playlist generation limit.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusTooManyRequests,
 					},
 					http.StatusTooManyRequests,
@@ -351,9 +377,14 @@ func CreateRoomGeneration(
 				w.Header().Set("Retry-After", roomGenerationBusyRetryAfterSeconds)
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        busyError,
-						Kind:       vibe.PublicRoomGenerationBusy,
+					client.ErrorCodeWrapper{
+						Err: busyError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_generation_busy",
+							Message:   "A playlist is already being generated. Please wait and try again.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusTooManyRequests,
 					},
 					http.StatusTooManyRequests,
@@ -366,9 +397,17 @@ func CreateRoomGeneration(
 			if errors.As(err, &songLimitError) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:  songLimitError,
-						Kind: vibe.PublicRoomGenerationSongLimit, Limit: maxExistingSongs,
+					client.ErrorCodeWrapper{
+						Err: songLimitError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_generation_song_limit",
+							Message: fmt.Sprintf(
+								"Playlists can only be generated when the room has %d songs or fewer.",
+								maxExistingSongs,
+							),
+							Propagate: true,
+						},
 						StatusCode: http.StatusConflict,
 					},
 					http.StatusConflict,
@@ -381,9 +420,14 @@ func CreateRoomGeneration(
 			if errors.As(err, &dailyLimitError) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        dailyLimitError,
-						Kind:       vibe.PublicRoomGenerationDailyLimit,
+					client.ErrorCodeWrapper{
+						Err: dailyLimitError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_generation_daily_limit",
+							Message:   "This room has reached its daily playlist generation limit.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusTooManyRequests,
 					},
 					http.StatusTooManyRequests,

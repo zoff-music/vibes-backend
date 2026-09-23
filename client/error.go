@@ -12,8 +12,10 @@ type ErrorCodeResponseBody struct {
 	Propagate bool   `json:"propagate,omitzero"`
 }
 
-// ErrorCodeWrapper carries a structured error between clients.
-// HTTP handlers do not trust it as a public error; use vibe.PublicError there.
+// ErrorCodeWrapper carries an internal cause and an explicitly public response.
+// Set Propagate only for locally authored, safe response fields. Never copy
+// dependency error text or upstream response bodies into ResponseBody.
+// Err is retained for logging and unwrapping, and is never sent by GetResponseBody.
 type ErrorCodeWrapper struct {
 	Err          error
 	ResponseBody ErrorCodeResponseBody

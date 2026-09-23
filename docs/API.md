@@ -340,10 +340,11 @@ descriptions identify the payloads and replay cursor parameters.
 
 Error handling rules: use `handleError` for handler failures. Unexpected errors
 return the generic JSON message above; keep their causes in server logs. For an
-intentional user-facing message, use `vibe.PublicError` with a reviewed
-`PublicErrorKind` from `vibe/publicerror.go`. Its internal `Err` is never serialized.
-Add messages to that catalog rather than deriving them from database, provider,
-or request text. Unknown kinds fall back to the generic response. Upstream HTTP
+intentional user-facing message, use `client.ErrorCodeWrapper` with `ResponseBody.Propagate` set to `true`.
+Its internal `Err` is never serialized. Author safe response codes and messages
+locally; never populate them from database, provider, or request diagnostics.
+Wrappers without propagation and wrappers with invalid error statuses fall back
+to the generic response. Upstream HTTP
 error bodies cannot opt into propagation, even if they contain `propagate: true`.
 
 

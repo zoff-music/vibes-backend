@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -48,9 +49,14 @@ func GetMusicTrack(
 			if errors.As(err, &liveVideoError) {
 				handleError(
 					w,
-					vibe.PublicError{
-						Err:        liveVideoError,
-						Kind:       vibe.PublicYouTubeLiveVideoNotSupported,
+					client.ErrorCodeWrapper{
+						Err: liveVideoError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "youtube_live_video_not_supported",
+							Message:   "Live videos cannot be added to rooms.",
+							Propagate: true,
+						},
 						StatusCode: http.StatusBadRequest,
 					},
 					http.StatusBadRequest,
@@ -71,9 +77,14 @@ func GetMusicTrack(
 			track.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding {
 			handleError(
 				w,
-				vibe.PublicError{
-					Err:        fmt.Errorf("error getting youtube track in GetMusicTrack handler: embedding is disabled"),
-					Kind:       vibe.PublicYouTubeEmbeddingNotAllowed,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error getting youtube track in GetMusicTrack handler: embedding is disabled"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "youtube_embedding_not_allowed",
+						Message:   "This video cannot play outside YouTube. Try another version of the song.",
+						Propagate: true,
+					},
 					StatusCode: http.StatusBadRequest,
 				},
 				http.StatusBadRequest,
