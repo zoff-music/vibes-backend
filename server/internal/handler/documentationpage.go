@@ -19,7 +19,7 @@ const documentationHTML = `<!DOCTYPE html>
 <main class="shell" id="api-reference">
 <section class="intro" aria-labelledby="page-title">
 <div><p class="eyebrow"><span></span> BUILT FOR SHARED LISTENING</p><h1 id="page-title">Good music.<br><span>Great integrations.</span></h1><p class="lede">Build your own way to listen together.<br>Explore rooms, queues, playback, and everything in between.</p></div>
-<aside class="reference-card"><span class="card-label">DEVELOPER REFERENCE</span><div class="card-title">Vibes API <span>v1 + v2</span></div><p>REST endpoints &amp; live events</p><div class="card-footer"><span id="access" role="status">Loading reference…</span><a id="spec-link" href="/api/swagger/doc.json">JSON ↗</a></div></aside>
+<aside class="reference-card"><span class="card-label">DEVELOPER REFERENCE</span><div class="card-title">Vibes API</div><p>REST endpoints &amp; live events</p><div class="card-footer"><span id="access" role="status">Loading reference…</span><a id="spec-link" href="/api/swagger/doc.json">JSON ↗</a></div></aside>
 </section>
 <div class="reference-heading"><div><span class="section-index">01 /</span><h2>API reference</h2></div><button id="refresh" type="button">Refresh access ↻</button></div>
 <p id="docs-error" role="alert" hidden>Could not load the API reference. Please refresh to try again.</p>
@@ -245,13 +245,6 @@ h1 span {
   font-size:24px;
   margin:24px 0 10px;
   gap:12px
-}
-.card-title span {
-  font-size:10px;
-  border:1px solid var(--line);
-  border-radius:6px;
-  padding:5px 7px;
-  color:var(--cyan)
 }
 .reference-card p {
   font-size:12px;
