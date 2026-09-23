@@ -14,7 +14,7 @@ const documentationHTML = `<!DOCTYPE html>
 <a class="skip-link" href="#api-reference">Skip to API reference</a>
 <header class="site-header shell">
 <a href="/" class="brand" aria-label="Zoff home"><img src="https://zoff.me/logo.png" alt="" width="64" height="64"><span class="brand-wordmark"><strong lang="ja" aria-hidden="true">ゾフ</strong><small>Shared rooms</small></span></a>
-<nav aria-label="Product navigation"><a href="/explore/rooms">Rooms</a><a href="/#explore-zoff">Explore</a><a href="/discovery/apps">Apps</a><button id="theme" type="button" aria-label="Switch color theme" title="Switch color theme"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 1h6v3h3v2h2v3h3v6h-3v3h-2v2h-3v3H9v-3H6v-2H4v-3H1V9h3V6h2V4h3zm1 7H8v2H6v4h2v2h2v2h4v-2h2v-2h2v-4h-2V8h-2V6h-4zm1 2h2v1h1v2h-1v1h-2v-1h-1v-2h1z"/></svg></button></nav>
+<nav aria-label="Product navigation"><a href="/explore/rooms">Rooms</a><a href="/#explore-zoff">Explore</a><a href="/discovery/apps">Apps</a><button id="theme" type="button" aria-label="Switch color theme" title="Switch color theme"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M8 2h8v2h3v3h3v10h-3v3h-3v2H8v-2H5v-3H2V7h3V4h3zm4 4H8v2H6v8h2v2h4z"/></svg></button></nav>
 </header>
 <main class="shell" id="api-reference">
 <section class="intro" aria-labelledby="page-title">
