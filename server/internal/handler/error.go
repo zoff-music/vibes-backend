@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -30,23 +31,17 @@ func handleError(
 		return
 	}
 
-	var publicError vibe.PublicError
-	if !errors.As(err, &publicError) || publicError.StatusCode < 400 || publicError.StatusCode > 599 {
+	var publicError client.ErrorCodeWrapper
+	if !errors.As(err, &publicError) ||
+		!publicError.ResponseBody.Propagate ||
+		publicError.StatusCode < 400 ||
+		publicError.StatusCode > 599 {
 		w.WriteHeader(statusCode)
 		_, _ = w.Write(fallback)
 		return
 	}
 
-	response, responseErr := publicError.Response()
-	if responseErr != nil {
-		log.Println(responseErr.Error())
-
-		w.WriteHeader(statusCode)
-		_, _ = w.Write(fallback)
-		return
-	}
-
-	body, marshalErr := json.Marshal(response)
+	body, marshalErr := publicError.GetResponseBody()
 	if marshalErr != nil {
 		log.Println(marshalErr.Error())
 
