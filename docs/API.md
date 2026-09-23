@@ -1,7 +1,23 @@
 # Zoff API Contract
 
 High-level API contract for frontend-backend communication. The generated
-Swagger document at `/api/swagger/` is the exhaustive route and schema reference.
+Swagger UI at `/api/swagger/` provides the route and schema reference with Zoff
+branding. It is served by the backend and loads the logo from
+`https://zoff.me/logo.png`.
+
+`/api/swagger/doc.json` always returns the public specification, excluding admin
+operations and schemas used only by those operations. `/api/swagger/admin.json`
+returns the full specification only after the existing signed session and admin
+cookie checks, including expiry and database session-version validation. It is
+unavailable when admin authentication is disabled.
+
+The UI selects the appropriate specification on load, on window focus, after an
+admin session request in Swagger, and once a minute while visible. **Refresh
+access** also checks immediately after signing in or out elsewhere. Documentation
+responses use `Cache-Control: private, no-store`; admin API authorization remains
+unchanged. Generated files in this public source repository still contain the
+full API contract; documentation filtering is not a substitute for API access
+control.
 
 ---
 
