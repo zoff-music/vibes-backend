@@ -634,7 +634,7 @@ func (r *roomRow) toRoom(enabledProviders []string) (*vibe.Room, error) {
 		CreatedAt:            r.CreatedAt.Time,
 		IsGenerating:         r.IsGenerating.Bool,
 		GenerationCount:      int(r.GenerationCount.Int64),
-		GenerationError:      r.GenerationError.String,
+		GenerationError:      vibe.PublicGenerationError(r.GenerationError.String),
 		StoredEnabledSources: storedSources,
 	}, nil
 }

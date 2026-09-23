@@ -19,11 +19,11 @@ import (
 //	@Produce	json
 //	@Param		request	body		vibe.CreateCastingTokenRequest	true	"Casting token payload"
 //	@Success	200		{object}	vibe.CastingTokenResponse
-//	@Failure	400		{object}	map[string]string
-//	@Failure	401		{object}	map[string]string
-//	@Failure	403		{object}	map[string]string
-//	@Failure	404		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	403		{object}	vibe.ErrorResponse
+//	@Failure	404		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/tokens/casting [post]
 func CreateCastingToken(
 	db vibe.RoomFetcher,

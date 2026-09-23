@@ -25,10 +25,11 @@ import (
 //	@Produce	json
 //	@Param		request	body		vibe.GeneratedPlaylistRequest	true	"Playlist prompt"
 //	@Success	201	{object}	vibe.Room
-//	@Failure	400	{object}	map[string]string
-//	@Failure	401	{object}	map[string]string
-//	@Failure	429	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	429	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
+//	@Failure	409	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/generation [post]
 func CreateGeneratedRoom(
 	db vibe.GeneratedRoomCreator,
@@ -307,12 +308,12 @@ func CreateGeneratedRoom(
 //	@Param		id		path		string							true	"Room ID"
 //	@Param		request	body		vibe.GeneratedPlaylistRequest	true	"Playlist prompt"
 //	@Success	202		{object}	vibe.RoomGenerationUpdate
-//	@Failure	400		{object}	map[string]string
-//	@Failure	401		{object}	map[string]string
-//	@Failure	403		{object}	map[string]string
-//	@Failure	409		{object}	map[string]string
-//	@Failure	429		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	403		{object}	vibe.ErrorResponse
+//	@Failure	409		{object}	vibe.ErrorResponse
+//	@Failure	429		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/generations [post]
 func CreateRoomGeneration(
 	creator vibe.RoomGenerationCreator,

@@ -20,21 +20,37 @@ func handleError(
 		log.Println(err.Error())
 	}
 
-	errorBody, _ := json.Marshal(vibe.ErrorResponse{
+	w.Header().Set("Content-Type", "application/json")
+
+	fallback, marshalErr := json.Marshal(vibe.ErrorResponse{
 		Error: "something went wrong",
 	})
-
-	var errorCodeWrapper client.ErrorCodeWrapper
-	if errors.As(err, &errorCodeWrapper) {
-		w.Header().Add("X-preserve-error", "1")
-
-		statusCode = errorCodeWrapper.StatusCode
-		errorBody, err = errorCodeWrapper.GetResponseBody()
-		if err != nil {
-			log.Println(err.Error())
-		}
+	if marshalErr != nil {
+		log.Println(marshalErr.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
-	w.WriteHeader(statusCode)
-	_, _ = w.Write(errorBody)
+	var publicError client.ErrorCodeWrapper
+	if !errors.As(err, &publicError) ||
+		!publicError.ResponseBody.Propagate ||
+		publicError.StatusCode < 400 ||
+		publicError.StatusCode > 599 {
+		w.WriteHeader(statusCode)
+		_, _ = w.Write(fallback)
+		return
+	}
+
+	body, marshalErr := publicError.GetResponseBody()
+	if marshalErr != nil {
+		log.Println(marshalErr.Error())
+
+		w.WriteHeader(statusCode)
+		_, _ = w.Write(fallback)
+		return
+	}
+
+	w.Header().Set("X-preserve-error", "1")
+	w.WriteHeader(publicError.StatusCode)
+	_, _ = w.Write(body)
 }

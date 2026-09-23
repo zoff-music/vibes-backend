@@ -6,7 +6,6 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/zoff-music/vibes-backend/server/internal/handler"
 	"github.com/zoff-music/vibes-backend/server/internal/middleware"
 	_ "github.com/zoff-music/vibes-backend/swaggerdocs"
@@ -18,7 +17,16 @@ func (s *Server) setupRoutes() {
 	apiV1 := s.Router.PathPrefix(v1API).Subrouter()
 	apiV2 := s.Router.PathPrefix(v2API).Subrouter()
 	s.Router.Handle(swaggerAPI, http.RedirectHandler(swaggerAPI+"/", http.StatusPermanentRedirect)).Methods(http.MethodGet)
-	s.Router.PathPrefix(swaggerAPI + "/").Handler(httpSwagger.WrapHandler)
+
+	docs := s.Router.PathPrefix(swaggerAPI + "/").Subrouter()
+
+	if s.Config.AdminPasswordPepper != "" {
+		docs.HandleFunc("/admin.json", handler.AdminDocumentation()).Methods(http.MethodGet).Name("AdminDocumentation")
+		s.addSessionMiddleware(docs)
+		s.addAdminMiddleware(docs)
+	}
+
+	docs.PathPrefix("/").Handler(handler.Documentation(s.Config.DocumentationDirectory)).Methods(http.MethodGet)
 
 	// Room routes
 	apiV1.HandleFunc("/rooms", handler.CreateRoom(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoom")
@@ -93,6 +101,7 @@ func (s *Server) setupRoutes() {
 	apiV1.HandleFunc("/remotes/{id}/events", handler.RemoteEvents(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RemoteEvents")
 
 	// Admin routes
+
 	if s.Config.AdminPasswordPepper != "" {
 		apiV1.HandleFunc("/admin/sessions", handler.AdminLogin(s.DB, s.Config.AdminPasswordPepper, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
 		apiV1.HandleFunc("/admin/sessions", handler.AdminSession()).Methods(http.MethodGet, http.MethodOptions).Name("AdminSession")
@@ -113,6 +122,7 @@ func (s *Server) setupRoutes() {
 	s.addSessionMiddleware(apiV1, apiV2)
 	s.addRateLimitMiddleware(apiV1, apiV2)
 	s.addPermissionMiddleware(apiV1, apiV2)
+
 	if s.Config.AdminPasswordPepper != "" {
 		s.addAdminMiddleware(apiV1)
 	}
@@ -341,6 +351,7 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 		CookieSecret: s.Config.CookieSecret,
 		ProtectedRoutes: map[string]bool{
 			"AdminSession":       true,
+			"AdminDocumentation": true,
 			"AdminUsers":         true,
 			"AdminCreateUser":    true,
 			"AdminUpdateUser":    true,

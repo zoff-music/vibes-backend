@@ -16,11 +16,20 @@ import (
 // RoomEventsV2 handles GET /api/v2/rooms/:id/events (SSE).
 //
 //	@Summary	Subscribe to compact room events
+//
+// @Description Returns an SSE stream, not a single JSON response. Frames contain an optional `id`, an `event` name, and a JSON `data` payload, followed by a blank line.
+// @Description `connected` carries {"time": 1700000000000}; `settings_update` carries a Room; `songs_snapshot` carries a Song array; `playback_update` carries a PlaybackState. Compact queue updates use `song_added`, `song_updated`, and `song_removed`.
+// @Description Reconnect with Last-Event-ID or lastEventId. See the [v2 event contract](https://github.com/zoff-music/vibes-backend/blob/main/docs/flows/sessions.md) for event payloads and replay.
+//
 //	@Tags		rooms
 //	@Produce	text/event-stream
+//
+// @Param lastEventId query string false "Last received stream cursor; used when Last-Event-ID is absent"
+// @Param Last-Event-ID header string false "Last received stream cursor"
+//
 //	@Param		id	path	string	true	"Room ID"
-//	@Success	200	{string}	string
-//	@Failure	500	{object}	map[string]string
+//	@Success	200	{string}	string "SSE frames with event-specific JSON data; see the stream description"
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v2/rooms/{id}/events [get]
 func RoomEventsV2(
 	events vibe.RoomEventReplayNotifier,

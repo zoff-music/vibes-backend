@@ -12,8 +12,10 @@ type ErrorCodeResponseBody struct {
 	Propagate bool   `json:"propagate,omitzero"`
 }
 
-// ErrorCodeWrapper is an error type that we want to
-// send downstream (can both be one step, but also fully propagated)
+// ErrorCodeWrapper carries an internal cause and an explicitly public response.
+// Set Propagate only for locally authored, safe response fields. Never copy
+// dependency error text or upstream response bodies into ResponseBody.
+// Err is retained for logging and unwrapping, and is never sent by GetResponseBody.
 type ErrorCodeWrapper struct {
 	Err          error
 	ResponseBody ErrorCodeResponseBody
@@ -34,9 +36,11 @@ func (e ErrorCodeWrapper) GetResponseBody() ([]byte, error) {
 	if e.ResponseBody.Namespace == "" {
 		e.ResponseBody.Namespace = applicationName
 	}
+
 	resp, err := json.Marshal(&e.ResponseBody)
 	if err != nil {
 		return nil, fmt.Errorf("error marshalling propagatable error response body: %w", err)
 	}
+
 	return resp, nil
 }

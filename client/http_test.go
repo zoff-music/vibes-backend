@@ -211,6 +211,11 @@ func TestRequestBytesOmitsHTTPErrorResponseBody(t *testing.T) {
 			responseBody:   `{"message":"response-body-secret"}`,
 			expectedAbsent: []string{"response-body-secret"},
 		},
+		{
+			name:           "upstream cannot opt into public error propagation",
+			responseBody:   `{"namespace":"database-secret","error":"sql-secret","message":"password-secret","propagate":true}`,
+			expectedAbsent: []string{"database-secret", "sql-secret", "password-secret"},
+		},
 	}
 
 	for _, tt := range tests {
@@ -237,6 +242,10 @@ func TestRequestBytesOmitsHTTPErrorResponseBody(t *testing.T) {
 			var statusErr HTTPStatusCodeError
 			if !errors.As(err, &statusErr) {
 				t.Fatalf("expected HTTP status error, got %T", err)
+			}
+			_, directStatusError := err.(HTTPStatusCodeError)
+			if !directStatusError {
+				t.Fatalf("upstream returned a propagating wrapper: %T", err)
 			}
 			for _, secret := range append(tt.expectedAbsent, "status-query-secret") {
 				if strings.Contains(err.Error(), secret) || strings.Contains(statusErr.URL, secret) || strings.Contains(statusErr.Message, secret) {

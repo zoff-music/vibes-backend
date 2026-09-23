@@ -285,3 +285,14 @@ Before returning the result, silently verify that:
 - Every included YouTube ID is one you are highly confident is correct.
 - The output is valid JSON.
 `
+
+// PublicGenerationError prevents persisted diagnostic text from reaching room
+// responses and SSE snapshots. Only the known user-facing reasons are retained.
+func PublicGenerationError(reason string) string {
+	switch reason {
+	case "", RoomGenerationFailure, RoomGenerationYouTubeQuotaFailure:
+		return reason
+	default:
+		return RoomGenerationFailure
+	}
+}
