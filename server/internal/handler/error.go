@@ -9,30 +9,49 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func handleError(w http.ResponseWriter, err error, statusCode int, shouldLog bool) {
+func handleError(
+	w http.ResponseWriter,
+	err error,
+	statusCode int,
+	shouldLog bool,
+) {
 	if shouldLog {
 		log.Println(err.Error())
 	}
 
-	errorBody, _ := json.Marshal(vibe.ErrorResponse{Error: "something went wrong"})
+	w.Header().Set("Content-Type", "application/json")
+
 	var publicError vibe.PublicError
-	if errors.As(err, &publicError) {
+	if errors.As(err, &publicError) && publicError.StatusCode >= 400 && publicError.StatusCode <= 599 {
 		response, responseErr := publicError.Response()
 		if responseErr != nil {
 			log.Println(responseErr.Error())
-		} else if publicError.StatusCode >= 400 && publicError.StatusCode <= 599 {
+		}
+
+		if responseErr == nil {
 			body, marshalErr := json.Marshal(response)
 			if marshalErr != nil {
 				log.Println(marshalErr.Error())
-			} else {
+			}
+
+			if marshalErr == nil {
 				w.Header().Set("X-preserve-error", "1")
-				statusCode = publicError.StatusCode
-				errorBody = body
+				w.WriteHeader(publicError.StatusCode)
+				_, _ = w.Write(body)
+				return
 			}
 		}
 	}
 
-	w.Header().Set("Content-Type", "application/json")
+	body, marshalErr := json.Marshal(vibe.ErrorResponse{
+		Error: "something went wrong",
+	})
+	if marshalErr != nil {
+		log.Println(marshalErr.Error())
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(statusCode)
-	_, _ = w.Write(errorBody)
+	_, _ = w.Write(body)
 }

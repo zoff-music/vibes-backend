@@ -345,3 +345,9 @@ intentional user-facing message, use `vibe.PublicError` with a reviewed
 Add messages to that catalog rather than deriving them from database, provider,
 or request text. Unknown kinds fall back to the generic response. Upstream HTTP
 error bodies cannot opt into propagation, even if they contain `propagate: true`.
+
+
+The documentation UI lives in `static/swagger/index.html`, `theme.css`, and
+`theme.js`. `DOCUMENTATION_DIRECTORY` defaults to `./static/swagger`; set it to an
+absolute path when running the binary from another working directory. The
+production image copies the static directory into `/app/static`.
