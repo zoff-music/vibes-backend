@@ -10,7 +10,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -119,14 +118,9 @@ func SearchMusic(
 				}
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
-						Err: quotaError,
-						ResponseBody: client.ErrorCodeResponseBody{
-							Namespace: "vibes-backend",
-							Error:     "youtube_search_quota_exhausted",
-							Message:   vibe.RoomGenerationYouTubeQuotaFailure,
-							Propagate: true,
-						},
+					vibe.PublicError{
+						Err:        quotaError,
+						Kind:       vibe.PublicYouTubeSearchQuotaExhausted,
 						StatusCode: http.StatusServiceUnavailable,
 					},
 					http.StatusServiceUnavailable,

@@ -100,16 +100,7 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 			Message:    message,
 		}
 
-		// Check if error should propagate
-		var errorCodeWrapper ErrorCodeResponseBody
-		_ = json.Unmarshal(resp, &errorCodeWrapper)
-		if errorCodeWrapper.Propagate {
-			return nil, ErrorCodeWrapper{
-				Err:          httpStatusCodeError,
-				ResponseBody: errorCodeWrapper,
-				StatusCode:   r.StatusCode,
-			}
-		}
+		// Upstream bodies are untrusted, including any request to propagate them.
 
 		return nil, httpStatusCodeError
 	}

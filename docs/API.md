@@ -327,8 +327,8 @@ caller. Swagger references this concrete schema instead of an arbitrary string
 map, so the example and model show the actual `error` field.
 
 Session, permission, and rate-limit middleware can reject requests with plain-text
-bodies such as `unauthorized` or `forbidden`. Explicitly propagated upstream
-errors retain their HTTP status and may include `namespace`, `error`, `message`,
+bodies such as `unauthorized` or `forbidden`. Locally defined public
+errors may include `namespace`, `error`, `message`,
 and `propagate`, with the `X-preserve-error: 1` response header. Clients must not
 assume every failed response is the standard JSON object.
 
@@ -336,3 +336,12 @@ A `204` response and every HEAD response have no body. OAuth `307` responses
 redirect through the `Location` header. SSE endpoints return an ongoing sequence
 of event frames whose `data` values depend on the event type; the Swagger stream
 descriptions identify the payloads and replay cursor parameters.
+
+
+Error handling rules: use `handleError` for handler failures. Unexpected errors
+return the generic JSON message above; keep their causes in server logs. For an
+intentional user-facing message, use `vibe.PublicError` with a reviewed
+`PublicErrorKind` from `vibe/publicerror.go`. Its internal `Err` is never serialized.
+Add messages to that catalog rather than deriving them from database, provider,
+or request text. Unknown kinds fall back to the generic response. Upstream HTTP
+error bodies cannot opt into propagation, even if they contain `propagate: true`.
