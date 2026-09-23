@@ -3,7 +3,12 @@
 High-level API contract for frontend-backend communication. The generated
 Swagger UI at `/api/swagger/` provides the route and schema reference with Zoff
 branding. It is served by the backend and loads the logo from
-`https://zoff.me/logo.png`.
+`https://zoff.me/logo.png`. The header matches the platform navigation, wordmark,
+logo sizing, and pixel settings icon. Typography uses the frontend's `MSW98UI`
+font assets under `/assets/` on the same origin. Keep the content-hashed font URLs
+in `documentationpage.go` aligned with the frontend build when the fonts change;
+a standalone local preview must also serve those font assets. Endpoint groups,
+operations, and the top-level model definitions start expanded.
 
 `/api/swagger/doc.json` always returns the public specification, excluding admin
 operations and schemas used only by those operations. `/api/swagger/admin.json`

@@ -13,8 +13,8 @@ const documentationHTML = `<!DOCTYPE html>
 <body>
 <a class="skip-link" href="#api-reference">Skip to API reference</a>
 <header class="site-header shell">
-<a href="/" class="brand" aria-label="Zoff home"><img src="https://zoff.me/logo.png" alt="" width="56" height="56"><span><strong lang="ja">ゾフ</strong><small>Shared rooms</small></span></a>
-<nav aria-label="Main navigation"><a href="/explore/rooms">Rooms</a><a href="/discovery/apps">Apps</a><a href="/api/swagger/index.html" aria-current="page">Developers</a><button id="theme" type="button" aria-label="Switch color theme">◐</button></nav>
+<a href="/" class="brand" aria-label="Zoff home"><img src="https://zoff.me/logo.png" alt="" width="64" height="64"><span class="brand-wordmark"><strong lang="ja" aria-hidden="true">ゾフ</strong><small>Shared rooms</small></span></a>
+<nav aria-label="Product navigation"><a href="/explore/rooms">Rooms</a><a href="/#explore-zoff">Explore</a><a href="/discovery/apps">Apps</a><button id="theme" type="button" aria-label="Switch color theme" title="Switch color theme"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 1h6v3h3v2h2v3h3v6h-3v3h-2v2h-3v3H9v-3H6v-2H4v-3H1V9h3V6h2V4h3zm1 7H8v2H6v4h2v2h2v2h4v-2h2v-2h2v-4h-2V8h-2V6h-4zm1 2h2v1h1v2h-1v1h-2v-1h-1v-2h1z"/></svg></button></nav>
 </header>
 <main class="shell" id="api-reference">
 <section class="intro" aria-labelledby="page-title">
@@ -32,7 +32,23 @@ const documentationHTML = `<!DOCTYPE html>
 </body></html>`
 
 const documentationCSS = `
+/* These content-hashed fonts are served by zoff-music/vibes-frontend at the same origin. */
+@font-face {
+  font-family:MSW98UI;
+  font-style:normal;
+  font-weight:400;
+  font-display:swap;
+  src:url("/assets/MSW98UI-Regular-q68EpDs9.woff2") format("woff2");
+}
+@font-face {
+  font-family:MSW98UI;
+  font-style:normal;
+  font-weight:700;
+  font-display:swap;
+  src:url("/assets/MSW98UI-Bold-BY0kSkNY.woff2") format("woff2");
+}
 :root {
+  --font-body:"MSW98UI","MS Sans Serif",Tahoma,"Zen Maru Gothic",system-ui,sans-serif;
   color-scheme:dark;
   --bg:#120b1e;
   --paper:#1a102a;
@@ -42,320 +58,425 @@ const documentationCSS = `
   --line:#493459;
   --pink:#ff74be;
   --cyan:#00d9ff;
-  --glow:rgba(178,75,243,.10)}
-  :root[data-theme="light"] {
-    color-scheme:light;
-    --bg:#f6ebff;
-    --paper:#fdf7ff;
-    --surface:#f2ddff;
-    --text:#2a1840;
-    --muted:#5b4276;
-    --line:#d6bde8;
-    --pink:#ab145c;
-    --cyan:#006d82;
-    --glow:rgba(255,63,164,.08)}
-    * {
-      box-sizing:border-box}
-      body {
-        margin:0;
-        background:radial-gradient(ellipse at 75% 0,var(--glow),transparent 55%),var(--bg);
-        color:var(--text);
-        font-family:Tahoma,system-ui,sans-serif;
-        font-size:14px}
-        a {
-          color:var(--cyan);
-          text-decoration:none}
-          button,a {
-            touch-action:manipulation}
-            button {
-              font:inherit;
-              cursor:pointer}
-              a:focus-visible,button:focus-visible,input:focus-visible {
-                outline:2px solid var(--cyan);
-                outline-offset:5px}
-                .shell {
-                  max-width:1160px;
-                  margin:auto;
-                  padding:0 28px}
-                  .site-header {
-                    display:flex;
-                    align-items:center;
-                    justify-content:space-between;
-                    padding-top:25px;
-                    padding-bottom:25px;
-                    border-bottom:1px solid var(--line)}
-                    .brand {
-                      display:flex;
-                      align-items:center;
-                      gap:13px;
-                      color:var(--text)}
-                      .brand img {
-                        border-radius:50%}
-                        .brand strong {
-                          display:block;
-                          font-size:32px;
-                          line-height:1.1;
-                          letter-spacing:4px;
-                          color:var(--pink);
-                          text-shadow:0 0 24px #ff2e9740}
-                          .brand small {
-                            display:block;
-                            margin-top:7px;
-                            font-size:11px;
-                            color:var(--muted)}
-                            nav {
-                              display:flex;
-                              align-items:center;
-                              gap:26px}
-                              nav a {
-                                color:var(--muted);
-                                font-size:13px}
-                                nav a[aria-current] {
-                                  color:var(--cyan)}
-                                  #theme {
-                                    color:var(--text);
-                                    background:var(--surface);
-                                    border:1px solid var(--line);
-                                    border-radius:10px;
-                                    font-size:22px;
-                                    width:40px;
-                                    height:40px}
-                                    .intro {
-                                      display:grid;
-                                      grid-template-columns:1fr 330px;
-                                      align-items:center;
-                                      gap:55px;
-                                      padding:62px 0 52px}
-                                      .eyebrow {
-                                        color:var(--cyan);
-                                        font-size:10px;
-                                        letter-spacing:2px;
-                                        display:flex;
-                                        align-items:center;
-                                        gap:10px}
-                                        .eyebrow span {
-                                          height:6px;
-                                          width:6px;
-                                          border-radius:50%;
-                                          background:var(--cyan);
-                                          box-shadow:0 0 15px var(--cyan)}
-                                          h1 {
-                                            font-size:clamp(32px,4vw,49px);
-                                            font-weight:600;
-                                            line-height:1.17;
-                                            letter-spacing:-1.8px;
-                                            margin:22px 0 20px}
-                                            h1 span {
-                                              color:var(--pink)}
-                                              .lede {
-                                                color:var(--muted);
-                                                font-size:14px;
-                                                line-height:1.85;
-                                                margin:0}
-                                                .reference-card {
-                                                  background:linear-gradient(130deg,var(--surface),var(--paper));
-                                                  border:1px solid var(--line);
-                                                  border-radius:18px;
-                                                  padding:25px;
-                                                  box-shadow:0 16px 60px #00000010;
-                                                  position:relative;
-                                                  overflow:hidden}
-                                                  .reference-card:before {
-                                                    content:"";
-                                                    position:absolute;
-                                                    top:0;
-                                                    left:24px;
-                                                    right:24px;
-                                                    height:2px;
-                                                    background:linear-gradient(90deg,#ff2e97,#00d9ff)}
-                                                    .card-label {
-                                                      font-size:9px;
-                                                      letter-spacing:2px;
-                                                      color:var(--muted)}
-                                                      .card-title {
-                                                        display:flex;
-                                                        align-items:center;
-                                                        justify-content:space-between;
-                                                        font-size:24px;
-                                                        margin:24px 0 10px;
-                                                        gap:12px}
-                                                        .card-title span {
-                                                          font-size:10px;
-                                                          border:1px solid var(--line);
-                                                          border-radius:6px;
-                                                          padding:5px 7px;
-                                                          color:var(--cyan)}
-                                                          .reference-card p {
-                                                            font-size:12px;
-                                                            color:var(--muted)}
-                                                            .card-footer {
-                                                              display:flex;
-                                                              justify-content:space-between;
-                                                              gap:12px;
-                                                              border-top:1px solid var(--line);
-                                                              padding-top:18px;
-                                                              margin-top:26px;
-                                                              font-size:11px}
-                                                              #access {
-                                                                color:var(--muted)}
-                                                                .reference-heading,.reference-heading>div {
-                                                                  display:flex;
-                                                                  align-items:center;
-                                                                  justify-content:space-between;
-                                                                  gap:12px}
-                                                                  .reference-heading {
-                                                                    padding:22px 0;
-                                                                    border-top:1px solid var(--line)}
-                                                                    .section-index {
-                                                                      color:var(--pink);
-                                                                      font:12px monospace}
-                                                                      h2 {
-                                                                        font-size:17px;
-                                                                        font-weight:500;
-                                                                        margin:0}
-                                                                        .reference-heading button {
-                                                                          background:none;
-                                                                          border:1px solid var(--line);
-                                                                          border-radius:8px;
-                                                                          color:var(--muted);
-                                                                          padding:9px 12px;
-                                                                          font-size:11px}
-                                                                          .reference-heading button:hover {
-                                                                            color:var(--cyan);
-                                                                            border-color:var(--cyan)}
-                                                                            footer {
-                                                                              display:flex;
-                                                                              justify-content:space-between;
-                                                                              gap:15px;
-                                                                              border-top:1px solid var(--line);
-                                                                              padding:30px 0 40px;
-                                                                              margin-top:40px;
-                                                                              color:var(--muted);
-                                                                              font-size:11px}
-                                                                              footer a:first-child {
-                                                                                color:var(--pink)}
-                                                                                .skip-link {
-                                                                                  position:absolute;
-                                                                                  top:-100px;
-                                                                                  left:20px;
-                                                                                  padding:12px;
-                                                                                  background:var(--paper);
-                                                                                  z-index:10}
-                                                                                  .skip-link:focus {
-                                                                                    top:10px}
-                                                                                    #docs-error {
-                                                                                      padding:20px;
-                                                                                      border:1px solid var(--pink);
-                                                                                      border-radius:10px}
-                                                                                      /* Keep Swagger's interaction and method colors, while matching the surrounding product UI. */
-                                                                                      .swagger-ui {
-                                                                                        color:var(--text);
-                                                                                        font-family:Tahoma,system-ui,sans-serif}
-                                                                                        .swagger-ui .wrapper {
-                                                                                          padding:0;
-                                                                                          max-width:none}
-                                                                                          .swagger-ui .information-container,.swagger-ui .scheme-container,.swagger-ui .topbar {
-                                                                                            display:none}
-                                                                                            .swagger-ui .opblock-tag {
-                                                                                              color:var(--text);
-                                                                                              border-bottom:1px solid var(--line);
-                                                                                              padding:19px 5px;
-                                                                                              font-size:17px;
-                                                                                              font-weight:500}
-                                                                                              .swagger-ui .opblock-tag small {
-                                                                                                color:var(--muted)}
-                                                                                                .swagger-ui .opblock-tag:hover {
-                                                                                                  background:var(--surface)}
-                                                                                                  .swagger-ui .opblock-tag svg,.swagger-ui .expand-operation svg,.swagger-ui .opblock-control-arrow svg,.swagger-ui .opblock-summary svg,.swagger-ui .model-toggle:after {
-                                                                                                    fill:var(--muted)}
-                                                                                                    .swagger-ui .opblock {
-                                                                                                      box-shadow:none;
-                                                                                                      border-radius:9px;
-                                                                                                      margin:0 0 12px;
-                                                                                                      overflow:hidden}
-                                                                                                      .swagger-ui .opblock .opblock-summary {
-                                                                                                        padding:7px 9px}
-                                                                                                        .swagger-ui .opblock .opblock-summary-path {
-                                                                                                          font-size:13px;
-                                                                                                          font-weight:500;
-                                                                                                          color:var(--text)}
-                                                                                                          .swagger-ui .opblock .opblock-summary-description {
-                                                                                                            font-size:12px;
-                                                                                                            color:var(--muted)}
-                                                                                                            .swagger-ui .opblock .opblock-summary-method {
-                                                                                                              font-size:11px;
-                                                                                                              min-width:65px;
-                                                                                                              padding:6px 0;
-                                                                                                              text-shadow:none}
-                                                                                                              .swagger-ui .opblock.opblock-get .opblock-summary-method {
-                                                                                                                background:#2875ad}
-                                                                                                                .swagger-ui .opblock.opblock-post .opblock-summary-method {
-                                                                                                                  background:#167852}
-                                                                                                                  .swagger-ui .opblock.opblock-put .opblock-summary-method {
-                                                                                                                    background:#985900}
-                                                                                                                    .swagger-ui .opblock.opblock-delete .opblock-summary-method {
-                                                                                                                      background:#b3334a}
-                                                                                                                      .swagger-ui .opblock.opblock-patch .opblock-summary-method {
-                                                                                                                        background:#6e50b0}
-                                                                                                                        .swagger-ui .opblock.opblock-options .opblock-summary-method {
-                                                                                                                          background:#66549d}
-                                                                                                                          .swagger-ui .opblock.opblock-head .opblock-summary-method {
-                                                                                                                            background:#765098}
-                                                                                                                            .swagger-ui .opblock .opblock-section-header {
-                                                                                                                              background:var(--surface);
-                                                                                                                              box-shadow:none}
-                                                                                                                              .swagger-ui .opblock .opblock-section-header h4,.swagger-ui .opblock .opblock-section-header label,.swagger-ui .parameter__name,.swagger-ui .parameter__type,.swagger-ui .parameter__in,.swagger-ui .response-col_description,.swagger-ui .response-col_status,.swagger-ui .response-col_links,.swagger-ui .tab li,.swagger-ui table thead tr th,.swagger-ui .opblock-description-wrapper p,.swagger-ui .opblock-external-docs-wrapper p,.swagger-ui .opblock-title_normal p,.swagger-ui .renderedMarkdown p,.swagger-ui .renderedMarkdown li,.swagger-ui .model,.swagger-ui .model-title,.swagger-ui section.models h4,.swagger-ui section.models h4 span,.swagger-ui .prop-format,.swagger-ui label {
-                                                                                                                                color:var(--text)}
-                                                                                                                                .swagger-ui .btn {
-                                                                                                                                  color:var(--text);
-                                                                                                                                  border-color:var(--muted);
-                                                                                                                                  box-shadow:none}
-                                                                                                                                  .swagger-ui .btn.execute {
-                                                                                                                                    background:#286ba5;
-                                                                                                                                    border-color:#286ba5;
-                                                                                                                                    color:white}
-                                                                                                                                    .swagger-ui select,.swagger-ui input[type=text],.swagger-ui input[type=password],.swagger-ui input[type=search],.swagger-ui input[type=email],.swagger-ui input[type=file],.swagger-ui textarea {
-                                                                                                                                      background:var(--paper);
-                                                                                                                                      color:var(--text);
-                                                                                                                                      border-color:var(--line)}
-                                                                                                                                      .swagger-ui input::placeholder,.swagger-ui textarea::placeholder {
-                                                                                                                                        color:var(--muted)}
-                                                                                                                                        .swagger-ui section.models {
-                                                                                                                                          border-color:var(--line);
-                                                                                                                                          border-radius:10px}
-                                                                                                                                          .swagger-ui section.models .model-container {
-                                                                                                                                            background:var(--surface)}
-                                                                                                                                            .swagger-ui section.models h4 {
-                                                                                                                                              border-color:var(--line)}
-                                                                                                                                              .swagger-ui .model-box {
-                                                                                                                                                background:var(--surface)}
-                                                                                                                                                .swagger-ui .model-toggle:after {
-                                                                                                                                                  filter:invert(.6)}
-                                                                                                                                                  .swagger-ui .prop-type {
-                                                                                                                                                    color:var(--cyan)}
-                                                                                                                                                    .swagger-ui .markdown code,.swagger-ui .renderedMarkdown code {
-                                                                                                                                                      color:var(--pink);
-                                                                                                                                                      background:var(--surface)}
-                                                                                                                                                      .swagger-ui .dialog-ux .modal-ux {
-                                                                                                                                                        background:var(--paper);
-                                                                                                                                                        border-color:var(--line)}
-                                                                                                                                                        .swagger-ui .dialog-ux .modal-ux-header h3,.swagger-ui .dialog-ux .modal-ux-content h4,.swagger-ui .dialog-ux .modal-ux-content p {
-                                                                                                                                                          color:var(--text)}
-                                                                                                                                                          .swagger-ui .download-contents {
-                                                                                                                                                            color:white}
-                                                                                                                                                            .swagger-ui .loading-container .loading:after {
-                                                                                                                                                              color:var(--muted)}
-                                                                                                                                                              .swagger-ui .filter-container {
-                                                                                                                                                                padding:0 0 15px}
-                                                                                                                                                                .swagger-ui .filter .operation-filter-input {
+  --glow:rgba(178,75,243,.10)
+}
+:root[data-theme="light"] {
+  color-scheme:light;
+  --bg:#f6ebff;
+  --paper:#fdf7ff;
+  --surface:#f2ddff;
+  --text:#2a1840;
+  --muted:#5b4276;
+  --line:#d6bde8;
+  --pink:#ab145c;
+  --cyan:#006d82;
+  --glow:rgba(255,63,164,.08)
+}
+* {
+  box-sizing:border-box
+}
+body {
+  margin:0;
+  background:radial-gradient(ellipse at 75% 0,var(--glow),transparent 55%),var(--bg);
+  color:var(--text);
+  font-family:var(--font-body);
+  font-size:14px
+}
+a {
+  color:var(--cyan);
+  text-decoration:none
+}
+button,a {
+  touch-action:manipulation
+}
+button {
+  font:inherit;
+  cursor:pointer
+}
+a:focus-visible,button:focus-visible,input:focus-visible {
+  outline:2px solid var(--cyan);
+  outline-offset:5px
+}
+.shell {
+  max-width:1152px;
+  margin:auto;
+  padding:0 24px;
+}
+.site-header {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  padding:28px 24px;
+  line-height:24px;
+  font-size:16px;
+}
+.brand {
+  display:flex;
+  flex-shrink:0;
+  align-items:center;
+  gap:12px;
+  color:var(--text);
+  border-radius:12px;
+  transition:opacity .15s;
+}
+.brand img {
+  border-radius:50%;
+  width:64px;
+  height:64px;
+  transition:transform .5s;
+}
+.brand strong {
+  display:block;
+  font-family:Syncopate,sans-serif;
+  font-size:48px;
+  font-weight:400;
+  line-height:48px;
+  letter-spacing:-1.44px;
+  color:var(--text);
+  text-shadow:0 0 10px #ff50c859,0 0 24px #00d9ff40;
+}
+.brand small {
+  display:block;
+  margin-top:8px;
+  font-size:12px;
+  line-height:16px;
+  letter-spacing:.24px;
+  color:var(--muted);
+}
+nav {
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+nav a {
+  display:inline-flex;
+  align-items:center;
+  min-height:44px;
+  padding:0 16px;
+  border-radius:12px;
+  color:var(--muted);
+  font-size:14px;
+  line-height:20px;
+  letter-spacing:.14px;
+  transition:color .15s,background .15s;
+}
+nav a[aria-current] {
+  color:var(--cyan)
+}
+#theme {
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  flex-shrink:0;
+  color:var(--text);
+  background:var(--surface);
+  border:1px solid rgba(112,72,140,.25);
+  border-radius:12px;
+  padding:0;
+  width:44px;
+  height:44px;
+}
+.intro {
+  display:grid;
+  grid-template-columns:1fr 330px;
+  align-items:center;
+  gap:55px;
+  padding:62px 0 52px
+}
+.eyebrow {
+  color:var(--cyan);
+  font-size:10px;
+  letter-spacing:2px;
+  display:flex;
+  align-items:center;
+  gap:10px
+}
+.eyebrow span {
+  height:6px;
+  width:6px;
+  border-radius:50%;
+  background:var(--cyan);
+  box-shadow:0 0 15px var(--cyan)
+}
+h1 {
+  font-size:clamp(32px,4vw,49px);
+  font-weight:400;
+  line-height:1.17;
+  letter-spacing:-1.8px;
+  margin:22px 0 20px
+}
+h1 span {
+  color:var(--pink)
+}
+.lede {
+  color:var(--muted);
+  font-size:14px;
+  line-height:1.85;
+  margin:0
+}
+.reference-card {
+  background:linear-gradient(130deg,var(--surface),var(--paper));
+  border:1px solid var(--line);
+  border-radius:18px;
+  padding:25px;
+  box-shadow:0 16px 60px #00000010;
+  position:relative;
+  overflow:hidden
+}
+.reference-card:before {
+  content:"";
+  position:absolute;
+  top:0;
+  left:24px;
+  right:24px;
+  height:2px;
+  background:linear-gradient(90deg,#ff2e97,#00d9ff)
+}
+.card-label {
+  font-size:9px;
+  letter-spacing:2px;
+  color:var(--muted)
+}
+.card-title {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  font-size:24px;
+  margin:24px 0 10px;
+  gap:12px
+}
+.card-title span {
+  font-size:10px;
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:5px 7px;
+  color:var(--cyan)
+}
+.reference-card p {
+  font-size:12px;
+  color:var(--muted)
+}
+.card-footer {
+  display:flex;
+  justify-content:space-between;
+  gap:12px;
+  border-top:1px solid var(--line);
+  padding-top:18px;
+  margin-top:26px;
+  font-size:11px
+}
+#access {
+  color:var(--muted)
+}
+.reference-heading,.reference-heading>div {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px
+}
+.reference-heading {
+  padding:22px 0;
+  border-top:1px solid var(--line)
+}
+.section-index {
+  color:var(--pink);
+  font:12px monospace
+}
+h2 {
+  font-size:17px;
+  font-weight:500;
+  margin:0
+}
+.reference-heading button {
+  background:none;
+  border:1px solid var(--line);
+  border-radius:8px;
+  color:var(--muted);
+  padding:9px 12px;
+  font-size:11px
+}
+.reference-heading button:hover {
+  color:var(--cyan);
+  border-color:var(--cyan)
+}
+footer {
+  display:flex;
+  justify-content:space-between;
+  gap:15px;
+  border-top:1px solid var(--line);
+  padding:30px 0 40px;
+  margin-top:40px;
+  color:var(--muted);
+  font-size:11px
+}
+footer a:first-child {
+  color:var(--pink)
+}
+.skip-link {
+  position:absolute;
+  top:-100px;
+  left:20px;
+  padding:12px;
+  background:var(--paper);
+  z-index:10
+}
+.skip-link:focus {
+  top:10px
+}
+#docs-error {
+  padding:20px;
+  border:1px solid var(--pink);
+  border-radius:10px
+}
+/* Keep Swagger's interaction and method colors, while matching the surrounding product UI. */
+.swagger-ui {
+  color:var(--text);
+  font-family:var(--font-body)
+}
+.swagger-ui .wrapper {
+  padding:0;
+  max-width:none
+}
+.swagger-ui .information-container,.swagger-ui .scheme-container,.swagger-ui .topbar {
+  display:none
+}
+.swagger-ui .opblock-tag {
+  color:var(--text);
+  border-bottom:1px solid var(--line);
+  padding:19px 5px;
+  font-size:17px;
+  font-weight:500
+}
+.swagger-ui .opblock-tag small {
+  color:var(--muted)
+}
+.swagger-ui .opblock-tag:hover {
+  background:var(--surface)
+}
+.swagger-ui .opblock-tag svg,.swagger-ui .expand-operation svg,.swagger-ui .opblock-control-arrow svg,.swagger-ui .opblock-summary svg,.swagger-ui .model-toggle:after {
+  fill:var(--muted)
+}
+.swagger-ui .opblock {
+  box-shadow:none;
+  border-radius:9px;
+  margin:0 0 12px;
+  overflow:hidden
+}
+.swagger-ui .opblock .opblock-summary {
+  padding:7px 9px
+}
+.swagger-ui .opblock .opblock-summary-path {
+  font-size:13px;
+  font-weight:500;
+  color:var(--text)
+}
+.swagger-ui .opblock .opblock-summary-description {
+  font-size:12px;
+  color:var(--muted)
+}
+.swagger-ui .opblock .opblock-summary-method {
+  font-size:11px;
+  min-width:65px;
+  padding:6px 0;
+  text-shadow:none
+}
+.swagger-ui .opblock.opblock-get .opblock-summary-method {
+  background:#2875ad
+}
+.swagger-ui .opblock.opblock-post .opblock-summary-method {
+  background:#167852
+}
+.swagger-ui .opblock.opblock-put .opblock-summary-method {
+  background:#985900
+}
+.swagger-ui .opblock.opblock-delete .opblock-summary-method {
+  background:#b3334a
+}
+.swagger-ui .opblock.opblock-patch .opblock-summary-method {
+  background:#6e50b0
+}
+.swagger-ui .opblock.opblock-options .opblock-summary-method {
+  background:#66549d
+}
+.swagger-ui .opblock.opblock-head .opblock-summary-method {
+  background:#765098
+}
+.swagger-ui .opblock .opblock-section-header {
+  background:var(--surface);
+  box-shadow:none
+}
+.swagger-ui .opblock .opblock-section-header h4,.swagger-ui .opblock .opblock-section-header label,.swagger-ui .parameter__name,.swagger-ui .parameter__type,.swagger-ui .parameter__in,.swagger-ui .response-col_description,.swagger-ui .response-col_status,.swagger-ui .response-col_links,.swagger-ui .tab li,.swagger-ui table thead tr th,.swagger-ui .opblock-description-wrapper p,.swagger-ui .opblock-external-docs-wrapper p,.swagger-ui .opblock-title_normal p,.swagger-ui .renderedMarkdown p,.swagger-ui .renderedMarkdown li,.swagger-ui .model,.swagger-ui .model-title,.swagger-ui section.models h4,.swagger-ui section.models h4 span,.swagger-ui .prop-format,.swagger-ui label {
+  color:var(--text)
+}
+.swagger-ui .btn {
+  color:var(--text);
+  border-color:var(--muted);
+  box-shadow:none
+}
+.swagger-ui .btn.execute {
+  background:#286ba5;
+  border-color:#286ba5;
+  color:white
+}
+.swagger-ui select,.swagger-ui input[type=text],.swagger-ui input[type=password],.swagger-ui input[type=search],.swagger-ui input[type=email],.swagger-ui input[type=file],.swagger-ui textarea {
+  background:var(--paper);
+  color:var(--text);
+  border-color:var(--line)
+}
+.swagger-ui input::placeholder,.swagger-ui textarea::placeholder {
+  color:var(--muted)
+}
+.swagger-ui section.models {
+  border-color:var(--line);
+  border-radius:10px
+}
+.swagger-ui section.models .model-container {
+  background:var(--surface)
+}
+.swagger-ui section.models h4 {
+  border-color:var(--line)
+}
+.swagger-ui .model-box {
+  background:var(--surface)
+}
+.swagger-ui .model-toggle:after {
+  filter:invert(.6)
+}
+.swagger-ui .prop-type {
+  color:var(--cyan)
+}
+.swagger-ui .markdown code,.swagger-ui .renderedMarkdown code {
+  color:var(--pink);
+  background:var(--surface)
+}
+.swagger-ui .dialog-ux .modal-ux {
+  background:var(--paper);
+  border-color:var(--line)
+}
+.swagger-ui .dialog-ux .modal-ux-header h3,.swagger-ui .dialog-ux .modal-ux-content h4,.swagger-ui .dialog-ux .modal-ux-content p {
+  color:var(--text)
+}
+.swagger-ui .download-contents {
+  color:white
+}
+.swagger-ui .loading-container .loading:after {
+  color:var(--muted)
+}
+.swagger-ui .filter-container {
+  padding:0 0 15px
+}
+.swagger-ui .filter .operation-filter-input {
   width:100%;
-                                                                                                                                                                  border:1px solid var(--line);
-                                                                                                                                                                  border-radius:9px;
-                                                                                                                                                                  padding:12px 14px;
-                                                                                                                                                                  background:var(--paper);
-                                                                                                                                                                  color:var(--text);
-                                                                                                                                                                  font:13px Tahoma,system-ui,sans-serif}
-                                                                                                                                                                  @media(max-width:720px) {
+  width:100%;
+  border:1px solid var(--line);
+  border-radius:9px;
+  padding:12px 14px;
+  background:var(--paper);
+  color:var(--text);
+  font:13px var(--font-body)
+}
+@media(max-width:720px) {
   .swagger-ui .opblock .opblock-section-header {
     flex-wrap:wrap;
     gap:12px;
@@ -365,54 +486,91 @@ const documentationCSS = `
     gap:8px;
     min-width:0;
   }
-                                                                                                                                                                    .shell {
-                                                                                                                                                                      padding-left:18px;
-                                                                                                                                                                      padding-right:18px}
-                                                                                                                                                                      .site-header {
-                                                                                                                                                                        padding-top:18px;
-                                                                                                                                                                        padding-bottom:18px}
-                                                                                                                                                                        .brand img {
-                                                                                                                                                                          width:43px;
-                                                                                                                                                                          height:43px}
-                                                                                                                                                                          .brand strong {
-                                                                                                                                                                            font-size:25px}
-                                                                                                                                                                            .brand small {
-                                                                                                                                                                              font-size:9px}
-                                                                                                                                                                              nav {
-                                                                                                                                                                                gap:14px}
-                                                                                                                                                                                nav a {
-                                                                                                                                                                                  font-size:11px}
-                                                                                                                                                                                  nav a:first-child {
-                                                                                                                                                                                    display:none}
-                                                                                                                                                                                    .intro {
-                                                                                                                                                                                      grid-template-columns:1fr;
-                                                                                                                                                                                      gap:28px;
-                                                                                                                                                                                      padding:32px 0}
-                                                                                                                                                                                      .reference-card {
-                                                                                                                                                                                        padding:22px}
-                                                                                                                                                                                        .card-title {
-                                                                                                                                                                                          margin-top:18px}
-                                                                                                                                                                                          .card-footer {
-                                                                                                                                                                                            margin-top:20px}
-                                                                                                                                                                                            .swagger-ui .opblock .opblock-summary {
-                                                                                                                                                                                              flex-wrap:wrap;
-                                                                                                                                                                                              gap:4px}
-                                                                                                                                                                                              .swagger-ui .opblock .opblock-summary-path {
-                                                                                                                                                                                                max-width:calc(100% - 105px);
-                                                                                                                                                                                                font-size:11px;
-                                                                                                                                                                                                overflow-wrap:anywhere}
-                                                                                                                                                                                                .swagger-ui .opblock .opblock-summary-description {
-                                                                                                                                                                                                  flex-basis:100%;
-                                                                                                                                                                                                  padding:4px}
-                                                                                                                                                                                                  .swagger-ui .opblock-tag {
-                                                                                                                                                                                                    font-size:15px}
-                                                                                                                                                                                                    .swagger-ui .opblock-tag small {
-                                                                                                                                                                                                      font-size:11px}
-                                                                                                                                                                                                      footer {
-                                                                                                                                                                                                        flex-wrap:wrap}
-                                                                                                                                                                                                        footer span {
-                                                                                                                                                                                                          display:none}
-                                                                                                                                                                                                        }
+  .shell {
+    padding-left:18px;
+    padding-right:18px
+  }
+  .intro {
+    grid-template-columns:1fr;
+    gap:28px;
+    padding:32px 0
+  }
+  .reference-card {
+    padding:22px
+  }
+  .card-title {
+    margin-top:18px
+  }
+  .card-footer {
+    margin-top:20px
+  }
+  .swagger-ui .opblock .opblock-summary {
+    flex-wrap:wrap;
+    gap:4px
+  }
+  .swagger-ui .opblock .opblock-summary-path {
+    max-width:calc(100% - 105px);
+    font-size:11px;
+    overflow-wrap:anywhere
+  }
+  .swagger-ui .opblock .opblock-summary-description {
+    flex-basis:100%;
+    padding:4px
+  }
+  .swagger-ui .opblock-tag {
+    font-size:15px
+  }
+  .swagger-ui .opblock-tag small {
+    font-size:11px
+  }
+  footer {
+    flex-wrap:wrap
+  }
+  footer span {
+    display:none
+  }
+}
+.brand:hover {
+  opacity:.8;
+}
+nav a:hover {
+  background:var(--surface);
+  color:var(--text);
+}
+#theme:hover {
+  border-color:rgba(112,72,140,.4);
+}
+#theme svg {
+  width:20px;
+  height:20px;
+}
+#swagger-ui .swagger-ui, #swagger-ui .swagger-ui * {
+  font-family:var(--font-body);
+}
+@media(prefers-reduced-motion:no-preference) {
+  .brand:hover img {
+    transform:rotate(12deg);
+  }
+}
+@media(max-width:639px) {
+  .site-header {
+    padding:20px;
+    gap:12px;
+  }
+  .brand img {
+    width:48px;
+    height:48px;
+  }
+  .brand-wordmark {
+    display:none;
+  }
+  nav {
+    gap:4px;
+  }
+  nav a {
+    padding:0 8px;
+  }
+}
 `
 
 const documentationJS = `
@@ -446,8 +604,8 @@ const documentationJS = `
       const spec = await response.json();
       if (!ui || isAdmin !== adminVisible) {
         ui = SwaggerUIBundle({
-          spec, dom_id: '#swagger-ui', deepLinking: true, docExpansion: 'none',
-          filter: true, tagsSorter: 'alpha', operationsSorter: 'alpha', displayRequestDuration: true, defaultModelsExpandDepth: -1,
+          spec, dom_id: '#swagger-ui', deepLinking: true, docExpansion: 'full',
+          filter: true, tagsSorter: 'alpha', operationsSorter: 'alpha', displayRequestDuration: true, defaultModelsExpandDepth: 2,
           validatorUrl: null, presets: [SwaggerUIBundle.presets.apis], layout: 'BaseLayout',
           requestInterceptor: (request) => { request.credentials = 'same-origin'; return request; },
           responseInterceptor: (response) => {
