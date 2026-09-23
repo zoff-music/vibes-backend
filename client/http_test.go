@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json/v2"
 	"errors"
 	"fmt"
 	"net/http"
@@ -45,6 +46,44 @@ func TestRequestBytesSetsApplicationUserAgent(t *testing.T) {
 			}
 			if receivedUserAgent != tt.expectedUserAgent {
 				t.Fatalf("expected user agent %q, got %q", tt.expectedUserAgent, receivedUserAgent)
+			}
+		})
+	}
+}
+
+func TestErrorCodeWrapperUsesApplicationNamespace(t *testing.T) {
+	tests := []struct {
+		name              string
+		wrapper           ErrorCodeWrapper
+		expectedNamespace string
+	}{
+		{
+			name: "uses the vibes backend namespace by default",
+			wrapper: ErrorCodeWrapper{
+				Err: fmt.Errorf("error downstream request failed"),
+				ResponseBody: ErrorCodeResponseBody{
+					Error:   "downstream_error",
+					Message: "request failed",
+				},
+			},
+			expectedNamespace: applicationName,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			body, err := tt.wrapper.GetResponseBody()
+			if err != nil {
+				t.Fatalf("expected error response to marshal: %v", err)
+			}
+
+			var response ErrorCodeResponseBody
+			err = json.Unmarshal(body, &response)
+			if err != nil {
+				t.Fatalf("expected error response to unmarshal: %v", err)
+			}
+			if response.Namespace != tt.expectedNamespace {
+				t.Fatalf("expected namespace %q, got %q", tt.expectedNamespace, response.Namespace)
 			}
 		})
 	}

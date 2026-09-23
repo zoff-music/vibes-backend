@@ -12,6 +12,8 @@ import (
 
 // Config contains environment variables.
 type Config struct {
+	DocumentationDirectory string `envconfig:"DOCUMENTATION_DIRECTORY" default:"./static/swagger"`
+
 	Port                string        `envconfig:"PORT" default:"8080"`
 	InternalPort        string        `envconfig:"INTERNAL_PORT" default:"8081"`
 	OtelEndpoint        string        `envconfig:"OTEL_ENDPOINT" default:"alloy.monitoring.svc.cluster.local:4317"`

@@ -25,6 +25,7 @@ FROM scratch AS prod
 WORKDIR /app
 
 COPY --from=builder /out/main /app/main
+COPY --from=builder /src/static /app/static
 COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=builder /usr/local/go/lib/time/zoneinfo.zip /zoneinfo.zip
 COPY --from=builder /etc/passwd /etc/passwd
