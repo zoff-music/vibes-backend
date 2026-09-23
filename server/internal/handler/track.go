@@ -20,8 +20,8 @@ import (
 //	@Produce	json
 //	@Param		id	path		string	true	"Video ID"
 //	@Success	200	{object}	vibe.MusicTrack
-//	@Failure	400	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/youtube/videos/{id} [get]
 func GetMusicTrack(
 	ms vibe.MusicTrackFetcher,
@@ -122,8 +122,8 @@ func GetMusicTrack(
 //	@Produce	json
 //	@Param		id	path		string	true	"Track ID"
 //	@Success	200	{object}	vibe.MusicTrack
-//	@Failure	400	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/soundcloud/tracks/{id} [get]
 func GetSoundCloudTrack(
 	ms vibe.MusicTrackFetcher,
@@ -178,8 +178,8 @@ func GetSoundCloudTrack(
 //	@Produce	json
 //	@Param		url	query		string	true	"SoundCloud track URL"
 //	@Success	200	{object}	vibe.MusicTrack
-//	@Failure	400	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/soundcloud/tracks [get]
 func ResolveSoundCloudTrack(
 	resolver vibe.MusicTrackResolver,

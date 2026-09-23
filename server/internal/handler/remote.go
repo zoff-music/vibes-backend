@@ -21,9 +21,10 @@ import (
 //	@Produce	json
 //	@Param		request	body		vibe.RemoteUpdateRequest	true	"Current machine room"
 //	@Success	201		{object}	vibe.RemotePairing
-//	@Failure	400		{object}	map[string]string
-//	@Failure	401		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
+//	@Failure	404	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes [post]
 func CreateRemoteControl(
 	db vibe.RemoteControlEnabler,
@@ -167,8 +168,8 @@ func CreateRemoteControl(
 //	@Tags		remotes
 //	@Produce	json
 //	@Success	200	{object}	vibe.RemoteStatus
-//	@Failure	401	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes [get]
 func GetOwnedRemoteControl(
 	fetcher vibe.OwnedRemoteControlFetcher,
@@ -249,9 +250,9 @@ func GetOwnedRemoteControl(
 //	@Param		id		path		string					true	"Remote ID"
 //	@Param		request	body		vibe.RemotePairingRequest	true	"Pairing credential"
 //	@Success	201		{object}	vibe.RemoteSession
-//	@Failure	400		{object}	map[string]string
-//	@Failure	401		{object}	map[string]string
-//	@Failure	500		{object}	map[string]string
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes/{id}/sessions [post]
 func PairRemoteControl(
 	pairer vibe.RemoteControlPairer,
@@ -428,9 +429,10 @@ func PairRemoteControl(
 //	@Produce	json
 //	@Param		id	path		string	true	"Remote ID"
 //	@Success	200	{object}	vibe.RemoteStatus
-//	@Failure	401	{object}	map[string]string
-//	@Failure	403	{object}	map[string]string
-//	@Failure	404	{object}	map[string]string
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	403	{object}	vibe.ErrorResponse
+//	@Failure	404	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes/{id} [get]
 func GetRemoteControl(
 	fetcher vibe.RemoteControlFetcher,
@@ -524,9 +526,10 @@ func GetRemoteControl(
 //	@Param		id		path	string					true	"Remote ID"
 //	@Param		request	body	vibe.RemoteUpdateRequest	true	"Current room"
 //	@Success	204
-//	@Failure	400	{object}	map[string]string
-//	@Failure	401	{object}	map[string]string
-//	@Failure	404	{object}	map[string]string
+//	@Failure	400	{object}	vibe.ErrorResponse
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	404	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes/{id} [patch]
 func UpdateRemoteControl(
 	db vibe.RemoteControlRoomUpdater,
@@ -663,8 +666,8 @@ func UpdateRemoteControl(
 //	@Tags		remotes
 //	@Param		id	path	string	true	"Remote ID"
 //	@Success	204
-//	@Failure	401	{object}	map[string]string
-//	@Failure	500	{object}	map[string]string
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes/{id} [delete]
 func DeleteRemoteControl(deleter vibe.OwnedRemoteControlDeleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {

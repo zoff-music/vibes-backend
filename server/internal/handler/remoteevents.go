@@ -14,13 +14,18 @@ import (
 // RemoteEvents streams machine room changes between a machine and controller.
 //
 //	@Summary	Subscribe to remote control events
+//
+// @Description Returns an SSE stream. Each frame has an `event` name and a JSON `data` payload containing RemoteEvent fields: type, roomId, origin, online, paired, currentSongId, playbackPositionMs, playbackIsPlaying, and playbackObservedAt.
+// @Description The first event is `remote_state_update`. Subsequent events report remote room and playback changes. Frames end with a blank line; this is not a single JSON response.
+//
 //	@Tags		remotes
 //	@Produce	text/event-stream
 //	@Param		id	path		string	true	"Remote ID"
-//	@Success	200	{string}	string
-//	@Failure	401	{object}	map[string]string
-//	@Failure	403	{object}	map[string]string
-//	@Failure	404	{object}	map[string]string
+//	@Success	200	{string}	string "SSE frames with event-specific JSON data; see the stream description"
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	403	{object}	vibe.ErrorResponse
+//	@Failure	404	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes/{id}/events [get]
 func RemoteEvents(
 	subscriber vibe.Subscriber,

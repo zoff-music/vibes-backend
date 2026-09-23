@@ -7,8 +7,7 @@ branding. It is served by the backend and loads the logo from
 logo sizing, and pixel settings icon. Typography uses the frontend's `MSW98UI`
 font assets under `/assets/` on the same origin. Keep the content-hashed font URLs
 in `documentationpage.go` aligned with the frontend build when the fonts change;
-a standalone local preview must also serve those font assets. Endpoint groups,
-operations, and the top-level model definitions start expanded.
+a standalone local preview must also serve those font assets. Endpoint categories start expanded; individual operations remain collapsed.
 
 `/api/swagger/doc.json` always returns the public specification, excluding admin
 operations and schemas used only by those operations. `/api/swagger/admin.json`
@@ -20,8 +19,7 @@ The UI selects the appropriate specification on load, on window focus, after an
 admin session request in Swagger, and once a minute while visible. **Refresh
 access** also checks immediately after signing in or out elsewhere. Documentation
 responses use `Cache-Control: private, no-store`; admin API authorization remains
-unchanged. Generated files in this public source repository still contain the
-full API contract; documentation filtering is not a substitute for API access
+unchanged. The public source annotations still describe the full API contract; documentation filtering is not a substitute for API access
 control.
 
 ---
@@ -316,11 +314,25 @@ event stream.
 
 ## Error Responses
 
-All endpoints return a consistent error format:
+Ordinary handler failures use `vibe.ErrorResponse`:
 
 ```json
 {
-  "error": "Error message",
-  "code": "ERROR_CODE"
+  "error": "something went wrong"
 }
 ```
+
+There is no `code` field. Detailed internal errors are logged, not returned to the
+caller. Swagger references this concrete schema instead of an arbitrary string
+map, so the example and model show the actual `error` field.
+
+Session, permission, and rate-limit middleware can reject requests with plain-text
+bodies such as `unauthorized` or `forbidden`. Explicitly propagated upstream
+errors retain their HTTP status and may include `namespace`, `error`, `message`,
+and `propagate`, with the `X-preserve-error: 1` response header. Clients must not
+assume every failed response is the standard JSON object.
+
+A `204` response and every HEAD response have no body. OAuth `307` responses
+redirect through the `Location` header. SSE endpoints return an ongoing sequence
+of event frames whose `data` values depend on the event type; the Swagger stream
+descriptions identify the payloads and replay cursor parameters.
