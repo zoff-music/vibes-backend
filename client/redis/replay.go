@@ -14,7 +14,6 @@ import (
 	redigo "github.com/gomodule/redigo/redis"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
-	"go.opentelemetry.io/otel/trace"
 )
 
 type eventStreams struct {
@@ -413,12 +412,6 @@ func (s *streamSubscription) read(
 	ctx context.Context,
 	cursor string,
 ) ([]streamMessage, error) {
-	// A subscription can remain connected for days. Each bounded XREAD must
-	// have its own trace instead of growing the finished Subscribe trace.
-	// WithNewRoot preserves the subscription's cancellation and deadline.
-	span, ctx := tracing.StartSpanFromContext(ctx, "readEventStream", trace.WithNewRoot())
-	defer span.End()
-
 	connection, err := s.pool.GetContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting redis connection in read: %w", err)
