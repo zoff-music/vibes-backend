@@ -9,12 +9,13 @@ import (
 )
 
 type MusicPlaylist struct {
-	ID                    string       `json:"id"`
-	Source                string       `json:"source"`
-	Title                 string       `json:"title,omitempty"`
-	Tracks                []MusicTrack `json:"tracks"`
-	Truncated             bool         `json:"truncated"`
-	SkippedEmbeddingCount int          `json:"skippedEmbeddingCount"`
+	ID                      string       `json:"id"`
+	Source                  string       `json:"source"`
+	Title                   string       `json:"title,omitempty"`
+	Tracks                  []MusicTrack `json:"tracks"`
+	Truncated               bool         `json:"truncated"`
+	SkippedEmbeddingCount   int          `json:"skippedEmbeddingCount"`
+	SkippedMadeForKidsCount int          `json:"skippedMadeForKidsCount"`
 }
 
 func (p *MusicPlaylist) GetMusicTracks() []MusicTrack {

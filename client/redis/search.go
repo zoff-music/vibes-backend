@@ -303,7 +303,7 @@ func (c *Client) searchCacheKey(source string, query string) string {
 
 	hash := sha256.Sum256([]byte(normalizedQuery))
 	key := c.getKeyWithPrefix(
-		"search:" + string(source) + ":" + hex.EncodeToString(hash[:]),
+		"search:v2:" + string(source) + ":" + hex.EncodeToString(hash[:]),
 	)
 
 	return key
@@ -312,7 +312,7 @@ func (c *Client) searchCacheKey(source string, query string) string {
 func (c *Client) musicTrackCacheKey(source string, sourceID string) string {
 	hash := sha256.Sum256([]byte(sourceID))
 	key := c.getKeyWithPrefix(
-		"track:" + source + ":" + hex.EncodeToString(hash[:]),
+		"track:v2:" + source + ":" + hex.EncodeToString(hash[:]),
 	)
 	return key
 }

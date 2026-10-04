@@ -53,7 +53,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	params.Set("id", strings.Join(youtubeIDs, ","))
 	params.Set(
 		"fields",
-		"items(id,snippet(categoryId,liveBroadcastContent),contentDetails(duration,contentRating/ytRating,regionRestriction),statistics(viewCount,likeCount),status/embeddable)",
+		"items(id,snippet(categoryId,liveBroadcastContent),contentDetails(duration,contentRating/ytRating,regionRestriction),statistics(viewCount,likeCount),status(embeddable,madeForKids))",
 	)
 	params.Set("key", c.apiKey)
 
@@ -91,6 +91,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 
 		videoItem, ok := videoItems[item.ID.VideoID]
 		if !ok ||
+			videoItem.Status.MadeForKids ||
 			!videoItem.Status.Embeddable ||
 			videoItem.Snippet.CategoryID != youtubeMusicCategoryID ||
 			videoItem.isLiveVideo() {

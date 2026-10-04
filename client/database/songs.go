@@ -294,6 +294,98 @@ func (c *Client) UpdateSongPlaybackRestriction(
 	return nil
 }
 
+// Expire a room at a time, independently of provider availability. The 25-day
+// limit leaves headroom for search caches, import staging, and event replay.
+func (c *Client) prepareExpireSongMetadataStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH room_q AS (
+			SELECT a.id
+			FROM rooms a
+			WHERE EXISTS (
+				SELECT 1 FROM songs b
+				WHERE b.room_id = a.id
+				AND b.source_type = 'youtube'
+				AND b.metadata_updated_at <= NOW() - INTERVAL '25 days'
+			)
+			ORDER BY a.id
+			LIMIT 1
+			FOR UPDATE OF a SKIP LOCKED
+		), expired_q AS MATERIALIZED (
+			SELECT a.id, a.room_id
+			FROM songs a
+			JOIN room_q b ON b.id = a.room_id
+			WHERE a.source_type = 'youtube'
+			AND a.metadata_updated_at <= NOW() - INTERVAL '25 days'
+			FOR UPDATE OF a
+		), deleted_votes_q AS (
+			DELETE FROM song_votes a USING expired_q b
+			WHERE a.room_id = b.room_id AND a.song_id = b.id
+		), deleted_skips_q AS (
+			DELETE FROM skip_votes a USING expired_q b
+			WHERE a.room_id = b.room_id AND a.song_id = b.id
+		), stopped_playback_q AS (
+			UPDATE playback_state a
+			SET current_song_id = NULL, is_playing = FALSE,
+				position_ms = 0, updated_at = NOW()
+			FROM expired_q b
+			WHERE a.room_id = b.room_id AND a.current_song_id = b.id
+		), deleted_songs_q AS (
+			DELETE FROM songs a USING expired_q b WHERE a.id = b.id
+		)
+		SELECT id FROM room_q
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ExpireSongMetadataStatement: %w", err)
+	}
+
+	c.ExpireSongMetadataStatement = stmt
+
+	return nil
+}
+
+func (c *Client) ExpireSongMetadata(ctx context.Context) (*vibe.SongMetadataExpiry, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ExpireSongMetadata")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	row := c.ExpireSongMetadataStatement.QueryRowContext(cctx)
+
+	var expiryRow songMetadataExpiryRow
+	err := expiryRow.scan(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, internalerror.ErrExpected{Err: internalerror.ErrNonRecoverable{
+				Err: fmt.Errorf("error expiring song metadata in ExpireSongMetadata: none expired"),
+			}}
+		}
+
+		return nil, fmt.Errorf("error scanning expired metadata in ExpireSongMetadata: %w", err)
+	}
+
+	expiry := expiryRow.toSongMetadataExpiry()
+
+	return expiry, nil
+}
+
+type songMetadataExpiryRow struct {
+	RoomID string
+}
+
+func (r *songMetadataExpiryRow) scan(row *sql.Row) error {
+	err := row.Scan(&r.RoomID)
+	if err != nil {
+		return fmt.Errorf("error scanning metadata expiry room: %w", err)
+	}
+
+	return nil
+}
+
+func (r *songMetadataExpiryRow) toSongMetadataExpiry() *vibe.SongMetadataExpiry {
+	return &vibe.SongMetadataExpiry{RoomID: r.RoomID}
+}
+
 func (c *Client) prepareClaimSongMetadataRefreshStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH stale_song_q AS (
@@ -301,12 +393,6 @@ func (c *Client) prepareClaimSongMetadataRefreshStmt() error {
 			FROM songs a
 			WHERE a.source_type = $1
 			AND a.metadata_refresh_after <= NOW()
-			AND NOT EXISTS (
-				SELECT 1
-				FROM playback_state b
-				WHERE b.room_id = a.room_id
-				AND b.current_song_id = a.id
-			)
 			ORDER BY a.metadata_refresh_after ASC, a.id ASC
 			LIMIT 1
 			FOR UPDATE OF a SKIP LOCKED
@@ -340,7 +426,7 @@ func (c *Client) ClaimSongMetadataRefresh(
 	row := c.ClaimSongMetadataRefreshStatement.QueryRowContext(
 		cctx,
 		string(provider),
-		int64(retryAfter/time.Second),
+		int(retryAfter/time.Second),
 	)
 
 	var refreshRow songMetadataRefreshRow
@@ -440,7 +526,7 @@ func (c *Client) RefreshSongMetadata(
 		track.DurationSeconds,
 		track.ProviderURL,
 		track.PlaybackRestriction,
-		int64(refreshInterval/time.Second),
+		int(refreshInterval/time.Second),
 	)
 	if err != nil {
 		return fmt.Errorf("error refreshing song metadata in RefreshSongMetadata: %w", err)
@@ -478,7 +564,7 @@ func (c *Client) DeferSongMetadataRefresh(
 	_, err := c.DeferSongMetadataRefreshStatement.ExecContext(
 		cctx,
 		songID,
-		int64(retryAfter/time.Second),
+		int(retryAfter/time.Second),
 	)
 	if err != nil {
 		return fmt.Errorf(
@@ -847,6 +933,12 @@ func (c *Client) prepareRemoveSongStmt() error {
 			DELETE FROM song_votes
 			WHERE room_id = $1
 			AND song_id = $2
+		),
+		stopped_playback_q AS (
+			UPDATE playback_state
+			SET current_song_id = NULL, is_playing = FALSE,
+				position_ms = 0, updated_at = NOW()
+			WHERE room_id = $1 AND current_song_id = $2
 		)
 		DELETE FROM songs
 		WHERE room_id = $1
