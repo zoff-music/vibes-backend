@@ -13,7 +13,11 @@ import (
 )
 
 // TraceMiddleware handles tracing of our HTTPS requests.
-func TraceMiddleware(next http.Handler) http.Handler {
+type TraceMiddleware struct {
+	ExemptRoutes map[string]bool
+}
+
+func (m *TraceMiddleware) Middleware(next http.Handler) http.Handler {
 	middleware := otelhttp.NewMiddleware(
 		"http.server",
 		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
@@ -28,7 +32,7 @@ func TraceMiddleware(next http.Handler) http.Handler {
 	}))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if shouldSkipTrace(r) {
+		if m.ExemptRoutes[routeName(r)] {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -86,21 +90,4 @@ func routeName(r *http.Request) string {
 	}
 
 	return name
-}
-
-func shouldSkipTrace(r *http.Request) bool {
-	name := routeName(r)
-	if name == "RoomEvents" {
-		return true
-	}
-	if name == "RoomEventsV2" {
-		return true
-	}
-	if name == "RemoteEvents" {
-		return true
-	}
-	if name == "AdminEvents" {
-		return true
-	}
-	return false
 }

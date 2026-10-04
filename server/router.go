@@ -316,8 +316,16 @@ func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 
 // addTracingAndMetrics - Adds tracing and metrics to a router.
 func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
+	tm := middleware.TraceMiddleware{
+		ExemptRoutes: map[string]bool{
+			"RoomEvents":   true,
+			"RoomEventsV2": true,
+			"RemoteEvents": true,
+			"AdminEvents":  true,
+		},
+	}
 	for _, r := range routers {
-		r.Use(middleware.TraceMiddleware)
+		r.Use(tm.Middleware)
 		r.Use(middleware.MetricsMiddleware)
 	}
 }
