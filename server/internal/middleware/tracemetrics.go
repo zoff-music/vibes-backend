@@ -93,6 +93,12 @@ func shouldSkipTrace(r *http.Request) bool {
 	if name == "RoomEvents" {
 		return true
 	}
+	if name == "RoomEventsV2" {
+		return true
+	}
+	if name == "RemoteEvents" {
+		return true
+	}
 	if name == "AdminEvents" {
 		return true
 	}
