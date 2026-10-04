@@ -320,6 +320,7 @@ func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
 		ExemptRoutes: map[string]bool{
 			"RoomEvents":   true,
 			"RoomEventsV2": true,
+			"Messages":     true,
 			"RemoteEvents": true,
 			"AdminEvents":  true,
 		},

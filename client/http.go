@@ -54,6 +54,8 @@ type HTTPStatusCodeError struct {
 	URL        string
 	StatusCode int
 	Message    string
+	// ResponseBody is for provider-specific classification, never logging or propagation.
+	ResponseBody []byte `json:"-"`
 }
 
 // Error return an error string.
@@ -95,9 +97,10 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 		span.SetAttributes(attribute.String("message", requestErr.Error()))
 
 		httpStatusCodeError := HTTPStatusCodeError{
-			URL:        requestURL,
-			StatusCode: r.StatusCode,
-			Message:    message,
+			URL:          requestURL,
+			StatusCode:   r.StatusCode,
+			Message:      message,
+			ResponseBody: resp,
 		}
 
 		// Upstream bodies are untrusted, including any request to propagate them.

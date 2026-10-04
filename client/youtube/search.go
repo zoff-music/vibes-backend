@@ -174,12 +174,32 @@ func (c *Client) searchVideos(
 	})
 	if err != nil {
 		var statusCodeError client.HTTPStatusCodeError
-		if errors.As(err, &statusCodeError) &&
+		isStatusError := errors.As(err, &statusCodeError)
+		var quotaExceeded bool
+
+		if isStatusError &&
 			(statusCodeError.StatusCode == http.StatusForbidden ||
-				statusCodeError.StatusCode == http.StatusTooManyRequests) &&
-			(strings.Contains(statusCodeError.Message, "youtube.googleapis.com/search_list") ||
-				strings.Contains(statusCodeError.Message, "Search Queries") ||
-				strings.Contains(statusCodeError.Message, "quotaExceeded")) {
+				statusCodeError.StatusCode == http.StatusTooManyRequests) {
+			var failure searchErrorResponse
+			decodeErr := json.Unmarshal(statusCodeError.ResponseBody, &failure)
+
+			if decodeErr == nil {
+				for _, reason := range failure.Error.Errors {
+					if reason.Reason == "quotaExceeded" || reason.Reason == "dailyLimitExceeded" {
+						quotaExceeded = true
+					}
+				}
+
+				for _, detail := range failure.Error.Details {
+					if detail.Metadata.QuotaMetric == "youtube.googleapis.com/search_list" &&
+						detail.Metadata.QuotaLimit == "defaultSearchListPerDayPerProject" {
+						quotaExceeded = true
+					}
+				}
+			}
+		}
+
+		if quotaExceeded {
 			now := time.Now().In(c.searchQuotaZone)
 			reset := time.Date(
 				now.Year(),
@@ -217,6 +237,28 @@ func (c *Client) searchVideos(
 	}
 
 	return &result, nil
+}
+
+type searchErrorResponse struct {
+	Error searchError `json:"error"`
+}
+
+type searchError struct {
+	Errors  []searchErrorReason `json:"errors"`
+	Details []searchErrorDetail `json:"details"`
+}
+
+type searchErrorReason struct {
+	Reason string `json:"reason"`
+}
+
+type searchErrorDetail struct {
+	Metadata searchErrorMetadata `json:"metadata"`
+}
+
+type searchErrorMetadata struct {
+	QuotaMetric string `json:"quota_metric"`
+	QuotaLimit  string `json:"quota_limit"`
 }
 
 type searchResponse struct {
