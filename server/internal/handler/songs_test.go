@@ -45,7 +45,7 @@ func (s *addSongStorageStub) UpsertPlaybackState(_ context.Context, _ *vibe.Play
 type addSongEventsStub struct{}
 
 func (s *addSongEventsStub) GetCachedMusicTrack(_ context.Context, _ string, _ string) (*vibe.MusicTrack, error) {
-	return &vibe.MusicTrack{}, nil
+	return &vibe.MusicTrack{ID: "test", Source: "youtube", DurationSeconds: 6375}, nil
 }
 
 func (s *addSongEventsStub) NotifyRoomUpdate(_ context.Context, _ string, _ vibe.RoomEvent) error {

@@ -63,6 +63,19 @@ func (e ErrMusicTrackNotFound) Unwrap() error {
 	return e.Err
 }
 
+// ErrMadeForKids indicates that YouTube designates a video as made for kids.
+type ErrMadeForKids struct {
+	Err error
+}
+
+func (e ErrMadeForKids) Error() string {
+	return fmt.Sprintf("error made-for-kids video: %v", e.Err)
+}
+
+func (e ErrMadeForKids) Unwrap() error {
+	return e.Err
+}
+
 // ErrLiveVideo indicates that a provider track is a live or upcoming video.
 type ErrLiveVideo struct {
 	Err error

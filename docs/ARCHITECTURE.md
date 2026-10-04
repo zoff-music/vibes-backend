@@ -140,6 +140,21 @@ also handles abandoned imports. Generation, metadata refresh, playback
 progression, and cleanup are separate scheduled flows with bounded work and
 concurrency-safe database claims where needed.
 
+YouTube provider lookups exclude videos marked as made for kids from searches,
+direct track lookups, playlist imports, and generated selections. Playlist
+responses report separate counts for made-for-kids and embedding exclusions.
+YouTube additions require recently verified provider metadata in the shared
+cache; expired previews must be loaded again instead of trusting client data.
+
+Provider metadata refresh includes the currently selected song, even when
+paused, and broadcasts updated queue and playback metadata. A separate expiry
+worker removes unrefreshed YouTube metadata after 25 days, independently of
+provider availability or quota. It claims one room at a time and atomically
+removes stale songs and votes, clearing playback if its selected song expires.
+The cutoff leaves headroom for three-day caches, one-day import staging, and
+short-lived event replay before the 30-day metadata limit. Import cleanup also
+expires unfinished imports after one day rather than retaining their items.
+
 ## Sessions and permissions
 
 Listeners use signed anonymous sessions, not required user accounts. Room

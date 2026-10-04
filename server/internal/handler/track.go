@@ -45,6 +45,21 @@ func GetMusicTrack(
 
 		track, err := ms.GetTrack(ctx, id)
 		if err != nil {
+			var madeForKidsError internalerror.ErrMadeForKids
+			if errors.As(err, &madeForKidsError) {
+				handleError(w, client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error getting youtube track: %w", err),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "youtube_made_for_kids_not_supported",
+						Message:   "This video is marked as made for kids on YouTube and cannot be added to Zoff. Try another version of the song.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				}, http.StatusBadRequest, false)
+				return
+			}
+
 			var liveVideoError internalerror.ErrLiveVideo
 			if errors.As(err, &liveVideoError) {
 				handleError(

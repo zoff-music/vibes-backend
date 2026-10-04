@@ -250,6 +250,20 @@ func AddSong(
 			log.Printf("error getting cached provider track metadata: %v", err)
 		}
 
+		if req.SourceType == vibe.SourceTypeYouTube && (err != nil || cachedTrack.IsEmpty()) {
+			handleError(w, client.ErrorCodeWrapper{
+				Err: fmt.Errorf("error adding youtube track: verified metadata is unavailable"),
+				ResponseBody: client.ErrorCodeResponseBody{
+					Namespace: "vibes-backend",
+					Error:     "youtube_track_verification_required",
+					Message:   "This video's availability needs to be checked again. Search for it or paste its YouTube link again before adding it.",
+					Propagate: true,
+				},
+				StatusCode: http.StatusBadRequest,
+			}, http.StatusBadRequest, false)
+			return
+		}
+
 		if err == nil && !cachedTrack.IsEmpty() {
 			if vibe.IsLiveVideo(req.SourceType, cachedTrack.DurationSeconds) {
 				handleError(
@@ -271,6 +285,12 @@ func AddSong(
 			}
 
 			playbackRestriction = cachedTrack.PlaybackRestriction
+			if req.SourceType == vibe.SourceTypeYouTube {
+				req.Title = cachedTrack.Title
+				artist = cachedTrack.ChannelTitle
+				req.Thumbnail = cachedTrack.ThumbnailURL
+				req.Duration = cachedTrack.DurationSeconds
+			}
 		}
 
 		song := &vibe.Song{

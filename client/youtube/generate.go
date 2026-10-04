@@ -311,7 +311,7 @@ func (c *Client) getGeneratedTracks(
 		params.Set("id", strings.Join(youtubeIDs[start:end], ","))
 		params.Set(
 			"fields",
-			"items(id,snippet(title,channelTitle,categoryId,liveBroadcastContent,thumbnails),contentDetails(duration,contentRating/ytRating,regionRestriction),statistics(viewCount,likeCount),status/embeddable)",
+			"items(id,snippet(title,channelTitle,categoryId,liveBroadcastContent,thumbnails),contentDetails(duration,contentRating/ytRating,regionRestriction),statistics(viewCount,likeCount),status(embeddable,madeForKids))",
 		)
 		params.Set("key", c.apiKey)
 
@@ -337,7 +337,7 @@ func (c *Client) getGeneratedTracks(
 		}
 
 		for _, item := range response.Items {
-			if item.isLiveVideo() {
+			if item.isLiveVideo() || item.Status.MadeForKids {
 				continue
 			}
 			playbackRestriction := item.playbackRestriction()
