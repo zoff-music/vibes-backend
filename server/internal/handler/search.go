@@ -117,6 +117,9 @@ func SearchMusic(
 				if err != nil {
 					log.Printf("error caching youtube quota reset: %v", err)
 				}
+
+				w.Header().Set("Retry-After", quotaError.ResetAt.UTC().Format(http.TimeFormat))
+
 				handleError(
 					w,
 					client.ErrorCodeWrapper{
