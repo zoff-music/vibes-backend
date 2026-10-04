@@ -104,6 +104,16 @@ type SongMetadataRefresh struct {
 	SourceID string
 }
 
+type SongMetadataExpiry struct {
+	RoomID string
+}
+
+type SongMetadataExpiryFetcher interface {
+	ExpireSongMetadata(ctx context.Context) (*SongMetadataExpiry, error)
+	SongsFetcher
+	PlaybackFetcher
+}
+
 // IsEmpty returns true if the song is empty/not found
 func (s *Song) IsEmpty() bool {
 	return s.ID == ""
@@ -147,6 +157,7 @@ type SongMetadataRefreshStorage interface {
 	) error
 	SongRemover
 	SongsFetcher
+	PlaybackFetcher
 }
 
 // SongVoter votes for a song

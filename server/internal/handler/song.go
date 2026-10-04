@@ -51,7 +51,10 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 
 		var notFoundError internalerror.ErrMusicTrackNotFound
 		var liveVideoError internalerror.ErrLiveVideo
-		if !errors.As(err, &notFoundError) && !errors.As(err, &liveVideoError) {
+		var madeForKidsError internalerror.ErrMadeForKids
+		if !errors.As(err, &notFoundError) &&
+			!errors.As(err, &liveVideoError) &&
+			!errors.As(err, &madeForKidsError) {
 			return fmt.Errorf(
 				"error fetching %s metadata in MetaRefresh.Handle: %w",
 				h.ProviderName,
@@ -108,6 +111,24 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 			)
 		}
 
+		playback, err := h.DB.GetPlaybackState(ctx, refresh.RoomID)
+		if err != nil {
+			return fmt.Errorf("error fetching playback after metadata removal in MetaRefresh.Handle: %w", err)
+		}
+
+		playbackPayload, err := json.Marshal(playback)
+		if err != nil {
+			return fmt.Errorf("error marshaling playback after metadata removal in MetaRefresh.Handle: %w", err)
+		}
+
+		err = h.Events.NotifyRoomUpdate(ctx, refresh.RoomID, vibe.RoomEvent{
+			Type:    vibe.PlaybackUpdate,
+			Payload: playbackPayload,
+		})
+		if err != nil {
+			return fmt.Errorf("error notifying playback after metadata removal in MetaRefresh.Handle: %w", err)
+		}
+
 		return nil
 	}
 
@@ -118,6 +139,107 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 			h.ProviderName,
 			err,
 		)
+	}
+
+	songs, err := h.DB.GetSongs(ctx, refresh.RoomID)
+	if err != nil {
+		return fmt.Errorf("error fetching refreshed queue in MetaRefresh.Handle: %w", err)
+	}
+
+	for position, song := range songs {
+		if song.ID != refresh.SongID {
+			continue
+		}
+
+		payload, err := json.Marshal(songs)
+		if err != nil {
+			return fmt.Errorf("error marshaling refreshed queue in MetaRefresh.Handle: %w", err)
+		}
+
+		v2Payload, err := json.Marshal(vibe.SongPositionUpdate{Song: song, Position: position})
+		if err != nil {
+			return fmt.Errorf("error marshaling refreshed song in MetaRefresh.Handle: %w", err)
+		}
+
+		err = h.Events.NotifyRoomUpdate(ctx, refresh.RoomID, vibe.RoomEvent{
+			Type:    vibe.QueueReordered,
+			Payload: payload,
+			V2:      &vibe.RoomEventV2Payload{Type: vibe.SongUpdated, Payload: v2Payload},
+		})
+		if err != nil {
+			return fmt.Errorf("error notifying refreshed song in MetaRefresh.Handle: %w", err)
+		}
+
+		break
+	}
+
+	playback, err := h.DB.GetPlaybackState(ctx, refresh.RoomID)
+	if err != nil {
+		return fmt.Errorf("error fetching refreshed playback in MetaRefresh.Handle: %w", err)
+	}
+
+	if playback.CurrentSong != nil && playback.CurrentSong.ID == refresh.SongID {
+		payload, err := json.Marshal(playback)
+		if err != nil {
+			return fmt.Errorf("error marshaling refreshed playback in MetaRefresh.Handle: %w", err)
+		}
+
+		err = h.Events.NotifyRoomUpdate(ctx, refresh.RoomID, vibe.RoomEvent{
+			Type:    vibe.PlaybackUpdate,
+			Payload: payload,
+		})
+		if err != nil {
+			return fmt.Errorf("error notifying refreshed playback in MetaRefresh.Handle: %w", err)
+		}
+	}
+
+	return nil
+}
+
+type ExpireSongMetadata struct {
+	DB     vibe.SongMetadataExpiryFetcher
+	Events vibe.RoomBatchEventNotifier
+}
+
+func (h *ExpireSongMetadata) Handle(ctx context.Context, _ []byte) error {
+	expiry, err := h.DB.ExpireSongMetadata(ctx)
+	if err != nil {
+		return fmt.Errorf("error expiring metadata in ExpireSongMetadata.Handle: %w", err)
+	}
+
+	songs, err := h.DB.GetSongs(ctx, expiry.RoomID)
+	if err != nil {
+		return fmt.Errorf("error fetching queue in ExpireSongMetadata.Handle: %w", err)
+	}
+
+	payload, err := json.Marshal(songs)
+	if err != nil {
+		return fmt.Errorf("error marshaling queue in ExpireSongMetadata.Handle: %w", err)
+	}
+
+	playback, err := h.DB.GetPlaybackState(ctx, expiry.RoomID)
+	if err != nil {
+		return fmt.Errorf("error fetching playback in ExpireSongMetadata.Handle: %w", err)
+	}
+
+	playbackPayload, err := json.Marshal(playback)
+	if err != nil {
+		return fmt.Errorf("error marshaling playback in ExpireSongMetadata.Handle: %w", err)
+	}
+
+	err = h.Events.NotifyRoomUpdates(ctx, expiry.RoomID, []vibe.RoomEvent{
+		{
+			Type:    vibe.QueueReordered,
+			Payload: payload,
+			V2:      &vibe.RoomEventV2Payload{Type: vibe.QueueSnapshot, Payload: payload},
+		},
+		{
+			Type:    vibe.PlaybackUpdate,
+			Payload: playbackPayload,
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("error notifying metadata expiry in ExpireSongMetadata.Handle: %w", err)
 	}
 
 	return nil

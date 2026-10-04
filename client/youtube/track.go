@@ -65,6 +65,12 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	}
 
 	item := result.Items[0]
+	if item.Status.MadeForKids {
+		return nil, internalerror.ErrMadeForKids{
+			Err: fmt.Errorf("error getting youtube track in GetTrack: made-for-kids videos are not supported"),
+		}
+	}
+
 	if item.isLiveVideo() {
 		return nil, internalerror.ErrLiveVideo{
 			Err: fmt.Errorf("error getting youtube track in GetTrack: live videos are not supported"),
@@ -129,7 +135,8 @@ type videoRegionRestriction struct {
 }
 
 type videoStatus struct {
-	Embeddable bool `json:"embeddable"`
+	Embeddable  bool `json:"embeddable"`
+	MadeForKids bool `json:"madeForKids"`
 }
 
 func (v videoItem) isLiveVideo() bool {

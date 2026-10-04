@@ -96,9 +96,14 @@ func (c *Client) CreatePlaylistImport(ctx context.Context, importID string, room
 
 func (c *Client) prepareDeleteAbandonedPlaylistImportItemsStmt() error {
 	stmt, err := c.DB.Prepare(`
+		WITH expired_imports_q AS (
+			DELETE FROM playlist_imports
+			WHERE created_at < NOW() - INTERVAL '1 day'
+			RETURNING id
+		)
 		DELETE FROM playlist_import_items a
 		WHERE a.created_at < NOW() - INTERVAL '1 day'
-		AND NOT EXISTS (SELECT 1 FROM playlist_imports b WHERE b.id = a.import_id)
+		OR a.import_id IN (SELECT id FROM expired_imports_q)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing DeleteAbandonedPlaylistImportItemsStatement: %w", err)

@@ -79,6 +79,7 @@ func (c *Client) GetPlaylist(
 
 	tracks := make([]vibe.MusicTrack, 0, len(videoIDs))
 	skippedEmbeddingCount := 0
+	skippedMadeForKidsCount := 0
 	for start := 0; start < len(videoIDs); start += youtubePlaylistPageSize {
 		end := start + youtubePlaylistPageSize
 		if end > len(videoIDs) {
@@ -121,6 +122,11 @@ func (c *Client) GetPlaylist(
 				continue
 			}
 
+			if item.Status.MadeForKids {
+				skippedMadeForKidsCount++
+				continue
+			}
+
 			if !item.Status.Embeddable {
 				skippedEmbeddingCount++
 				continue
@@ -157,11 +163,12 @@ func (c *Client) GetPlaylist(
 	}
 
 	return &vibe.MusicPlaylist{
-		ID:                    id,
-		Source:                vibe.SourceTypeYouTube,
-		Tracks:                tracks,
-		Truncated:             truncated,
-		SkippedEmbeddingCount: skippedEmbeddingCount,
+		ID:                      id,
+		Source:                  vibe.SourceTypeYouTube,
+		Tracks:                  tracks,
+		Truncated:               truncated,
+		SkippedEmbeddingCount:   skippedEmbeddingCount,
+		SkippedMadeForKidsCount: skippedMadeForKidsCount,
 	}, nil
 }
 

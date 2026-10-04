@@ -343,6 +343,20 @@ func AddPlaylist(
 
 			playbackRestriction := ""
 			cachedTrack := cachedTracks[index]
+			if requestedSong.SourceType == vibe.SourceTypeYouTube && cachedTrack.IsEmpty() {
+				handleError(w, client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error importing youtube playlist: verified metadata is unavailable"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "youtube_track_verification_required",
+						Message:   "This playlist's availability needs to be checked again. Paste its link again before importing it.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				}, http.StatusBadRequest, false)
+				return
+			}
+
 			if !cachedTrack.IsEmpty() {
 				if vibe.IsLiveVideo(
 					requestedSong.SourceType,
@@ -366,6 +380,12 @@ func AddPlaylist(
 					return
 				}
 				playbackRestriction = cachedTrack.PlaybackRestriction
+				if requestedSong.SourceType == vibe.SourceTypeYouTube {
+					requestedSong.Title = cachedTrack.Title
+					requestedSong.Artist = cachedTrack.ChannelTitle
+					requestedSong.Thumbnail = cachedTrack.ThumbnailURL
+					requestedSong.Duration = cachedTrack.DurationSeconds
+				}
 			}
 
 			songs = append(songs, vibe.Song{
