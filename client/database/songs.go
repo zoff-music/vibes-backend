@@ -320,19 +320,29 @@ func (c *Client) prepareExpireSongMetadataStmt() error {
 		), deleted_votes_q AS (
 			DELETE FROM song_votes a USING expired_q b
 			WHERE a.room_id = b.room_id AND a.song_id = b.id
+			RETURNING a.room_id
 		), deleted_skips_q AS (
 			DELETE FROM skip_votes a USING expired_q b
 			WHERE a.room_id = b.room_id AND a.song_id = b.id
+			RETURNING a.room_id
 		), stopped_playback_q AS (
 			UPDATE playback_state a
 			SET current_song_id = NULL, is_playing = FALSE,
 				position_ms = 0, updated_at = NOW()
 			FROM expired_q b
 			WHERE a.room_id = b.room_id AND a.current_song_id = b.id
+			RETURNING a.room_id
 		), deleted_songs_q AS (
 			DELETE FROM songs a USING expired_q b WHERE a.id = b.id
+			RETURNING a.room_id
 		)
-		SELECT id FROM room_q
+		SELECT room_id FROM deleted_votes_q
+		UNION
+		SELECT room_id FROM deleted_skips_q
+		UNION
+		SELECT room_id FROM stopped_playback_q
+		UNION
+		SELECT room_id FROM deleted_songs_q
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ExpireSongMetadataStatement: %w", err)
