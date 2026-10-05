@@ -132,18 +132,18 @@ type Client struct {
 	DeleteAdminUserStatement         *sql.Stmt
 
 	// Search usage statements
-	CreateSearchUsagesStatement         *sql.Stmt
-	ListAdminSearchUsageStatement       *sql.Stmt
-	ListAdminRoomSearchUsageStatement   *sql.Stmt
-	ListAdminRoomListenerUsageStatement *sql.Stmt
+	CreateSearchUsagesStatement       *sql.Stmt
+	ListAdminSearchUsageStatement     *sql.Stmt
+	ListAdminRoomSearchUsageStatement *sql.Stmt
 
 	// Message usage statements
 	CreateMessageUsageStatement    *sql.Stmt
 	ListAdminMessageUsageStatement *sql.Stmt
 
 	// Listener usage statements
-	CreateListenerUsageStatement    *sql.Stmt
-	ListAdminListenerUsageStatement *sql.Stmt
+	CreateListenerUsageStatement        *sql.Stmt
+	ListAdminListenerUsageStatement     *sql.Stmt
+	ListAdminRoomListenerUsageStatement *sql.Stmt
 
 	// Remote control statements
 	CreateRemoteControlStatement       *sql.Stmt
@@ -219,13 +219,13 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareCreateSearchUsagesStmt,
 		c.prepareListAdminSearchUsageStmt,
 		c.prepareListAdminRoomSearchUsageStmt,
-		c.prepareListAdminRoomListenerUsageStmt,
 		// Message usage statements
 		c.prepareCreateMessageUsageStmt,
 		c.prepareListAdminMessageUsageStmt,
 		// Listener usage statements
 		c.prepareCreateListenerUsageStmt,
 		c.prepareListAdminListenerUsageStmt,
+		c.prepareListAdminRoomListenerUsageStmt,
 		// Room generation statements
 		c.prepareHasActiveRoomGenerationStmt,
 		c.prepareCreateRoomGenerationStmt,
@@ -340,6 +340,7 @@ func (c *Client) Close() error {
 		c.VoteSongStatement,
 		c.ClearVotesSongStatement,
 		c.UpdateSongAddedAtStatement,
+		c.UpdateSongPlaybackRestrictionStatement,
 		c.ClaimSongMetadataRefreshStatement,
 		c.RefreshSongMetadataStatement,
 		c.DeferSongMetadataRefreshStatement,
@@ -395,11 +396,11 @@ func (c *Client) Close() error {
 		c.CreateSearchUsagesStatement,
 		c.ListAdminSearchUsageStatement,
 		c.ListAdminRoomSearchUsageStatement,
-		c.ListAdminRoomListenerUsageStatement,
 		c.CreateMessageUsageStatement,
 		c.ListAdminMessageUsageStatement,
 		c.CreateListenerUsageStatement,
 		c.ListAdminListenerUsageStatement,
+		c.ListAdminRoomListenerUsageStatement,
 		c.CreateRemoteControlStatement,
 		c.GetRemoteControlByOwnerStatement,
 		c.GetRemoteControlStatement,
