@@ -14,15 +14,15 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) GetCachedSearches(
+func (c *Client) GetCachedProviderSearches(
 	ctx context.Context,
 	source string,
 	queries []string,
-) ([]vibe.CachedSearch, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedSearches")
+) ([]vibe.CachedProviderSearch, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedProviderSearches")
 	defer span.End()
 
-	searches := make([]vibe.CachedSearch, 0, len(queries))
+	searches := make([]vibe.CachedProviderSearch, 0, len(queries))
 	if c.Redis == nil || len(queries) == 0 {
 		return searches, nil
 	}
@@ -32,14 +32,14 @@ func (c *Client) GetCachedSearches(
 
 	connection, err := c.Redis.GetContext(cctx)
 	if err != nil {
-		return nil, fmt.Errorf("error getting redis connection in GetCachedSearches: %w", err)
+		return nil, fmt.Errorf("error getting redis connection in GetCachedProviderSearches: %w", err)
 	}
 	defer connection.Close()
 
 	keys := make(redis.Args, 0, len(queries))
 	cachedQueries := make([]string, 0, len(queries))
 	for _, query := range queries {
-		key := c.searchCacheKey(source, query)
+		key := c.providerSearchCacheKey(source, query)
 		if key == "" {
 			continue
 		}
@@ -52,7 +52,7 @@ func (c *Client) GetCachedSearches(
 
 	values, err := redis.Values(redis.DoContext(connection, cctx, "MGET", keys...))
 	if err != nil {
-		return nil, fmt.Errorf("error getting cached searches in GetCachedSearches: %w", err)
+		return nil, fmt.Errorf("error getting cached searches in GetCachedProviderSearches: %w", err)
 	}
 
 	for index, value := range values {
@@ -62,13 +62,13 @@ func (c *Client) GetCachedSearches(
 
 		body, err := redis.Bytes(value, nil)
 		if err != nil {
-			return nil, fmt.Errorf("error reading cached search in GetCachedSearches: %w", err)
+			return nil, fmt.Errorf("error reading cached search in GetCachedProviderSearches: %w", err)
 		}
 
-		var search vibe.CachedSearch
+		var search vibe.CachedProviderSearch
 		err = json.Unmarshal(body, &search)
 		if err != nil {
-			return nil, fmt.Errorf("error unmarshaling cached search in GetCachedSearches: %w", err)
+			return nil, fmt.Errorf("error unmarshaling cached search in GetCachedProviderSearches: %w", err)
 		}
 		search.Query = cachedQueries[index]
 		searches = append(searches, search)
@@ -77,12 +77,12 @@ func (c *Client) GetCachedSearches(
 	return searches, nil
 }
 
-func (c *Client) CacheSearches(
+func (c *Client) CacheProviderSearches(
 	ctx context.Context,
 	source string,
-	searches []vibe.CachedSearch,
+	searches []vibe.CachedProviderSearch,
 ) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "CacheSearches")
+	span, ctx := tracing.StartSpanFromContext(ctx, "CacheProviderSearches")
 	defer span.End()
 
 	if c.Redis == nil || len(searches) == 0 {
@@ -94,20 +94,20 @@ func (c *Client) CacheSearches(
 
 	connection, err := c.Redis.GetContext(cctx)
 	if err != nil {
-		return fmt.Errorf("error getting redis connection in CacheSearches: %w", err)
+		return fmt.Errorf("error getting redis connection in CacheProviderSearches: %w", err)
 	}
 	defer connection.Close()
 
 	commandCount := 0
 	for _, search := range searches {
-		key := c.searchCacheKey(source, search.Query)
+		key := c.providerSearchCacheKey(source, search.Query)
 		if key == "" {
 			continue
 		}
 
 		body, err := json.Marshal(search)
 		if err != nil {
-			return fmt.Errorf("error marshaling cached search in CacheSearches: %w", err)
+			return fmt.Errorf("error marshaling cached search in CacheProviderSearches: %w", err)
 		}
 
 		err = connection.Send(
@@ -118,7 +118,7 @@ func (c *Client) CacheSearches(
 			int(searchCacheExpiration.Seconds()),
 		)
 		if err != nil {
-			return fmt.Errorf("error queueing cached search in CacheSearches: %w", err)
+			return fmt.Errorf("error queueing cached search in CacheProviderSearches: %w", err)
 		}
 		commandCount++
 	}
@@ -128,28 +128,28 @@ func (c *Client) CacheSearches(
 
 	err = connection.Flush()
 	if err != nil {
-		return fmt.Errorf("error flushing cached searches in CacheSearches: %w", err)
+		return fmt.Errorf("error flushing cached searches in CacheProviderSearches: %w", err)
 	}
 	for range commandCount {
 		_, err = redis.ReceiveContext(connection, cctx)
 		if err != nil {
-			return fmt.Errorf("error storing cached search in CacheSearches: %w", err)
+			return fmt.Errorf("error storing cached search in CacheProviderSearches: %w", err)
 		}
 	}
 
 	return nil
 }
 
-func (c *Client) GetCachedMusicTrack(
+func (c *Client) GetCachedProviderItem(
 	ctx context.Context,
 	source string,
 	sourceID string,
-) (*vibe.MusicTrack, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedMusicTrack")
+) (*vibe.ProviderItem, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedProviderItem")
 	defer span.End()
 
 	if c.Redis == nil || source == "" || sourceID == "" {
-		return &vibe.MusicTrack{}, nil
+		return &vibe.ProviderItem{}, nil
 	}
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -157,7 +157,7 @@ func (c *Client) GetCachedMusicTrack(
 
 	connection, err := c.Redis.GetContext(cctx)
 	if err != nil {
-		return nil, fmt.Errorf("error getting redis connection in GetCachedMusicTrack: %w", err)
+		return nil, fmt.Errorf("error getting redis connection in GetCachedProviderItem: %w", err)
 	}
 	defer connection.Close()
 
@@ -165,34 +165,34 @@ func (c *Client) GetCachedMusicTrack(
 		connection,
 		cctx,
 		"GET",
-		c.musicTrackCacheKey(source, sourceID),
+		c.providerItemCacheKey(source, sourceID),
 	))
 	if errors.Is(err, redis.ErrNil) {
-		return &vibe.MusicTrack{}, nil
+		return &vibe.ProviderItem{}, nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("error getting cached music track in GetCachedMusicTrack: %w", err)
+		return nil, fmt.Errorf("error getting cached provider item in GetCachedProviderItem: %w", err)
 	}
 
-	var track vibe.MusicTrack
-	err = json.Unmarshal(body, &track)
+	var item vibe.ProviderItem
+	err = json.Unmarshal(body, &item)
 	if err != nil {
-		return nil, fmt.Errorf("error unmarshaling cached music track in GetCachedMusicTrack: %w", err)
+		return nil, fmt.Errorf("error unmarshaling cached provider item in GetCachedProviderItem: %w", err)
 	}
 
-	return &track, nil
+	return &item, nil
 }
 
-func (c *Client) GetCachedMusicTracks(
+func (c *Client) GetCachedProviderItems(
 	ctx context.Context,
-	keys []vibe.CachedMusicTrackKey,
-) ([]vibe.MusicTrack, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedMusicTracks")
+	keys []vibe.CachedProviderItemKey,
+) ([]vibe.ProviderItem, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedProviderItems")
 	defer span.End()
 
-	tracks := make([]vibe.MusicTrack, len(keys))
+	items := make([]vibe.ProviderItem, len(keys))
 	if c.Redis == nil || len(keys) == 0 {
-		return tracks, nil
+		return items, nil
 	}
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -200,18 +200,18 @@ func (c *Client) GetCachedMusicTracks(
 
 	connection, err := c.Redis.GetContext(cctx)
 	if err != nil {
-		return nil, fmt.Errorf("error getting redis connection in GetCachedMusicTracks: %w", err)
+		return nil, fmt.Errorf("error getting redis connection in GetCachedProviderItems: %w", err)
 	}
 	defer connection.Close()
 
 	cacheKeys := make(redis.Args, 0, len(keys))
 	for _, key := range keys {
-		cacheKeys = append(cacheKeys, c.musicTrackCacheKey(key.Provider, key.ID))
+		cacheKeys = append(cacheKeys, c.providerItemCacheKey(key.Provider, key.ID))
 	}
 
 	values, err := redis.Values(redis.DoContext(connection, cctx, "MGET", cacheKeys...))
 	if err != nil {
-		return nil, fmt.Errorf("error getting cached music tracks in GetCachedMusicTracks: %w", err)
+		return nil, fmt.Errorf("error getting cached provider items in GetCachedProviderItems: %w", err)
 	}
 
 	for index, value := range values {
@@ -221,27 +221,27 @@ func (c *Client) GetCachedMusicTracks(
 
 		body, err := redis.Bytes(value, nil)
 		if err != nil {
-			return nil, fmt.Errorf("error reading cached music track in GetCachedMusicTracks: %w", err)
+			return nil, fmt.Errorf("error reading cached provider item in GetCachedProviderItems: %w", err)
 		}
 
-		err = json.Unmarshal(body, &tracks[index])
+		err = json.Unmarshal(body, &items[index])
 		if err != nil {
-			return nil, fmt.Errorf("error unmarshaling cached music track in GetCachedMusicTracks: %w", err)
+			return nil, fmt.Errorf("error unmarshaling cached provider item in GetCachedProviderItems: %w", err)
 		}
 	}
 
-	return tracks, nil
+	return items, nil
 }
 
-func (c *Client) CacheMusicTracks(
+func (c *Client) CacheProviderItems(
 	ctx context.Context,
 	source string,
-	tracks []vibe.MusicTrack,
+	items []vibe.ProviderItem,
 ) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "CacheMusicTracks")
+	span, ctx := tracing.StartSpanFromContext(ctx, "CacheProviderItems")
 	defer span.End()
 
-	if c.Redis == nil || source == "" || len(tracks) == 0 {
+	if c.Redis == nil || source == "" || len(items) == 0 {
 		return nil
 	}
 
@@ -250,30 +250,30 @@ func (c *Client) CacheMusicTracks(
 
 	connection, err := c.Redis.GetContext(cctx)
 	if err != nil {
-		return fmt.Errorf("error getting redis connection in CacheMusicTracks: %w", err)
+		return fmt.Errorf("error getting redis connection in CacheProviderItems: %w", err)
 	}
 	defer connection.Close()
 
 	commandCount := 0
-	for _, track := range tracks {
-		if track.ID == "" {
+	for _, item := range items {
+		if item.ID == "" {
 			continue
 		}
 
-		body, err := json.Marshal(track)
+		body, err := json.Marshal(item)
 		if err != nil {
-			return fmt.Errorf("error marshaling cached music track in CacheMusicTracks: %w", err)
+			return fmt.Errorf("error marshaling cached provider item in CacheProviderItems: %w", err)
 		}
 
 		err = connection.Send(
 			"SET",
-			c.musicTrackCacheKey(source, track.ID),
+			c.providerItemCacheKey(source, item.ID),
 			body,
 			"EX",
 			int(searchCacheExpiration.Seconds()),
 		)
 		if err != nil {
-			return fmt.Errorf("error queueing cached music track in CacheMusicTracks: %w", err)
+			return fmt.Errorf("error queueing cached provider item in CacheProviderItems: %w", err)
 		}
 		commandCount++
 	}
@@ -283,19 +283,19 @@ func (c *Client) CacheMusicTracks(
 
 	err = connection.Flush()
 	if err != nil {
-		return fmt.Errorf("error flushing cached music tracks in CacheMusicTracks: %w", err)
+		return fmt.Errorf("error flushing cached provider items in CacheProviderItems: %w", err)
 	}
 	for range commandCount {
 		_, err = redis.ReceiveContext(connection, cctx)
 		if err != nil {
-			return fmt.Errorf("error storing cached music track in CacheMusicTracks: %w", err)
+			return fmt.Errorf("error storing cached provider item in CacheProviderItems: %w", err)
 		}
 	}
 
 	return nil
 }
 
-func (c *Client) searchCacheKey(source string, query string) string {
+func (c *Client) providerSearchCacheKey(source string, query string) string {
 	normalizedQuery := vibe.NormalizeSearch(query)
 	if source == "" || normalizedQuery == "" {
 		return ""
@@ -303,16 +303,16 @@ func (c *Client) searchCacheKey(source string, query string) string {
 
 	hash := sha256.Sum256([]byte(normalizedQuery))
 	key := c.getKeyWithPrefix(
-		"search:v2:" + string(source) + ":" + hex.EncodeToString(hash[:]),
+		"search:v3:" + string(source) + ":" + hex.EncodeToString(hash[:]),
 	)
 
 	return key
 }
 
-func (c *Client) musicTrackCacheKey(source string, sourceID string) string {
+func (c *Client) providerItemCacheKey(source string, sourceID string) string {
 	hash := sha256.Sum256([]byte(sourceID))
 	key := c.getKeyWithPrefix(
-		"track:v2:" + source + ":" + hex.EncodeToString(hash[:]),
+		"provider-item:v3:" + source + ":" + hex.EncodeToString(hash[:]),
 	)
 	return key
 }

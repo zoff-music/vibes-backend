@@ -27,7 +27,7 @@ type SessionMiddleware struct {
 	CookieMaxAge               time.Duration
 	CastTokenSecret            string
 	EmbedBasePath              string
-	RemoteControlAuthenticator vibe.RemoteControlAuthenticator
+	RemoteControlAuthenticator vibe.RemoteControlAuthenticatorV2
 }
 
 // Middleware extracts the appropriate session cookie or creates a new one.
@@ -104,7 +104,7 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 			}
 
 			controllerTokenHash := helper.HashRemoteCredential(m.Secret, controllerToken)
-			remote, err := m.RemoteControlAuthenticator.AuthenticateRemoteControl(
+			remote, err := m.RemoteControlAuthenticator.AuthenticateRemoteControlV2(
 				r.Context(),
 				remoteID,
 				controllerTokenHash,

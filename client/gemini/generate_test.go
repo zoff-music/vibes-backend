@@ -27,7 +27,7 @@ func TestGeneratePlaylist(t *testing.T) {
 			playlist: vibe.GeneratedPlaylist{
 				{
 					Title:     "Midnight City",
-					Artist:    "M83",
+					Publisher: "M83",
 					YouTubeID: "dX3k_QDnzHE",
 				},
 			},
@@ -84,7 +84,7 @@ func TestGeneratePlaylist(t *testing.T) {
 				Endpoint:          server.URL,
 				Model:             "gemini-3.6-flash",
 				apiKey:            "gemini-key",
-				trackCount:        30,
+				itemCount:         30,
 				systemInstruction: vibe.GeneratedPlaylistSystemInstruction(30),
 				HTTPClient: client.HTTPClient{
 					Client: server.Client(),

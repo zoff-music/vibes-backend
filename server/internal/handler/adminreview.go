@@ -10,13 +10,13 @@ import (
 
 // ReviewAdminRooms handles scheduled admin room updates.
 type ReviewAdminRooms struct {
-	DB     vibe.AdminRoomLister
-	Events vibe.AdminEventNotifier
+	DB     vibe.AdminRoomV2Lister
+	Events vibe.AdminEventV2Notifier
 }
 
 // Handle fetches admin rooms and broadcasts the update.
 func (h *ReviewAdminRooms) Handle(ctx context.Context, _ []byte) error {
-	rooms, err := h.DB.ListAdminRooms(ctx)
+	rooms, err := h.DB.ListAdminRoomsV2(ctx)
 	if err != nil {
 		return fmt.Errorf("error listing admin rooms: %w", err)
 	}
@@ -26,7 +26,7 @@ func (h *ReviewAdminRooms) Handle(ctx context.Context, _ []byte) error {
 		return fmt.Errorf("error marshaling admin rooms: %w", err)
 	}
 
-	err = h.Events.NotifyAdminUpdate(ctx, vibe.AdminEvent{
+	err = h.Events.NotifyAdminUpdateV2(ctx, vibe.AdminEventV2{
 		Type:    vibe.AdminRoomsUpdate,
 		Payload: payload,
 	})

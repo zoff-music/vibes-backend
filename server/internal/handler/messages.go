@@ -202,8 +202,7 @@ func Messages(db vibe.RoomFetcher, events vibe.ReplaySubscriber) http.HandlerFun
 					return
 				}
 
-				var event vibe.RoomEvent
-				err = json.Unmarshal(data, &event)
+				event, err := vibe.ParseLegacyRoomEvent(data)
 				if err != nil {
 					log.Printf("error decoding chat event: %v", err)
 					continue

@@ -31,6 +31,11 @@ const publicRoomMaximumQueryLength = 100
 //	@Failure		400		{object}	vibe.ErrorResponse
 //	@Failure		500		{object}	vibe.ErrorResponse
 //	@Router			/api/v2/rooms/public [get]
+//
+// Deprecated: Use GET /api/v3/rooms/public. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v3/rooms/public for the playlist-item contract. This endpoint retains its existing payloads.
 func GetPublicRoomsV2(db vibe.PublicRoomsSearcher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

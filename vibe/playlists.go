@@ -8,6 +8,7 @@ import (
 	"time"
 )
 
+// Deprecated: Use ProviderPlaylist for new code. Retained for legacy API compatibility.
 type MusicPlaylist struct {
 	ID                      string       `json:"id"`
 	Source                  string       `json:"source"`
@@ -24,6 +25,7 @@ func (p *MusicPlaylist) GetMusicTracks() []MusicTrack {
 	return tracks
 }
 
+// Deprecated: Use AddPlaylistRequestV2 for new code. Retained for legacy API compatibility.
 type AddPlaylistRequest struct {
 	Songs []AddSongRequest `json:"songs"`
 }
@@ -40,11 +42,11 @@ type PlaylistImport struct {
 	NextPosition int
 	Attempts     int
 	Exhausted    bool
-	Song         Song
+	PlaylistItem PlaylistItem
 }
 
 type PlaylistImportCreator interface {
-	CreatePlaylistImportItem(ctx context.Context, importID string, position int, song Song) error
+	CreatePlaylistImportItem(ctx context.Context, importID string, position int, playlistItem PlaylistItem) error
 	CreatePlaylistImport(ctx context.Context, importID string, roomID string, userID string, count int) error
 	DeletePlaylistImport(ctx context.Context, importID string) error
 }
@@ -65,8 +67,8 @@ type PlaylistImportProcessor interface {
 	) (*PlaylistImport, error)
 	CompletePlaylistImportItem(ctx context.Context, importID string, position int) error
 	DeletePlaylistImport(ctx context.Context, importID string) error
-	AddPlaylistSong(ctx context.Context, song *Song) (*AddSongResult, error)
-	StartPlaylistPlayback(ctx context.Context, roomID string) (*PlaybackState, error)
+	AddImportedPlaylistItem(ctx context.Context, item *PlaylistItem) (*AddPlaylistItemResult, error)
+	StartPlaylistPlayback(ctx context.Context, roomID string) (*PlaybackStateV2, error)
 }
 
 func ResolveSoundCloudPlaylistURL(value string) (string, error) {

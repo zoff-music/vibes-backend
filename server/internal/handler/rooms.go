@@ -32,6 +32,11 @@ import (
 //	@Failure		409		{object}	vibe.ErrorResponse
 //	@Failure		500		{object}	vibe.ErrorResponse
 //	@Router			/api/v1/rooms [post]
+//
+// Deprecated: Use POST /api/v2/rooms. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms for the playlist-item contract. This endpoint retains its existing payloads.
 func CreateRoom(
 	db vibe.RoomCreatorExistenceChecker,
 ) http.HandlerFunc {
@@ -469,6 +474,11 @@ func RoomExists(db vibe.RoomExistenceChecker) http.HandlerFunc {
 //	@Failure	404	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id} [get]
+//
+// Deprecated: Use GET /api/v2/rooms/{id}. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/rooms/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func GetRoom(
 	db vibe.RoomFetcher,
 ) http.HandlerFunc {
@@ -525,6 +535,11 @@ func GetRoom(
 //	@Success	200	{array}		vibe.PublicRoom
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/public [get]
+//
+// Deprecated: Use GET /api/v3/rooms/public?live=true&from=0&to=2. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v3/rooms/public?live=true&from=0&to=2 for the playlist-item contract. This endpoint retains its existing payloads.
 func GetPublicRooms(db vibe.PublicRoomFetcher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -572,6 +587,11 @@ func GetPublicRooms(db vibe.PublicRoomFetcher) http.HandlerFunc {
 //	@Failure	401	{object}	vibe.ErrorResponse
 //	@Failure	403	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/settings [patch]
+//
+// Deprecated: Use PATCH /api/v2/rooms/{id}/settings. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use PATCH /api/v2/rooms/{id}/settings for the playlist-item contract. This endpoint retains its existing payloads.
 func UpdateRoomSettings(
 	db vibe.RoomSettingsUpdater,
 	notifier vibe.RoomBatchEventNotifier,
@@ -857,6 +877,11 @@ func UpdateRoomSettings(
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/sessions [post]
+//
+// Deprecated: Use POST /api/v2/rooms/{id}/sessions. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms/{id}/sessions for SessionResponseV2 and RoomV2.
 func CreateSession(
 	db vibe.AdminSessionCreator,
 	notifier vibe.RoomEventNotifier,
@@ -1025,6 +1050,11 @@ func CreateSession(
 //	@Failure	401	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/sessions [delete]
+//
+// Deprecated: Use DELETE /api/v2/rooms/{id}/sessions. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use DELETE /api/v2/rooms/{id}/sessions for SessionResponseV2 and RoomV2.
 func DeleteRoomAdminSession(db vibe.RoomAdminSessionDeleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()

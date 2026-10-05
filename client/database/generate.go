@@ -79,10 +79,10 @@ func (c *Client) prepareCreateRoomGenerationStmt() error {
 				a.id,
 				(
 					SELECT COUNT(*)
-					FROM songs b
+					FROM playlist_items b
 					WHERE b.room_id = a.id
 					AND b.source_type = ANY($5::text[])
-				) AS song_count,
+				) AS playlist_item_count,
 				(
 					SELECT COUNT(*)
 					FROM room_generations c
@@ -103,15 +103,15 @@ func (c *Client) prepareCreateRoomGenerationStmt() error {
 			)
 			SELECT id, $2, 0, NOW(), NOW()
 			FROM room_q
-			WHERE song_count <= $3
+			WHERE playlist_item_count <= $3
 			AND generation_count < $4
 			RETURNING room_id
 		)
 		SELECT CASE
 			WHEN NOT EXISTS (SELECT 1 FROM room_q)
 				THEN 'room_not_found'
-			WHEN (SELECT song_count FROM room_q) > $3
-				THEN 'song_limit'
+			WHEN (SELECT playlist_item_count FROM room_q) > $3
+				THEN 'playlist_item_limit'
 			WHEN (SELECT generation_count FROM room_q) >= $4
 				THEN 'daily_limit'
 			WHEN EXISTS (SELECT 1 FROM created_generation_q)
@@ -146,7 +146,7 @@ func (c *Client) CreateRoomGeneration(
 		cctx,
 		roomID,
 		prompt,
-		c.roomGenerationMaxExistingSongs,
+		c.roomGenerationMaxExistingPlaylistItems,
 		c.roomGenerationMaxDailyCount,
 		c.enabledProviders,
 	)
@@ -172,11 +172,11 @@ func (c *Client) CreateRoomGeneration(
 	}
 
 	outcome := row.Outcome
-	if outcome == createRoomGenerationSongLimit {
-		return internalerror.ErrRoomGenerationSongLimit{
+	if outcome == createRoomGenerationPlaylistItemLimit {
+		return internalerror.ErrRoomGenerationPlaylistItemLimit{
 			Err: fmt.Errorf(
-				"error validating song count in CreateRoomGeneration: room has more than %d songs",
-				c.roomGenerationMaxExistingSongs,
+				"error validating playlist item count in CreateRoomGeneration: room has more than %d playlist items",
+				c.roomGenerationMaxExistingPlaylistItems,
 			),
 		}
 	}
@@ -319,7 +319,7 @@ func (c *Client) ProcessNextRoomGeneration(
 		return generation, nil
 	}
 
-	room, err := c.GetRoom(ctx, generation.RoomID, "")
+	room, err := c.GetRoomV2(ctx, generation.RoomID, "")
 	if err != nil {
 		return nil, fmt.Errorf(
 			"error getting room in ProcessNextRoomGeneration: %w",
@@ -332,7 +332,7 @@ func (c *Client) ProcessNextRoomGeneration(
 		)
 	}
 
-	playbackState, err := c.GetPlaybackState(ctx, generation.RoomID)
+	playbackState, err := c.GetPlaybackStateV2(ctx, generation.RoomID)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"error getting playback state in ProcessNextRoomGeneration: %w",
@@ -340,10 +340,10 @@ func (c *Client) ProcessNextRoomGeneration(
 		)
 	}
 
-	songs, err := c.GetSongs(ctx, generation.RoomID)
+	playlistItems, err := c.GetPlaylistItems(ctx, generation.RoomID)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error getting songs in ProcessNextRoomGeneration: %w",
+			"error getting playlist items in ProcessNextRoomGeneration: %w",
 			err,
 		)
 	}
@@ -351,7 +351,7 @@ func (c *Client) ProcessNextRoomGeneration(
 	generationWithContext := &vibe.RoomGeneration{
 		Room:          *room,
 		PlaybackState: *playbackState,
-		Songs:         songs,
+		PlaylistItems: playlistItems,
 		RoomID:        generation.RoomID,
 		Prompt:        generation.Prompt,
 		Attempt:       generation.Attempt,
@@ -523,68 +523,68 @@ func (c *Client) DeleteExpiredRoomGenerations(
 	return count, nil
 }
 
-func (c *Client) AddGeneratedSong(
+func (c *Client) AddGeneratedPlaylistItem(
 	ctx context.Context,
-	song *vibe.Song,
-) (*vibe.Song, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "AddGeneratedSong")
+	playlistItem *vibe.PlaylistItem,
+) (*vibe.PlaylistItem, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "AddGeneratedPlaylistItem")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.AddSongStatement.QueryRowContext(
+	row := c.AddPlaylistItemStatement.QueryRowContext(
 		cctx,
-		song.RoomID,
-		song.SourceType,
-		song.SourceID,
-		song.Title,
-		song.Artist,
-		song.ThumbnailURL,
-		song.Duration,
-		song.AddedBySessionID,
-		song.AddedBy,
-		song.ID,
+		playlistItem.RoomID,
+		playlistItem.SourceType,
+		playlistItem.SourceID,
+		playlistItem.Title,
+		playlistItem.Publisher,
+		playlistItem.ThumbnailURL,
+		playlistItem.Duration,
+		playlistItem.AddedBySessionID,
+		playlistItem.AddedBy,
+		playlistItem.ID,
 		false,
 		c.enabledProviders,
-		song.ProviderURL,
-		song.PlaybackRestriction,
+		playlistItem.ProviderURL,
+		playlistItem.PlaybackRestriction,
 	)
 
-	var rowData addSongRow
+	var rowData addPlaylistItemRow
 	err := rowData.scan(row)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error scanning generated song in AddGeneratedSong: %w",
+			"error scanning generated playlistItem in AddGeneratedPlaylistItem: %w",
 			err,
 		)
 	}
 
-	if rowData.Result.String == addSongResultRoomNotFound {
+	if rowData.Result.String == addPlaylistItemResultRoomNotFound {
 		return nil, fmt.Errorf(
-			"error adding generated song in AddGeneratedSong: room %s not found",
-			song.RoomID,
+			"error adding generated playlistItem in AddGeneratedPlaylistItem: room %s not found",
+			playlistItem.RoomID,
 		)
 	}
-	if rowData.Result.String == addSongResultProviderDisabled {
+	if rowData.Result.String == addPlaylistItemResultProviderDisabled {
 		return nil, fmt.Errorf(
-			"error adding generated song in AddGeneratedSong: provider %s is disabled",
-			song.SourceType,
+			"error adding generated playlistItem in AddGeneratedPlaylistItem: provider %s is disabled",
+			playlistItem.SourceType,
 		)
 	}
-	if rowData.Result.String != vibe.AddSongOutcomeAdded {
-		return &vibe.Song{}, nil
+	if rowData.Result.String != vibe.AddPlaylistItemOutcomeAdded {
+		return &vibe.PlaylistItem{}, nil
 	}
 
-	generatedSong, err := rowData.toSong()
+	generatedPlaylistItem, err := rowData.toPlaylistItem()
 	if err != nil {
-		return nil, fmt.Errorf("error mapping generatedSong: %w", err)
+		return nil, fmt.Errorf("error mapping generatedPlaylistItem: %w", err)
 	}
 
-	return generatedSong, nil
+	return generatedPlaylistItem, nil
 }
 
 const createRoomGenerationCreated = "created"
 const createRoomGenerationDailyLimit = "daily_limit"
-const createRoomGenerationSongLimit = "song_limit"
+const createRoomGenerationPlaylistItemLimit = "playlist_item_limit"
 const roomGenerationSingleActiveConstraint = "room_generations_single_active_idx"

@@ -25,17 +25,17 @@ func GetAppEvents(
 ) AppEvents {
 	events := AppEvents{
 		{
-			Name: "ExpireSongMetadata",
+			Name: "ExpirePlaylistItemMetadata",
 			Rate: time.Minute,
-			Handler: &handler.ExpireSongMetadata{
+			Handler: &handler.ExpirePlaylistItemMetadata{
 				DB:     db,
 				Events: redisClient,
 			},
 		},
 		{
-			Name: "ImportPlaylistSong",
+			Name: "ImportPlaylistItem",
 			Rate: 100 * time.Millisecond,
-			Handler: &handler.ImportPlaylistSong{
+			Handler: &handler.ImportPlaylistItem{
 				DB:     db,
 				Events: redisClient,
 			},

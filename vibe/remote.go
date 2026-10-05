@@ -5,6 +5,7 @@ import (
 	"time"
 )
 
+// Deprecated: Use RemoteControlV2 for new code. Retained for legacy API compatibility.
 type RemoteControl struct {
 	ID                 string    `json:"id"`
 	OwnerUserID        string    `json:"-"`
@@ -22,12 +23,14 @@ func (r *RemoteControl) IsEmpty() bool {
 	return r.ID == ""
 }
 
+// Deprecated: Use RemotePairingV2 for new code. Retained for legacy API compatibility.
 type RemotePairing struct {
 	RemoteControl
 	PairingToken string `json:"pairingToken"`
 	PairingCode  string `json:"pairingCode"`
 }
 
+// Deprecated: Use RemoteStatusV2 for new code. Retained for legacy API compatibility.
 type RemoteStatus struct {
 	Enabled            bool      `json:"enabled"`
 	ID                 string    `json:"id"`
@@ -40,6 +43,7 @@ type RemoteStatus struct {
 	Paired             bool      `json:"paired"`
 }
 
+// Deprecated: Use RemoteSessionV2 for new code. Retained for legacy API compatibility.
 type RemoteSession struct {
 	RemoteStatus
 	ControllerToken string `json:"controllerToken"`
@@ -50,6 +54,7 @@ type RemotePairingRequest struct {
 	PairingCode  string `json:"pairingCode"`
 }
 
+// Deprecated: Use RemoteUpdateRequestV2 for new code. Retained for legacy API compatibility.
 type RemoteUpdateRequest struct {
 	RoomID             string `json:"roomId"`
 	CurrentSongID      string `json:"currentSongId"`
@@ -57,6 +62,7 @@ type RemoteUpdateRequest struct {
 	PlaybackIsPlaying  bool   `json:"playbackIsPlaying"`
 }
 
+// Deprecated: Use RemoteEventV2 for new code. Retained for legacy API compatibility.
 type RemoteEvent struct {
 	Type               string    `json:"type"`
 	RoomID             string    `json:"roomId"`

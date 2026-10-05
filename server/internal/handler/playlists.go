@@ -25,6 +25,11 @@ import (
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/youtube/playlists/{id} [get]
+//
+// Deprecated: Use GET /api/v2/youtube/playlists/{id}. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/youtube/playlists/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func GetMusicPlaylist(
 	fetcher vibe.MusicPlaylistFetcher,
 	cache vibe.CachedMusicTrackCreator,
@@ -97,6 +102,11 @@ func GetMusicPlaylist(
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/soundcloud/playlists [get]
+//
+// Deprecated: Use GET /api/v2/soundcloud/playlists. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/soundcloud/playlists for the playlist-item contract. This endpoint retains its existing payloads.
 func ResolveSoundCloudPlaylist(
 	resolver vibe.MusicPlaylistResolver,
 ) http.HandlerFunc {
@@ -156,6 +166,11 @@ func ResolveSoundCloudPlaylist(
 //	@Failure	404		{object}	vibe.ErrorResponse
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/playlists [post]
+//
+// Deprecated: Use POST /api/v2/rooms/{id}/playlists. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms/{id}/playlists for the playlist-item contract. This endpoint retains its existing payloads.
 func AddPlaylist(
 	db vibe.PlaylistImportRoomCreator,
 	cache vibe.CachedMusicTracksFetcher,
@@ -176,12 +191,12 @@ func AddPlaylist(
 			)
 			return
 		}
-		if len(req.Songs) == 0 || len(req.Songs) > playlistImportTrackLimit {
+		if len(req.Songs) == 0 || len(req.Songs) > playlistImportItemLimit {
 			handleError(
 				w,
 				fmt.Errorf(
 					"error playlist must contain between 1 and %d songs",
-					playlistImportTrackLimit,
+					playlistImportItemLimit,
 				),
 				http.StatusBadRequest,
 				false,
@@ -327,7 +342,7 @@ func AddPlaylist(
 			cachedTracks = make([]vibe.MusicTrack, len(req.Songs))
 		}
 
-		songs := make([]vibe.Song, 0, len(req.Songs))
+		playlistItems := make([]vibe.PlaylistItem, 0, len(req.Songs))
 		for index, requestedSong := range req.Songs {
 
 			providerURL, err := requestedSong.CanonicalProviderURL()
@@ -388,7 +403,7 @@ func AddPlaylist(
 				}
 			}
 
-			songs = append(songs, vibe.Song{
+			playlistItems = append(playlistItems, vibe.PlaylistItem{
 				ID:                  uuid.New().String(),
 				RoomID:              roomID,
 				SourceType:          requestedSong.SourceType,
@@ -396,7 +411,7 @@ func AddPlaylist(
 				ProviderURL:         providerURL,
 				PlaybackRestriction: playbackRestriction,
 				Title:               requestedSong.Title,
-				Artist:              requestedSong.Artist,
+				Publisher:           requestedSong.Artist,
 				ThumbnailURL:        requestedSong.Thumbnail,
 				Duration:            requestedSong.Duration,
 				AddedBySessionID:    session.UserID,
@@ -425,8 +440,8 @@ func AddPlaylist(
 			}
 		}()
 
-		for position, song := range songs {
-			err = db.CreatePlaylistImportItem(importCtx, importID, position, song)
+		for position, playlistItem := range playlistItems {
+			err = db.CreatePlaylistImportItem(importCtx, importID, position, playlistItem)
 			if err != nil {
 				handleError(
 					w,
@@ -447,7 +462,7 @@ func AddPlaylist(
 			}
 		}
 
-		err = db.CreatePlaylistImport(importCtx, importID, roomID, session.UserID, len(songs))
+		err = db.CreatePlaylistImport(importCtx, importID, roomID, session.UserID, len(playlistItems))
 		if err != nil {
 			handleError(
 				w,
@@ -471,7 +486,7 @@ func AddPlaylist(
 
 		response := vibe.AddPlaylistResult{
 			ImportID:    importID,
-			QueuedCount: len(songs),
+			QueuedCount: len(playlistItems),
 		}
 		body, err := json.Marshal(response)
 		if err != nil {
@@ -490,4 +505,4 @@ func AddPlaylist(
 	}
 }
 
-const playlistImportTrackLimit = 500
+const playlistImportItemLimit = 500

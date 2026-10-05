@@ -9,6 +9,8 @@ import (
 )
 
 // Song represents a song in the queue
+//
+// Deprecated: Use PlaylistItem for new code. Retained for legacy API compatibility.
 type Song struct {
 	ID                  string    `json:"id"`
 	RoomID              string    `json:"-"`
@@ -27,6 +29,8 @@ type Song struct {
 }
 
 // AddSongRequest is the request payload for adding a song.
+//
+// Deprecated: Use AddPlaylistItemRequest for new code. Retained for legacy API compatibility.
 type AddSongRequest struct {
 	SourceType  string `json:"sourceType"`
 	SourceID    string `json:"sourceId"`
@@ -37,34 +41,20 @@ type AddSongRequest struct {
 	Duration    int    `json:"duration"`
 }
 
+// Deprecated: Use AddPlaylistItemRequest.CanonicalProviderURL for new code.
 func (r AddSongRequest) CanonicalProviderURL() (string, error) {
-	if r.SourceType == SourceTypeYouTube {
-		providerURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", r.SourceID)
-		return providerURL, nil
+	request := AddPlaylistItemRequest{
+		SourceType:  r.SourceType,
+		SourceID:    r.SourceID,
+		ProviderURL: r.ProviderURL,
 	}
 
-	if r.SourceType != SourceTypeSoundCloud || r.ProviderURL == "" {
-		return "", nil
-	}
-
-	providerURL, err := url.Parse(r.ProviderURL)
+	providerURL, err := request.CanonicalProviderURL()
 	if err != nil {
-		return "", fmt.Errorf("error parsing soundcloud provider URL: %w", err)
+		return "", fmt.Errorf("error resolving legacy item provider URL: %w", err)
 	}
 
-	hostname := strings.ToLower(providerURL.Hostname())
-	isSoundCloudHost := hostname == "soundcloud.com" ||
-		strings.HasSuffix(hostname, ".soundcloud.com")
-	pathSegments := strings.Split(strings.Trim(providerURL.Path, "/"), "/")
-	if providerURL.Scheme != "https" ||
-		!isSoundCloudHost ||
-		providerURL.User != nil ||
-		len(pathSegments) < 2 {
-		return "", fmt.Errorf("error validating soundcloud provider URL")
-	}
-
-	url := providerURL.String()
-	return url, nil
+	return providerURL, nil
 }
 
 func ResolveSoundCloudTrackURL(value string) (string, error) {
@@ -93,25 +83,11 @@ func ResolveSoundCloudTrackURL(value string) (string, error) {
 }
 
 // AddSongResult is the result of adding a song or voting on an existing duplicate.
+//
+// Deprecated: Use AddPlaylistItemResult for new code. Retained for legacy API compatibility.
 type AddSongResult struct {
 	Song    Song   `json:"song"`
 	Outcome string `json:"outcome"`
-}
-
-type SongMetadataRefresh struct {
-	SongID   string
-	RoomID   string
-	SourceID string
-}
-
-type SongMetadataExpiry struct {
-	RoomID string
-}
-
-type SongMetadataExpiryFetcher interface {
-	ExpireSongMetadata(ctx context.Context) (*SongMetadataExpiry, error)
-	SongsFetcher
-	PlaybackFetcher
 }
 
 // IsEmpty returns true if the song is empty/not found
@@ -136,28 +112,6 @@ type SongAdder interface {
 // SongRemover removes songs from the queue
 type SongRemover interface {
 	RemoveSong(ctx context.Context, roomID, songID string) error
-}
-
-type SongMetadataRefreshStorage interface {
-	ClaimSongMetadataRefresh(
-		ctx context.Context,
-		provider string,
-		retryAfter time.Duration,
-	) (*SongMetadataRefresh, error)
-	RefreshSongMetadata(
-		ctx context.Context,
-		refresh SongMetadataRefresh,
-		track MusicTrack,
-		refreshInterval time.Duration,
-	) error
-	DeferSongMetadataRefresh(
-		ctx context.Context,
-		songID string,
-		retryAfter time.Duration,
-	) error
-	SongRemover
-	SongsFetcher
-	PlaybackFetcher
 }
 
 // SongVoter votes for a song

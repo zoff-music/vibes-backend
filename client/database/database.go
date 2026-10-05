@@ -16,25 +16,25 @@ import (
 type Client struct {
 	DB *sql.DB
 
-	maxNameLength                  int
-	maxQueueLength                 int
-	enabledProviders               []string
-	roomNameReservationTTL         time.Duration
-	roomGenerationMaxAttempts      int
-	roomGenerationMaxDailyCount    int
-	roomGenerationMaxExistingSongs int
+	maxNameLength                          int
+	maxQueueLength                         int
+	enabledProviders                       []string
+	roomNameReservationTTL                 time.Duration
+	roomGenerationMaxAttempts              int
+	roomGenerationMaxDailyCount            int
+	roomGenerationMaxExistingPlaylistItems int
 
 	// Room statements
-	GetRoomStatement                           *sql.Stmt
-	GetRoomByNameStatement                     *sql.Stmt
+	GetRoomV2Statement                         *sql.Stmt
+	GetRoomByNameV2Statement                   *sql.Stmt
 	GetPublicRoomsStatement                    *sql.Stmt
-	SearchPublicRoomsStatement                 *sql.Stmt
+	SearchPublicRoomsV3Statement               *sql.Stmt
 	ReserveRoomNameStatement                   *sql.Stmt
 	ReserveSuggestedRoomNameStatement          *sql.Stmt
 	DeleteExpiredRoomNameReservationsStatement *sql.Stmt
 	RoomExistsStatement                        *sql.Stmt
-	CreateRoomStatement                        *sql.Stmt
-	UpdateRoomStatement                        *sql.Stmt
+	CreateRoomV2Statement                      *sql.Stmt
+	UpdateRoomV2Statement                      *sql.Stmt
 	ProcessNextAbandonedHostStatement          *sql.Stmt
 
 	// Room generation statements
@@ -45,19 +45,19 @@ type Client struct {
 	FailRoomGenerationStatement           *sql.Stmt
 	DeleteExpiredRoomGenerationsStatement *sql.Stmt
 
-	// Song statements
-	GetSongsStatement                      *sql.Stmt
-	GetSongStatement                       *sql.Stmt
-	AddSongStatement                       *sql.Stmt
-	RemoveSongStatement                    *sql.Stmt
-	VoteSongStatement                      *sql.Stmt
-	ClearVotesSongStatement                *sql.Stmt
-	UpdateSongAddedAtStatement             *sql.Stmt
-	ClaimSongMetadataRefreshStatement      *sql.Stmt
-	RefreshSongMetadataStatement           *sql.Stmt
-	DeferSongMetadataRefreshStatement      *sql.Stmt
-	ExpireSongMetadataStatement            *sql.Stmt
-	UpdateSongPlaybackRestrictionStatement *sql.Stmt
+	// PlaylistItem statements
+	GetPlaylistItemsStatement                      *sql.Stmt
+	GetPlaylistItemStatement                       *sql.Stmt
+	AddPlaylistItemStatement                       *sql.Stmt
+	RemovePlaylistItemStatement                    *sql.Stmt
+	VotePlaylistItemStatement                      *sql.Stmt
+	ClearVotesPlaylistItemStatement                *sql.Stmt
+	UpdatePlaylistItemAddedAtStatement             *sql.Stmt
+	ClaimPlaylistItemMetadataRefreshStatement      *sql.Stmt
+	RefreshPlaylistItemMetadataStatement           *sql.Stmt
+	DeferPlaylistItemMetadataRefreshStatement      *sql.Stmt
+	ExpirePlaylistItemMetadataStatement            *sql.Stmt
+	UpdatePlaylistItemPlaybackRestrictionStatement *sql.Stmt
 
 	// Playlist import statements
 	CreatePlaylistImportStatement               *sql.Stmt
@@ -68,11 +68,11 @@ type Client struct {
 	DeletePlaylistImportStatement               *sql.Stmt
 
 	// Playback statements
-	GetPlaybackStateStatement           *sql.Stmt
-	UpsertPlaybackStateStatement        *sql.Stmt
-	SkipTrackStatement                  *sql.Stmt
-	ProcessNextExpiredPlaybackStatement *sql.Stmt
-	StartPlaybackIfIdleStatement        *sql.Stmt
+	GetPlaybackStateV2Statement           *sql.Stmt
+	UpsertPlaybackStateV2Statement        *sql.Stmt
+	SkipPlaylistItemStatement             *sql.Stmt
+	ProcessNextExpiredPlaybackV2Statement *sql.Stmt
+	StartPlaybackIfIdleV2Statement        *sql.Stmt
 
 	// User statements
 	GetUserStatement        *sql.Stmt
@@ -115,13 +115,13 @@ type Client struct {
 	SetRoomHostStatement               *sql.Stmt
 	RemoveParticipantStatement         *sql.Stmt
 	CleanInactiveParticipantsStatement *sql.Stmt
-	GetStatsStatement                  *sql.Stmt
+	GetStatsV2Statement                *sql.Stmt
 
 	// Additional room statements
-	GetActiveSourcesStatement *sql.Stmt
-	GetAdminRoomsStatement    *sql.Stmt
-	UpdateAdminRoomStatement  *sql.Stmt
-	DeleteAdminRoomStatement  *sql.Stmt
+	GetActiveSourcesStatement   *sql.Stmt
+	SearchAdminRoomsV2Statement *sql.Stmt
+	UpdateAdminRoomStatement    *sql.Stmt
+	DeleteAdminRoomStatement    *sql.Stmt
 
 	// Admin user statements
 	GetAdminUserStatement            *sql.Stmt
@@ -146,14 +146,14 @@ type Client struct {
 	ListAdminRoomListenerUsageStatement *sql.Stmt
 
 	// Remote control statements
-	CreateRemoteControlStatement       *sql.Stmt
-	GetRemoteControlByOwnerStatement   *sql.Stmt
-	GetRemoteControlStatement          *sql.Stmt
-	PairRemoteControlStatement         *sql.Stmt
-	AuthenticateRemoteControlStatement *sql.Stmt
-	UpdateOwnedRemoteControlStatement  *sql.Stmt
-	UpdatePairedRemoteControlStatement *sql.Stmt
-	DeleteRemoteControlStatement       *sql.Stmt
+	CreateRemoteControlV2Statement       *sql.Stmt
+	GetRemoteControlByOwnerV2Statement   *sql.Stmt
+	GetRemoteControlV2Statement          *sql.Stmt
+	PairRemoteControlV2Statement         *sql.Stmt
+	AuthenticateRemoteControlV2Statement *sql.Stmt
+	UpdateOwnedRemoteControlV2Statement  *sql.Stmt
+	UpdatePairedRemoteControlV2Statement *sql.Stmt
+	DeleteRemoteControlStatement         *sql.Stmt
 }
 
 // Init sets up a new database client.
@@ -175,7 +175,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	c.roomNameReservationTTL = cfg.RoomNameReservationTTL
 	c.roomGenerationMaxAttempts = cfg.RoomGenerationMaxAttempts
 	c.roomGenerationMaxDailyCount = cfg.RoomGenerationMaxDailyCount
-	c.roomGenerationMaxExistingSongs = cfg.RoomGenerationMaxExistingSongs
+	c.roomGenerationMaxExistingPlaylistItems = cfg.RoomGenerationMaxExistingPlaylistItems
 	if c.roomNameReservationTTL == 0 {
 		c.roomNameReservationTTL = 2 * time.Minute
 	}
@@ -193,19 +193,19 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 
 	prepareStatements := []func() error{
 		// Room statements
-		c.prepareGetRoomStmt,
-		c.prepareGetRoomByNameStmt,
+		c.prepareGetRoomV2Stmt,
+		c.prepareGetRoomByNameV2Stmt,
 		c.prepareGetPublicRoomsStmt,
-		c.prepareSearchPublicRoomsStmt,
+		c.prepareSearchPublicRoomsV3Stmt,
 		c.prepareReserveRoomNameStmt,
 		c.prepareReserveSuggestedRoomNameStmt,
 		c.prepareDeleteExpiredRoomNameReservationsStmt,
 		c.prepareRoomExistsStmt,
-		c.prepareCreateRoomStmt,
-		c.prepareUpdateRoomStmt,
+		c.prepareCreateRoomV2Stmt,
+		c.prepareUpdateRoomV2Stmt,
 		c.prepareProcessNextAbandonedHostStmt,
 		c.prepareGetActiveSourcesStmt,
-		c.prepareGetAdminRoomsStmt,
+		c.prepareSearchAdminRoomsV2Stmt,
 		c.prepareUpdateAdminRoomStmt,
 		c.prepareDeleteAdminRoomStmt,
 		// Admin user statements
@@ -233,19 +233,19 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareCompleteRoomGenerationStmt,
 		c.prepareFailRoomGenerationStmt,
 		c.prepareDeleteExpiredRoomGenerationsStmt,
-		// Song statements
-		c.prepareGetSongsStmt,
-		c.prepareGetSongStmt,
-		c.prepareAddSongStmt,
-		c.prepareRemoveSongStmt,
-		c.prepareVoteSongStmt,
-		c.prepareClearVotesSongStmt,
-		c.prepareUpdateSongAddedAtStmt,
-		c.prepareClaimSongMetadataRefreshStmt,
-		c.prepareRefreshSongMetadataStmt,
-		c.prepareDeferSongMetadataRefreshStmt,
-		c.prepareExpireSongMetadataStmt,
-		c.prepareUpdateSongPlaybackRestrictionStmt,
+		// PlaylistItem statements
+		c.prepareGetPlaylistItemsStmt,
+		c.prepareGetPlaylistItemStmt,
+		c.prepareAddPlaylistItemStmt,
+		c.prepareRemovePlaylistItemStmt,
+		c.prepareVotePlaylistItemStmt,
+		c.prepareClearVotesPlaylistItemStmt,
+		c.prepareUpdatePlaylistItemAddedAtStmt,
+		c.prepareClaimPlaylistItemMetadataRefreshStmt,
+		c.prepareRefreshPlaylistItemMetadataStmt,
+		c.prepareDeferPlaylistItemMetadataRefreshStmt,
+		c.prepareExpirePlaylistItemMetadataStmt,
+		c.prepareUpdatePlaylistItemPlaybackRestrictionStmt,
 		// Playlist import statements
 		c.prepareCreatePlaylistImportStmt,
 		c.prepareCreatePlaylistImportItemStmt,
@@ -254,11 +254,11 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareCompletePlaylistImportItemStmt,
 		c.prepareDeletePlaylistImportStmt,
 		// Playback statements
-		c.prepareGetPlaybackStateStmt,
-		c.prepareUpsertPlaybackStateStmt,
-		c.prepareSkipTrackStmt,
-		c.prepareProcessNextExpiredPlaybackStmt,
-		c.prepareStartPlaybackIfIdleStmt,
+		c.prepareGetPlaybackStateV2Stmt,
+		c.prepareUpsertPlaybackStateV2Stmt,
+		c.prepareSkipPlaylistItemStmt,
+		c.prepareProcessNextExpiredPlaybackV2Stmt,
+		c.prepareStartPlaybackIfIdleV2Stmt,
 		// User statements
 		c.prepareGetUserStmt,
 		c.prepareCreateUserStmt,
@@ -291,15 +291,15 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareSetRoomHostStmt,
 		c.prepareRemoveParticipantStmt,
 		c.prepareCleanInactiveParticipantsStmt,
-		c.prepareGetStatsStmt,
+		c.prepareGetStatsV2Stmt,
 		// Remote control statements
-		c.prepareCreateRemoteControlStmt,
-		c.prepareGetRemoteControlByOwnerStmt,
-		c.prepareGetRemoteControlStmt,
-		c.preparePairRemoteControlStmt,
-		c.prepareAuthenticateRemoteControlStmt,
-		c.prepareUpdateOwnedRemoteControlStmt,
-		c.prepareUpdatePairedRemoteControlStmt,
+		c.prepareCreateRemoteControlV2Stmt,
+		c.prepareGetRemoteControlByOwnerV2Stmt,
+		c.prepareGetRemoteControlV2Stmt,
+		c.preparePairRemoteControlV2Stmt,
+		c.prepareAuthenticateRemoteControlV2Stmt,
+		c.prepareUpdateOwnedRemoteControlV2Stmt,
+		c.prepareUpdatePairedRemoteControlV2Stmt,
 		c.prepareDeleteRemoteControlStmt,
 	}
 
@@ -316,16 +316,16 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 // Close closes the database connection and statements.
 func (c *Client) Close() error {
 	statements := []*sql.Stmt{
-		c.GetRoomStatement,
-		c.GetRoomByNameStatement,
+		c.GetRoomV2Statement,
+		c.GetRoomByNameV2Statement,
 		c.GetPublicRoomsStatement,
-		c.SearchPublicRoomsStatement,
+		c.SearchPublicRoomsV3Statement,
 		c.ReserveRoomNameStatement,
 		c.ReserveSuggestedRoomNameStatement,
 		c.DeleteExpiredRoomNameReservationsStatement,
 		c.RoomExistsStatement,
-		c.CreateRoomStatement,
-		c.UpdateRoomStatement,
+		c.CreateRoomV2Statement,
+		c.UpdateRoomV2Statement,
 		c.ProcessNextAbandonedHostStatement,
 		c.HasActiveRoomGenerationStatement,
 		c.CreateRoomGenerationStatement,
@@ -333,29 +333,29 @@ func (c *Client) Close() error {
 		c.CompleteRoomGenerationStatement,
 		c.FailRoomGenerationStatement,
 		c.DeleteExpiredRoomGenerationsStatement,
-		c.GetSongsStatement,
-		c.GetSongStatement,
-		c.AddSongStatement,
-		c.RemoveSongStatement,
-		c.VoteSongStatement,
-		c.ClearVotesSongStatement,
-		c.UpdateSongAddedAtStatement,
-		c.UpdateSongPlaybackRestrictionStatement,
-		c.ClaimSongMetadataRefreshStatement,
-		c.RefreshSongMetadataStatement,
-		c.DeferSongMetadataRefreshStatement,
-		c.ExpireSongMetadataStatement,
+		c.GetPlaylistItemsStatement,
+		c.GetPlaylistItemStatement,
+		c.AddPlaylistItemStatement,
+		c.RemovePlaylistItemStatement,
+		c.VotePlaylistItemStatement,
+		c.ClearVotesPlaylistItemStatement,
+		c.UpdatePlaylistItemAddedAtStatement,
+		c.UpdatePlaylistItemPlaybackRestrictionStatement,
+		c.ClaimPlaylistItemMetadataRefreshStatement,
+		c.RefreshPlaylistItemMetadataStatement,
+		c.DeferPlaylistItemMetadataRefreshStatement,
+		c.ExpirePlaylistItemMetadataStatement,
 		c.CreatePlaylistImportStatement,
 		c.CreatePlaylistImportItemStatement,
 		c.DeleteAbandonedPlaylistImportItemsStatement,
 		c.ProcessNextPlaylistImportStatement,
 		c.CompletePlaylistImportItemStatement,
 		c.DeletePlaylistImportStatement,
-		c.GetPlaybackStateStatement,
-		c.UpsertPlaybackStateStatement,
-		c.SkipTrackStatement,
-		c.ProcessNextExpiredPlaybackStatement,
-		c.StartPlaybackIfIdleStatement,
+		c.GetPlaybackStateV2Statement,
+		c.UpsertPlaybackStateV2Statement,
+		c.SkipPlaylistItemStatement,
+		c.ProcessNextExpiredPlaybackV2Statement,
+		c.StartPlaybackIfIdleV2Statement,
 		c.GetUserStatement,
 		c.CreateUserStatement,
 		c.ClearRoomAdminStatement,
@@ -382,9 +382,9 @@ func (c *Client) Close() error {
 		c.SetRoomHostStatement,
 		c.RemoveParticipantStatement,
 		c.CleanInactiveParticipantsStatement,
-		c.GetStatsStatement,
+		c.GetStatsV2Statement,
 		c.GetActiveSourcesStatement,
-		c.GetAdminRoomsStatement,
+		c.SearchAdminRoomsV2Statement,
 		c.UpdateAdminRoomStatement,
 		c.DeleteAdminRoomStatement,
 		c.GetAdminUserStatement,
@@ -401,13 +401,13 @@ func (c *Client) Close() error {
 		c.CreateListenerUsageStatement,
 		c.ListAdminListenerUsageStatement,
 		c.ListAdminRoomListenerUsageStatement,
-		c.CreateRemoteControlStatement,
-		c.GetRemoteControlByOwnerStatement,
-		c.GetRemoteControlStatement,
-		c.PairRemoteControlStatement,
-		c.AuthenticateRemoteControlStatement,
-		c.UpdateOwnedRemoteControlStatement,
-		c.UpdatePairedRemoteControlStatement,
+		c.CreateRemoteControlV2Statement,
+		c.GetRemoteControlByOwnerV2Statement,
+		c.GetRemoteControlV2Statement,
+		c.PairRemoteControlV2Statement,
+		c.AuthenticateRemoteControlV2Statement,
+		c.UpdateOwnedRemoteControlV2Statement,
+		c.UpdatePairedRemoteControlV2Statement,
 		c.DeleteRemoteControlStatement,
 	}
 

@@ -3,6 +3,8 @@ package vibe
 import "context"
 
 // Stats contains public, service-wide usage statistics.
+//
+// Deprecated: Use StatsV2 for new code. Retained for legacy API compatibility.
 type Stats struct {
 	TotalListeners int `json:"totalListeners"`
 	TotalSongs     int `json:"totalSongs"`
@@ -10,6 +12,8 @@ type Stats struct {
 }
 
 // CachedStats contains a stats cache lookup result.
+//
+// Deprecated: Use CachedStatsV2 for new code. Retained for legacy API compatibility.
 type CachedStats struct {
 	Stats Stats
 	Found bool

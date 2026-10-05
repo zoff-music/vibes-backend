@@ -14,16 +14,16 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) GetPlaylist(
+func (c *Client) GetProviderPlaylist(
 	ctx context.Context,
 	id string,
-) (*vibe.MusicPlaylist, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetPlaylist")
+) (*vibe.ProviderPlaylist, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetProviderPlaylist")
 	defer span.End()
 
 	if c.apiKey == "" {
 		return nil, fmt.Errorf(
-			"error validating youtube API key in GetPlaylist: not configured",
+			"error validating youtube API key in GetProviderPlaylist: not configured",
 		)
 	}
 
@@ -47,7 +47,7 @@ func (c *Client) GetPlaylist(
 		})
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error requesting youtube playlist items in GetPlaylist: %w",
+				"error requesting youtube playlist items in GetProviderPlaylist: %w",
 				err,
 			)
 		}
@@ -56,7 +56,7 @@ func (c *Client) GetPlaylist(
 		err = json.Unmarshal(responseBody, &page)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error decoding youtube playlist items in GetPlaylist: %w",
+				"error decoding youtube playlist items in GetProviderPlaylist: %w",
 				err,
 			)
 		}
@@ -65,7 +65,7 @@ func (c *Client) GetPlaylist(
 			if item.ContentDetails.VideoID == "" {
 				continue
 			}
-			if len(videoIDs) == playlistTrackLimit {
+			if len(videoIDs) == playlistItemLimit {
 				truncated = true
 				break
 			}
@@ -77,7 +77,7 @@ func (c *Client) GetPlaylist(
 		nextPageToken = page.NextPageToken
 	}
 
-	tracks := make([]vibe.MusicTrack, 0, len(videoIDs))
+	playlistItems := make([]vibe.ProviderItem, 0, len(videoIDs))
 	skippedEmbeddingCount := 0
 	skippedMadeForKidsCount := 0
 	for start := 0; start < len(videoIDs); start += youtubePlaylistPageSize {
@@ -98,7 +98,7 @@ func (c *Client) GetPlaylist(
 		})
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error requesting youtube playlist video details in GetPlaylist: %w",
+				"error requesting youtube playlist video details in GetProviderPlaylist: %w",
 				err,
 			)
 		}
@@ -107,7 +107,7 @@ func (c *Client) GetPlaylist(
 		err = json.Unmarshal(responseBody, &response)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error decoding youtube playlist video details in GetPlaylist: %w",
+				"error decoding youtube playlist video details in GetProviderPlaylist: %w",
 				err,
 			)
 		}
@@ -148,12 +148,12 @@ func (c *Client) GetPlaylist(
 				thumbnailURL = item.Snippet.Thumbnails.Default.URL
 			}
 
-			tracks = append(tracks, vibe.MusicTrack{
+			playlistItems = append(playlistItems, vibe.ProviderItem{
 				ID:                  item.ID,
 				Source:              vibe.SourceTypeYouTube,
 				ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID),
 				Title:               html.UnescapeString(item.Snippet.Title),
-				ChannelTitle:        html.UnescapeString(item.Snippet.ChannelTitle),
+				Publisher:           html.UnescapeString(item.Snippet.ChannelTitle),
 				ThumbnailURL:        thumbnailURL,
 				Duration:            item.ContentDetails.Duration,
 				DurationSeconds:     durationSeconds,
@@ -162,10 +162,10 @@ func (c *Client) GetPlaylist(
 		}
 	}
 
-	return &vibe.MusicPlaylist{
+	return &vibe.ProviderPlaylist{
 		ID:                      id,
 		Source:                  vibe.SourceTypeYouTube,
-		Tracks:                  tracks,
+		Items:                   playlistItems,
 		Truncated:               truncated,
 		SkippedEmbeddingCount:   skippedEmbeddingCount,
 		SkippedMadeForKidsCount: skippedMadeForKidsCount,
@@ -187,4 +187,4 @@ type youtubePlaylistItemContentDetails struct {
 
 const youtubePlaylistPageSize = 50
 
-const playlistTrackLimit = 500
+const playlistItemLimit = 500

@@ -31,6 +31,11 @@ import (
 //	@Success	200	{string}	string "SSE frames with event-specific JSON data; see the stream description"
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/events [get]
+//
+// Deprecated: Use GET /api/v3/rooms/{id}/events. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v3/rooms/{id}/events for the playlist-item contract. This endpoint retains its existing payloads.
 func RoomEvents(
 	events vibe.RoomEventReplayNotifier,
 	state vibe.RoomEventStateFetcherUpdater,
@@ -361,8 +366,7 @@ func RoomEvents(
 					return
 				}
 
-				var event vibe.RoomEvent
-				err := json.Unmarshal(data, &event)
+				event, err := vibe.ParseLegacyRoomEvent(data)
 				if err != nil {
 					log.Printf("failed to unmarshal room event: %v", err)
 					continue

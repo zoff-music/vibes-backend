@@ -26,6 +26,11 @@ import (
 //	@Success	200	{array}		vibe.Song
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/songs [get]
+//
+// Deprecated: Use GET /api/v2/rooms/{id}/playlist-items. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/rooms/{id}/playlist-items for the playlist-item contract. This endpoint retains its existing payloads.
 func GetSongs(
 	db vibe.SongsFetcher,
 ) http.HandlerFunc {
@@ -78,6 +83,11 @@ func GetSongs(
 //	@Failure	404		{object}	vibe.ErrorResponse
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/songs [post]
+//
+// Deprecated: Use POST /api/v2/rooms/{id}/playlist-items. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms/{id}/playlist-items for the playlist-item contract. This endpoint retains its existing payloads.
 func AddSong(
 	db vibe.SongQueueAdder,
 	events vibe.CachedMusicTrackRoomEventNotifier,
@@ -508,6 +518,11 @@ func AddSong(
 //	@Failure	404	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/songs/{songId} [delete]
+//
+// Deprecated: Use DELETE /api/v2/rooms/{id}/playlist-items/{playlistItemId}. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use DELETE /api/v2/rooms/{id}/playlist-items/{playlistItemId} for the playlist-item contract. This endpoint retains its existing payloads.
 func RemoveSong(
 	db vibe.SongQueueRemover,
 	notifier vibe.RoomEventNotifier,
@@ -672,6 +687,11 @@ func RemoveSong(
 //	@Failure	409	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/songs/{songId} [post]
+//
+// Deprecated: Use POST /api/v2/rooms/{id}/playlist-items/{playlistItemId}. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms/{id}/playlist-items/{playlistItemId} for the playlist-item contract. This endpoint retains its existing payloads.
 func VoteSong(
 	db vibe.SongQueueVoter,
 	notifier vibe.RoomEventNotifier,
