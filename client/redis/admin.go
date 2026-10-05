@@ -116,7 +116,7 @@ func (c *Client) CacheAdminSearchUsage(
 }
 
 func (c *Client) adminSearchUsageCacheKey() string {
-	key := c.getKeyWithPrefix("admin:searches:usage")
+	key := c.getKeyWithPrefix("admin:searches:usage:v2")
 	return key
 }
 

@@ -41,6 +41,7 @@ type CachedSearch struct {
 }
 
 type SearchUsage struct {
+	RoomID    string
 	Provider  string
 	QueryHash string
 	Cached    bool

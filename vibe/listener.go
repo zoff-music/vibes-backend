@@ -12,8 +12,14 @@ type ListenerUsagePoint struct {
 }
 
 type AdminListenerUsage struct {
-	Points      []ListenerUsagePoint `json:"points"`
-	GeneratedAt time.Time            `json:"generatedAt"`
+	RoomPoints  []RoomListenerUsagePoint `json:"roomPoints"`
+	Points      []ListenerUsagePoint     `json:"points"`
+	GeneratedAt time.Time                `json:"generatedAt"`
+}
+
+type RoomListenerUsagePoint struct {
+	ListenerUsagePoint
+	RoomID string `json:"roomId"`
 }
 
 type CachedAdminListenerUsage struct {
@@ -30,6 +36,7 @@ type ListenerUsageCreator interface {
 }
 
 type AdminListenerUsageLister interface {
+	ListAdminRoomListenerUsage(ctx context.Context) ([]RoomListenerUsagePoint, error)
 	ListAdminListenerUsage(ctx context.Context) ([]ListenerUsagePoint, error)
 }
 

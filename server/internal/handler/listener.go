@@ -44,7 +44,14 @@ func AdminListenerUsage(
 				return
 			}
 
+			roomPoints, err := db.ListAdminRoomListenerUsage(ctx)
+			if err != nil {
+				handleError(w, fmt.Errorf("error fetching room listener usage: %w", err), http.StatusInternalServerError, true)
+				return
+			}
+
 			usage = &vibe.AdminListenerUsage{
+				RoomPoints:  roomPoints,
 				Points:      points,
 				GeneratedAt: time.Now().UTC(),
 			}

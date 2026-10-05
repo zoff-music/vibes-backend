@@ -15,6 +15,11 @@ func (c *Client) prepareCreateListenerUsageStmt() error {
 		WITH deleted_q AS (
 			DELETE FROM listener_usage
 			WHERE created_at < NOW() - INTERVAL '32 days'
+			RETURNING created_at
+		), deleted_rooms_q AS (
+			DELETE FROM room_listener_usage
+			WHERE created_at < NOW() - INTERVAL '32 days'
+			RETURNING room_id
 		),
 		room_listener_counts_q AS (
 			SELECT
@@ -43,19 +48,28 @@ func (c *Client) prepareCreateListenerUsageStmt() error {
 				0
 			) AS listener_count
 			FROM room_listener_counts_q
+		), recorded_q AS (
+			INSERT INTO listener_usage (listener_count, created_at)
+			SELECT listener_count, DATE_TRUNC('minute', NOW())
+			FROM listener_usage_q
+			WHERE listener_count > 0
+			ON CONFLICT (created_at) DO NOTHING
+			RETURNING created_at
+		), recorded_rooms_q AS (
+			INSERT INTO room_listener_usage (room_id, created_at, listener_count)
+			SELECT a.room_id, b.created_at,
+				CASE
+					WHEN a.active_listeners = 0 AND a.active_cast_receivers > 0 THEN 1
+					ELSE a.active_listeners
+				END
+			FROM room_listener_counts_q a
+			CROSS JOIN recorded_q b
+			RETURNING room_id
 		)
-		INSERT INTO listener_usage (
-			listener_count,
-			created_at
-		)
-		SELECT
-			listener_count,
-			DATE_TRUNC('minute', NOW())
-		FROM listener_usage_q
-		WHERE listener_count > 0
-		ON CONFLICT (created_at)
-		DO UPDATE SET
-			listener_count = EXCLUDED.listener_count
+		SELECT COUNT(*) FROM recorded_q
+		UNION ALL SELECT COUNT(*) FROM recorded_rooms_q
+		UNION ALL SELECT COUNT(*) FROM deleted_q
+		UNION ALL SELECT COUNT(*) FROM deleted_rooms_q
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateListenerUsageStatement: %w", err)
@@ -91,25 +105,25 @@ func (c *Client) prepareListAdminListenerUsageStmt() error {
 				VALUES
 					(
 						'hour'::text,
-						DATE_TRUNC('hour', NOW()),
+						DATE_TRUNC('hour', NOW(), 'UTC'),
 						'minute'::text,
 						1
 					),
 					(
 						'day'::text,
-						DATE_TRUNC('day', NOW()),
+						DATE_TRUNC('day', NOW(), 'UTC'),
 						'hour'::text,
 						2
 					),
 					(
 						'week'::text,
-						DATE_TRUNC('week', NOW()),
+						DATE_TRUNC('week', NOW(), 'UTC'),
 						'day'::text,
 						3
 					),
 					(
 						'month'::text,
-						DATE_TRUNC('month', NOW()),
+						DATE_TRUNC('month', NOW(), 'UTC'),
 						'day'::text,
 						4
 					)
@@ -122,14 +136,14 @@ func (c *Client) prepareListAdminListenerUsageStmt() error {
 		)
 		SELECT
 			a.period,
-			DATE_TRUNC(a.granularity, b.created_at) AS recorded_at,
+			DATE_TRUNC(a.granularity, b.created_at, 'UTC') AS recorded_at,
 			MAX(b.listener_count) AS listener_count
 		FROM windows_q a
 		JOIN listener_usage b ON b.created_at >= a.starts_at
 		GROUP BY
 			a.period,
 			a.window_order,
-			DATE_TRUNC(a.granularity, b.created_at)
+			DATE_TRUNC(a.granularity, b.created_at, 'UTC')
 		ORDER BY
 			a.window_order,
 			recorded_at

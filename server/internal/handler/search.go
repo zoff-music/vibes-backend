@@ -21,6 +21,7 @@ import (
 //	@Tags		providers
 //	@Produce	json
 //	@Param		q	query		string	true	"Search query"
+//	@Param		roomId	query	string	false	"Room attribution"
 //	@Success	200	{array}		vibe.MusicTrack
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
@@ -34,6 +35,11 @@ func SearchMusic(
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
+		roomID := strings.TrimSpace(r.URL.Query().Get("roomId"))
+		if utf8.RuneCountInString(roomID) > 200 {
+			handleError(w, fmt.Errorf("error validating room attribution: room ID is too long"), http.StatusBadRequest, true)
+			return
+		}
 
 		if utf8.RuneCountInString(query) < minimumSearchQueryLength {
 			handleError(
@@ -75,6 +81,8 @@ func SearchMusic(
 			query,
 			cacheHit,
 		)
+		usage.RoomID = roomID
+
 		err = usageCreator.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
 		if err != nil {
 			log.Printf("error creating youtube search usage: %v", err)
@@ -188,6 +196,7 @@ func SearchMusic(
 //	@Tags		providers
 //	@Produce	json
 //	@Param		q	query		string	true	"Search query"
+//	@Param		roomId	query	string	false	"Room attribution"
 //	@Success	200	{array}		vibe.MusicTrack
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
@@ -200,6 +209,11 @@ func SearchSoundCloud(
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
+		roomID := strings.TrimSpace(r.URL.Query().Get("roomId"))
+		if utf8.RuneCountInString(roomID) > 200 {
+			handleError(w, fmt.Errorf("error validating room attribution: room ID is too long"), http.StatusBadRequest, true)
+			return
+		}
 
 		if utf8.RuneCountInString(query) < minimumSearchQueryLength {
 			handleError(
@@ -234,6 +248,8 @@ func SearchSoundCloud(
 			query,
 			cacheHit,
 		)
+		usage.RoomID = roomID
+
 		err = usageCreator.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
 		if err != nil {
 			log.Printf("error creating soundcloud search usage: %v", err)

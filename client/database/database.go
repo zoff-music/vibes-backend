@@ -132,8 +132,10 @@ type Client struct {
 	DeleteAdminUserStatement         *sql.Stmt
 
 	// Search usage statements
-	CreateSearchUsagesStatement   *sql.Stmt
-	ListAdminSearchUsageStatement *sql.Stmt
+	CreateSearchUsagesStatement         *sql.Stmt
+	ListAdminSearchUsageStatement       *sql.Stmt
+	ListAdminRoomSearchUsageStatement   *sql.Stmt
+	ListAdminRoomListenerUsageStatement *sql.Stmt
 
 	// Message usage statements
 	CreateMessageUsageStatement    *sql.Stmt
@@ -216,6 +218,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		// Search usage statements
 		c.prepareCreateSearchUsagesStmt,
 		c.prepareListAdminSearchUsageStmt,
+		c.prepareListAdminRoomSearchUsageStmt,
+		c.prepareListAdminRoomListenerUsageStmt,
 		// Message usage statements
 		c.prepareCreateMessageUsageStmt,
 		c.prepareListAdminMessageUsageStmt,
@@ -390,6 +394,8 @@ func (c *Client) Close() error {
 		c.DeleteAdminUserStatement,
 		c.CreateSearchUsagesStatement,
 		c.ListAdminSearchUsageStatement,
+		c.ListAdminRoomSearchUsageStatement,
+		c.ListAdminRoomListenerUsageStatement,
 		c.CreateMessageUsageStatement,
 		c.ListAdminMessageUsageStatement,
 		c.CreateListenerUsageStatement,

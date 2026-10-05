@@ -147,7 +147,13 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 
 		return fmt.Errorf("error searching generated playlist in Handle: %w", err)
 	}
-	err = h.DB.CreateSearchUsages(ctx, searchResult.SearchUsages)
+	searchUsages := make([]vibe.SearchUsage, 0, len(searchResult.SearchUsages))
+	for _, usage := range searchResult.SearchUsages {
+		usage.RoomID = generation.RoomID
+		searchUsages = append(searchUsages, usage)
+	}
+
+	err = h.DB.CreateSearchUsages(ctx, searchUsages)
 	if err != nil {
 		log.Printf("error creating generated playlist search usage: %v", err)
 	}

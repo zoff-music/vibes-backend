@@ -443,7 +443,14 @@ func AdminSearchUsage(
 				return
 			}
 
+			roomPoints, err := db.ListAdminRoomSearchUsage(ctx)
+			if err != nil {
+				handleError(w, fmt.Errorf("error fetching room search usage: %w", err), http.StatusInternalServerError, true)
+				return
+			}
+
 			usage = &vibe.AdminSearchUsage{
+				RoomPoints:  roomPoints,
 				Points:      points,
 				GeneratedAt: time.Now().UTC(),
 			}
