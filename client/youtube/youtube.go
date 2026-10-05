@@ -12,7 +12,7 @@ import (
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 )
 
-// Client implements vibe.MusicSearcher
+// Client implements vibe.ProviderItemsSearcher
 type Client struct {
 	apiKey                         string
 	clientID                       string
@@ -41,7 +41,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	c.clientID = cfg.YouTubeClientID
 	c.clientSecret = cfg.YouTubeClientSecret
 	c.redirectURI = cfg.YouTubeRedirectURI
-	c.generatedPlaylistSelectedCount = cfg.GeneratedPlaylistSelectedTrackCount
+	c.generatedPlaylistSelectedCount = cfg.GeneratedPlaylistSelectedItemCount
 	searchQuotaZone, err := time.LoadLocation(youtubeQuotaLocation)
 	if err != nil {
 		return fmt.Errorf("error loading youtube quota location: %w", err)

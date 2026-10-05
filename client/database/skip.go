@@ -14,9 +14,9 @@ import (
 // prepareGetSkipVotesStmt prepares the GetSkipVotesStatement.
 func (c *Client) prepareGetSkipVotesStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT song_id, user_id
+		SELECT playlist_item_id, user_id
 		FROM skip_votes
-		WHERE room_id = $1 AND song_id = $2
+		WHERE room_id = $1 AND playlist_item_id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetSkipVotesStatement: %w", err)
@@ -27,15 +27,15 @@ func (c *Client) prepareGetSkipVotesStmt() error {
 	return nil
 }
 
-// GetSkipVotes fetches all skip votes for a song.
-func (c *Client) GetSkipVotes(ctx context.Context, roomID, songID string) ([]vibe.SkipVote, error) {
+// GetSkipVotes fetches all skip votes for a playlist item.
+func (c *Client) GetSkipVotes(ctx context.Context, roomID, playlistItemID string) ([]vibe.SkipVote, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetSkipVotes")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	rows, err := c.GetSkipVotesStatement.QueryContext(cctx, roomID, songID)
+	rows, err := c.GetSkipVotesStatement.QueryContext(cctx, roomID, playlistItemID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching skip votes: %w", err)
 	}
@@ -66,13 +66,13 @@ func (c *Client) GetSkipVotes(ctx context.Context, roomID, songID string) ([]vib
 }
 
 type skipVoteRow struct {
-	SongID sql.NullString
-	UserID sql.NullString
+	PlaylistItemID sql.NullString
+	UserID         sql.NullString
 }
 
 func (r *skipVoteRow) scanRows(rows *sql.Rows) error {
 	err := rows.Scan(
-		&r.SongID,
+		&r.PlaylistItemID,
 		&r.UserID,
 	)
 	if err != nil {
@@ -84,8 +84,8 @@ func (r *skipVoteRow) scanRows(rows *sql.Rows) error {
 
 func (r *skipVoteRow) toSkipVote() (*vibe.SkipVote, error) {
 	return &vibe.SkipVote{
-		SongID: r.SongID.String,
-		UserID: r.UserID.String,
+		PlaylistItemID: r.PlaylistItemID.String,
+		UserID:         r.UserID.String,
 	}, nil
 }
 
@@ -93,7 +93,7 @@ func (r *skipVoteRow) toSkipVote() (*vibe.SkipVote, error) {
 func (c *Client) prepareHasUserVotedStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT COUNT(*) FROM skip_votes
-		WHERE room_id = $1 AND song_id = $2 AND user_id = $3
+		WHERE room_id = $1 AND playlist_item_id = $2 AND user_id = $3
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing HasUserVotedStatement: %w", err)
@@ -104,15 +104,15 @@ func (c *Client) prepareHasUserVotedStmt() error {
 	return nil
 }
 
-// HasUserVoted checks if a user has already voted to skip a song.
-func (c *Client) HasUserVoted(ctx context.Context, roomID, songID, userID string) (bool, error) {
+// HasUserVoted checks if a user has already voted to skip a playlist item.
+func (c *Client) HasUserVoted(ctx context.Context, roomID, playlistItemID, userID string) (bool, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "HasUserVoted")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.HasUserVotedStatement.QueryRowContext(cctx, roomID, songID, userID)
+	r := c.HasUserVotedStatement.QueryRowContext(cctx, roomID, playlistItemID, userID)
 
 	var row skipVoteCountRow
 	err := row.scan(r)
@@ -144,13 +144,13 @@ func (r *skipVoteCountRow) toHasUserVoted() bool {
 // prepareAddSkipVoteStmt prepares the AddSkipVoteStatement.
 func (c *Client) prepareAddSkipVoteStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO skip_votes (room_id, song_id, user_id)
+		INSERT INTO skip_votes (room_id, playlist_item_id, user_id)
 		SELECT a.room_id, a.id, $3
-		FROM songs a
+		FROM playlist_items a
 		WHERE a.room_id = $1
 		AND a.id = $2
 		FOR KEY SHARE OF a
-		ON CONFLICT(room_id, song_id, user_id) DO NOTHING
+		ON CONFLICT(room_id, playlist_item_id, user_id) DO NOTHING
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing AddSkipVoteStatement: %w", err)
@@ -161,15 +161,15 @@ func (c *Client) prepareAddSkipVoteStmt() error {
 	return nil
 }
 
-// AddSkipVote adds a skip vote for a song.
-func (c *Client) AddSkipVote(ctx context.Context, roomID, songID, userID string) error {
+// AddSkipVote adds a skip vote for a playlist item.
+func (c *Client) AddSkipVote(ctx context.Context, roomID, playlistItemID, userID string) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "AddSkipVote")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.AddSkipVoteStatement.ExecContext(cctx, roomID, songID, userID)
+	_, err := c.AddSkipVoteStatement.ExecContext(cctx, roomID, playlistItemID, userID)
 	if err != nil {
 		return fmt.Errorf("error adding skip vote: %w", err)
 	}
@@ -180,7 +180,7 @@ func (c *Client) AddSkipVote(ctx context.Context, roomID, songID, userID string)
 // prepareClearSkipVotesStmt prepares the ClearSkipVotesStatement.
 func (c *Client) prepareClearSkipVotesStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM skip_votes WHERE room_id = $1 AND song_id = $2
+		DELETE FROM skip_votes WHERE room_id = $1 AND playlist_item_id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ClearSkipVotesStatement: %w", err)
@@ -191,15 +191,15 @@ func (c *Client) prepareClearSkipVotesStmt() error {
 	return nil
 }
 
-// clearSkipVotes clears all skip votes for a song.
-func (c *Client) clearSkipVotes(ctx context.Context, roomID, songID string) error {
+// clearSkipVotes clears all skip votes for a playlist item.
+func (c *Client) clearSkipVotes(ctx context.Context, roomID, playlistItemID string) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "clearSkipVotes")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.ClearSkipVotesStatement.ExecContext(cctx, roomID, songID)
+	_, err := c.ClearSkipVotesStatement.ExecContext(cctx, roomID, playlistItemID)
 	if err != nil {
 		return fmt.Errorf("error clearing skip votes: %w", err)
 	}
@@ -207,14 +207,14 @@ func (c *Client) clearSkipVotes(ctx context.Context, roomID, songID string) erro
 	return nil
 }
 
-// SkipSong skips the current track to the next one in the queue, either immediately (if host/admin/forced) or by voting.
-func (c *Client) SkipSong(ctx context.Context, roomID, userID string) (*vibe.SkipSongResult, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "SkipSong")
+// SkipPlaylistItem advances to the next playlist item, either immediately (if host/admin/forced) or by voting.
+func (c *Client) SkipPlaylistItem(ctx context.Context, roomID, userID string) (*vibe.SkipPlaylistItemResult, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SkipPlaylistItem")
 	defer span.End()
 
-	room, err := c.GetRoom(ctx, roomID, userID)
+	room, err := c.GetRoomV2(ctx, roomID, userID)
 	if err != nil {
-		return nil, fmt.Errorf("error fetching room in SkipSong: %w", err)
+		return nil, fmt.Errorf("error fetching room in SkipPlaylistItem: %w", err)
 	}
 
 	isAdmin := room.IsAdmin
@@ -238,40 +238,40 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string) (*vibe.Ski
 	}
 
 	if shouldForce {
-		advance, err := c.skipTrack(ctx, roomID, "")
+		advance, err := c.skipPlaylistItem(ctx, roomID, "")
 		if err != nil {
 			return nil, fmt.Errorf("error skipping track in shouldForce: %w", err)
 		}
 
-		return &vibe.SkipSongResult{
-			Action:         vibe.RoomActionSkip,
-			Skipped:        true,
-			NextSong:       advance.Playback.CurrentSong,
-			Playback:       advance.Playback,
-			PreviousSongID: advance.PreviousSongID,
+		return &vibe.SkipPlaylistItemResult{
+			Action:                 vibe.RoomActionSkip,
+			Skipped:                true,
+			NextPlaylistItem:       advance.Playback.CurrentPlaylistItem,
+			Playback:               advance.Playback,
+			PreviousPlaylistItemID: advance.PreviousPlaylistItemID,
 		}, nil
 	}
 
-	state, err := c.GetPlaybackState(ctx, roomID)
+	state, err := c.GetPlaybackStateV2(ctx, roomID)
 	if err != nil {
-		return nil, fmt.Errorf("error skipping song: get playback state: %w", err)
+		return nil, fmt.Errorf("error fetching playback in SkipPlaylistItem: %w", err)
 	}
 
-	if state.CurrentSong == nil {
-		return &vibe.SkipSongResult{
+	if state.CurrentPlaylistItem == nil {
+		return &vibe.SkipPlaylistItemResult{
 			Action:   vibe.RoomActionSkip,
 			Playback: state,
 		}, nil
 	}
-	songID := state.CurrentSong.ID
+	playlistItemID := state.CurrentPlaylistItem.ID
 
-	voted, err := c.HasUserVoted(ctx, roomID, songID, userID)
+	voted, err := c.HasUserVoted(ctx, roomID, playlistItemID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error checking if user voted: %w", err)
 	}
 
 	if voted {
-		votes, err := c.GetSkipVotes(ctx, roomID, songID)
+		votes, err := c.GetSkipVotes(ctx, roomID, playlistItemID)
 		if err != nil {
 			return nil, fmt.Errorf("error fetching skip votes for already voted result: %w", err)
 		}
@@ -281,7 +281,7 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string) (*vibe.Ski
 			return nil, fmt.Errorf("error getting required skip votes for already voted result: %w", err)
 		}
 
-		return &vibe.SkipSongResult{
+		return &vibe.SkipPlaylistItemResult{
 			Action:        vibe.RoomActionSkip,
 			AlreadyVoted:  true,
 			CurrentVotes:  len(votes),
@@ -290,12 +290,12 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string) (*vibe.Ski
 		}, nil
 	}
 
-	err = c.AddSkipVote(ctx, roomID, songID, userID)
+	err = c.AddSkipVote(ctx, roomID, playlistItemID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error adding skip vote: %w", err)
 	}
 
-	votes, err := c.GetSkipVotes(ctx, roomID, songID)
+	votes, err := c.GetSkipVotes(ctx, roomID, playlistItemID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching skip votes count: %w", err)
 	}
@@ -307,7 +307,7 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string) (*vibe.Ski
 	}
 
 	if voteCount < requiredVotes {
-		return &vibe.SkipSongResult{
+		return &vibe.SkipPlaylistItemResult{
 			Action:        vibe.RoomActionSkip,
 			Voted:         true,
 			CurrentVotes:  voteCount,
@@ -316,30 +316,30 @@ func (c *Client) SkipSong(ctx context.Context, roomID, userID string) (*vibe.Ski
 		}, nil
 	}
 
-	err = c.clearSkipVotes(ctx, roomID, songID)
+	err = c.clearSkipVotes(ctx, roomID, playlistItemID)
 	if err != nil {
 		return nil, fmt.Errorf("error clearing skip votes: %w", err)
 	}
 
-	err = c.clearVotesSong(ctx, roomID, songID)
+	err = c.clearVotesPlaylistItem(ctx, roomID, playlistItemID)
 	if err != nil {
-		return nil, fmt.Errorf("error clearing votes for song: %w", err)
+		return nil, fmt.Errorf("error clearing votes for playlist item: %w", err)
 	}
 
-	advance, err := c.skipTrack(ctx, roomID, "")
+	advance, err := c.skipPlaylistItem(ctx, roomID, "")
 	if err != nil {
 		return nil, fmt.Errorf("error skipping track after vote: %w", err)
 	}
 
-	return &vibe.SkipSongResult{
-		Action:         vibe.RoomActionSkip,
-		Skipped:        true,
-		Voted:          true,
-		CurrentVotes:   voteCount,
-		RequiredVotes:  requiredVotes,
-		NextSong:       advance.Playback.CurrentSong,
-		Playback:       advance.Playback,
-		PreviousSongID: advance.PreviousSongID,
+	return &vibe.SkipPlaylistItemResult{
+		Action:                 vibe.RoomActionSkip,
+		Skipped:                true,
+		Voted:                  true,
+		CurrentVotes:           voteCount,
+		RequiredVotes:          requiredVotes,
+		NextPlaylistItem:       advance.Playback.CurrentPlaylistItem,
+		Playback:               advance.Playback,
+		PreviousPlaylistItemID: advance.PreviousPlaylistItemID,
 	}, nil
 }
 

@@ -17,22 +17,27 @@ import (
 //	@Success	200	{object}	vibe.Stats
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/stats [get]
+//
+// Deprecated: Use GET /api/v2/stats. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/stats for the playlist-item contract. This endpoint retains its existing payloads.
 func GetStats(
-	sf vibe.StatsFetcher,
-	cache vibe.CachedStatsFetcherCreator,
+	sf vibe.StatsV2Fetcher,
+	cache vibe.CachedStatsV2FetcherCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		cachedStats, err := cache.GetCachedStats(ctx)
+		cachedStats, err := cache.GetCachedStatsV2(ctx)
 		if err != nil {
 			log.Printf("error getting cached stats: %v", err)
-			cachedStats = &vibe.CachedStats{}
+			cachedStats = &vibe.CachedStatsV2{}
 		}
 
 		stats := &cachedStats.Stats
 		if cachedStats.IsEmpty() {
-			stats, err = sf.GetStats(ctx)
+			stats, err = sf.GetStatsV2(ctx)
 			if err != nil {
 				handleError(
 					w,
@@ -43,13 +48,15 @@ func GetStats(
 				return
 			}
 
-			err = cache.CacheStats(ctx, *stats)
+			err = cache.CacheStatsV2(ctx, *stats)
 			if err != nil {
 				log.Printf("error caching stats: %v", err)
 			}
 		}
 
-		body, err := json.Marshal(stats)
+		legacy := stats.ToStats()
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(
 				w,

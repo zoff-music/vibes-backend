@@ -6,6 +6,8 @@ import (
 )
 
 // PlaybackState represents the current playback state of a room
+//
+// Deprecated: Use PlaybackStateV2 for new code. Retained for legacy API compatibility.
 type PlaybackState struct {
 	RoomID       string    `json:"-"`
 	CurrentSong  *Song     `json:"currentSong"`
@@ -16,6 +18,8 @@ type PlaybackState struct {
 }
 
 // PlaybackAdvance describes one automatic queue advance and the resulting playback state.
+//
+// Deprecated: Use PlaybackAdvanceV2 for new code. Retained for legacy API compatibility.
 type PlaybackAdvance struct {
 	Playback       *PlaybackState
 	PreviousSongID string
@@ -31,55 +35,18 @@ type RoomActionRequest struct {
 	PositionMs int    `json:"positionMs,omitzero"`
 }
 
+// Deprecated: Use PlaybackFailureRequestV2 for new code. Retained for legacy API compatibility.
 type PlaybackFailureRequest struct {
 	SongID string `json:"songId"`
 }
 
-// PlaybackFetcher fetches playback state
-type PlaybackFetcher interface {
-	GetPlaybackState(ctx context.Context, roomID string) (*PlaybackState, error)
-}
-
-// PlaybackStateUpdater defines the interface for updating playback state
-type RoomGetterPlaybackUpdater interface {
-	PlaybackFetcher
-	GetRoom(ctx context.Context, roomID string, userID string) (*Room, error)
-	UpdatePlayback(ctx context.Context, roomID string, userID string, action string, positionMs int) (*PlaybackState, error)
-}
-
-// PlaybackController controls playback
-type PlaybackController interface {
-	UpsertPlaybackState(ctx context.Context, state *PlaybackState) error
-}
-
-type RestrictedPlaybackSkipper interface {
-	SkipRestrictedSong(ctx context.Context, roomID string, songID string) (*PlaybackAdvance, error)
-}
-
-type SongPlaybackRestrictionUpdater interface {
-	UpdateSongPlaybackRestriction(
+type PlaylistItemPlaybackRestrictionUpdater interface {
+	UpdatePlaylistItemPlaybackRestriction(
 		ctx context.Context,
 		roomID string,
 		songID string,
 		restriction string,
 	) error
-}
-
-type PlaybackFailureStorage interface {
-	PlaybackFetcher
-	RestrictedPlaybackSkipper
-	SongsFetcher
-	SongPlaybackRestrictionUpdater
-}
-
-// ExpiredPlaybackProcessor defines interfaces needed for background room playback automation
-type ExpiredPlaybackProcessor interface {
-	ProcessNextExpiredPlayback(ctx context.Context) (*PlaybackAdvance, error)
-}
-
-type ExpiredPlaybackSongFetcher interface {
-	ExpiredPlaybackProcessor
-	SongsFetcher
 }
 
 // AbandonedHostProcessor defines interfaces needed for background host management

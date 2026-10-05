@@ -26,8 +26,8 @@ func (s *messageStorageStub) CreateMessageUsage(_ context.Context, roomID string
 	return nil
 }
 
-func (s *messageStorageStub) GetRoom(_ context.Context, _, _ string) (*vibe.Room, error) {
-	return &s.room, nil
+func (s *messageStorageStub) GetRoomV2(_ context.Context, _, _ string) (*vibe.RoomV2, error) {
+	return s.room.ToRoomV2(), nil
 }
 func (s *messageStorageStub) GetOrCreateSessionProfile(_ context.Context, _ string) (*vibe.SessionProfile, error) {
 	return &vibe.SessionProfile{Name: "Actual name"}, nil

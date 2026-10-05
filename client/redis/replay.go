@@ -26,7 +26,24 @@ func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) e
 	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyAdminUpdate")
 	defer span.End()
 
-	data, err := json.Marshal(event)
+	canonical, err := event.ToAdminEventV2()
+	if err != nil {
+		return fmt.Errorf("error converting legacy admin update: %w", err)
+	}
+
+	err = c.NotifyAdminUpdateV2(ctx, *canonical)
+	if err != nil {
+		return fmt.Errorf("error notifying legacy admin update: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) NotifyAdminUpdateV2(ctx context.Context, event vibe.AdminEventV2) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyAdminUpdateV2")
+	defer span.End()
+
+	data, err := json.Marshal(vibe.AdminEventRecord{Version: 2, Event: event})
 	if err != nil {
 		return fmt.Errorf("error marshaling admin event in NotifyAdminUpdate: %w", err)
 	}
@@ -47,7 +64,23 @@ func (c *Client) NotifyRemoteUpdate(
 	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRemoteUpdate")
 	defer span.End()
 
-	data, err := json.Marshal(event)
+	err := c.NotifyRemoteUpdateV2(ctx, remoteID, *event.ToRemoteEventV2())
+	if err != nil {
+		return fmt.Errorf("error notifying legacy remote update: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) NotifyRemoteUpdateV2(
+	ctx context.Context,
+	remoteID string,
+	event vibe.RemoteEventV2,
+) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRemoteUpdateV2")
+	defer span.End()
+
+	data, err := json.Marshal(vibe.RemoteEventRecord{Version: 2, Event: event})
 	if err != nil {
 		return fmt.Errorf("error marshaling remote event in NotifyRemoteUpdate: %w", err)
 	}
@@ -60,14 +93,53 @@ func (c *Client) NotifyRemoteUpdate(
 	return nil
 }
 
-func (c *Client) NotifyRoomUpdate(
-	ctx context.Context,
-	roomID string,
-	event vibe.RoomEvent,
-) error {
+func (c *Client) NotifyRoomUpdate(ctx context.Context, roomID string, event vibe.RoomEvent) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdate")
 	defer span.End()
 
+	canonical, err := event.ToRoomEventV3()
+	if err != nil {
+		return fmt.Errorf("error converting legacy room event: %w", err)
+	}
+
+	err = c.NotifyRoomUpdateV3(ctx, roomID, *canonical)
+	if err != nil {
+		return fmt.Errorf("error notifying legacy room event: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []vibe.RoomEvent) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdates")
+	defer span.End()
+
+	canonical := make([]vibe.RoomEventV3, 0, len(events))
+	for _, event := range events {
+		converted, err := event.ToRoomEventV3()
+		if err != nil {
+			return fmt.Errorf("error converting legacy room batch event: %w", err)
+		}
+		canonical = append(canonical, *converted)
+	}
+
+	err := c.NotifyRoomUpdatesV3(ctx, roomID, canonical)
+	if err != nil {
+		return fmt.Errorf("error notifying legacy room batch: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) NotifyRoomUpdateV3(
+	ctx context.Context,
+	roomID string,
+	event vibe.RoomEventV3,
+) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdateV3")
+	defer span.End()
+
+	event.Version = 3
 	data, err := json.Marshal(event)
 	if err != nil {
 		return fmt.Errorf("error marshaling room event in NotifyRoomUpdate: %w", err)
@@ -86,18 +158,19 @@ func (c *Client) NotifyRoomUpdate(
 	return nil
 }
 
-func (c *Client) NotifyRoomUpdates(
+func (c *Client) NotifyRoomUpdatesV3(
 	ctx context.Context,
 	roomID string,
-	events []vibe.RoomEvent,
+	events []vibe.RoomEventV3,
 ) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdates")
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdatesV3")
 	defer span.End()
 
 	for _, event := range events {
+		event.Version = 3
 		data, err := json.Marshal(event)
 		if err != nil {
-			return fmt.Errorf("error marshaling room event in NotifyRoomUpdates: %w", err)
+			return fmt.Errorf("error marshaling room event in NotifyRoomUpdatesV3: %w", err)
 		}
 
 		topic := roomTopicName(roomID)
@@ -107,7 +180,7 @@ func (c *Client) NotifyRoomUpdates(
 
 		err = c.appendRoomEvent(ctx, topic, data)
 		if err != nil {
-			return fmt.Errorf("error notifying room event batch in NotifyRoomUpdates: %w", err)
+			return fmt.Errorf("error notifying room event batch in NotifyRoomUpdatesV3: %w", err)
 		}
 	}
 
@@ -398,6 +471,28 @@ func (s *streamSubscription) listen(ctx context.Context, cursor string) {
 		}
 
 		for _, message := range deliveries {
+			// Compaction can discard earlier item deltas. Promote the retained
+			// queue record to its full snapshot for versioned subscribers.
+			// The original stored event and stream cursor remain unchanged.
+			if s.roomEvents && len(messages) > 1 && message.Type == vibe.PlaylistItemsUpdate {
+				event, err := vibe.ParseRoomEvent(message.Data)
+				if err != nil {
+					log.Printf("error decoding compacted queue snapshot: %v", err)
+					return
+				}
+
+				event.Compact = &vibe.RoomEventV3Payload{
+					Type:    vibe.PlaylistItemsSnapshot,
+					Payload: event.Payload,
+				}
+
+				message.Data, err = json.Marshal(event)
+				if err != nil {
+					log.Printf("error encoding compacted queue snapshot: %v", err)
+					return
+				}
+			}
+
 			select {
 			case <-ctx.Done():
 				return
@@ -477,8 +572,7 @@ func (s *streamSubscription) read(
 			eventData := []byte(data)
 			eventType := ""
 			if s.roomEvents {
-				var event vibe.RoomEvent
-				err = json.Unmarshal(eventData, &event)
+				event, err := vibe.ParseRoomEvent(eventData)
 				if err != nil {
 					return nil, fmt.Errorf("error unmarshaling room event in read: %w", err)
 				}
@@ -512,12 +606,12 @@ func compactReplayMessages(messages []streamMessage) []streamMessage {
 	for index := len(messages) - 1; index >= 0; index-- {
 		messageType := messages[index].Type
 		switch messageType {
-		case vibe.QueueReordered:
+		case vibe.PlaylistItemsUpdate, vibe.QueueReordered:
 			if !queueSnapshotSeen {
 				keep[index] = true
 				queueSnapshotSeen = true
 			}
-		case vibe.SongAdded, vibe.SongRemoved:
+		case vibe.PlaylistItemAdded, vibe.PlaylistItemRemoved, vibe.SongAdded, vibe.SongRemoved:
 			keep[index] = !queueSnapshotSeen
 		case vibe.UsersUpdate:
 			if !usersSnapshotSeen {

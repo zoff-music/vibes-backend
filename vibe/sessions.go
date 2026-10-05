@@ -46,6 +46,8 @@ type CreateSessionRequest struct {
 }
 
 // SessionResponse is returned when creating a session
+//
+// Deprecated: Use SessionResponseV2 for new clients. Retained for v1 room authentication.
 type SessionResponse struct {
 	UserID    string  `json:"userId"`
 	SessionID string  `json:"sessionId"`
@@ -58,19 +60,6 @@ type SessionResponse struct {
 type AdminAuthResult struct {
 	IsAdmin          bool
 	IsFirstTimeSetup bool
-}
-
-// AdminSessionCreator authenticates an admin and fetches its room.
-type AdminSessionCreator interface {
-	SessionProfileFetcherCreator
-	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
-	AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (*AdminAuthResult, error)
-}
-
-// RoomAdminSessionDeleter removes room-scoped admin access and fetches the room.
-type RoomAdminSessionDeleter interface {
-	ClearRoomAdmin(ctx context.Context, roomID string, userID string) error
-	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
 }
 
 const minimumSessionNameLength = 1

@@ -119,8 +119,8 @@ func (c *Client) ProcessNextAbandonedHost(ctx context.Context) (*vibe.RoomHostIn
 	return hostInfo, nil
 }
 
-// prepareGetRoomStmt prepares the GetRoomStatement.
-func (c *Client) prepareGetRoomStmt() error {
+// prepareGetRoomV2Stmt prepares the GetRoomV2Statement.
+func (c *Client) prepareGetRoomV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT
 			a.id,
@@ -137,7 +137,7 @@ func (c *Client) prepareGetRoomStmt() error {
 			b.allow_duplicates,
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
-			b.only_admin_add_songs,
+			b.only_admin_add_playlist_items,
 			b.is_public,
 			b.playlist_import,
 			EXISTS (
@@ -170,17 +170,17 @@ func (c *Client) prepareGetRoomStmt() error {
 		WHERE a.id = $1
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing GetRoomStatement: %w", err)
+		return fmt.Errorf("error preparing GetRoomV2Statement: %w", err)
 	}
 
-	c.GetRoomStatement = stmt
+	c.GetRoomV2Statement = stmt
 
 	return nil
 }
 
 // GetRoom fetches a room by ID.
 // If userID is provided, it also populates the IsAdmin field for that user.
-func (c *Client) GetRoom(ctx context.Context, id string, userID string) (*vibe.Room, error) {
+func (c *Client) GetRoomV2(ctx context.Context, id string, userID string) (*vibe.RoomV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetRoom")
 	defer span.End()
 
@@ -197,14 +197,14 @@ func (c *Client) GetRoom(ctx context.Context, id string, userID string) (*vibe.R
 	return room, nil
 }
 
-func (c *Client) getRoom(ctx context.Context, id string, userID string) (*vibe.Room, error) {
+func (c *Client) getRoom(ctx context.Context, id string, userID string) (*vibe.RoomV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "getRoom")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.GetRoomStatement.QueryRowContext(
+	r := c.GetRoomV2Statement.QueryRowContext(
 		cctx,
 		id,
 		userID,
@@ -215,13 +215,13 @@ func (c *Client) getRoom(ctx context.Context, id string, userID string) (*vibe.R
 	err := row.scanRow(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return &vibe.Room{}, nil
+			return &vibe.RoomV2{}, nil
 		}
 
 		return nil, fmt.Errorf("error fetching room: %w", err)
 	}
 
-	room, err := row.toRoom(c.enabledProviders)
+	room, err := row.toRoomV2(c.enabledProviders)
 	if err != nil {
 		return nil, fmt.Errorf("error converting room row: %w", err)
 	}
@@ -229,7 +229,7 @@ func (c *Client) getRoom(ctx context.Context, id string, userID string) (*vibe.R
 	return room, nil
 }
 
-func (c *Client) fillRoomDetails(ctx context.Context, room vibe.Room, userID string) (*vibe.Room, error) {
+func (c *Client) fillRoomDetails(ctx context.Context, room vibe.RoomV2, userID string) (*vibe.RoomV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "fillRoomDetails")
 	defer span.End()
 
@@ -240,7 +240,7 @@ func (c *Client) fillRoomDetails(ctx context.Context, room vibe.Room, userID str
 
 	filledRoom.UserID = userID
 	filledRoom.RoomGenerationMaxDailyCount = c.roomGenerationMaxDailyCount
-	filledRoom.RoomGenerationMaxExistingSongs = c.roomGenerationMaxExistingSongs
+	filledRoom.RoomGenerationMaxExistingPlaylistItems = c.roomGenerationMaxExistingPlaylistItems
 
 	counts, err := c.GetActiveListenerCounts(ctx, filledRoom.ID, 15*time.Second)
 	if err == nil {
@@ -253,8 +253,8 @@ func (c *Client) fillRoomDetails(ctx context.Context, room vibe.Room, userID str
 	return filledRoom, nil
 }
 
-// prepareGetRoomByNameStmt prepares the GetRoomByNameStatement.
-func (c *Client) prepareGetRoomByNameStmt() error {
+// prepareGetRoomByNameV2Stmt prepares the GetRoomByNameV2Statement.
+func (c *Client) prepareGetRoomByNameV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT
 			a.id,
@@ -271,7 +271,7 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 			b.allow_duplicates,
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
-			b.only_admin_add_songs,
+			b.only_admin_add_playlist_items,
 			b.is_public,
 			b.playlist_import,
 			EXISTS (
@@ -304,16 +304,16 @@ func (c *Client) prepareGetRoomByNameStmt() error {
 		WHERE a.name = $1
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing GetRoomByNameStatement: %w", err)
+		return fmt.Errorf("error preparing GetRoomByNameV2Statement: %w", err)
 	}
 
-	c.GetRoomByNameStatement = stmt
+	c.GetRoomByNameV2Statement = stmt
 
 	return nil
 }
 
 // GetRoomByName fetches a room by name.
-func (c *Client) GetRoomByName(ctx context.Context, name string, userID string) (*vibe.Room, error) {
+func (c *Client) GetRoomByNameV2(ctx context.Context, name string, userID string) (*vibe.RoomV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetRoomByName")
 	defer span.End()
 
@@ -330,14 +330,14 @@ func (c *Client) GetRoomByName(ctx context.Context, name string, userID string) 
 	return room, nil
 }
 
-func (c *Client) getRoomByName(ctx context.Context, name string, userID string) (*vibe.Room, error) {
+func (c *Client) getRoomByName(ctx context.Context, name string, userID string) (*vibe.RoomV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "getRoomByName")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.GetRoomByNameStatement.QueryRowContext(
+	row := c.GetRoomByNameV2Statement.QueryRowContext(
 		cctx,
 		name,
 		userID,
@@ -348,13 +348,13 @@ func (c *Client) getRoomByName(ctx context.Context, name string, userID string) 
 	err := scanned.scanRow(row)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return &vibe.Room{}, nil
+			return &vibe.RoomV2{}, nil
 		}
 
 		return nil, fmt.Errorf("error fetching room by name: %w", err)
 	}
 
-	room, err := scanned.toRoom(c.enabledProviders)
+	room, err := scanned.toRoomV2(c.enabledProviders)
 	if err != nil {
 		return nil, fmt.Errorf("error converting room row: %w", err)
 	}
@@ -405,15 +405,15 @@ func (c *Client) prepareGetPublicRoomsStmt() error {
 			a.id,
 			a.name,
 			a.listener_count,
-			COUNT(b.id) AS song_count
+			COUNT(b.id) AS playlist_item_count
 		FROM active_rooms_q a
-		LEFT JOIN songs b
+		LEFT JOIN playlist_items b
 		ON b.room_id = a.id
 		AND b.source_type = ANY($1::text[])
 		GROUP BY a.id, a.name, a.listener_count
 		ORDER BY
 			a.listener_count DESC,
-			song_count DESC,
+			playlist_item_count DESC,
 			a.name ASC
 		LIMIT 3
 	`)
@@ -468,10 +468,10 @@ func (c *Client) GetPublicRooms(ctx context.Context) ([]vibe.PublicRoom, error) 
 }
 
 type publicRoomRow struct {
-	ID            sql.NullString
-	Name          sql.NullString
-	ListenerCount sql.NullInt64
-	SongCount     sql.NullInt64
+	ID                sql.NullString
+	Name              sql.NullString
+	ListenerCount     sql.NullInt64
+	PlaylistItemCount sql.NullInt64
 }
 
 func (r *publicRoomRow) scanRows(rows *sql.Rows) error {
@@ -479,7 +479,7 @@ func (r *publicRoomRow) scanRows(rows *sql.Rows) error {
 		&r.ID,
 		&r.Name,
 		&r.ListenerCount,
-		&r.SongCount,
+		&r.PlaylistItemCount,
 	)
 	if err != nil {
 		return fmt.Errorf("error scanning public room row: %w", err)
@@ -493,7 +493,7 @@ func (r *publicRoomRow) toPublicRoom() (*vibe.PublicRoom, error) {
 		ID:            r.ID.String,
 		Name:          r.Name.String,
 		ListenerCount: int(r.ListenerCount.Int64),
-		SongCount:     int(r.SongCount.Int64),
+		SongCount:     int(r.PlaylistItemCount.Int64),
 	}, nil
 }
 
@@ -551,26 +551,26 @@ func (r *roomExistsRow) scan(row *sql.Row) error {
 }
 
 type roomRow struct {
-	ID                sql.NullString
-	Name              sql.NullString
-	Mode              sql.NullString
-	HostID            sql.NullString
-	AdminPasswordHash sql.NullString
-	CreatedAt         sql.NullTime
-	SkipAllowed       sql.NullBool
-	DemocraticSkip    sql.NullBool
-	SkipVoteThreshold sql.NullFloat64
-	MaxContinuousAdds sql.NullInt64
-	RemoveOnPlay      sql.NullBool
-	AllowDuplicates   sql.NullBool
-	IsRequesterAdmin  sql.NullBool
-	EnabledSources    sql.NullString
-	OnlyAdminAddSongs sql.NullBool
-	Public            sql.NullBool
-	PlaylistImport    sql.NullBool
-	IsGenerating      sql.NullBool
-	GenerationCount   sql.NullInt64
-	GenerationError   sql.NullString
+	ID                        sql.NullString
+	Name                      sql.NullString
+	Mode                      sql.NullString
+	HostID                    sql.NullString
+	AdminPasswordHash         sql.NullString
+	CreatedAt                 sql.NullTime
+	SkipAllowed               sql.NullBool
+	DemocraticSkip            sql.NullBool
+	SkipVoteThreshold         sql.NullFloat64
+	MaxContinuousAdds         sql.NullInt64
+	RemoveOnPlay              sql.NullBool
+	AllowDuplicates           sql.NullBool
+	IsRequesterAdmin          sql.NullBool
+	EnabledSources            sql.NullString
+	OnlyAdminAddPlaylistItems sql.NullBool
+	Public                    sql.NullBool
+	PlaylistImport            sql.NullBool
+	IsGenerating              sql.NullBool
+	GenerationCount           sql.NullInt64
+	GenerationError           sql.NullString
 }
 
 func (r *roomRow) scanRow(row *sql.Row) error {
@@ -589,7 +589,7 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.AllowDuplicates,
 		&r.IsRequesterAdmin,
 		&r.EnabledSources,
-		&r.OnlyAdminAddSongs,
+		&r.OnlyAdminAddPlaylistItems,
 		&r.Public,
 		&r.PlaylistImport,
 		&r.IsGenerating,
@@ -603,7 +603,7 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 	return nil
 }
 
-func (r *roomRow) toRoom(enabledProviders []string) (*vibe.Room, error) {
+func (r *roomRow) toRoomV2(enabledProviders []string) (*vibe.RoomV2, error) {
 	defaultSettings, err := vibe.DefaultRoomSettings()
 	if err != nil {
 		return nil, fmt.Errorf("error getting default room settings in toRoom: %w", err)
@@ -617,12 +617,12 @@ func (r *roomRow) toRoom(enabledProviders []string) (*vibe.Room, error) {
 		}
 	}
 
-	settings, err := r.toRoomSettings(storedSources, enabledProviders)
+	settings, err := r.toRoomSettingsV2(storedSources, enabledProviders)
 	if err != nil {
 		return nil, fmt.Errorf("error converting room settings: %w", err)
 	}
 
-	return &vibe.Room{
+	return &vibe.RoomV2{
 		ID:                   r.ID.String,
 		Name:                 r.Name.String,
 		Mode:                 r.Mode.String,
@@ -639,10 +639,10 @@ func (r *roomRow) toRoom(enabledProviders []string) (*vibe.Room, error) {
 	}, nil
 }
 
-func (r *roomRow) toRoomSettings(
+func (r *roomRow) toRoomSettingsV2(
 	storedSources []string,
 	enabledProviders []string,
-) (*vibe.RoomSettings, error) {
+) (*vibe.RoomSettingsV2, error) {
 	sources := []string{}
 	for _, source := range storedSources {
 		for _, provider := range enabledProviders {
@@ -653,24 +653,24 @@ func (r *roomRow) toRoomSettings(
 		}
 	}
 
-	return &vibe.RoomSettings{
-		SkipAllowed:       r.SkipAllowed.Bool,
-		DemocraticSkip:    r.DemocraticSkip.Bool,
-		SkipVoteThreshold: r.SkipVoteThreshold.Float64,
-		MaxContinuousAdds: int(r.MaxContinuousAdds.Int64),
-		RemoveOnPlay:      r.RemoveOnPlay.Bool,
-		AllowDuplicates:   r.AllowDuplicates.Bool,
-		EnabledSources:    sources,
-		OnlyAdminAddSongs: r.OnlyAdminAddSongs.Bool,
-		Public:            r.Public.Bool,
-		PlaylistImport:    r.PlaylistImport.Bool,
+	return &vibe.RoomSettingsV2{
+		SkipAllowed:               r.SkipAllowed.Bool,
+		DemocraticSkip:            r.DemocraticSkip.Bool,
+		SkipVoteThreshold:         r.SkipVoteThreshold.Float64,
+		MaxContinuousAdds:         int(r.MaxContinuousAdds.Int64),
+		RemoveOnPlay:              r.RemoveOnPlay.Bool,
+		AllowDuplicates:           r.AllowDuplicates.Bool,
+		EnabledSources:            sources,
+		OnlyAdminAddPlaylistItems: r.OnlyAdminAddPlaylistItems.Bool,
+		Public:                    r.Public.Bool,
+		PlaylistImport:            r.PlaylistImport.Bool,
 	}, nil
 }
 
 func (c *Client) prepareGetActiveSourcesStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT DISTINCT source_type
-		FROM songs
+		FROM playlist_items
 		WHERE room_id = $1
 		AND source_type = ANY($2::text[])
 	`)
@@ -681,7 +681,7 @@ func (c *Client) prepareGetActiveSourcesStmt() error {
 	return nil
 }
 
-func (c *Client) fillActiveSources(ctx context.Context, room vibe.Room) (*vibe.Room, error) {
+func (c *Client) fillActiveSources(ctx context.Context, room vibe.RoomV2) (*vibe.RoomV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "fillActiveSources")
 	defer span.End()
 
@@ -734,8 +734,8 @@ func (a *activeSourceRow) toSource() string {
 	return a.Source.String
 }
 
-// prepareCreateRoomStmt prepares the CreateRoomStatement.
-func (c *Client) prepareCreateRoomStmt() error {
+// prepareCreateRoomV2Stmt prepares the CreateRoomV2Statement.
+func (c *Client) prepareCreateRoomV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH valid_name_q AS (
 			SELECT $1::TEXT AS id
@@ -786,7 +786,7 @@ func (c *Client) prepareCreateRoomStmt() error {
 				remove_on_play,
 				allow_duplicates,
 				enabled_sources,
-				only_admin_add_songs,
+				only_admin_add_playlist_items,
 				is_public,
 				playlist_import
 			)
@@ -820,27 +820,27 @@ func (c *Client) prepareCreateRoomStmt() error {
 		SELECT id FROM created_room_q
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing CreateRoomStatement: %w", err)
+		return fmt.Errorf("error preparing CreateRoomV2Statement: %w", err)
 	}
 
-	c.CreateRoomStatement = stmt
+	c.CreateRoomV2Statement = stmt
 
 	return nil
 }
 
 // CreateRoom creates a new room and consumes its name reservation.
-func (c *Client) CreateRoom(
+func (c *Client) CreateRoomV2(
 	ctx context.Context,
-	room *vibe.Room,
+	room *vibe.RoomV2,
 	reservationToken string,
-) (*vibe.Room, error) {
+) (*vibe.RoomV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "CreateRoom")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.CreateRoomStatement.QueryRowContext(cctx,
+	row := c.CreateRoomV2Statement.QueryRowContext(cctx,
 		room.ID,
 		room.Name,
 		room.Mode,
@@ -854,7 +854,7 @@ func (c *Client) CreateRoom(
 		room.Settings.RemoveOnPlay,
 		room.Settings.AllowDuplicates,
 		strings.Join(room.Settings.EnabledSources, ","),
-		room.Settings.OnlyAdminAddSongs,
+		room.Settings.OnlyAdminAddPlaylistItems,
 		room.Settings.Public,
 		room.Settings.PlaylistImport,
 		reservationToken,
@@ -891,7 +891,7 @@ func (c *Client) CreateRoom(
 	createdRoom.Settings = createdSettings
 	createdRoom.ActiveSources = []string{}
 	createdRoom.RoomGenerationMaxDailyCount = c.roomGenerationMaxDailyCount
-	createdRoom.RoomGenerationMaxExistingSongs = c.roomGenerationMaxExistingSongs
+	createdRoom.RoomGenerationMaxExistingPlaylistItems = c.roomGenerationMaxExistingPlaylistItems
 	createdRoom.StoredEnabledSources = append(
 		[]string{},
 		room.Settings.EnabledSources...,
@@ -913,8 +913,8 @@ func (r *createRoomRow) scan(row *sql.Row) error {
 	return nil
 }
 
-// prepareUpdateRoomStmt prepares the UpdateRoomStatement.
-func (c *Client) prepareUpdateRoomStmt() error {
+// prepareUpdateRoomV2Stmt prepares the UpdateRoomV2Statement.
+func (c *Client) prepareUpdateRoomV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH updated_room_q AS (
 			UPDATE rooms
@@ -933,23 +933,23 @@ func (c *Client) prepareUpdateRoomStmt() error {
 		remove_on_play = $7,
 		allow_duplicates = $8,
 		enabled_sources = $12,
-		only_admin_add_songs = $13,
+		only_admin_add_playlist_items = $13,
 		is_public = $14,
 		playlist_import = $15
 		FROM updated_room_q a
 		WHERE room_settings.room_id = a.id
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing UpdateRoomStatement: %w", err)
+		return fmt.Errorf("error preparing UpdateRoomV2Statement: %w", err)
 	}
 
-	c.UpdateRoomStatement = stmt
+	c.UpdateRoomV2Statement = stmt
 
 	return nil
 }
 
 // UpdateRoom updates an existing room.
-func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, error) {
+func (c *Client) UpdateRoomV2(ctx context.Context, room *vibe.RoomV2) (*vibe.RoomV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "UpdateRoom")
 	defer span.End()
 
@@ -978,7 +978,7 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		}
 	}
 
-	_, err := c.UpdateRoomStatement.ExecContext(cctx,
+	_, err := c.UpdateRoomV2Statement.ExecContext(cctx,
 		room.Name,
 		room.ID,
 		room.Settings.SkipAllowed,
@@ -991,7 +991,7 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		room.HostID,
 		room.AdminPasswordHash,
 		strings.Join(enabledSources, ","),
-		room.Settings.OnlyAdminAddSongs,
+		room.Settings.OnlyAdminAddPlaylistItems,
 		room.Settings.Public,
 		room.Settings.PlaylistImport,
 	)
@@ -999,7 +999,7 @@ func (c *Client) UpdateRoom(ctx context.Context, room *vibe.Room) (*vibe.Room, e
 		return nil, fmt.Errorf("error updating room: %w", err)
 	}
 
-	updatedRoom, err := c.GetRoom(ctx, room.ID, room.UserID)
+	updatedRoom, err := c.GetRoomV2(ctx, room.ID, room.UserID)
 	if err != nil {
 		return nil, fmt.Errorf("error fetching updated room: %w", err)
 	}

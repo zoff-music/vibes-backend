@@ -18,7 +18,7 @@ type Client struct {
 	Endpoint          string
 	Model             string
 	apiKey            string
-	trackCount        int
+	itemCount         int
 	systemInstruction string
 	HTTPClient        client.HTTPClient
 }
@@ -39,8 +39,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	c.Endpoint = strings.TrimRight(cfg.GeminiEndpoint, "/")
 	c.Model = aiModel.Name
 	c.apiKey = cfg.GeminiAPIKey
-	c.trackCount = cfg.GeneratedPlaylistTrackCount
-	c.systemInstruction = vibe.GeneratedPlaylistSystemInstruction(c.trackCount)
+	c.itemCount = cfg.GeneratedPlaylistItemCount
+	c.systemInstruction = vibe.GeneratedPlaylistSystemInstruction(c.itemCount)
 	if c.Endpoint == "" {
 		return fmt.Errorf("error gemini endpoint is required")
 	}

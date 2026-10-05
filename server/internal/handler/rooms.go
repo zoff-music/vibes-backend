@@ -32,8 +32,13 @@ import (
 //	@Failure		409		{object}	vibe.ErrorResponse
 //	@Failure		500		{object}	vibe.ErrorResponse
 //	@Router			/api/v1/rooms [post]
+//
+// Deprecated: Use POST /api/v2/rooms. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms for the playlist-item contract. This endpoint retains its existing payloads.
 func CreateRoom(
-	db vibe.RoomCreatorExistenceChecker,
+	db vibe.RoomV2Creator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -125,14 +130,14 @@ func CreateRoom(
 			mode = vibe.RoomModeServer
 		}
 
-		settings, err := vibe.DefaultRoomSettings()
+		settings, err := vibe.DefaultRoomSettingsV2()
 		if err != nil {
 			handleError(w, fmt.Errorf("error getting default room settings: %w", err), http.StatusInternalServerError, true)
 			return
 		}
 
 		if req.Settings != nil {
-			settings = req.Settings
+			settings = req.Settings.ToRoomSettingsV2()
 		}
 
 		if req.Settings != nil && req.Settings.OnlyAdminAddSongs && req.Password == "" {
@@ -166,7 +171,7 @@ func CreateRoom(
 			return
 		}
 
-		room := &vibe.Room{
+		room := &vibe.RoomV2{
 			ID:                slug,
 			Name:              req.Name,
 			Mode:              mode,
@@ -178,7 +183,7 @@ func CreateRoom(
 			ActiveSources:     []string{},
 		}
 
-		created, err := db.CreateRoom(ctx, room, req.ReservationToken)
+		created, err := db.CreateRoomV2(ctx, room, req.ReservationToken)
 		if err != nil {
 			var unavailableError internalerror.ErrRoomNameUnavailable
 			if errors.As(err, &unavailableError) {
@@ -209,7 +214,9 @@ func CreateRoom(
 			return
 		}
 
-		body, err := json.Marshal(created)
+		bodyLegacy := created.ToRoom()
+
+		body, err := json.Marshal(bodyLegacy)
 		if err != nil {
 			handleError(
 				w,
@@ -469,8 +476,13 @@ func RoomExists(db vibe.RoomExistenceChecker) http.HandlerFunc {
 //	@Failure	404	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id} [get]
+//
+// Deprecated: Use GET /api/v2/rooms/{id}. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/rooms/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func GetRoom(
-	db vibe.RoomFetcher,
+	db vibe.RoomV2Fetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -479,7 +491,7 @@ func GetRoom(
 
 		session, _ := helper.GetSessionFromContext(ctx)
 
-		room, err := db.GetRoom(ctx, roomID, session.UserID)
+		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
 			handleError(
 				w,
@@ -500,7 +512,9 @@ func GetRoom(
 			return
 		}
 
-		body, err := json.Marshal(room)
+		bodyLegacy := room.ToRoom()
+
+		body, err := json.Marshal(bodyLegacy)
 		if err != nil {
 			handleError(
 				w,
@@ -525,6 +539,11 @@ func GetRoom(
 //	@Success	200	{array}		vibe.PublicRoom
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/public [get]
+//
+// Deprecated: Use GET /api/v3/rooms/public?live=true&from=0&to=2. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v3/rooms/public?live=true&from=0&to=2 for the playlist-item contract. This endpoint retains its existing payloads.
 func GetPublicRooms(db vibe.PublicRoomFetcher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -572,8 +591,13 @@ func GetPublicRooms(db vibe.PublicRoomFetcher) http.HandlerFunc {
 //	@Failure	401	{object}	vibe.ErrorResponse
 //	@Failure	403	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/settings [patch]
+//
+// Deprecated: Use PATCH /api/v2/rooms/{id}/settings. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use PATCH /api/v2/rooms/{id}/settings for the playlist-item contract. This endpoint retains its existing payloads.
 func UpdateRoomSettings(
-	db vibe.RoomSettingsUpdater,
+	db vibe.RoomV2SettingsUpdater,
 	notifier vibe.RoomBatchEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -599,7 +623,7 @@ func UpdateRoomSettings(
 			return
 		}
 
-		room, err := db.GetRoom(ctx, roomID, session.UserID)
+		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
 			handleError(
 				w,
@@ -629,13 +653,13 @@ func UpdateRoomSettings(
 		previousMode := room.Mode
 
 		if req.Settings != nil && !req.Settings.IsEmpty() {
-			room.Settings = *req.Settings
+			room.Settings = *req.Settings.ToRoomSettingsV2()
 		}
 		if req.Mode != "" {
 			room.Mode = req.Mode
 		}
 
-		if room.Settings.OnlyAdminAddSongs && !room.HasPassword {
+		if room.Settings.OnlyAdminAddPlaylistItems && !room.HasPassword {
 			handleError(
 				w,
 				internalerror.ErrMissingAdminPassword{Err: fmt.Errorf("error room must have a password to enable 'only admin add songs'")},
@@ -666,7 +690,7 @@ func UpdateRoomSettings(
 			return
 		}
 
-		updated, err := db.UpdateRoom(ctx, room)
+		updated, err := db.UpdateRoomV2(ctx, room)
 		if err != nil {
 			handleError(
 				w,
@@ -677,7 +701,9 @@ func UpdateRoomSettings(
 			return
 		}
 
-		body, err := json.Marshal(updated)
+		bodyLegacy := updated.ToRoom()
+
+		body, err := json.Marshal(bodyLegacy)
 		if err != nil {
 			handleError(
 				w,
@@ -718,10 +744,10 @@ func UpdateRoomSettings(
 			changes = append(changes, "set REMOVE AFTER PLAY to "+value)
 		}
 
-		if req.Settings != nil && previousSettings.OnlyAdminAddSongs != updated.Settings.OnlyAdminAddSongs &&
-			room.Settings.OnlyAdminAddSongs == updated.Settings.OnlyAdminAddSongs {
+		if req.Settings != nil && previousSettings.OnlyAdminAddPlaylistItems != updated.Settings.OnlyAdminAddPlaylistItems &&
+			room.Settings.OnlyAdminAddPlaylistItems == updated.Settings.OnlyAdminAddPlaylistItems {
 			value := "OFF"
-			if updated.Settings.OnlyAdminAddSongs {
+			if updated.Settings.OnlyAdminAddPlaylistItems {
 				value = "ON"
 			}
 
@@ -857,8 +883,13 @@ func UpdateRoomSettings(
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/sessions [post]
+//
+// Deprecated: Use POST /api/v2/rooms/{id}/sessions. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms/{id}/sessions for SessionResponseV2 and RoomV2.
 func CreateSession(
-	db vibe.AdminSessionCreator,
+	db vibe.RoomAdminSessionV2Creator,
 	notifier vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -922,7 +953,7 @@ func CreateSession(
 
 		isFirstTimeSetup := authResult.IsFirstTimeSetup
 
-		room, err := db.GetRoom(ctx, roomID, session.UserID)
+		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
 			handleError(
 				w,
@@ -934,12 +965,14 @@ func CreateSession(
 		}
 
 		if isFirstTimeSetup {
-			neutralRoom, err := db.GetRoom(ctx, roomID, "")
+			neutralRoom, err := db.GetRoomV2(ctx, roomID, "")
 			if err != nil {
 				log.Printf("CreateSession: failed to fetch neutral room for notification: %v", err)
 			}
 			if err == nil {
-				body, err := json.Marshal(neutralRoom)
+				bodyLegacy := neutralRoom.ToRoom()
+
+				body, err := json.Marshal(bodyLegacy)
 				if err != nil {
 					log.Printf("CreateSession: failed to marshal room for notification: %v", err)
 				}
@@ -961,7 +994,7 @@ func CreateSession(
 			UserID:    session.UserID,
 			SessionID: session.UserID,
 			IsAdmin:   true,
-			Room:      room,
+			Room:      room.ToRoom(),
 		}
 
 		body, err := json.Marshal(resp)
@@ -1025,7 +1058,12 @@ func CreateSession(
 //	@Failure	401	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/sessions [delete]
-func DeleteRoomAdminSession(db vibe.RoomAdminSessionDeleter) http.HandlerFunc {
+//
+// Deprecated: Use DELETE /api/v2/rooms/{id}/sessions. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use DELETE /api/v2/rooms/{id}/sessions for SessionResponseV2 and RoomV2.
+func DeleteRoomAdminSession(db vibe.RoomAdminSessionV2Deleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		vars := mux.Vars(r)
@@ -1054,7 +1092,7 @@ func DeleteRoomAdminSession(db vibe.RoomAdminSessionDeleter) http.HandlerFunc {
 			return
 		}
 
-		room, err := db.GetRoom(ctx, roomID, session.UserID)
+		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
 			handleError(
 				w,
@@ -1069,7 +1107,7 @@ func DeleteRoomAdminSession(db vibe.RoomAdminSessionDeleter) http.HandlerFunc {
 			UserID:    session.UserID,
 			SessionID: session.UserID,
 			IsAdmin:   false,
-			Room:      room,
+			Room:      room.ToRoom(),
 		}
 
 		body, err := json.Marshal(resp)

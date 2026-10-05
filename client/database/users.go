@@ -189,7 +189,7 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 	span, ctx := tracing.StartSpanFromContext(ctx, "AuthenticateAdmin")
 	defer span.End()
 
-	room, err := c.GetRoom(ctx, roomID, userID)
+	room, err := c.GetRoomV2(ctx, roomID, userID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting room in authenticate admin: %w", err)
 	}
@@ -207,7 +207,7 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 			return nil, fmt.Errorf("error hashing password: %w", err)
 		}
 		room.AdminPasswordHash = string(hash)
-		_, err = c.UpdateRoom(ctx, room)
+		_, err = c.UpdateRoomV2(ctx, room)
 		if err != nil {
 			return nil, fmt.Errorf("error updating room password: %w", err)
 		}

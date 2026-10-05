@@ -22,30 +22,30 @@ type addSongStorageStub struct {
 	added bool
 }
 
-func (s *addSongStorageStub) GetRoom(_ context.Context, _ string, _ string) (*vibe.Room, error) {
+func (s *addSongStorageStub) GetRoomV2(_ context.Context, _ string, _ string) (*vibe.RoomV2, error) {
 	if s.fail {
 		return nil, fmt.Errorf("error private database detail")
 	}
-	return &s.room, nil
+	return s.room.ToRoomV2(), nil
 }
 
-func (s *addSongStorageStub) AddSong(_ context.Context, song *vibe.Song) (*vibe.AddSongResult, error) {
+func (s *addSongStorageStub) AddPlaylistItem(_ context.Context, song *vibe.PlaylistItem) (*vibe.AddPlaylistItemResult, error) {
 	s.added = true
-	return &vibe.AddSongResult{Song: *song, Outcome: vibe.AddSongOutcomeAdded}, nil
+	return &vibe.AddPlaylistItemResult{PlaylistItem: *song, Outcome: vibe.AddSongOutcomeAdded}, nil
 }
 
-func (s *addSongStorageStub) GetSongs(_ context.Context, _ string) ([]vibe.Song, error) {
-	return []vibe.Song{{ID: "first"}, {ID: "second"}}, nil
+func (s *addSongStorageStub) GetPlaylistItems(_ context.Context, _ string) ([]vibe.PlaylistItem, error) {
+	return []vibe.PlaylistItem{{ID: "first"}, {ID: "second"}}, nil
 }
 
-func (s *addSongStorageStub) UpsertPlaybackState(_ context.Context, _ *vibe.PlaybackState) error {
+func (s *addSongStorageStub) UpsertPlaybackStateV2(_ context.Context, _ *vibe.PlaybackStateV2) error {
 	return nil
 }
 
 type addSongEventsStub struct{}
 
-func (s *addSongEventsStub) GetCachedMusicTrack(_ context.Context, _ string, _ string) (*vibe.MusicTrack, error) {
-	return &vibe.MusicTrack{ID: "test", Source: "youtube", DurationSeconds: 6375}, nil
+func (s *addSongEventsStub) GetCachedProviderItem(_ context.Context, _ string, _ string) (*vibe.ProviderItem, error) {
+	return &vibe.ProviderItem{ID: "test", Source: "youtube", DurationSeconds: 6375}, nil
 }
 
 func (s *addSongEventsStub) NotifyRoomUpdate(_ context.Context, _ string, _ vibe.RoomEvent) error {

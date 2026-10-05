@@ -31,8 +31,13 @@ import (
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Failure	409	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/generation [post]
+//
+// Deprecated: Use POST /api/v2/rooms/generation. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms/generation for the playlist-item contract. This endpoint retains its existing payloads.
 func CreateGeneratedRoom(
-	db vibe.GeneratedRoomCreator,
+	db vibe.GeneratedRoomV2Creator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -173,13 +178,13 @@ func CreateGeneratedRoom(
 			return
 		}
 
-		settings, err := vibe.DefaultRoomSettings()
+		settings, err := vibe.DefaultRoomSettingsV2()
 		if err != nil {
 			handleError(w, fmt.Errorf("error getting generated room defaults: %w", err), http.StatusInternalServerError, true)
 			return
 		}
 
-		room := vibe.Room{
+		room := vibe.RoomV2{
 			ID:            helper.Slugify(reservation.Name),
 			Name:          reservation.Name,
 			Mode:          vibe.RoomModeServer,
@@ -188,7 +193,7 @@ func CreateGeneratedRoom(
 			CreatedAt:     time.Now(),
 			ActiveSources: settings.EnabledSources,
 		}
-		createdRoom, err := db.CreateRoom(ctx, &room, reservation.Token)
+		createdRoom, err := db.CreateRoomV2(ctx, &room, reservation.Token)
 		if err != nil {
 			var unavailableError internalerror.ErrRoomNameUnavailable
 			if errors.As(err, &unavailableError) {
@@ -279,7 +284,9 @@ func CreateGeneratedRoom(
 		createdRoom.IsGenerating = true
 		createdRoom.GenerationCount = 1
 
-		body, err = json.Marshal(createdRoom)
+		bodyLegacy := createdRoom.ToRoom()
+
+		body, err = json.Marshal(bodyLegacy)
 		if err != nil {
 			handleError(
 				w,
@@ -317,7 +324,7 @@ func CreateGeneratedRoom(
 //	@Router		/api/v1/rooms/{id}/generations [post]
 func CreateRoomGeneration(
 	creator vibe.RoomGenerationCreator,
-	maxExistingSongs int,
+	maxExistingPlaylistItems int,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -393,18 +400,18 @@ func CreateRoomGeneration(
 				return
 			}
 
-			var songLimitError internalerror.ErrRoomGenerationSongLimit
-			if errors.As(err, &songLimitError) {
+			var playlistItemLimitError internalerror.ErrRoomGenerationPlaylistItemLimit
+			if errors.As(err, &playlistItemLimitError) {
 				handleError(
 					w,
 					client.ErrorCodeWrapper{
-						Err: songLimitError,
+						Err: playlistItemLimitError,
 						ResponseBody: client.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_generation_song_limit",
 							Message: fmt.Sprintf(
 								"Playlists can only be generated when the room has %d songs or fewer.",
-								maxExistingSongs,
+								maxExistingPlaylistItems,
 							),
 							Propagate: true,
 						},

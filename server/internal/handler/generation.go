@@ -25,31 +25,37 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 	if err != nil {
 		return fmt.Errorf("error processing next room generation in Handle: %w", err)
 	}
+
 	if generation.Exhausted {
 		update := vibe.RoomGenerationUpdate{
 			Status: vibe.RoomGenerationFailed,
 			Error:  vibe.RoomGenerationFailure,
 		}
+
 		payload, err := json.Marshal(update)
 		if err != nil {
 			return fmt.Errorf("error marshaling failed room generation update in Handle: %w", err)
 		}
-		err = h.Cache.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
+
+		err = h.Cache.NotifyRoomUpdateV3(ctx, generation.RoomID, vibe.RoomEventV3{
 			Type:    vibe.GenerationUpdate,
 			Payload: payload,
 		})
 		if err != nil {
 			return fmt.Errorf("error notifying exhausted room generation in Handle: %w", err)
 		}
+
 		return nil
 	}
 
 	room := generation.Room
 	playbackState := generation.PlaybackState
+	currentPlaylistItem := playbackState.CurrentPlaylistItem
+
 	prompt, err := vibe.GeneratePlaylistPrompt(
 		generation.Prompt,
-		playbackState.CurrentSong,
-		generation.Songs,
+		currentPlaylistItem,
+		generation.PlaylistItems,
 	)
 	if err != nil {
 		return fmt.Errorf("error generating playlist prompt in Handle: %w", err)
@@ -61,16 +67,18 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 	}
 
 	queries := make([]string, 0, len(*playlist))
-	for _, track := range *playlist {
-		if track.Artist == "" || track.Title == "" {
+	for _, playlistItem := range *playlist {
+		if playlistItem.Publisher == "" || playlistItem.Title == "" {
 			continue
 		}
-		queries = append(queries, track.Artist+" "+track.Title)
+
+		queries = append(queries, playlistItem.Publisher+" "+playlistItem.Title)
 	}
-	cachedSearches, err := h.Cache.GetCachedSearches(ctx, vibe.SourceTypeYouTube, queries)
+
+	cachedSearches, err := h.Cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, queries)
 	if err != nil {
 		log.Printf("error getting cached youtube searches for room generation: %v", err)
-		cachedSearches = []vibe.CachedSearch{}
+		cachedSearches = []vibe.CachedProviderSearch{}
 	}
 
 	searchQuotaReset, err := h.Cache.GetProviderQuotaReset(
@@ -127,7 +135,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 					err,
 				)
 			}
-			err = h.Cache.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
+			err = h.Cache.NotifyRoomUpdateV3(ctx, generation.RoomID, vibe.RoomEventV3{
 				Type:    vibe.GenerationUpdate,
 				Payload: payload,
 			})
@@ -157,60 +165,60 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 	if err != nil {
 		log.Printf("error creating generated playlist search usage: %v", err)
 	}
-	err = h.Cache.CacheSearches(ctx, vibe.SourceTypeYouTube, searchResult.CachedSearches)
+	err = h.Cache.CacheProviderSearches(ctx, vibe.SourceTypeYouTube, searchResult.CachedSearches)
 	if err != nil {
 		log.Printf("error caching youtube searches for room generation: %v", err)
 	}
 	playlist = &searchResult.Playlist
 
-	shouldStartPlayback := playbackState.CurrentSong == nil
-	for _, track := range *playlist {
-		song := &vibe.Song{
+	shouldStartPlayback := playbackState.CurrentPlaylistItem == nil
+	for _, generatedItem := range *playlist {
+		playlistItem := &vibe.PlaylistItem{
 			ID:                  uuid.NewString(),
 			RoomID:              room.ID,
 			SourceType:          vibe.SourceTypeYouTube,
-			SourceID:            track.YouTubeID,
-			ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", track.YouTubeID),
-			PlaybackRestriction: track.PlaybackRestriction,
-			Title:               track.Title,
-			Artist:              track.Artist,
-			ThumbnailURL:        track.ThumbnailURL,
-			Duration:            track.Duration,
+			SourceID:            generatedItem.YouTubeID,
+			ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", generatedItem.YouTubeID),
+			PlaybackRestriction: generatedItem.PlaybackRestriction,
+			Title:               generatedItem.Title,
+			Publisher:           generatedItem.Publisher,
+			ThumbnailURL:        generatedItem.ThumbnailURL,
+			Duration:            generatedItem.Duration,
 			AddedBySessionID:    room.HostID,
 			AddedAt:             time.Now(),
 		}
 
-		addedSong, err := h.DB.AddGeneratedSong(ctx, song)
+		addedPlaylistItem, err := h.DB.AddGeneratedPlaylistItem(ctx, playlistItem)
 		if err != nil {
-			return fmt.Errorf("error adding generated song in Handle: %w", err)
+			return fmt.Errorf("error adding generated playlist item in Handle: %w", err)
 		}
-		if addedSong.IsEmpty() {
+		if addedPlaylistItem.IsEmpty() {
 			continue
 		}
 
-		songPayload, err := json.Marshal(addedSong)
+		playlistItemPayload, err := json.Marshal(addedPlaylistItem)
 		if err != nil {
-			return fmt.Errorf("error marshaling generated song in Handle: %w", err)
+			return fmt.Errorf("error marshaling generated playlist item in Handle: %w", err)
 		}
 
-		err = h.Cache.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
-			Type:    vibe.SongAdded,
-			Payload: songPayload,
+		err = h.Cache.NotifyRoomUpdateV3(ctx, room.ID, vibe.RoomEventV3{
+			Type:    vibe.PlaylistItemAdded,
+			Payload: playlistItemPayload,
 		})
 		if err != nil {
-			return fmt.Errorf("error notifying generated song in Handle: %w", err)
+			return fmt.Errorf("error notifying generated playlist item in Handle: %w", err)
 		}
 
 		if shouldStartPlayback {
-			playbackState := &vibe.PlaybackState{
-				RoomID:       room.ID,
-				CurrentSong:  addedSong,
-				IsPlaying:    true,
-				PositionMs:   0,
-				UpdatedAt:    time.Now(),
-				ServerTimeMs: int(time.Now().UnixMilli()),
+			playbackState := &vibe.PlaybackStateV2{
+				RoomID:              room.ID,
+				CurrentPlaylistItem: addedPlaylistItem,
+				IsPlaying:           true,
+				PositionMs:          0,
+				UpdatedAt:           time.Now(),
+				ServerTimeMs:        int(time.Now().UnixMilli()),
 			}
-			err = h.DB.UpsertPlaybackState(ctx, playbackState)
+			err = h.DB.UpsertPlaybackStateV2(ctx, playbackState)
 			if err != nil {
 				return fmt.Errorf("error starting generated room playback in Handle: %w", err)
 			}
@@ -219,7 +227,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 			if err != nil {
 				return fmt.Errorf("error marshaling generated room playback in Handle: %w", err)
 			}
-			err = h.Cache.NotifyRoomUpdate(ctx, room.ID, vibe.RoomEvent{
+			err = h.Cache.NotifyRoomUpdateV3(ctx, room.ID, vibe.RoomEventV3{
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
 			})
@@ -240,7 +248,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 	if err != nil {
 		return fmt.Errorf("error marshaling completed room generation update in Handle: %w", err)
 	}
-	err = h.Cache.NotifyRoomUpdate(ctx, generation.RoomID, vibe.RoomEvent{
+	err = h.Cache.NotifyRoomUpdateV3(ctx, generation.RoomID, vibe.RoomEventV3{
 		Type:    vibe.GenerationUpdate,
 		Payload: payload,
 	})

@@ -13,21 +13,21 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-// Search searches for tracks on SoundCloud
-func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Search")
+// SearchProviderItems searches for tracks on SoundCloud
+func (c *Client) SearchProviderItems(ctx context.Context, query string) ([]vibe.ProviderItem, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SearchProviderItems")
 	defer span.End()
 
 	if !c.Enabled {
 		return nil, fmt.Errorf(
-			"error validating soundcloud client in Search: client is not enabled",
+			"error validating soundcloud client in SearchProviderItems: client is not enabled",
 		)
 	}
 
 	// Ensure valid access token
 	err := c.EnsureToken(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error ensuring token in Search: %w", err)
+		return nil, fmt.Errorf("error ensuring token in SearchProviderItems: %w", err)
 	}
 
 	params := url.Values{}
@@ -48,7 +48,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error requesting soundcloud tracks in Search: %w",
+			"error requesting soundcloud tracks in SearchProviderItems: %w",
 			err,
 		)
 	}
@@ -57,16 +57,16 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	err = json.Unmarshal(resp, &results)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error decoding soundcloud response in Search: %w",
+			"error decoding soundcloud response in SearchProviderItems: %w",
 			err,
 		)
 	}
 
-	tracks := make([]vibe.MusicTrack, 0, len(results))
+	tracks := make([]vibe.ProviderItem, 0, len(results))
 	for _, res := range results {
-		track, err := res.toMusicTrack()
+		track, err := res.toProviderItem()
 		if err != nil {
-			return nil, fmt.Errorf("error converting soundcloud track in Search: %w", err)
+			return nil, fmt.Errorf("error converting soundcloud track in SearchProviderItems: %w", err)
 		}
 
 		tracks = append(tracks, *track)
@@ -90,7 +90,7 @@ type user struct {
 	Username string `json:"username"`
 }
 
-func (r trackResponse) toMusicTrack() (*vibe.MusicTrack, error) {
+func (r trackResponse) toProviderItem() (*vibe.ProviderItem, error) {
 	username := "Unknown"
 	if r.User != nil {
 		username = r.User.Username
@@ -101,12 +101,12 @@ func (r trackResponse) toMusicTrack() (*vibe.MusicTrack, error) {
 		artworkURL = *r.ArtworkURL
 	}
 
-	return &vibe.MusicTrack{
+	return &vibe.ProviderItem{
 		ID:              fmt.Sprintf("%d", r.ID),
 		Source:          vibe.SourceTypeSoundCloud,
 		ProviderURL:     r.PermalinkURL,
 		Title:           r.Title,
-		ChannelTitle:    username,
+		Publisher:       username,
 		ThumbnailURL:    artworkURL,
 		Duration:        fmt.Sprintf("PT%dM%dS", (r.Duration/1000)/60, (r.Duration/1000)%60),
 		DurationSeconds: r.Duration / 1000,

@@ -17,7 +17,7 @@ import (
 
 // SearchMusic handles GET /api/v1/youtube/search
 //
-//	@Summary	Search YouTube tracks
+//	@Summary	Search YouTube items
 //	@Tags		providers
 //	@Produce	json
 //	@Param		q	query		string	true	"Search query"
@@ -27,9 +27,14 @@ import (
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Failure	503	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/youtube/search [get]
+//
+// Deprecated: Use GET /api/v2/rooms/{id}/search/youtube. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/rooms/{id}/search/youtube for the playlist-item contract. This endpoint retains its existing payloads.
 func SearchMusic(
-	ms vibe.MusicSearcher,
-	cache vibe.MusicSearchCache,
+	ms vibe.ProviderItemsSearcher,
+	cache vibe.ProviderSearchCache,
 	usageCreator vibe.SearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -54,26 +59,26 @@ func SearchMusic(
 			return
 		}
 
-		cachedSearches, err := cache.GetCachedSearches(
+		cachedSearches, err := cache.GetCachedProviderSearches(
 			ctx,
 			vibe.SourceTypeYouTube,
 			[]string{query},
 		)
 		if err != nil {
 			log.Printf("error getting cached youtube search: %v", err)
-			cachedSearches = []vibe.CachedSearch{}
+			cachedSearches = []vibe.CachedProviderSearch{}
 		}
 
-		tracks := make([]vibe.MusicTrack, 0)
+		items := make([]vibe.ProviderItem, 0)
 		cacheHit := len(cachedSearches) > 0
 		if cacheHit {
-			cachedTracks := cachedSearches[0].GetMusicTracks()
-			for _, track := range cachedTracks {
-				if vibe.IsLiveVideo(track.Source, track.DurationSeconds) ||
-					track.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding {
+			cachedItems := cachedSearches[0].GetProviderItems()
+			for _, item := range cachedItems {
+				if vibe.IsLiveVideo(item.Source, item.DurationSeconds) ||
+					item.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding {
 					continue
 				}
-				tracks = append(tracks, track)
+				items = append(items, item)
 			}
 		}
 		usage := vibe.GenerateSearchUsage(
@@ -110,7 +115,7 @@ func SearchMusic(
 				}
 			}
 			if !quotaCheckSucceeded || !quotaExceeded {
-				tracks, err = ms.Search(ctx, query)
+				items, err = ms.SearchProviderItems(ctx, query)
 			}
 		}
 		if err != nil {
@@ -155,11 +160,11 @@ func SearchMusic(
 			return
 		}
 		if !cacheHit {
-			search := vibe.GenerateCachedSearch(query, tracks)
-			err = cache.CacheSearches(
+			search := vibe.CachedProviderSearch{Query: query, Items: items}
+			err = cache.CacheProviderSearches(
 				ctx,
 				vibe.SourceTypeYouTube,
-				[]vibe.CachedSearch{
+				[]vibe.CachedProviderSearch{
 					search,
 				},
 			)
@@ -168,12 +173,17 @@ func SearchMusic(
 			}
 		}
 
-		err = cache.CacheMusicTracks(ctx, vibe.SourceTypeYouTube, tracks)
+		err = cache.CacheProviderItems(ctx, vibe.SourceTypeYouTube, items)
 		if err != nil {
-			log.Printf("error caching youtube track metadata: %v", err)
+			log.Printf("error caching youtube item metadata: %v", err)
 		}
 
-		body, err := json.Marshal(tracks)
+		legacy := make([]vibe.MusicTrack, len(items))
+		for index, item := range items {
+			legacy[index] = *item.ToMusicTrack()
+		}
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(
 				w,
@@ -192,7 +202,7 @@ func SearchMusic(
 
 // SearchSoundCloud handles GET /api/v1/soundcloud/search
 //
-//	@Summary	Search SoundCloud tracks
+//	@Summary	Search SoundCloud items
 //	@Tags		providers
 //	@Produce	json
 //	@Param		q	query		string	true	"Search query"
@@ -201,9 +211,14 @@ func SearchMusic(
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/soundcloud/search [get]
+//
+// Deprecated: Use GET /api/v2/rooms/{id}/search/soundcloud. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/rooms/{id}/search/soundcloud for the playlist-item contract. This endpoint retains its existing payloads.
 func SearchSoundCloud(
-	ms vibe.MusicSearcher,
-	cache vibe.CachedSearchTrackFetcherCreator,
+	ms vibe.ProviderItemsSearcher,
+	cache vibe.CachedProviderSearchItemFetcherCreator,
 	usageCreator vibe.SearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -228,20 +243,20 @@ func SearchSoundCloud(
 			return
 		}
 
-		cachedSearches, err := cache.GetCachedSearches(
+		cachedSearches, err := cache.GetCachedProviderSearches(
 			ctx,
 			vibe.SourceTypeSoundCloud,
 			[]string{query},
 		)
 		if err != nil {
 			log.Printf("error getting cached soundcloud search: %v", err)
-			cachedSearches = []vibe.CachedSearch{}
+			cachedSearches = []vibe.CachedProviderSearch{}
 		}
 
-		tracks := make([]vibe.MusicTrack, 0)
+		items := make([]vibe.ProviderItem, 0)
 		cacheHit := len(cachedSearches) > 0
 		if cacheHit {
-			tracks = cachedSearches[0].GetMusicTracks()
+			items = cachedSearches[0].GetProviderItems()
 		}
 		usage := vibe.GenerateSearchUsage(
 			vibe.SourceTypeSoundCloud,
@@ -255,7 +270,7 @@ func SearchSoundCloud(
 			log.Printf("error creating soundcloud search usage: %v", err)
 		}
 		if !cacheHit {
-			tracks, err = ms.Search(ctx, query)
+			items, err = ms.SearchProviderItems(ctx, query)
 		}
 		if err != nil {
 			handleError(
@@ -270,11 +285,11 @@ func SearchSoundCloud(
 			return
 		}
 		if !cacheHit {
-			search := vibe.GenerateCachedSearch(query, tracks)
-			err = cache.CacheSearches(
+			search := vibe.CachedProviderSearch{Query: query, Items: items}
+			err = cache.CacheProviderSearches(
 				ctx,
 				vibe.SourceTypeSoundCloud,
-				[]vibe.CachedSearch{
+				[]vibe.CachedProviderSearch{
 					search,
 				},
 			)
@@ -283,12 +298,17 @@ func SearchSoundCloud(
 			}
 		}
 
-		err = cache.CacheMusicTracks(ctx, vibe.SourceTypeSoundCloud, tracks)
+		err = cache.CacheProviderItems(ctx, vibe.SourceTypeSoundCloud, items)
 		if err != nil {
-			log.Printf("error caching soundcloud track metadata: %v", err)
+			log.Printf("error caching soundcloud item metadata: %v", err)
 		}
 
-		body, err := json.Marshal(tracks)
+		legacy := make([]vibe.MusicTrack, len(items))
+		for index, item := range items {
+			legacy[index] = *item.ToMusicTrack()
+		}
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(
 				w,
