@@ -11,7 +11,7 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) prepareGetAdminRoomsStmt() error {
+func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH active_users_q AS (
 			SELECT
@@ -22,12 +22,12 @@ func (c *Client) prepareGetAdminRoomsStmt() error {
 			AND a.last_seen_at >= $1
 			GROUP BY a.room_id
 		),
-		song_counts_q AS (
+		playlist_item_counts_q AS (
 			SELECT
 				a.room_id,
-				COUNT(*) AS song_count,
+				COUNT(*) AS playlist_item_count,
 				STRING_AGG(DISTINCT a.source_type, ',') AS active_sources
-			FROM songs a
+			FROM playlist_items a
 			WHERE a.source_type = ANY($2::text[])
 			GROUP BY a.room_id
 		),
@@ -36,12 +36,12 @@ func (c *Client) prepareGetAdminRoomsStmt() error {
 				a.id,
 				a.name,
 				COALESCE(b.user_count, 0) AS user_count,
-				COALESCE(c.song_count, 0) AS song_count,
+				COALESCE(c.playlist_item_count, 0) AS playlist_item_count,
 				COALESCE(c.active_sources, '') AS active_sources,
 				(a.admin_password_hash IS NOT NULL AND a.admin_password_hash != '') AS has_admin_password
 			FROM rooms a
 			LEFT JOIN active_users_q b ON b.room_id = a.id
-			LEFT JOIN song_counts_q c ON c.room_id = a.id
+			LEFT JOIN playlist_item_counts_q c ON c.room_id = a.id
 			WHERE $3 = ''
 			OR a.name ILIKE '%' || $3 || '%'
 		),
@@ -52,13 +52,13 @@ func (c *Client) prepareGetAdminRoomsStmt() error {
 				ROW_NUMBER() OVER (
 					ORDER BY
 						CASE WHEN $4 = 'listeners' AND $5 THEN a.user_count END DESC,
-						CASE WHEN $4 = 'listeners' AND $5 THEN a.song_count END DESC,
+						CASE WHEN $4 = 'listeners' AND $5 THEN a.playlist_item_count END DESC,
 						CASE WHEN $4 = 'listeners' AND NOT $5 THEN a.user_count END ASC,
-						CASE WHEN $4 = 'listeners' AND NOT $5 THEN a.song_count END ASC,
-						CASE WHEN $4 = 'songs' AND $5 THEN a.song_count END DESC,
-						CASE WHEN $4 = 'songs' AND $5 THEN a.user_count END DESC,
-						CASE WHEN $4 = 'songs' AND NOT $5 THEN a.song_count END ASC,
-						CASE WHEN $4 = 'songs' AND NOT $5 THEN a.user_count END ASC,
+						CASE WHEN $4 = 'listeners' AND NOT $5 THEN a.playlist_item_count END ASC,
+						CASE WHEN $4 = 'playlistItems' AND $5 THEN a.playlist_item_count END DESC,
+						CASE WHEN $4 = 'playlistItems' AND $5 THEN a.user_count END DESC,
+						CASE WHEN $4 = 'playlistItems' AND NOT $5 THEN a.playlist_item_count END ASC,
+						CASE WHEN $4 = 'playlistItems' AND NOT $5 THEN a.user_count END ASC,
 						a.name ASC,
 						a.id ASC
 				) AS row_number
@@ -68,7 +68,7 @@ func (c *Client) prepareGetAdminRoomsStmt() error {
 			a.id,
 			a.name,
 			a.user_count,
-			a.song_count,
+			a.playlist_item_count,
 			a.active_sources,
 			a.has_admin_password,
 			a.total_count
@@ -78,42 +78,42 @@ func (c *Client) prepareGetAdminRoomsStmt() error {
 		ORDER BY a.row_number
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing GetAdminRoomsStatement: %w", err)
+		return fmt.Errorf("error preparing SearchAdminRoomsV2Statement: %w", err)
 	}
 
-	c.GetAdminRoomsStatement = stmt
+	c.SearchAdminRoomsV2Statement = stmt
 	return nil
 }
 
-func (c *Client) ListAdminRooms(ctx context.Context) ([]vibe.AdminRoomSummary, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ListAdminRooms")
+func (c *Client) ListAdminRoomsV2(ctx context.Context) ([]vibe.AdminRoomSummaryV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ListAdminRoomsV2")
 	defer span.End()
 
-	result, err := c.SearchAdminRooms(ctx, vibe.AdminRoomSearch{
-		SortBy:     vibe.AdminRoomSortListeners,
+	result, err := c.SearchAdminRoomsV2(ctx, vibe.AdminRoomSearchV2{
+		SortBy:     vibe.AdminRoomSortListenersV2,
 		Descending: true,
 		From:       0,
 		To:         adminRoomsMaximumRow,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("error listing admin rooms in ListAdminRooms: %w", err)
+		return nil, fmt.Errorf("error listing admin rooms in ListAdminRoomsV2: %w", err)
 	}
 
 	return result.Rooms, nil
 }
 
-func (c *Client) SearchAdminRooms(
+func (c *Client) SearchAdminRoomsV2(
 	ctx context.Context,
-	search vibe.AdminRoomSearch,
-) (*vibe.AdminRoomResult, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "SearchAdminRooms")
+	search vibe.AdminRoomSearchV2,
+) (*vibe.AdminRoomResultV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SearchAdminRoomsV2")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	cutoff := time.Now().Add(-15 * time.Second)
-	rows, err := c.GetAdminRoomsStatement.QueryContext(
+	rows, err := c.SearchAdminRoomsV2Statement.QueryContext(
 		cctx,
 		cutoff,
 		c.enabledProviders,
@@ -128,7 +128,7 @@ func (c *Client) SearchAdminRooms(
 	}
 	defer rows.Close()
 
-	rooms := []vibe.AdminRoomSummary{}
+	rooms := []vibe.AdminRoomSummaryV2{}
 	total := 0
 	for rows.Next() {
 		var row adminRoomRow
@@ -157,7 +157,7 @@ func (c *Client) SearchAdminRooms(
 		actualTo = search.From + count - 1
 	}
 
-	return &vibe.AdminRoomResult{
+	return &vibe.AdminRoomResultV2{
 		Rooms: rooms,
 		From:  search.From,
 		To:    actualTo,
@@ -167,13 +167,13 @@ func (c *Client) SearchAdminRooms(
 }
 
 type adminRoomRow struct {
-	ID               sql.NullString
-	Name             sql.NullString
-	UserCount        sql.NullInt64
-	SongCount        sql.NullInt64
-	ActiveSources    sql.NullString
-	HasAdminPassword sql.NullBool
-	TotalCount       sql.NullInt64
+	ID                sql.NullString
+	Name              sql.NullString
+	UserCount         sql.NullInt64
+	PlaylistItemCount sql.NullInt64
+	ActiveSources     sql.NullString
+	HasAdminPassword  sql.NullBool
+	TotalCount        sql.NullInt64
 }
 
 func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
@@ -181,7 +181,7 @@ func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
 		&r.ID,
 		&r.Name,
 		&r.UserCount,
-		&r.SongCount,
+		&r.PlaylistItemCount,
 		&r.ActiveSources,
 		&r.HasAdminPassword,
 		&r.TotalCount,
@@ -193,19 +193,19 @@ func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
 	return nil
 }
 
-func (r *adminRoomRow) toSummary() (*vibe.AdminRoomSummary, error) {
+func (r *adminRoomRow) toSummary() (*vibe.AdminRoomSummaryV2, error) {
 	sources := []string{}
 	if r.ActiveSources.Valid && r.ActiveSources.String != "" {
 		sources = strings.Split(r.ActiveSources.String, ",")
 	}
 
-	return &vibe.AdminRoomSummary{
-		ID:               r.ID.String,
-		Name:             r.Name.String,
-		UserCount:        int(r.UserCount.Int64),
-		SongCount:        int(r.SongCount.Int64),
-		ActiveSources:    sources,
-		HasAdminPassword: r.HasAdminPassword.Bool,
+	return &vibe.AdminRoomSummaryV2{
+		ID:                r.ID.String,
+		Name:              r.Name.String,
+		UserCount:         int(r.UserCount.Int64),
+		PlaylistItemCount: int(r.PlaylistItemCount.Int64),
+		ActiveSources:     sources,
+		HasAdminPassword:  r.HasAdminPassword.Bool,
 	}, nil
 }
 
@@ -278,8 +278,8 @@ func (c *Client) prepareDeleteAdminRoomStmt() error {
 			DELETE FROM skip_votes
 			WHERE room_id = $1
 		),
-		deleted_song_votes_q AS (
-			DELETE FROM song_votes
+		deleted_playlist_item_votes_q AS (
+			DELETE FROM playlist_item_votes
 			WHERE room_id = $1
 		),
 		deleted_playback_state_q AS (
@@ -294,8 +294,8 @@ func (c *Client) prepareDeleteAdminRoomStmt() error {
 			DELETE FROM room_users
 			WHERE room_id = $1
 		),
-		deleted_songs_q AS (
-			DELETE FROM songs
+		deleted_playlist_items_q AS (
+			DELETE FROM playlist_items
 			WHERE room_id = $1
 		),
 		deleted_generation_q AS (

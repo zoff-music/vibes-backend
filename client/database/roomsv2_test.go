@@ -38,7 +38,7 @@ func TestSearchPublicRooms(t *testing.T) {
 		`CREATE TEMP TABLE rooms (LIKE public.rooms INCLUDING DEFAULTS)`,
 		`CREATE TEMP TABLE room_settings (LIKE public.room_settings INCLUDING DEFAULTS)`,
 		`CREATE TEMP TABLE room_users (LIKE public.room_users INCLUDING DEFAULTS)`,
-		`CREATE TEMP TABLE songs (LIKE public.songs INCLUDING DEFAULTS)`,
+		`CREATE TEMP TABLE playlist_items (LIKE public.playlist_items INCLUDING DEFAULTS)`,
 		`INSERT INTO rooms (id, name, admin_password_hash) VALUES
 			('a', 'Session ambient', 'protected'), ('b', 'Session beats', 'protected'),
 			('c', 'Session club', 'protected'), ('d', 'Session dusk', 'protected'),
@@ -57,12 +57,12 @@ func TestSearchPublicRooms(t *testing.T) {
 			('cast1', 'b', TRUE, NOW())`,
 		`INSERT INTO room_users (id, room_id, is_active_listener, last_seen_at)
 			VALUES ('inactive', 'g', FALSE, NOW()), ('stale', 'g', TRUE, NOW() - INTERVAL '1 minute')`,
-		`INSERT INTO songs (room_id, source_type, source_id, title, thumbnail_url, duration, added_by)
+		`INSERT INTO playlist_items (room_id, source_type, source_id, title, thumbnail_url, duration, added_by)
 			SELECT a.id, 'youtube', i::text, 'Song', '', 210, 'guest'
 			FROM rooms a CROSS JOIN generate_series(1, 3) i
 			WHERE (a.id IN ('a', 'b', 'g') AND i = 1)
 			OR a.id IN ('c', 'd') OR (a.id = 'f' AND i <= 2)`,
-		`INSERT INTO songs (room_id, source_type, source_id, title, thumbnail_url, duration, added_by)
+		`INSERT INTO playlist_items (room_id, source_type, source_id, title, thumbnail_url, duration, added_by)
 			VALUES ('a', 'soundcloud', 'disabled', 'Song', '', 210, 'guest')`,
 	}
 	for _, query := range statements {
@@ -77,11 +77,11 @@ func TestSearchPublicRooms(t *testing.T) {
 		}
 	}
 	client := &Client{DB: db, enabledProviders: []string{"youtube"}}
-	err = client.prepareSearchPublicRoomsStmt()
+	err = client.prepareSearchPublicRoomsV3Stmt()
 	if err != nil {
 		t.Fatalf("prepare room search: %v", err)
 	}
-	t.Cleanup(func() { _ = client.SearchPublicRoomsStatement.Close() })
+	t.Cleanup(func() { _ = client.SearchPublicRoomsV3Statement.Close() })
 
 	tests := []struct {
 		name   string
@@ -102,14 +102,14 @@ func TestSearchPublicRooms(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, searchErr := client.SearchPublicRooms(t.Context(), tt.search)
+			result, searchErr := client.SearchPublicRoomsV3(t.Context(), tt.search)
 			if searchErr != nil {
 				t.Fatalf("search rooms: %v", searchErr)
 			}
 			ids := []string{}
 			for _, room := range result.Rooms {
 				ids = append(ids, room.ID)
-				if room.ID == "a" && room.SongCount != 1 {
+				if room.ID == "a" && room.PlaylistItemCount != 1 {
 					t.Fatalf("disabled source counted: %#v", room)
 				}
 				if room.ID == "f" && room.ListenerCount != 1 {

@@ -12,22 +12,22 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) ResolvePlaylist(
+func (c *Client) ResolveProviderPlaylist(
 	ctx context.Context,
 	providerURL string,
-) (*vibe.MusicPlaylist, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ResolvePlaylist")
+) (*vibe.ProviderPlaylist, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ResolveProviderPlaylist")
 	defer span.End()
 
 	if !c.Enabled {
 		return nil, fmt.Errorf(
-			"error validating soundcloud client in ResolvePlaylist: client is not enabled",
+			"error validating soundcloud client in ResolveProviderPlaylist: client is not enabled",
 		)
 	}
 
 	err := c.EnsureToken(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error ensuring token in ResolvePlaylist: %w", err)
+		return nil, fmt.Errorf("error ensuring token in ResolveProviderPlaylist: %w", err)
 	}
 
 	params := url.Values{}
@@ -43,7 +43,7 @@ func (c *Client) ResolvePlaylist(
 	})
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error resolving soundcloud playlist in ResolvePlaylist: %w",
+			"error resolving soundcloud playlist in ResolveProviderPlaylist: %w",
 			err,
 		)
 	}
@@ -52,17 +52,17 @@ func (c *Client) ResolvePlaylist(
 	err = json.Unmarshal(responseBody, &resolved)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error decoding soundcloud playlist in ResolvePlaylist: %w",
+			"error decoding soundcloud playlist in ResolveProviderPlaylist: %w",
 			err,
 		)
 	}
 	if resolved.URN == "" || (resolved.Kind != "playlist" && resolved.Kind != "system-playlist") {
 		return nil, fmt.Errorf(
-			"error resolving soundcloud playlist in ResolvePlaylist: URL did not resolve to a playlist",
+			"error resolving soundcloud playlist in ResolveProviderPlaylist: URL did not resolve to a playlist",
 		)
 	}
 
-	tracks := make([]vibe.MusicTrack, 0)
+	playlistItems := make([]vibe.ProviderItem, 0)
 	truncated := false
 	nextURL := fmt.Sprintf("%s/playlists/%s/tracks", c.Endpoint, url.PathEscape(resolved.URN))
 	firstPage := true
@@ -87,7 +87,7 @@ func (c *Client) ResolvePlaylist(
 		responseBody, err = c.HTTPClient.RequestBytes(ctx, requestData)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error requesting soundcloud playlist tracks in ResolvePlaylist: %w",
+				"error requesting soundcloud playlist items in ResolveProviderPlaylist: %w",
 				err,
 			)
 		}
@@ -96,7 +96,7 @@ func (c *Client) ResolvePlaylist(
 		err = json.Unmarshal(responseBody, &page)
 		if err != nil {
 			return nil, fmt.Errorf(
-				"error decoding soundcloud playlist tracks in ResolvePlaylist: %w",
+				"error decoding soundcloud playlist items in ResolveProviderPlaylist: %w",
 				err,
 			)
 		}
@@ -104,16 +104,16 @@ func (c *Client) ResolvePlaylist(
 			if item.ID == 0 || item.Title == "" || item.PermalinkURL == "" {
 				continue
 			}
-			if len(tracks) == playlistTrackLimit {
+			if len(playlistItems) == playlistItemLimit {
 				truncated = true
 				break
 			}
-			track, err := item.toMusicTrack()
+			providerItem, err := item.toProviderItem()
 			if err != nil {
-				return nil, fmt.Errorf("error converting soundcloud playlist track: %w", err)
+				return nil, fmt.Errorf("error converting soundcloud playlist item: %w", err)
 			}
 
-			tracks = append(tracks, *track)
+			playlistItems = append(playlistItems, *providerItem)
 		}
 		if truncated {
 			break
@@ -121,11 +121,11 @@ func (c *Client) ResolvePlaylist(
 		nextURL = page.NextHref
 	}
 
-	return &vibe.MusicPlaylist{
+	return &vibe.ProviderPlaylist{
 		ID:        resolved.URN,
 		Source:    vibe.SourceTypeSoundCloud,
 		Title:     resolved.Title,
-		Tracks:    tracks,
+		Items:     playlistItems,
 		Truncated: truncated,
 	}, nil
 }
@@ -143,4 +143,4 @@ type soundCloudPlaylistTracksResponse struct {
 
 const soundCloudPlaylistPageSize = 200
 
-const playlistTrackLimit = 500
+const playlistItemLimit = 500

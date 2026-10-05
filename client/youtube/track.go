@@ -16,14 +16,14 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-// GetTrack fetches details for a specific video ID
-func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetTrack")
+// GetProviderItem fetches details for a specific video ID
+func (c *Client) GetProviderItem(ctx context.Context, id string) (*vibe.ProviderItem, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetProviderItem")
 	defer span.End()
 
 	if c.apiKey == "" {
 		return nil, fmt.Errorf(
-			"error validating youtube API key in GetTrack: not configured",
+			"error validating youtube API key in GetProviderItem: not configured",
 		)
 	}
 
@@ -44,54 +44,54 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 		if errors.As(err, &statusCodeError) &&
 			statusCodeError.StatusCode == http.StatusTooManyRequests {
 			return nil, internalerror.ErrProviderQuotaExceeded{
-				Err:      fmt.Errorf("error requesting youtube track in GetTrack: %w", err),
+				Err:      fmt.Errorf("error requesting youtube track in GetProviderItem: %w", err),
 				Provider: youtubeProvider,
 			}
 		}
 
-		return nil, fmt.Errorf("error requesting youtube track in GetTrack: %w", err)
+		return nil, fmt.Errorf("error requesting youtube track in GetProviderItem: %w", err)
 	}
 
 	var result videoResponse
 	err = json.Unmarshal(resp, &result)
 	if err != nil {
-		return nil, fmt.Errorf("error decoding youtube track in GetTrack: %w", err)
+		return nil, fmt.Errorf("error decoding youtube track in GetProviderItem: %w", err)
 	}
 
 	if len(result.Items) == 0 {
-		return nil, internalerror.ErrMusicTrackNotFound{
-			Err: fmt.Errorf("error getting youtube track in GetTrack: track %s not found", id),
+		return nil, internalerror.ErrProviderItemNotFound{
+			Err: fmt.Errorf("error getting youtube track in GetProviderItem: track %s not found", id),
 		}
 	}
 
 	item := result.Items[0]
 	if item.Status.MadeForKids {
 		return nil, internalerror.ErrMadeForKids{
-			Err: fmt.Errorf("error getting youtube track in GetTrack: made-for-kids videos are not supported"),
+			Err: fmt.Errorf("error getting youtube track in GetProviderItem: made-for-kids videos are not supported"),
 		}
 	}
 
 	if item.isLiveVideo() {
 		return nil, internalerror.ErrLiveVideo{
-			Err: fmt.Errorf("error getting youtube track in GetTrack: live videos are not supported"),
+			Err: fmt.Errorf("error getting youtube track in GetProviderItem: live videos are not supported"),
 		}
 	}
 	durationSeconds, err := youtubeDurationSeconds(item.ContentDetails.Duration)
 	if err != nil {
-		return nil, fmt.Errorf("error parsing youtube track duration in GetTrack: %w", err)
+		return nil, fmt.Errorf("error parsing youtube track duration in GetProviderItem: %w", err)
 	}
 	if vibe.IsLiveVideo(vibe.SourceTypeYouTube, durationSeconds) {
 		return nil, internalerror.ErrLiveVideo{
-			Err: fmt.Errorf("error getting youtube track in GetTrack: live videos are not supported"),
+			Err: fmt.Errorf("error getting youtube track in GetProviderItem: live videos are not supported"),
 		}
 	}
 
-	return &vibe.MusicTrack{
+	return &vibe.ProviderItem{
 		ID:                  item.ID,
 		Source:              vibe.SourceTypeYouTube,
 		ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID),
 		Title:               html.UnescapeString(item.Snippet.Title),
-		ChannelTitle:        html.UnescapeString(item.Snippet.ChannelTitle),
+		Publisher:           html.UnescapeString(item.Snippet.ChannelTitle),
 		ThumbnailURL:        item.Snippet.Thumbnails.Medium.URL,
 		Duration:            item.ContentDetails.Duration,
 		DurationSeconds:     durationSeconds,

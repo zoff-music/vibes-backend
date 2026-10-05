@@ -28,12 +28,12 @@ func (s *roomSessionDeleterStub) ClearRoomAdmin(
 	return nil
 }
 
-func (s *roomSessionDeleterStub) GetRoom(
+func (s *roomSessionDeleterStub) GetRoomV2(
 	_ context.Context,
 	_ string,
 	_ string,
-) (*vibe.Room, error) {
-	return s.room, nil
+) (*vibe.RoomV2, error) {
+	return s.room.ToRoomV2(), nil
 }
 
 type deleteSessionTest struct {

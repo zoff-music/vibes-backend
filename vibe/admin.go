@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 )
 
+// Deprecated: Use AdminRoomSummaryV2 for new code. Retained for legacy API compatibility.
 type AdminRoomSummary struct {
 	ID               string   `json:"id"`
 	Name             string   `json:"name"`
@@ -17,6 +18,7 @@ type AdminRoomSummary struct {
 	HasAdminPassword bool     `json:"hasAdminPassword"`
 }
 
+// Deprecated: Use AdminRoomSearchV2 for new code. Retained for legacy API compatibility.
 type AdminRoomSearch struct {
 	Query      string
 	SortBy     AdminRoomSort
@@ -25,6 +27,7 @@ type AdminRoomSearch struct {
 	To         int
 }
 
+// Deprecated: Use AdminRoomResultV2 for new code. Retained for legacy API compatibility.
 type AdminRoomResult struct {
 	Rooms []AdminRoomSummary `json:"rooms"`
 	From  int                `json:"from"`
@@ -151,14 +154,6 @@ type AdminEvent struct {
 	Payload []byte `json:"payload"`
 }
 
-type AdminRoomLister interface {
-	ListAdminRooms(ctx context.Context) ([]AdminRoomSummary, error)
-}
-
-type AdminRoomSearcher interface {
-	SearchAdminRooms(ctx context.Context, search AdminRoomSearch) (*AdminRoomResult, error)
-}
-
 type AdminUserFetcher interface {
 	GetAdminUser(ctx context.Context, adminID string) (*AdminUser, error)
 }
@@ -211,18 +206,6 @@ type AdminRoomUpdater interface {
 
 type AdminRoomDeleter interface {
 	DeleteAdminRoom(ctx context.Context, roomID string) (bool, error)
-}
-
-// AdminRoomUpdaterLister updates a room and lists the resulting room state.
-type AdminRoomUpdaterLister interface {
-	AdminRoomLister
-	AdminRoomUpdater
-}
-
-// AdminRoomDeleterLister deletes a room and lists the state published to administrators.
-type AdminRoomDeleterLister interface {
-	AdminRoomLister
-	AdminRoomDeleter
 }
 
 type AdminEventNotifier interface {

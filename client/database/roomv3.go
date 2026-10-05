@@ -11,7 +11,7 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) prepareSearchPublicRoomsStmt() error {
+func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH public_rooms_q AS (
 			SELECT a.id, a.name
@@ -55,36 +55,36 @@ func (c *Client) prepareSearchPublicRoomsStmt() error {
 				a.listener_count,
 				(
 					SELECT COUNT(*)
-					FROM songs b
+					FROM playlist_items b
 					WHERE b.room_id = a.id
 					AND b.source_type = ANY($4::text[])
-				) AS song_count
+				) AS playlist_item_count
 			FROM filtered_q a
-			ORDER BY a.listener_count DESC, song_count DESC, a.id DESC
+			ORDER BY a.listener_count DESC, playlist_item_count DESC, a.id DESC
 			OFFSET $5 LIMIT $6
 		),
 		totals_q AS (
 			SELECT COUNT(*) AS total FROM filtered_q
 		)
-		SELECT b.id, b.name, b.listener_count, b.song_count, a.total
+		SELECT b.id, b.name, b.listener_count, b.playlist_item_count, a.total
 		FROM totals_q a
 		LEFT JOIN page_q b ON TRUE
-		ORDER BY b.listener_count DESC, b.song_count DESC, b.id DESC
+		ORDER BY b.listener_count DESC, b.playlist_item_count DESC, b.id DESC
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing SearchPublicRoomsStatement: %w", err)
+		return fmt.Errorf("error preparing SearchPublicRoomsV3Statement: %w", err)
 	}
 
-	c.SearchPublicRoomsStatement = stmt
+	c.SearchPublicRoomsV3Statement = stmt
 
 	return nil
 }
 
-func (c *Client) SearchPublicRooms(
+func (c *Client) SearchPublicRoomsV3(
 	ctx context.Context,
 	search vibe.PublicRoomSearch,
-) (*vibe.PublicRoomResult, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "SearchPublicRooms")
+) (*vibe.PublicRoomResultV3, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SearchPublicRoomsV3")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -92,7 +92,7 @@ func (c *Client) SearchPublicRooms(
 
 	// Treat LIKE metacharacters as part of the room name.
 	query := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(search.Query)
-	rows, err := c.SearchPublicRoomsStatement.QueryContext(
+	rows, err := c.SearchPublicRoomsV3Statement.QueryContext(
 		cctx,
 		query,
 		time.Now().UTC().Add(-15*time.Second),
@@ -107,8 +107,8 @@ func (c *Client) SearchPublicRooms(
 
 	defer rows.Close()
 
-	result := &vibe.PublicRoomResult{
-		Rooms: []vibe.PublicRoom{},
+	result := &vibe.PublicRoomResultV3{
+		Rooms: []vibe.PublicRoomV3{},
 		From:  search.From,
 		To:    search.From,
 	}
@@ -125,9 +125,9 @@ func (c *Client) SearchPublicRooms(
 			continue
 		}
 
-		room, err := row.toPublicRoom()
+		room, err := row.toPublicRoomV3()
 		if err != nil {
-			return nil, fmt.Errorf("error converting public room in SearchPublicRooms: %w", err)
+			return nil, fmt.Errorf("error converting public room in SearchPublicRoomsV3: %w", err)
 		}
 
 		result.Rooms = append(result.Rooms, *room)
@@ -151,8 +151,17 @@ type publicRoomResultRow struct {
 	Total sql.NullInt64
 }
 
+func (r *publicRoomRow) toPublicRoomV3() (*vibe.PublicRoomV3, error) {
+	return &vibe.PublicRoomV3{
+		ID:                r.ID.String,
+		Name:              r.Name.String,
+		ListenerCount:     int(r.ListenerCount.Int64),
+		PlaylistItemCount: int(r.PlaylistItemCount.Int64),
+	}, nil
+}
+
 func (r *publicRoomResultRow) scanRows(rows *sql.Rows) error {
-	err := rows.Scan(&r.ID, &r.Name, &r.ListenerCount, &r.SongCount, &r.Total)
+	err := rows.Scan(&r.ID, &r.Name, &r.ListenerCount, &r.PlaylistItemCount, &r.Total)
 	if err != nil {
 		return fmt.Errorf("error scanning public room result row: %w", err)
 	}

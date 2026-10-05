@@ -12,8 +12,8 @@ type GeneratedPlaylistRequest struct {
 	Prompt string `json:"prompt"`
 }
 
-type GeneratedTrack struct {
-	Artist              string `json:"artist"`
+type GeneratedPlaylistItem struct {
+	Publisher           string `json:"publisher"`
 	Title               string `json:"title"`
 	YouTubeID           string `json:"youtubeId,omitempty"`
 	ThumbnailURL        string `json:"thumbnailUrl,omitempty"`
@@ -24,21 +24,21 @@ type GeneratedTrack struct {
 	PlaybackRestriction string `json:"-"`
 }
 
-func (g *GeneratedTrack) IsEmpty() bool {
+func (g *GeneratedPlaylistItem) IsEmpty() bool {
 	return g.YouTubeID == ""
 }
 
-type GeneratedPlaylist []GeneratedTrack
+type GeneratedPlaylist []GeneratedPlaylistItem
 
-type generatedPlaylistPromptTrack struct {
-	Artist string `json:"artist,omitempty"`
-	Title  string `json:"title"`
+type generatedPlaylistPromptItem struct {
+	Publisher string `json:"publisher,omitempty"`
+	Title     string `json:"title"`
 }
 
 type generatedPlaylistPrompt struct {
-	CurrentSong *generatedPlaylistPromptTrack  `json:"currentlyPlaying,omitempty"`
-	Prompt      string                         `json:"listenerRequest"`
-	Songs       []generatedPlaylistPromptTrack `json:"existingSongs,omitempty"`
+	CurrentPlaylistItem   *generatedPlaylistPromptItem  `json:"currentlyPlaying,omitempty"`
+	Prompt                string                        `json:"listenerRequest"`
+	ExistingPlaylistItems []generatedPlaylistPromptItem `json:"existingPlaylistItems,omitempty"`
 }
 
 type AIModel struct {
@@ -94,7 +94,7 @@ func ParseAIModel(value string) (*AIModel, error) {
 
 type GeneratedPlaylistSearchResult struct {
 	Playlist       GeneratedPlaylist
-	CachedSearches []CachedSearch
+	CachedSearches []CachedProviderSearch
 	SearchUsages   []SearchUsage
 }
 
@@ -104,9 +104,9 @@ type RoomGenerationUpdate struct {
 }
 
 type RoomGeneration struct {
-	Room          Room
-	PlaybackState PlaybackState
-	Songs         []Song
+	Room          RoomV2
+	PlaybackState PlaybackStateV2
+	PlaylistItems []PlaylistItem
 	RoomID        string
 	Prompt        string
 	Attempt       int
@@ -121,26 +121,19 @@ type GeneratedPlaylistSearcher interface {
 	SearchGeneratedPlaylist(
 		ctx context.Context,
 		playlist GeneratedPlaylist,
-		cachedSearches []CachedSearch,
+		cachedSearches []CachedProviderSearch,
 		searchQuotaReset time.Time,
 	) (*GeneratedPlaylistSearchResult, error)
 }
 
 type GeneratedPlaylistCacheNotifier interface {
-	CachedSearchFetcherCreator
+	CachedProviderSearchFetcherCreator
 	ProviderQuotaResetFetcherCreator
-	RoomEventNotifier
+	RoomEventV3Notifier
 }
 
-type GeneratedSongAdder interface {
-	AddGeneratedSong(ctx context.Context, song *Song) (*Song, error)
-}
-
-type GeneratedRoomCreator interface {
-	RoomNameSuggester
-	RoomCreator
-	RoomGenerationCreator
-	RoomGenerationAvailabilityChecker
+type GeneratedPlaylistItemAdder interface {
+	AddGeneratedPlaylistItem(ctx context.Context, item *PlaylistItem) (*PlaylistItem, error)
 }
 
 type RoomGenerationCreator interface {
@@ -171,36 +164,36 @@ type RoomGenerationWorker interface {
 	RoomGenerationProcessor
 	RoomGenerationCompleter
 	RoomGenerationFailer
-	GeneratedSongAdder
-	PlaybackController
+	GeneratedPlaylistItemAdder
+	PlaybackV2Controller
 	SearchUsageCreator
 }
 
 func GeneratePlaylistPrompt(
 	prompt string,
-	currentSong *Song,
-	songs []Song,
+	currentPlaylistItem *PlaylistItem,
+	playlistItems []PlaylistItem,
 ) (string, error) {
-	if currentSong == nil && len(songs) == 0 {
+	if currentPlaylistItem == nil && len(playlistItems) == 0 {
 		return prompt, nil
 	}
 
 	generatedPrompt := generatedPlaylistPrompt{
-		Prompt: prompt,
-		Songs:  make([]generatedPlaylistPromptTrack, 0, len(songs)),
+		Prompt:                prompt,
+		ExistingPlaylistItems: make([]generatedPlaylistPromptItem, 0, len(playlistItems)),
 	}
-	if currentSong != nil {
-		generatedPrompt.CurrentSong = &generatedPlaylistPromptTrack{
-			Artist: currentSong.Artist,
-			Title:  currentSong.Title,
+	if currentPlaylistItem != nil {
+		generatedPrompt.CurrentPlaylistItem = &generatedPlaylistPromptItem{
+			Publisher: currentPlaylistItem.Publisher,
+			Title:     currentPlaylistItem.Title,
 		}
 	}
-	for _, song := range songs {
-		generatedPrompt.Songs = append(
-			generatedPrompt.Songs,
-			generatedPlaylistPromptTrack{
-				Artist: song.Artist,
-				Title:  song.Title,
+	for _, item := range playlistItems {
+		generatedPrompt.ExistingPlaylistItems = append(
+			generatedPrompt.ExistingPlaylistItems,
+			generatedPlaylistPromptItem{
+				Publisher: item.Publisher,
+				Title:     item.Title,
 			},
 		)
 	}
@@ -213,11 +206,11 @@ func GeneratePlaylistPrompt(
 	return string(body), nil
 }
 
-func GeneratedPlaylistSystemInstruction(trackCount int) string {
+func GeneratedPlaylistSystemInstruction(itemCount int) string {
 	instruction := strings.ReplaceAll(
 		generatedPlaylistSystemInstruction,
 		"{trackCount}",
-		fmt.Sprintf("%d", trackCount),
+		fmt.Sprintf("%d", itemCount),
 	)
 
 	return instruction
@@ -238,18 +231,18 @@ Generate up to {trackCount} distinct, real, publicly released songs that closely
 
 Interpret the request using any stated genres, moods, themes, eras, languages, artists, activities, energy levels, lyrical topics, or exclusions.
 
-The listener message may be a JSON object containing "listenerRequest", "currentlyPlaying", and "existingSongs". When that context is present, never suggest the currently playing song or any song already in the room. Treat alternate releases or versions of an existing song as the same song unless the listener explicitly requests them.
+The listener message may be a JSON object containing "listenerRequest", "currentlyPlaying", and "existingPlaylistItems". When that context is present, never suggest the currently playing song or any song already in the room. Treat alternate releases or versions of an existing song as the same song unless the listener explicitly requests them.
 
 Requirements:
 
 1. Return only a valid JSON array.
 2. The array must contain between 1 and {trackCount} objects.
 3. Every object must use exactly this shape:
-   {"title":"song title","artist":"artist name","youtubeId":"optional YouTube video ID"}
+   {"title":"song title","publisher":"artist name","youtubeId":"optional YouTube video ID"}
 4. The only permitted fields are:
 
 - "title"
-- "artist"
+- "publisher"
 - "youtubeId"
 5. Heavily favor relevant songs whose exact YouTube video ID you already know. Build the playlist from those songs first and aim for every object to contain "youtubeId".
 6. Select a good, relevant song with a known exact YouTube video ID over a somewhat better match without one. Recommend a song without "youtubeId" only when no suitable known-ID song can satisfy the listener's request or constraints.

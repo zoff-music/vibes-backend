@@ -23,8 +23,13 @@ import (
 //	@Failure	401	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/states [get]
+//
+// Deprecated: Use GET /api/v2/rooms/{id}/states. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/rooms/{id}/states for the playlist-item contract. This endpoint retains its existing payloads.
 func GetPlaybackState(
-	db vibe.PlaybackFetcher,
+	db vibe.PlaybackV2Fetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -42,7 +47,7 @@ func GetPlaybackState(
 			return
 		}
 
-		state, err := db.GetPlaybackState(ctx, roomID)
+		state, err := db.GetPlaybackStateV2(ctx, roomID)
 		if err != nil {
 			handleError(
 				w,
@@ -55,7 +60,9 @@ func GetPlaybackState(
 
 		state.ServerTimeMs = int(time.Now().UnixMilli())
 
-		body, err := json.Marshal(state)
+		bodyLegacy := state.ToPlaybackState()
+
+		body, err := json.Marshal(bodyLegacy)
 		if err != nil {
 			handleError(
 				w,
@@ -86,9 +93,14 @@ func GetPlaybackState(
 //	@Failure	409		{object}	vibe.ErrorResponse
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/playbackfailures [post]
+//
+// Deprecated: Use POST /api/v2/rooms/{id}/playbackfailures. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms/{id}/playbackfailures for the playlist-item contract. This endpoint retains its existing payloads.
 func ReportPlaybackFailure(
-	db vibe.PlaybackFailureStorage,
-	trackFetcher vibe.MusicTrackFetcher,
+	db vibe.PlaybackFailureV2Storage,
+	itemFetcher vibe.ProviderItemFetcher,
 	notifier vibe.RoomBatchEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -127,7 +139,7 @@ func ReportPlaybackFailure(
 			return
 		}
 
-		state, err := db.GetPlaybackState(ctx, roomID)
+		state, err := db.GetPlaybackStateV2(ctx, roomID)
 		if err != nil {
 			handleError(
 				w,
@@ -137,7 +149,7 @@ func ReportPlaybackFailure(
 			)
 			return
 		}
-		if state.CurrentSong == nil || state.CurrentSong.ID != request.SongID {
+		if state.CurrentPlaylistItem == nil || state.CurrentPlaylistItem.ID != request.SongID {
 			handleError(
 				w,
 				fmt.Errorf("error song is no longer the current song"),
@@ -147,8 +159,8 @@ func ReportPlaybackFailure(
 			return
 		}
 
-		if state.CurrentSong.PlaybackRestriction == "" {
-			if state.CurrentSong.SourceType != vibe.SourceTypeYouTube {
+		if state.CurrentPlaylistItem.PlaybackRestriction == "" {
+			if state.CurrentPlaylistItem.SourceType != vibe.SourceTypeYouTube {
 				handleError(
 					w,
 					fmt.Errorf("error provider does not support playback restriction verification"),
@@ -158,7 +170,7 @@ func ReportPlaybackFailure(
 				return
 			}
 
-			track, err := trackFetcher.GetTrack(ctx, state.CurrentSong.SourceID)
+			item, err := itemFetcher.GetProviderItem(ctx, state.CurrentPlaylistItem.SourceID)
 			if err != nil {
 				handleError(
 					w,
@@ -168,7 +180,7 @@ func ReportPlaybackFailure(
 				)
 				return
 			}
-			if track.PlaybackRestriction == "" {
+			if item.PlaybackRestriction == "" {
 				handleError(
 					w,
 					fmt.Errorf("error provider metadata does not restrict playback"),
@@ -178,11 +190,11 @@ func ReportPlaybackFailure(
 				return
 			}
 
-			err = db.UpdateSongPlaybackRestriction(
+			err = db.UpdatePlaylistItemPlaybackRestriction(
 				ctx,
 				roomID,
 				request.SongID,
-				track.PlaybackRestriction,
+				item.PlaybackRestriction,
 			)
 			if err != nil {
 				handleError(
@@ -195,7 +207,7 @@ func ReportPlaybackFailure(
 			}
 		}
 
-		advance, err := db.SkipRestrictedSong(ctx, roomID, request.SongID)
+		advance, err := db.SkipRestrictedPlaylistItem(ctx, roomID, request.SongID)
 		if err != nil {
 			handleError(
 				w,
@@ -216,7 +228,9 @@ func ReportPlaybackFailure(
 		}
 
 		advance.Playback.ServerTimeMs = int(time.Now().UnixMilli())
-		stateBody, err := json.Marshal(advance.Playback)
+		stateBodyLegacy := advance.Playback.ToPlaybackState()
+
+		stateBody, err := json.Marshal(stateBodyLegacy)
 		if err != nil {
 			handleError(
 				w,
@@ -227,7 +241,7 @@ func ReportPlaybackFailure(
 			return
 		}
 
-		songs, err := db.GetSongs(ctx, roomID)
+		items, err := db.GetPlaylistItems(ctx, roomID)
 		if err != nil {
 			handleError(
 				w,
@@ -237,6 +251,11 @@ func ReportPlaybackFailure(
 			)
 			return
 		}
+		songs := make([]vibe.Song, len(items))
+		for index, item := range items {
+			songs[index] = *item.ToSong()
+		}
+
 		songsBody, err := json.Marshal(songs)
 		if err != nil {
 			handleError(
@@ -249,7 +268,7 @@ func ReportPlaybackFailure(
 		}
 		var v2Event *vibe.RoomEventV2Payload
 		for position, song := range songs {
-			if song.ID != advance.PreviousSongID {
+			if song.ID != advance.PreviousPlaylistItemID {
 				continue
 			}
 
@@ -270,7 +289,7 @@ func ReportPlaybackFailure(
 			break
 		}
 		if v2Event == nil {
-			v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: advance.PreviousSongID})
+			v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: advance.PreviousPlaylistItemID})
 			if marshalErr != nil {
 				handleError(
 					w,
@@ -318,8 +337,13 @@ func ReportPlaybackFailure(
 //	@Failure	403		{object}	vibe.ErrorResponse
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/states [put]
+//
+// Deprecated: Use PUT /api/v2/rooms/{id}/states. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use PUT /api/v2/rooms/{id}/states for the playlist-item contract. This endpoint retains its existing payloads.
 func UpdatePlaybackState(
-	db vibe.RoomGetterPlaybackUpdater,
+	db vibe.RoomV2GetterPlaybackUpdater,
 	events vibe.RoomRemoteEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -363,7 +387,7 @@ func UpdatePlaybackState(
 		}
 		userID := session.UserID
 
-		room, err := db.GetRoom(ctx, roomID, userID)
+		room, err := db.GetRoomV2(ctx, roomID, userID)
 		if err != nil {
 			handleError(
 				w,
@@ -374,10 +398,10 @@ func UpdatePlaybackState(
 			return
 		}
 
-		var state *vibe.PlaybackState
+		var state *vibe.PlaybackStateV2
 
 		if session.AuthType == "remote" && room.Mode == vibe.RoomModeServer {
-			state, err = db.GetPlaybackState(ctx, roomID)
+			state, err = db.GetPlaybackStateV2(ctx, roomID)
 			if err != nil {
 				handleError(
 					w,
@@ -399,8 +423,8 @@ func UpdatePlaybackState(
 			state.UpdatedAt = observedAt
 			state.ServerTimeMs = int(observedAt.UnixMilli())
 			currentSongID := ""
-			if state.CurrentSong != nil {
-				currentSongID = state.CurrentSong.ID
+			if state.CurrentPlaylistItem != nil {
+				currentSongID = state.CurrentPlaylistItem.ID
 			}
 
 			err = events.NotifyRemoteUpdate(context.WithoutCancel(ctx), session.RemoteID, vibe.RemoteEvent{
@@ -424,7 +448,9 @@ func UpdatePlaybackState(
 				return
 			}
 
-			body, err := json.Marshal(state)
+			bodyLegacy := state.ToPlaybackState()
+
+			body, err := json.Marshal(bodyLegacy)
 			if err != nil {
 				handleError(
 					w,
@@ -451,7 +477,7 @@ func UpdatePlaybackState(
 			return
 		}
 
-		state, err = db.UpdatePlayback(ctx, roomID, userID, req.Action, req.PositionMs)
+		state, err = db.UpdatePlaybackV2(ctx, roomID, userID, req.Action, req.PositionMs)
 		if err != nil {
 			handleError(
 				w,
@@ -465,7 +491,9 @@ func UpdatePlaybackState(
 		state.ServerTimeMs = int(time.Now().UnixMilli())
 
 		if room.Mode == vibe.RoomModeHost {
-			statePayload, err := json.Marshal(state)
+			statePayloadLegacy := state.ToPlaybackState()
+
+			statePayload, err := json.Marshal(statePayloadLegacy)
 			if err != nil {
 				handleError(
 					w,
@@ -486,7 +514,9 @@ func UpdatePlaybackState(
 			}
 		}
 
-		body, err := json.Marshal(state)
+		bodyLegacy := state.ToPlaybackState()
+
+		body, err := json.Marshal(bodyLegacy)
 		if err != nil {
 			handleError(
 				w,

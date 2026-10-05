@@ -18,17 +18,17 @@ type publicRoomsSearchStub struct {
 	fail   bool
 }
 
-func (s *publicRoomsSearchStub) SearchPublicRooms(
+func (s *publicRoomsSearchStub) SearchPublicRoomsV3(
 	_ context.Context,
 	search vibe.PublicRoomSearch,
-) (*vibe.PublicRoomResult, error) {
+) (*vibe.PublicRoomResultV3, error) {
 	s.search = search
 	s.called = true
 	if s.fail {
 		return nil, fmt.Errorf("error unavailable database")
 	}
-	return &vibe.PublicRoomResult{
-		Rooms: []vibe.PublicRoom{{ID: "electro", Name: "electro", SongCount: 12}},
+	return &vibe.PublicRoomResultV3{
+		Rooms: []vibe.PublicRoomV3{{ID: "electro", Name: "electro", PlaylistItemCount: 12}},
 		From:  search.From,
 		To:    search.From,
 		Total: 23,

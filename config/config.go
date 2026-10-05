@@ -3,6 +3,8 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -48,12 +50,12 @@ type Config struct {
 	SoundCloudRedirectURI  string `envconfig:"SOUNDCLOUD_REDIRECT_URI" default:"https://localhost/api/v1/callbacks/soundcloud"`
 
 	// AI configuration
-	AIModel                             string `envconfig:"AI_MODEL" default:"GROK:grok-4.3"`
-	GeneratedPlaylistTrackCount         int    `envconfig:"GENERATED_PLAYLIST_TRACK_COUNT" default:"80"`
-	GeneratedPlaylistSelectedTrackCount int    `envconfig:"GENERATED_PLAYLIST_SELECTED_TRACK_COUNT" default:"30"`
-	RoomGenerationMaxAttempts           int    `envconfig:"ROOM_GENERATION_MAX_ATTEMPTS" default:"5"`
-	RoomGenerationMaxDailyCount         int    `envconfig:"ROOM_GENERATION_MAX_DAILY_COUNT" default:"2"`
-	RoomGenerationMaxExistingSongs      int    `envconfig:"ROOM_GENERATION_MAX_EXISTING_SONGS" default:"59"`
+	AIModel                                string `envconfig:"AI_MODEL" default:"GROK:grok-4.3"`
+	GeneratedPlaylistItemCount             int    `envconfig:"GENERATED_PLAYLIST_ITEM_COUNT" default:"80"`
+	GeneratedPlaylistSelectedItemCount     int    `envconfig:"GENERATED_PLAYLIST_SELECTED_ITEM_COUNT" default:"30"`
+	RoomGenerationMaxAttempts              int    `envconfig:"ROOM_GENERATION_MAX_ATTEMPTS" default:"5"`
+	RoomGenerationMaxDailyCount            int    `envconfig:"ROOM_GENERATION_MAX_DAILY_COUNT" default:"2"`
+	RoomGenerationMaxExistingPlaylistItems int    `envconfig:"ROOM_GENERATION_MAX_EXISTING_PLAYLIST_ITEMS" default:"59"`
 
 	// Grok configuration
 	GrokAPIKey   string `envconfig:"GROK_API_KEY" default:""`
@@ -104,6 +106,41 @@ func LoadConfig() (*Config, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error processing env: %w", err)
 	}
+
+	// Retain the previous deployment variable until deployments have migrated.
+	_, configured := os.LookupEnv("ROOM_GENERATION_MAX_EXISTING_PLAYLIST_ITEMS")
+	legacyLimit, legacyConfigured := os.LookupEnv("ROOM_GENERATION_MAX_EXISTING_SONGS")
+	if !configured && legacyConfigured {
+		limit, parseErr := strconv.Atoi(legacyLimit)
+		if parseErr != nil {
+			return nil, fmt.Errorf("error parsing legacy room generation limit: %w", parseErr)
+		}
+
+		c.RoomGenerationMaxExistingPlaylistItems = limit
+	}
+
+	_, itemCountConfigured := os.LookupEnv("GENERATED_PLAYLIST_ITEM_COUNT")
+	legacyItemCount, legacyItemCountConfigured := os.LookupEnv("GENERATED_PLAYLIST_TRACK_COUNT")
+	if !itemCountConfigured && legacyItemCountConfigured {
+		count, parseErr := strconv.Atoi(legacyItemCount)
+		if parseErr != nil {
+			return nil, fmt.Errorf("error parsing legacy generated playlist item count: %w", parseErr)
+		}
+
+		c.GeneratedPlaylistItemCount = count
+	}
+
+	_, selectedCountConfigured := os.LookupEnv("GENERATED_PLAYLIST_SELECTED_ITEM_COUNT")
+	legacySelectedCount, legacySelectedCountConfigured := os.LookupEnv("GENERATED_PLAYLIST_SELECTED_TRACK_COUNT")
+	if !selectedCountConfigured && legacySelectedCountConfigured {
+		count, parseErr := strconv.Atoi(legacySelectedCount)
+		if parseErr != nil {
+			return nil, fmt.Errorf("error parsing legacy selected playlist item count: %w", parseErr)
+		}
+
+		c.GeneratedPlaylistSelectedItemCount = count
+	}
+
 	if len(strings.TrimSpace(c.CookieSecret)) < 32 || c.CookieSecret == "vibes-default-secret-change-me" {
 		return nil, fmt.Errorf("error validating cookie secret: configure a random secret of at least 32 bytes")
 	}
@@ -113,15 +150,15 @@ func LoadConfig() (*Config, error) {
 	if c.RequestBodyMaxBytes < 1 {
 		return nil, fmt.Errorf("error validating request body limit: must be greater than zero")
 	}
-	if c.GeneratedPlaylistTrackCount < 1 {
-		return nil, fmt.Errorf("error validating generated playlist track count: must be greater than zero")
+	if c.GeneratedPlaylistItemCount < 1 {
+		return nil, fmt.Errorf("error validating generated playlist item count: must be greater than zero")
 	}
-	if c.GeneratedPlaylistSelectedTrackCount < 1 {
-		return nil, fmt.Errorf("error validating generated playlist selected track count: must be greater than zero")
+	if c.GeneratedPlaylistSelectedItemCount < 1 {
+		return nil, fmt.Errorf("error validating generated playlist selected item count: must be greater than zero")
 	}
-	if c.GeneratedPlaylistSelectedTrackCount > c.GeneratedPlaylistTrackCount {
+	if c.GeneratedPlaylistSelectedItemCount > c.GeneratedPlaylistItemCount {
 		return nil, fmt.Errorf(
-			"error validating generated playlist selected track count: must not exceed generated playlist track count",
+			"error validating generated playlist selected item count: must not exceed generated playlist item count",
 		)
 	}
 	if c.RoomGenerationMaxAttempts < 1 {
@@ -130,8 +167,8 @@ func LoadConfig() (*Config, error) {
 	if c.RoomGenerationMaxDailyCount < 1 {
 		return nil, fmt.Errorf("error validating room generation max daily count: must be greater than zero")
 	}
-	if c.RoomGenerationMaxExistingSongs < 0 {
-		return nil, fmt.Errorf("error validating room generation max existing songs: must not be negative")
+	if c.RoomGenerationMaxExistingPlaylistItems < 0 {
+		return nil, fmt.Errorf("error validating room generation max existing playlist items: must not be negative")
 	}
 	if c.RemotePairingTTL <= 0 {
 		return nil, fmt.Errorf("error validating remote pairing ttl: must be greater than zero")

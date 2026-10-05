@@ -56,7 +56,7 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 			return
 		}
 
-		room, err := db.GetRoom(ctx, roomID, session.UserID)
+		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
 			handleError(w, fmt.Errorf("error fetching message room: %w", err), http.StatusInternalServerError, true)
 			return
@@ -121,7 +121,7 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 // @Success 200 {string} string "SSE frames with event-specific JSON data; see the stream description"
 // @Failure 401,404,500 {object} vibe.ErrorResponse
 // @Router /api/v1/rooms/{id}/messages [get]
-func Messages(db vibe.RoomFetcher, events vibe.ReplaySubscriber) http.HandlerFunc {
+func Messages(db vibe.RoomV2Fetcher, events vibe.ReplaySubscriber) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		session, ok := helper.GetSessionFromContext(ctx)
@@ -131,7 +131,7 @@ func Messages(db vibe.RoomFetcher, events vibe.ReplaySubscriber) http.HandlerFun
 		}
 
 		roomID := mux.Vars(r)["id"]
-		room, err := db.GetRoom(ctx, roomID, session.UserID)
+		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
 			handleError(w, fmt.Errorf("error fetching messages room: %w", err), http.StatusInternalServerError, true)
 			return
@@ -202,8 +202,7 @@ func Messages(db vibe.RoomFetcher, events vibe.ReplaySubscriber) http.HandlerFun
 					return
 				}
 
-				var event vibe.RoomEvent
-				err = json.Unmarshal(data, &event)
+				event, err := vibe.ParseLegacyRoomEvent(data)
 				if err != nil {
 					log.Printf("error decoding chat event: %v", err)
 					continue

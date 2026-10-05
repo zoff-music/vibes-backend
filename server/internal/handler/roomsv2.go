@@ -31,7 +31,12 @@ const publicRoomMaximumQueryLength = 100
 //	@Failure		400		{object}	vibe.ErrorResponse
 //	@Failure		500		{object}	vibe.ErrorResponse
 //	@Router			/api/v2/rooms/public [get]
-func GetPublicRoomsV2(db vibe.PublicRoomsSearcher) http.HandlerFunc {
+//
+// Deprecated: Use GET /api/v3/rooms/public. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v3/rooms/public for the playlist-item contract. This endpoint retains its existing payloads.
+func GetPublicRoomsV2(db vibe.PublicRoomsV3Searcher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
@@ -87,7 +92,7 @@ func GetPublicRoomsV2(db vibe.PublicRoomsSearcher) http.HandlerFunc {
 			return
 		}
 
-		result, err := db.SearchPublicRooms(ctx, vibe.PublicRoomSearch{
+		result, err := db.SearchPublicRoomsV3(ctx, vibe.PublicRoomSearch{
 			Query: query,
 			Live:  live == "true",
 			From:  int(from),
@@ -98,7 +103,9 @@ func GetPublicRoomsV2(db vibe.PublicRoomsSearcher) http.HandlerFunc {
 			return
 		}
 
-		body, err := json.Marshal(result)
+		legacy := result.ToPublicRoomResult()
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(w, fmt.Errorf("error marshaling public rooms: %w", err), http.StatusInternalServerError, true)
 			return

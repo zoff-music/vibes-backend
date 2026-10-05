@@ -26,7 +26,7 @@ import (
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/tokens/casting [post]
 func CreateCastingToken(
-	db vibe.RoomFetcher,
+	db vibe.RoomV2Fetcher,
 	castTokenSecret string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +73,7 @@ func CreateCastingToken(
 			return
 		}
 
-		room, err := db.GetRoom(ctx, req.RoomID, session.UserID)
+		room, err := db.GetRoomV2(ctx, req.RoomID, session.UserID)
 		if err != nil {
 			handleError(
 				w,

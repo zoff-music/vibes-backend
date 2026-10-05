@@ -51,7 +51,7 @@ func (r CreateMessageRequest) Validate() bool {
 }
 
 type MessageAuthorFetcher interface {
-	RoomFetcher
+	RoomV2Fetcher
 	SessionProfileFetcherCreator
 }
 

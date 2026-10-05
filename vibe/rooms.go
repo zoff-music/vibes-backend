@@ -2,6 +2,7 @@ package vibe
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -10,6 +11,8 @@ import (
 const RoomNameMaxLength = 100
 
 // RoomSettings holds configuration for a room
+//
+// Deprecated: Use RoomSettingsV2 for new code. Retained for legacy API compatibility.
 type RoomSettings struct {
 	SkipAllowed       bool     `json:"skipAllowed"`
 	DemocraticSkip    bool     `json:"democraticSkip"`
@@ -37,22 +40,22 @@ func (r RoomSettings) IsEmpty() bool {
 }
 
 // DefaultRoomSettings returns sensible defaults
+//
+// Deprecated: Use DefaultRoomSettingsV2 for new code.
 func DefaultRoomSettings() (*RoomSettings, error) {
-	return &RoomSettings{
-		SkipAllowed:       true,
-		DemocraticSkip:    true,
-		SkipVoteThreshold: 0.5,
-		MaxContinuousAdds: 3,
-		RemoveOnPlay:      false,
-		AllowDuplicates:   false,
-		EnabledSources:    []string{"youtube", "soundcloud"},
-		OnlyAdminAddSongs: false,
-		Public:            false,
-		PlaylistImport:    true,
-	}, nil
+	settings, err := DefaultRoomSettingsV2()
+	if err != nil {
+		return nil, fmt.Errorf("error getting default room settings: %w", err)
+	}
+
+	legacy := settings.ToRoomSettings()
+
+	return legacy, nil
 }
 
 // Room represents a music room
+//
+// Deprecated: Use RoomV2 for new code. Retained for legacy API compatibility.
 type Room struct {
 	ID                             string       `json:"id"`
 	Name                           string       `json:"name"`
@@ -108,6 +111,8 @@ type NewHostUpdate struct {
 }
 
 // PublicRoom is a publicly listed room with protected admin controls.
+//
+// Deprecated: Use PublicRoomV3 for new code. Retained for legacy API compatibility.
 type PublicRoom struct {
 	ID            string `json:"id"`
 	Name          string `json:"name"`
@@ -124,6 +129,8 @@ type PublicRoomSearch struct {
 }
 
 // PublicRoomResult contains a page of rooms and the full matching count.
+//
+// Deprecated: Use PublicRoomResultV3 for new code. Retained for legacy API compatibility.
 type PublicRoomResult struct {
 	Rooms []PublicRoom `json:"rooms"`
 	From  int          `json:"from"`
@@ -132,12 +139,9 @@ type PublicRoomResult struct {
 	Count int          `json:"count"`
 }
 
-// PublicRoomsSearcher searches public rooms with or without listeners.
-type PublicRoomsSearcher interface {
-	SearchPublicRooms(ctx context.Context, search PublicRoomSearch) (*PublicRoomResult, error)
-}
-
 // CreateRoomRequest is the request payload for creating a room.
+//
+// Deprecated: Use CreateRoomRequestV2 for new code. Retained for legacy API compatibility.
 type CreateRoomRequest struct {
 	Name             string        `json:"name" minLength:"1" maxLength:"100"`
 	Mode             string        `json:"mode,omitempty"`
@@ -153,6 +157,8 @@ func (r CreateRoomRequest) Validate() bool {
 }
 
 // UpdateRoomRequest is the request payload for updating a room.
+//
+// Deprecated: Use UpdateRoomRequestV2 for new code. Retained for legacy API compatibility.
 type UpdateRoomRequest struct {
 	Mode     string        `json:"mode,omitempty"`
 	Settings *RoomSettings `json:"settings,omitempty"`
@@ -161,11 +167,6 @@ type UpdateRoomRequest struct {
 // IsEmpty returns true if the room is empty/not found
 func (r *Room) IsEmpty() bool {
 	return r.ID == ""
-}
-
-// RoomFetcher fetches room data
-type RoomFetcher interface {
-	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
 }
 
 // PublicRoomFetcher fetches the bounded list of public rooms with active listeners.
@@ -199,33 +200,6 @@ type RoomNameReservationDeleter interface {
 // RoomExistenceChecker checks whether a room ID is already in use.
 type RoomExistenceChecker interface {
 	RoomExists(ctx context.Context, roomID string) (bool, error)
-}
-
-// RoomCreator creates rooms
-type RoomCreator interface {
-	CreateRoom(
-		ctx context.Context,
-		room *Room,
-		reservationToken string,
-	) (*Room, error)
-}
-
-// RoomCreatorExistenceChecker checks availability and creates a room.
-type RoomCreatorExistenceChecker interface {
-	RoomCreator
-	RoomExistenceChecker
-}
-
-// RoomUpdater updates room data
-type RoomUpdater interface {
-	UpdateRoom(ctx context.Context, room *Room) (*Room, error)
-}
-
-// RoomSettingsUpdater fetches and updates room data
-type RoomSettingsUpdater interface {
-	RoomFetcher
-	RoomUpdater
-	SessionProfileFetcherCreator
 }
 
 // RoomModeServer is the mode where the server controls playback
