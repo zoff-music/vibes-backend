@@ -126,6 +126,7 @@ func (c *Client) prepareGetRoomV2Stmt() error {
 			a.id,
 			a.name,
 			a.mode,
+			a.room_type,
 			a.host_id,
 			a.admin_password_hash,
 			a.created_at,
@@ -260,6 +261,7 @@ func (c *Client) prepareGetRoomByNameV2Stmt() error {
 			a.id,
 			a.name,
 			a.mode,
+			a.room_type,
 			a.host_id,
 			a.admin_password_hash,
 			a.created_at,
@@ -470,6 +472,7 @@ func (c *Client) GetPublicRooms(ctx context.Context) ([]vibe.PublicRoom, error) 
 type publicRoomRow struct {
 	ID                sql.NullString
 	Name              sql.NullString
+	RoomType          sql.NullString
 	ListenerCount     sql.NullInt64
 	PlaylistItemCount sql.NullInt64
 }
@@ -554,6 +557,7 @@ type roomRow struct {
 	ID                        sql.NullString
 	Name                      sql.NullString
 	Mode                      sql.NullString
+	RoomType                  sql.NullString
 	HostID                    sql.NullString
 	AdminPasswordHash         sql.NullString
 	CreatedAt                 sql.NullTime
@@ -578,6 +582,7 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.ID,
 		&r.Name,
 		&r.Mode,
+		&r.RoomType,
 		&r.HostID,
 		&r.AdminPasswordHash,
 		&r.CreatedAt,
@@ -626,6 +631,7 @@ func (r *roomRow) toRoomV2(enabledProviders []string) (*vibe.RoomV2, error) {
 		ID:                   r.ID.String,
 		Name:                 r.Name.String,
 		Mode:                 r.Mode.String,
+		RoomType:             vibe.RoomType(r.RoomType.String),
 		HostID:               r.HostID.String,
 		AdminPasswordHash:    r.AdminPasswordHash.String,
 		HasPassword:          r.AdminPasswordHash.Valid && r.AdminPasswordHash.String != "",
@@ -774,7 +780,7 @@ func (c *Client) prepareCreateRoomV2Stmt() error {
 			SELECT id, $2, $3, $4, $5, $6
 			FROM valid_name_q
 			ON CONFLICT (id) DO NOTHING
-			RETURNING id
+			RETURNING id, room_type
 		),
 		created_settings_q AS (
 			INSERT INTO room_settings (
@@ -817,7 +823,7 @@ func (c *Client) prepareCreateRoomV2Stmt() error {
 				OR room_name_reservations.token::TEXT = $17
 			)
 		)
-		SELECT id FROM created_room_q
+		SELECT id, room_type FROM created_room_q
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateRoomV2Statement: %w", err)
@@ -873,6 +879,7 @@ func (c *Client) CreateRoomV2(
 	}
 
 	createdRoom := *room
+	createdRoom.RoomType = vibe.RoomType(scanned.RoomType.String)
 	createdRoom.UserID = room.HostID
 	createdRoom.IsAdmin = room.HostID != "" && room.AdminPasswordHash != ""
 	createdSettings := room.Settings
@@ -901,11 +908,12 @@ func (c *Client) CreateRoomV2(
 }
 
 type createRoomRow struct {
-	ID sql.NullString
+	ID       sql.NullString
+	RoomType sql.NullString
 }
 
 func (r *createRoomRow) scan(row *sql.Row) error {
-	err := row.Scan(&r.ID)
+	err := row.Scan(&r.ID, &r.RoomType)
 	if err != nil {
 		return fmt.Errorf("error scanning created room row: %w", err)
 	}

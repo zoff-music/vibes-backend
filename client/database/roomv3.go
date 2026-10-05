@@ -14,7 +14,7 @@ import (
 func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH public_rooms_q AS (
-			SELECT a.id, a.name
+			SELECT a.id, a.name, a.room_type
 			FROM rooms a
 			JOIN room_settings b ON b.room_id = a.id
 			WHERE b.is_public
@@ -36,6 +36,7 @@ func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
 			SELECT
 				a.id,
 				a.name,
+				a.room_type,
 				CASE
 					WHEN b.listeners = 0 AND b.receivers > 0 THEN 1
 					ELSE COALESCE(b.listeners, 0)
@@ -44,7 +45,7 @@ func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
 			LEFT JOIN participants_q b ON b.room_id = a.id
 		),
 		filtered_q AS (
-			SELECT a.id, a.name, a.listener_count
+			SELECT a.id, a.name, a.room_type, a.listener_count
 			FROM listeners_q a
 			WHERE NOT $3 OR a.listener_count > 0
 		),
@@ -52,6 +53,7 @@ func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
 			SELECT
 				a.id,
 				a.name,
+				a.room_type,
 				a.listener_count,
 				(
 					SELECT COUNT(*)
@@ -66,7 +68,7 @@ func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
 		totals_q AS (
 			SELECT COUNT(*) AS total FROM filtered_q
 		)
-		SELECT b.id, b.name, b.listener_count, b.playlist_item_count, a.total
+		SELECT b.id, b.name, b.room_type, b.listener_count, b.playlist_item_count, a.total
 		FROM totals_q a
 		LEFT JOIN page_q b ON TRUE
 		ORDER BY b.listener_count DESC, b.playlist_item_count DESC, b.id DESC
@@ -155,13 +157,14 @@ func (r *publicRoomRow) toPublicRoomV3() (*vibe.PublicRoomV3, error) {
 	return &vibe.PublicRoomV3{
 		ID:                r.ID.String,
 		Name:              r.Name.String,
+		RoomType:          vibe.RoomType(r.RoomType.String),
 		ListenerCount:     int(r.ListenerCount.Int64),
 		PlaylistItemCount: int(r.PlaylistItemCount.Int64),
 	}, nil
 }
 
 func (r *publicRoomResultRow) scanRows(rows *sql.Rows) error {
-	err := rows.Scan(&r.ID, &r.Name, &r.ListenerCount, &r.PlaylistItemCount, &r.Total)
+	err := rows.Scan(&r.ID, &r.Name, &r.RoomType, &r.ListenerCount, &r.PlaylistItemCount, &r.Total)
 	if err != nil {
 		return fmt.Errorf("error scanning public room result row: %w", err)
 	}

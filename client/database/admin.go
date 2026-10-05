@@ -35,6 +35,7 @@ func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 			SELECT
 				a.id,
 				a.name,
+				a.room_type,
 				COALESCE(b.user_count, 0) AS user_count,
 				COALESCE(c.playlist_item_count, 0) AS playlist_item_count,
 				COALESCE(c.active_sources, '') AS active_sources,
@@ -67,6 +68,7 @@ func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 		SELECT
 			a.id,
 			a.name,
+			a.room_type,
 			a.user_count,
 			a.playlist_item_count,
 			a.active_sources,
@@ -169,6 +171,7 @@ func (c *Client) SearchAdminRoomsV2(
 type adminRoomRow struct {
 	ID                sql.NullString
 	Name              sql.NullString
+	RoomType          sql.NullString
 	UserCount         sql.NullInt64
 	PlaylistItemCount sql.NullInt64
 	ActiveSources     sql.NullString
@@ -180,6 +183,7 @@ func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
 	err := rows.Scan(
 		&r.ID,
 		&r.Name,
+		&r.RoomType,
 		&r.UserCount,
 		&r.PlaylistItemCount,
 		&r.ActiveSources,
@@ -202,6 +206,7 @@ func (r *adminRoomRow) toSummary() (*vibe.AdminRoomSummaryV2, error) {
 	return &vibe.AdminRoomSummaryV2{
 		ID:                r.ID.String,
 		Name:              r.Name.String,
+		RoomType:          vibe.RoomType(r.RoomType.String),
 		UserCount:         int(r.UserCount.Int64),
 		PlaylistItemCount: int(r.PlaylistItemCount.Int64),
 		ActiveSources:     sources,
