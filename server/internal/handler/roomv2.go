@@ -2546,7 +2546,7 @@ func AddPlaylistV2(
 	}
 }
 
-// ReportPlaybackFailureV2 handles POST /rooms/{id}/playbackfailures
+// ReportPlaybackFailureV2 handles POST /rooms/{id}/failures
 //
 //	@Summary	Report a restricted playback failure
 //	@Tags		playback
@@ -2559,7 +2559,7 @@ func AddPlaylistV2(
 //	@Failure	401		{object}	vibe.ErrorResponse
 //	@Failure	409		{object}	vibe.ErrorResponse
 //	@Failure	500		{object}	vibe.ErrorResponse
-//	@Router		/api/v2/rooms/{id}/playbackfailures [post]
+//	@Router		/api/v2/rooms/{id}/failures [post]
 func ReportPlaybackFailureV2(
 	db vibe.PlaybackFailureV2Storage,
 	itemFetcher vibe.ProviderItemFetcher,
