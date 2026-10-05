@@ -14,7 +14,7 @@ import (
 type adminRoomDeleteStub struct {
 	deleted      bool
 	notification vibe.AdminEvent
-	rooms        []vibe.AdminRoomSummary
+	rooms        []vibe.AdminRoomSummaryV2
 }
 
 func (s *adminRoomDeleteStub) DeleteAdminRoom(
@@ -24,9 +24,9 @@ func (s *adminRoomDeleteStub) DeleteAdminRoom(
 	return s.deleted, nil
 }
 
-func (s *adminRoomDeleteStub) ListAdminRooms(
+func (s *adminRoomDeleteStub) ListAdminRoomsV2(
 	_ context.Context,
-) ([]vibe.AdminRoomSummary, error) {
+) ([]vibe.AdminRoomSummaryV2, error) {
 	return s.rooms, nil
 }
 
@@ -67,7 +67,7 @@ func TestAdminDeleteRoomReturnsNoContent(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			stub := &adminRoomDeleteStub{
 				deleted: tt.deleted,
-				rooms: []vibe.AdminRoomSummary{
+				rooms: []vibe.AdminRoomSummaryV2{
 					{ID: "remaining-room", Name: "Remaining room"},
 				},
 			}

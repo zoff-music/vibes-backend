@@ -1,7 +1,5 @@
 package vibe
 
-import "context"
-
 // SkipVote tracks skip votes for a playlist item.
 type SkipVote struct {
 	PlaylistItemID string
@@ -31,12 +29,4 @@ type SkipVoteUpdate struct {
 	SongID        string `json:"songId"`
 	CurrentVotes  int    `json:"currentVotes"`
 	RequiredVotes int    `json:"requiredVotes"`
-}
-
-// RoomSkipper defines actions related to skipping tracks
-type RoomSkipper interface {
-	MessageAuthorFetcher
-	PlaybackFetcher
-	GetSongs(ctx context.Context, roomID string) ([]Song, error)
-	SkipSong(ctx context.Context, roomID string, userID string) (*SkipSongResult, error)
 }

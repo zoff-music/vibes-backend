@@ -281,7 +281,7 @@ func AdminLogout() http.HandlerFunc {
 // @Deprecated
 // @Description Deprecated: Use GET /api/v2/admin/rooms for the playlist-item contract. This endpoint retains its existing payloads.
 func AdminRooms(
-	db vibe.AdminRoomSearcher,
+	db vibe.AdminRoomV2Searcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -380,9 +380,14 @@ func AdminRooms(
 			return
 		}
 
-		result, err := db.SearchAdminRooms(ctx, vibe.AdminRoomSearch{
+		canonicalSort := vibe.AdminRoomSortV2(sortBy)
+		if sortBy == vibe.AdminRoomSortSongs {
+			canonicalSort = vibe.AdminRoomSortPlaylistItems
+		}
+
+		result, err := db.SearchAdminRoomsV2(ctx, vibe.AdminRoomSearchV2{
 			Query:      query,
-			SortBy:     sortBy,
+			SortBy:     canonicalSort,
 			Descending: order == adminRoomOrderDescending,
 			From:       from,
 			To:         to,
@@ -397,7 +402,9 @@ func AdminRooms(
 			return
 		}
 
-		body, err := json.Marshal(result)
+		legacy := result.ToAdminRoomResult()
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(
 				w,
@@ -502,7 +509,7 @@ func AdminSearchUsage(
 // @Deprecated
 // @Description Deprecated: Use PATCH /api/v2/admin/rooms/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func AdminUpdateRoom(
-	db vibe.AdminRoomUpdaterLister,
+	db vibe.AdminRoomV2UpdaterLister,
 	notifier vibe.AdminEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -566,7 +573,7 @@ func AdminUpdateRoom(
 			return
 		}
 
-		rooms, err := db.ListAdminRooms(ctx)
+		rooms, err := db.ListAdminRoomsV2(ctx)
 		if err != nil {
 			handleError(
 				w,
@@ -577,7 +584,12 @@ func AdminUpdateRoom(
 			return
 		}
 
-		body, err := json.Marshal(rooms)
+		legacy := make([]vibe.AdminRoomSummary, len(rooms))
+		for index, room := range rooms {
+			legacy[index] = *room.ToAdminRoomSummary()
+		}
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(
 				w,
@@ -619,7 +631,7 @@ func AdminUpdateRoom(
 // @Deprecated
 // @Description Deprecated: Use DELETE /api/v2/admin/rooms/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func AdminDeleteRoom(
-	db vibe.AdminRoomDeleterLister,
+	db vibe.AdminRoomV2DeleterLister,
 	notifier vibe.AdminEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -657,7 +669,7 @@ func AdminDeleteRoom(
 			return
 		}
 
-		rooms, err := db.ListAdminRooms(ctx)
+		rooms, err := db.ListAdminRoomsV2(ctx)
 		if err != nil {
 			handleError(
 				w,
@@ -668,7 +680,12 @@ func AdminDeleteRoom(
 			return
 		}
 
-		body, err := json.Marshal(rooms)
+		legacy := make([]vibe.AdminRoomSummary, len(rooms))
+		for index, room := range rooms {
+			legacy[index] = *room.ToAdminRoomSummary()
+		}
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(
 				w,
@@ -711,7 +728,7 @@ func AdminDeleteRoom(
 // @Description Deprecated: Use GET /api/v2/admin/events for the playlist-item contract. This endpoint retains its existing payloads.
 func AdminEvents(
 	subscriber vibe.Subscriber,
-	db vibe.AdminRoomLister,
+	db vibe.AdminRoomV2Lister,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -747,9 +764,14 @@ func AdminEvents(
 		fmt.Fprintf(w, "event: connected\ndata: {\"time\": %d}\n\n", time.Now().UnixMilli())
 		flusher.Flush()
 
-		rooms, err := db.ListAdminRooms(ctx)
+		rooms, err := db.ListAdminRoomsV2(ctx)
 		if err == nil {
-			payload, err := json.Marshal(rooms)
+			legacy := make([]vibe.AdminRoomSummary, len(rooms))
+			for index, room := range rooms {
+				legacy[index] = *room.ToAdminRoomSummary()
+			}
+
+			payload, err := json.Marshal(legacy)
 			if err == nil {
 				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.AdminRoomsUpdate, payload)
 				flusher.Flush()

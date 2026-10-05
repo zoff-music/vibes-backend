@@ -37,32 +37,11 @@ func IsLiveVideo(source string, duration int) bool {
 	return source == SourceTypeYouTube && duration <= 0
 }
 
-// Deprecated: Use CachedProviderSearch for new code. Retained for legacy API compatibility.
-type CachedSearch struct {
-	Query  string       `json:"query"`
-	Tracks []MusicTrack `json:"tracks"`
-}
-
 type SearchUsage struct {
 	RoomID    string
 	Provider  string
 	QueryHash string
 	Cached    bool
-}
-
-func (s CachedSearch) GetMusicTracks() []MusicTrack {
-	tracks := append([]MusicTrack{}, s.Tracks...)
-	return tracks
-}
-
-func GenerateCachedSearch(
-	query string,
-	tracks []MusicTrack,
-) CachedSearch {
-	return CachedSearch{
-		Query:  query,
-		Tracks: append([]MusicTrack{}, tracks...),
-	}
 }
 
 func GenerateSearchUsage(
@@ -182,75 +161,6 @@ func durationISO8601(seconds int) string {
 	}
 
 	return duration
-}
-
-// MusicSearcher searches for music
-type MusicSearcher interface {
-	Search(ctx context.Context, query string) ([]MusicTrack, error)
-}
-
-type MusicTrackFetcher interface {
-	GetTrack(ctx context.Context, id string) (*MusicTrack, error)
-}
-
-type MusicTrackResolver interface {
-	ResolveTrack(ctx context.Context, providerURL string) (*MusicTrack, error)
-}
-
-type CachedSearchFetcher interface {
-	GetCachedSearches(
-		ctx context.Context,
-		source string,
-		queries []string,
-	) ([]CachedSearch, error)
-}
-
-type CachedSearchCreator interface {
-	CacheSearches(
-		ctx context.Context,
-		source string,
-		searches []CachedSearch,
-	) error
-}
-
-type CachedSearchFetcherCreator interface {
-	CachedSearchFetcher
-	CachedSearchCreator
-}
-
-type CachedMusicTrackFetcher interface {
-	GetCachedMusicTrack(ctx context.Context, source string, sourceID string) (*MusicTrack, error)
-}
-
-type CachedMusicTracksFetcher interface {
-	GetCachedMusicTracks(
-		ctx context.Context,
-		keys []CachedMusicTrackKey,
-	) ([]MusicTrack, error)
-}
-
-type CachedMusicTrackKey struct {
-	Provider string
-	ID       string
-}
-
-type CachedMusicTrackCreator interface {
-	CacheMusicTracks(ctx context.Context, source string, tracks []MusicTrack) error
-}
-
-type CachedMusicTrackFetcherCreator interface {
-	CachedMusicTrackFetcher
-	CachedMusicTrackCreator
-}
-
-type CachedSearchTrackFetcherCreator interface {
-	CachedSearchFetcherCreator
-	CachedMusicTrackCreator
-}
-
-type MusicSearchCache interface {
-	CachedSearchTrackFetcherCreator
-	ProviderQuotaResetFetcherCreator
 }
 
 type ProviderQuotaResetFetcher interface {

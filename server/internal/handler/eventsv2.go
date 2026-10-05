@@ -171,7 +171,7 @@ func RoomEventsV2(
 		flusher.Flush()
 
 		if replay.RequiresSnapshot {
-			room, err := state.GetRoom(ctx, roomID, userID)
+			room, err := state.GetRoomV2(ctx, roomID, userID)
 			if err != nil {
 				log.Printf("error fetching room snapshot in RoomEventsV2: %v", err)
 				return
@@ -180,27 +180,31 @@ func RoomEventsV2(
 				log.Printf("error fetching room snapshot in RoomEventsV2: room is empty")
 				return
 			}
-			roomData, err := json.Marshal(room)
+			roomDataLegacy := room.ToRoom()
+
+			roomData, err := json.Marshal(roomDataLegacy)
 			if err != nil {
 				log.Printf("error marshaling room snapshot in RoomEventsV2: %v", err)
 				return
 			}
 
-			songs, err := state.GetSongs(ctx, roomID)
+			items, err := state.GetPlaylistItems(ctx, roomID)
 			if err != nil {
 				log.Printf("error fetching songs snapshot in RoomEventsV2: %v", err)
 				return
 			}
-			if songs == nil {
-				songs = []vibe.Song{}
+			songs := make([]vibe.Song, len(items))
+			for index, item := range items {
+				songs[index] = *item.ToSong()
 			}
+
 			songsData, err := json.Marshal(songs)
 			if err != nil {
 				log.Printf("error marshaling songs snapshot in RoomEventsV2: %v", err)
 				return
 			}
 
-			playback, err := state.GetPlaybackState(ctx, roomID)
+			playback, err := state.GetPlaybackStateV2(ctx, roomID)
 			if err != nil {
 				log.Printf("error fetching playback snapshot in RoomEventsV2: %v", err)
 				return
@@ -214,7 +218,9 @@ func RoomEventsV2(
 				playback.UpdatedAt = time.Now()
 			}
 			playback.ServerTimeMs = int(time.Now().UnixMilli())
-			playbackData, err := json.Marshal(playback)
+			playbackDataLegacy := playback.ToPlaybackState()
+
+			playbackData, err := json.Marshal(playbackDataLegacy)
 			if err != nil {
 				log.Printf("error marshaling playback snapshot in RoomEventsV2: %v", err)
 				return

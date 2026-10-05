@@ -32,14 +32,14 @@ import (
 // @Deprecated
 // @Description Deprecated: Use GET /api/v2/rooms/{id}/playlist-items for the playlist-item contract. This endpoint retains its existing payloads.
 func GetSongs(
-	db vibe.SongsFetcher,
+	db vibe.PlaylistItemsFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		vars := mux.Vars(r)
 		roomID := vars["id"]
 
-		songs, err := db.GetSongs(ctx, roomID)
+		items, err := db.GetPlaylistItems(ctx, roomID)
 		if err != nil {
 			handleError(
 				w,
@@ -48,6 +48,11 @@ func GetSongs(
 				true,
 			)
 			return
+		}
+
+		songs := make([]vibe.Song, len(items))
+		for index, item := range items {
+			songs[index] = *item.ToSong()
 		}
 
 		body, err := json.Marshal(songs)
@@ -89,8 +94,8 @@ func GetSongs(
 // @Deprecated
 // @Description Deprecated: Use POST /api/v2/rooms/{id}/playlist-items for the playlist-item contract. This endpoint retains its existing payloads.
 func AddSong(
-	db vibe.SongQueueAdder,
-	events vibe.CachedMusicTrackRoomEventNotifier,
+	db vibe.PlaylistItemQueueAdder,
+	events vibe.ProviderItemRoomNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -138,7 +143,7 @@ func AddSong(
 			return
 		}
 
-		room, err := db.GetRoom(ctx, roomID, session.UserID)
+		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
 			handleError(
 				w,
@@ -168,7 +173,7 @@ func AddSong(
 			return
 		}
 
-		if room.Settings.OnlyAdminAddSongs && !room.IsAdmin {
+		if room.Settings.OnlyAdminAddPlaylistItems && !room.IsAdmin {
 			handleError(
 				w,
 				client.ErrorCodeWrapper{
@@ -255,12 +260,12 @@ func AddSong(
 
 		artist := req.Artist
 		playbackRestriction := ""
-		cachedTrack, err := events.GetCachedMusicTrack(ctx, req.SourceType, req.SourceID)
+		cachedItem, err := events.GetCachedProviderItem(ctx, req.SourceType, req.SourceID)
 		if err != nil {
 			log.Printf("error getting cached provider track metadata: %v", err)
 		}
 
-		if req.SourceType == vibe.SourceTypeYouTube && (err != nil || cachedTrack.IsEmpty()) {
+		if req.SourceType == vibe.SourceTypeYouTube && (err != nil || cachedItem.IsEmpty()) {
 			handleError(w, client.ErrorCodeWrapper{
 				Err: fmt.Errorf("error adding youtube track: verified metadata is unavailable"),
 				ResponseBody: client.ErrorCodeResponseBody{
@@ -274,8 +279,8 @@ func AddSong(
 			return
 		}
 
-		if err == nil && !cachedTrack.IsEmpty() {
-			if vibe.IsLiveVideo(req.SourceType, cachedTrack.DurationSeconds) {
+		if err == nil && !cachedItem.IsEmpty() {
+			if vibe.IsLiveVideo(req.SourceType, cachedItem.DurationSeconds) {
 				handleError(
 					w,
 					client.ErrorCodeWrapper{
@@ -294,16 +299,16 @@ func AddSong(
 				return
 			}
 
-			playbackRestriction = cachedTrack.PlaybackRestriction
+			playbackRestriction = cachedItem.PlaybackRestriction
 			if req.SourceType == vibe.SourceTypeYouTube {
-				req.Title = cachedTrack.Title
-				artist = cachedTrack.ChannelTitle
-				req.Thumbnail = cachedTrack.ThumbnailURL
-				req.Duration = cachedTrack.DurationSeconds
+				req.Title = cachedItem.Title
+				artist = cachedItem.Publisher
+				req.Thumbnail = cachedItem.ThumbnailURL
+				req.Duration = cachedItem.DurationSeconds
 			}
 		}
 
-		song := &vibe.Song{
+		item := &vibe.PlaylistItem{
 			ID:                  uuid.New().String(),
 			RoomID:              roomID,
 			SourceType:          req.SourceType,
@@ -311,14 +316,14 @@ func AddSong(
 			ProviderURL:         providerURL,
 			PlaybackRestriction: playbackRestriction,
 			Title:               req.Title,
-			Artist:              artist,
+			Publisher:           artist,
 			ThumbnailURL:        req.Thumbnail,
 			Duration:            req.Duration,
 			AddedBySessionID:    session.UserID,
 			AddedAt:             time.Now(),
 		}
 
-		result, err := db.AddSong(ctx, song)
+		result, err := db.AddPlaylistItem(ctx, item)
 		if err != nil {
 			handleError(
 				w,
@@ -329,7 +334,7 @@ func AddSong(
 			return
 		}
 
-		songs, err := db.GetSongs(ctx, roomID)
+		items, err := db.GetPlaylistItems(ctx, roomID)
 		if err != nil {
 			handleError(
 				w,
@@ -338,6 +343,11 @@ func AddSong(
 				true,
 			)
 			return
+		}
+
+		songs := make([]vibe.Song, len(items))
+		for index, item := range items {
+			songs[index] = *item.ToSong()
 		}
 
 		songsPayload, err := json.Marshal(songs)
@@ -354,7 +364,7 @@ func AddSong(
 		var v2Event *vibe.RoomEventV2Payload
 		if result.Outcome == vibe.AddSongOutcomeAdded || result.Outcome == vibe.AddSongOutcomeDuplicateVoted {
 			for position, song := range songs {
-				if song.ID != result.Song.ID {
+				if song.ID != result.PlaylistItem.ID {
 					continue
 				}
 
@@ -377,7 +387,7 @@ func AddSong(
 			}
 
 			if v2Event == nil {
-				v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: result.Song.ID})
+				v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: result.PlaylistItem.ID})
 				if marshalErr != nil {
 					handleError(
 						w,
@@ -403,16 +413,16 @@ func AddSong(
 		}
 
 		if result.Outcome == vibe.AddSongOutcomeAdded && len(songs) == 1 {
-			playbackState := &vibe.PlaybackState{
-				RoomID:       roomID,
-				CurrentSong:  &result.Song,
-				IsPlaying:    true,
-				PositionMs:   0,
-				UpdatedAt:    time.Now(),
-				ServerTimeMs: int(time.Now().UnixMilli()),
+			playbackState := &vibe.PlaybackStateV2{
+				RoomID:              roomID,
+				CurrentPlaylistItem: &result.PlaylistItem,
+				IsPlaying:           true,
+				PositionMs:          0,
+				UpdatedAt:           time.Now(),
+				ServerTimeMs:        int(time.Now().UnixMilli()),
 			}
 
-			err := db.UpsertPlaybackState(ctx, playbackState)
+			err := db.UpsertPlaybackStateV2(ctx, playbackState)
 			if err != nil {
 				handleError(
 					w,
@@ -423,7 +433,9 @@ func AddSong(
 				return
 			}
 
-			playbackPayload, err := json.Marshal(playbackState)
+			legacyPlayback := playbackState.ToPlaybackState()
+
+			playbackPayload, err := json.Marshal(legacyPlayback)
 			if err != nil {
 				handleError(w,
 					fmt.Errorf("error marshaling playback payload in add song: %w", err),
@@ -444,7 +456,9 @@ func AddSong(
 
 		}
 
-		body, err := json.Marshal(result)
+		legacy := result.ToAddSongResult()
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(
 				w,
@@ -486,7 +500,7 @@ func AddSong(
 			Name:      profile.Name,
 			IsAdmin:   room.IsAdmin,
 			Kind:      kind,
-			Text:      result.Song.Title,
+			Text:      result.PlaylistItem.Title,
 			CreatedAt: time.Now().UnixMilli(),
 		}
 
@@ -524,7 +538,7 @@ func AddSong(
 // @Deprecated
 // @Description Deprecated: Use DELETE /api/v2/rooms/{id}/playlist-items/{playlistItemId} for the playlist-item contract. This endpoint retains its existing payloads.
 func RemoveSong(
-	db vibe.SongQueueRemover,
+	db vibe.PlaylistItemQueueRemover,
 	notifier vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -544,7 +558,7 @@ func RemoveSong(
 			return
 		}
 
-		room, err := db.GetRoom(ctx, roomID, session.UserID)
+		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
 			handleError(
 				w,
@@ -575,7 +589,7 @@ func RemoveSong(
 			return
 		}
 
-		removedSong, err := db.GetSong(ctx, roomID, songID)
+		removedSong, err := db.GetPlaylistItem(ctx, roomID, songID)
 		if err != nil {
 			handleError(w, fmt.Errorf("error finding song to remove: %w", err), http.StatusInternalServerError, true)
 			return
@@ -586,7 +600,7 @@ func RemoveSong(
 			return
 		}
 
-		err = db.RemoveSong(ctx, roomID, songID)
+		err = db.RemovePlaylistItem(ctx, roomID, songID)
 		if err != nil {
 			handleError(
 				w,
@@ -597,7 +611,7 @@ func RemoveSong(
 			return
 		}
 
-		songs, err := db.GetSongs(ctx, roomID)
+		items, err := db.GetPlaylistItems(ctx, roomID)
 		if err != nil {
 			handleError(
 				w,
@@ -606,6 +620,11 @@ func RemoveSong(
 				true,
 			)
 			return
+		}
+
+		songs := make([]vibe.Song, len(items))
+		for index, item := range items {
+			songs[index] = *item.ToSong()
 		}
 
 		songsPayload, err := json.Marshal(songs)
@@ -693,7 +712,7 @@ func RemoveSong(
 // @Deprecated
 // @Description Deprecated: Use POST /api/v2/rooms/{id}/playlist-items/{playlistItemId} for the playlist-item contract. This endpoint retains its existing payloads.
 func VoteSong(
-	db vibe.SongQueueVoter,
+	db vibe.PlaylistItemQueueVoter,
 	notifier vibe.RoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -715,7 +734,7 @@ func VoteSong(
 
 		userID := session.UserID
 
-		err := db.VoteSong(ctx, roomID, songID, userID)
+		err := db.VotePlaylistItem(ctx, roomID, songID, userID)
 		if err != nil {
 			var alreadyVotedError internalerror.ErrAlreadyVoted
 			if errors.As(err, &alreadyVotedError) {
@@ -746,7 +765,7 @@ func VoteSong(
 			return
 		}
 
-		songs, err := db.GetSongs(ctx, roomID)
+		items, err := db.GetPlaylistItems(ctx, roomID)
 		if err != nil {
 			handleError(
 				w,
@@ -755,6 +774,11 @@ func VoteSong(
 				true,
 			)
 			return
+		}
+
+		songs := make([]vibe.Song, len(items))
+		for index, item := range items {
+			songs[index] = *item.ToSong()
 		}
 
 		songsPayload, err := json.Marshal(songs)
@@ -821,7 +845,7 @@ func VoteSong(
 
 		w.WriteHeader(http.StatusNoContent)
 
-		chatRoom, err := db.GetRoom(ctx, roomID, userID)
+		chatRoom, err := db.GetRoomV2(ctx, roomID, userID)
 		if err != nil {
 			log.Printf("error fetching VoteSong chat room: %v", err)
 			return

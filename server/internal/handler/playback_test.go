@@ -14,34 +14,34 @@ import (
 )
 
 type playbackStorageStub struct {
-	playback   *vibe.PlaybackState
-	room       *vibe.Room
+	playback   *vibe.PlaybackStateV2
+	room       *vibe.RoomV2
 	updateCall bool
 }
 
-func (s *playbackStorageStub) GetPlaybackState(
+func (s *playbackStorageStub) GetPlaybackStateV2(
 	_ context.Context,
 	_ string,
-) (*vibe.PlaybackState, error) {
+) (*vibe.PlaybackStateV2, error) {
 	state := *s.playback
 	return &state, nil
 }
 
-func (s *playbackStorageStub) GetRoom(
+func (s *playbackStorageStub) GetRoomV2(
 	_ context.Context,
 	_ string,
 	_ string,
-) (*vibe.Room, error) {
+) (*vibe.RoomV2, error) {
 	return s.room, nil
 }
 
-func (s *playbackStorageStub) UpdatePlayback(
+func (s *playbackStorageStub) UpdatePlaybackV2(
 	_ context.Context,
 	_ string,
 	_ string,
 	_ string,
 	_ int,
-) (*vibe.PlaybackState, error) {
+) (*vibe.PlaybackStateV2, error) {
 	s.updateCall = true
 	return s.playback, nil
 }
@@ -101,13 +101,13 @@ func TestUpdatePlaybackStateTargetsRemoteMachine(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			storage := &playbackStorageStub{
-				playback: &vibe.PlaybackState{
-					RoomID:      "electro",
-					CurrentSong: &vibe.Song{ID: "song-1"},
-					IsPlaying:   tt.initialIsPlaying,
-					PositionMs:  1200,
+				playback: &vibe.PlaybackStateV2{
+					RoomID:              "electro",
+					CurrentPlaylistItem: &vibe.PlaylistItem{ID: "song-1"},
+					IsPlaying:           tt.initialIsPlaying,
+					PositionMs:          1200,
 				},
-				room: &vibe.Room{ID: "electro", Mode: vibe.RoomModeServer},
+				room: &vibe.RoomV2{ID: "electro", Mode: vibe.RoomModeServer},
 			}
 			notifier := &playbackNotifierStub{}
 			request := httptest.NewRequest(

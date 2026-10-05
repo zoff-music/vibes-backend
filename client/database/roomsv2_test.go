@@ -102,14 +102,14 @@ func TestSearchPublicRooms(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result, searchErr := client.SearchPublicRooms(t.Context(), tt.search)
+			result, searchErr := client.SearchPublicRoomsV3(t.Context(), tt.search)
 			if searchErr != nil {
 				t.Fatalf("search rooms: %v", searchErr)
 			}
 			ids := []string{}
 			for _, room := range result.Rooms {
 				ids = append(ids, room.ID)
-				if room.ID == "a" && room.SongCount != 1 {
+				if room.ID == "a" && room.PlaylistItemCount != 1 {
 					t.Fatalf("disabled source counted: %#v", room)
 				}
 				if room.ID == "f" && room.ListenerCount != 1 {

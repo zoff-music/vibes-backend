@@ -15,17 +15,21 @@ import (
 
 type chatSkipStub struct {
 	messageStorageStub
-	result vibe.SkipSongResult
+	result vibe.SkipPlaylistItemResult
 	fail   bool
 }
 
-func (s *chatSkipStub) GetPlaybackState(context.Context, string) (*vibe.PlaybackState, error) {
-	return &vibe.PlaybackState{CurrentSong: &vibe.Song{ID: "old", Title: "Song title"}}, nil
+func (s *chatSkipStub) GetRoomV2(context.Context, string, string) (*vibe.RoomV2, error) {
+	return s.room.ToRoomV2(), nil
 }
-func (s *chatSkipStub) GetSongs(context.Context, string) ([]vibe.Song, error) {
-	return []vibe.Song{}, nil
+
+func (s *chatSkipStub) GetPlaybackStateV2(context.Context, string) (*vibe.PlaybackStateV2, error) {
+	return &vibe.PlaybackStateV2{CurrentPlaylistItem: &vibe.PlaylistItem{ID: "old", Title: "Song title"}}, nil
 }
-func (s *chatSkipStub) SkipSong(context.Context, string, string) (*vibe.SkipSongResult, error) {
+func (s *chatSkipStub) GetPlaylistItems(context.Context, string) ([]vibe.PlaylistItem, error) {
+	return []vibe.PlaylistItem{}, nil
+}
+func (s *chatSkipStub) SkipPlaylistItem(context.Context, string, string) (*vibe.SkipPlaylistItemResult, error) {
 	if s.fail {
 		return nil, fmt.Errorf("skip unavailable")
 	}
@@ -41,20 +45,20 @@ func (s *chatSkipEvents) NotifyRoomUpdates(context.Context, string, []vibe.RoomE
 func TestSkipChatActivity(t *testing.T) {
 	tests := []struct {
 		name   string
-		result vibe.SkipSongResult
+		result vibe.SkipPlaylistItemResult
 		kind   string
 		fail   bool
 	}{
-		{name: "completed", result: vibe.SkipSongResult{Skipped: true, PreviousSongID: "old"}, kind: "skipped"},
-		{name: "vote", result: vibe.SkipSongResult{Voted: true}, kind: "skipvoted"},
-		{name: "threshold reached", result: vibe.SkipSongResult{Skipped: true, Voted: true, PreviousSongID: "old"}, kind: "skipped"},
-		{name: "duplicate vote", result: vibe.SkipSongResult{AlreadyVoted: true}},
+		{name: "completed", result: vibe.SkipPlaylistItemResult{Skipped: true, PreviousPlaylistItemID: "old"}, kind: "skipped"},
+		{name: "vote", result: vibe.SkipPlaylistItemResult{Voted: true}, kind: "skipvoted"},
+		{name: "threshold reached", result: vibe.SkipPlaylistItemResult{Skipped: true, Voted: true, PreviousPlaylistItemID: "old"}, kind: "skipped"},
+		{name: "duplicate vote", result: vibe.SkipPlaylistItemResult{AlreadyVoted: true}},
 		{name: "nothing playing"},
 		{name: "failed", fail: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.result.Playback = &vibe.PlaybackState{}
+			tt.result.Playback = &vibe.PlaybackStateV2{}
 			db := &chatSkipStub{messageStorageStub: messageStorageStub{room: vibe.Room{ID: "electro", IsAdmin: true}}, result: tt.result, fail: tt.fail}
 			events := &chatSkipEvents{}
 			request := httptest.NewRequest(http.MethodPost, "/api/v1/rooms/electro/skips", nil)

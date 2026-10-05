@@ -136,13 +136,6 @@ type GeneratedPlaylistItemAdder interface {
 	AddGeneratedPlaylistItem(ctx context.Context, item *PlaylistItem) (*PlaylistItem, error)
 }
 
-type GeneratedRoomCreator interface {
-	RoomNameSuggester
-	RoomCreator
-	RoomGenerationCreator
-	RoomGenerationAvailabilityChecker
-}
-
 type RoomGenerationCreator interface {
 	CreateRoomGeneration(ctx context.Context, roomID string, prompt string) error
 }

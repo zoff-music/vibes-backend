@@ -62,19 +62,6 @@ type AdminAuthResult struct {
 	IsFirstTimeSetup bool
 }
 
-// AdminSessionCreator authenticates an admin and fetches its room.
-type AdminSessionCreator interface {
-	SessionProfileFetcherCreator
-	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
-	AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (*AdminAuthResult, error)
-}
-
-// RoomAdminSessionDeleter removes room-scoped admin access and fetches the room.
-type RoomAdminSessionDeleter interface {
-	ClearRoomAdmin(ctx context.Context, roomID string, userID string) error
-	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
-}
-
 const minimumSessionNameLength = 1
 
 const SessionNameMaxLength = 30
