@@ -13,6 +13,8 @@ import (
 )
 
 // MusicTrack represents a generic music track
+//
+// Deprecated: Use ProviderItem for new code. Retained for legacy API compatibility.
 type MusicTrack struct {
 	ID                  string `json:"id"`
 	Source              string `json:"source"`
@@ -35,6 +37,7 @@ func IsLiveVideo(source string, duration int) bool {
 	return source == SourceTypeYouTube && duration <= 0
 }
 
+// Deprecated: Use CachedProviderSearch for new code. Retained for legacy API compatibility.
 type CachedSearch struct {
 	Query  string       `json:"query"`
 	Tracks []MusicTrack `json:"tracks"`
@@ -133,13 +136,13 @@ func isSearchNoise(value string) bool {
 	}
 }
 
-func (t GeneratedTrack) ToMusicTrack() (*MusicTrack, error) {
-	return &MusicTrack{
+func (t GeneratedPlaylistItem) ToProviderItem() (*ProviderItem, error) {
+	return &ProviderItem{
 		ID:                  t.YouTubeID,
 		Source:              SourceTypeYouTube,
 		ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", t.YouTubeID),
 		Title:               t.Title,
-		ChannelTitle:        t.Artist,
+		Publisher:           t.Publisher,
 		ThumbnailURL:        t.ThumbnailURL,
 		Duration:            durationISO8601(t.Duration),
 		DurationSeconds:     t.Duration,
@@ -149,9 +152,9 @@ func (t GeneratedTrack) ToMusicTrack() (*MusicTrack, error) {
 	}, nil
 }
 
-func (t MusicTrack) ToGeneratedTrack(query string) (*GeneratedTrack, error) {
-	return &GeneratedTrack{
-		Artist:              t.ChannelTitle,
+func (t ProviderItem) ToGeneratedPlaylistItem(query string) (*GeneratedPlaylistItem, error) {
+	return &GeneratedPlaylistItem{
+		Publisher:           t.Publisher,
 		Title:               t.Title,
 		YouTubeID:           t.ID,
 		ThumbnailURL:        t.ThumbnailURL,

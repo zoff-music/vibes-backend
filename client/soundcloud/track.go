@@ -15,21 +15,21 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-// GetTrack fetches details for a specific track ID
-func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetTrack")
+// GetProviderItem fetches details for a specific track ID
+func (c *Client) GetProviderItem(ctx context.Context, id string) (*vibe.ProviderItem, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetProviderItem")
 	defer span.End()
 
 	if !c.Enabled {
 		return nil, fmt.Errorf(
-			"error validating soundcloud client in GetTrack: client is not enabled",
+			"error validating soundcloud client in GetProviderItem: client is not enabled",
 		)
 	}
 
 	// Ensure valid access token
 	err := c.EnsureToken(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error ensuring token in GetTrack: %w", err)
+		return nil, fmt.Errorf("error ensuring token in GetProviderItem: %w", err)
 	}
 
 	reqData := client.HTTPRequestData{
@@ -46,9 +46,9 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 		var statusCodeError client.HTTPStatusCodeError
 		if errors.As(err, &statusCodeError) {
 			if statusCodeError.StatusCode == http.StatusNotFound {
-				return nil, internalerror.ErrMusicTrackNotFound{
+				return nil, internalerror.ErrProviderItemNotFound{
 					Err: fmt.Errorf(
-						"error getting soundcloud track in GetTrack: track %s not found",
+						"error getting soundcloud track in GetProviderItem: track %s not found",
 						id,
 					),
 				}
@@ -56,7 +56,7 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 			if statusCodeError.StatusCode == http.StatusTooManyRequests {
 				return nil, internalerror.ErrProviderQuotaExceeded{
 					Err: fmt.Errorf(
-						"error requesting soundcloud track in GetTrack: %w",
+						"error requesting soundcloud track in GetProviderItem: %w",
 						err,
 					),
 					Provider: string(vibe.SourceTypeSoundCloud),
@@ -65,7 +65,7 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 		}
 
 		return nil, fmt.Errorf(
-			"error requesting soundcloud track in GetTrack: %w",
+			"error requesting soundcloud track in GetProviderItem: %w",
 			err,
 		)
 	}
@@ -74,42 +74,42 @@ func (c *Client) GetTrack(ctx context.Context, id string) (*vibe.MusicTrack, err
 	err = json.Unmarshal(resp, &res)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error decoding soundcloud response in GetTrack: %w",
+			"error decoding soundcloud response in GetProviderItem: %w",
 			err,
 		)
 	}
 	if res.ID == 0 || res.Title == "" || res.PermalinkURL == "" {
-		return nil, internalerror.ErrMusicTrackNotFound{
+		return nil, internalerror.ErrProviderItemNotFound{
 			Err: fmt.Errorf(
-				"error getting soundcloud track in GetTrack: response did not contain a track",
+				"error getting soundcloud track in GetProviderItem: response did not contain a track",
 			),
 		}
 	}
 
-	track, err := res.toMusicTrack()
+	track, err := res.toProviderItem()
 	if err != nil {
-		return nil, fmt.Errorf("error converting soundcloud track in GetTrack: %w", err)
+		return nil, fmt.Errorf("error converting soundcloud track in GetProviderItem: %w", err)
 	}
 
 	return track, nil
 }
 
-func (c *Client) ResolveTrack(
+func (c *Client) ResolveProviderItem(
 	ctx context.Context,
 	providerURL string,
-) (*vibe.MusicTrack, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ResolveTrack")
+) (*vibe.ProviderItem, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ResolveProviderItem")
 	defer span.End()
 
 	if !c.Enabled {
 		return nil, fmt.Errorf(
-			"error validating soundcloud client in ResolveTrack: client is not enabled",
+			"error validating soundcloud client in ResolveProviderItem: client is not enabled",
 		)
 	}
 
 	err := c.EnsureToken(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("error ensuring token in ResolveTrack: %w", err)
+		return nil, fmt.Errorf("error ensuring token in ResolveProviderItem: %w", err)
 	}
 
 	params := url.Values{}
@@ -129,16 +129,16 @@ func (c *Client) ResolveTrack(
 		var statusCodeError client.HTTPStatusCodeError
 		if errors.As(err, &statusCodeError) {
 			if statusCodeError.StatusCode == http.StatusNotFound {
-				return nil, internalerror.ErrMusicTrackNotFound{
+				return nil, internalerror.ErrProviderItemNotFound{
 					Err: fmt.Errorf(
-						"error resolving soundcloud track in ResolveTrack: track not found",
+						"error resolving soundcloud track in ResolveProviderItem: track not found",
 					),
 				}
 			}
 			if statusCodeError.StatusCode == http.StatusTooManyRequests {
 				return nil, internalerror.ErrProviderQuotaExceeded{
 					Err: fmt.Errorf(
-						"error requesting soundcloud track in ResolveTrack: %w",
+						"error requesting soundcloud track in ResolveProviderItem: %w",
 						err,
 					),
 					Provider: string(vibe.SourceTypeSoundCloud),
@@ -147,7 +147,7 @@ func (c *Client) ResolveTrack(
 		}
 
 		return nil, fmt.Errorf(
-			"error requesting soundcloud track in ResolveTrack: %w",
+			"error requesting soundcloud track in ResolveProviderItem: %w",
 			err,
 		)
 	}
@@ -156,21 +156,21 @@ func (c *Client) ResolveTrack(
 	err = json.Unmarshal(resp, &res)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error decoding soundcloud response in ResolveTrack: %w",
+			"error decoding soundcloud response in ResolveProviderItem: %w",
 			err,
 		)
 	}
 	if res.ID == 0 || res.Title == "" || res.PermalinkURL == "" {
-		return nil, internalerror.ErrMusicTrackNotFound{
+		return nil, internalerror.ErrProviderItemNotFound{
 			Err: fmt.Errorf(
-				"error resolving soundcloud track in ResolveTrack: URL did not resolve to a track",
+				"error resolving soundcloud track in ResolveProviderItem: URL did not resolve to a track",
 			),
 		}
 	}
 
-	track, err := res.toMusicTrack()
+	track, err := res.toProviderItem()
 	if err != nil {
-		return nil, fmt.Errorf("error converting soundcloud track in ResolveTrack: %w", err)
+		return nil, fmt.Errorf("error converting soundcloud track in ResolveProviderItem: %w", err)
 	}
 
 	return track, nil

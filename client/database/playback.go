@@ -12,68 +12,68 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-// prepareGetPlaybackStateStmt prepares the GetPlaybackStateStatement.
-func (c *Client) prepareGetPlaybackStateStmt() error {
+// prepareGetPlaybackStateV2Stmt prepares the GetPlaybackStateV2Statement.
+func (c *Client) prepareGetPlaybackStateV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT room_id, current_song_id, is_playing, position_ms, updated_at
+		SELECT room_id, current_playlist_item_id, is_playing, position_ms, updated_at
 		FROM playback_state
 		WHERE room_id = $1
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing GetPlaybackStateStatement: %w", err)
+		return fmt.Errorf("error preparing GetPlaybackStateV2Statement: %w", err)
 	}
 
-	c.GetPlaybackStateStatement = stmt
+	c.GetPlaybackStateV2Statement = stmt
 
 	return nil
 }
 
-// getPlaybackState fetches the playback state for a room (internal).
-func (c *Client) getPlaybackState(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "getPlaybackState")
+// getPlaybackStateV2 fetches the playback state for a room (internal).
+func (c *Client) getPlaybackStateV2(ctx context.Context, roomID string) (*vibe.PlaybackStateV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "getPlaybackStateV2")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.GetPlaybackStateStatement.QueryRowContext(cctx, roomID)
+	r := c.GetPlaybackStateV2Statement.QueryRowContext(cctx, roomID)
 
 	var row playbackStateRow
 	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return &vibe.PlaybackState{
-				RoomID:       roomID,
-				CurrentSong:  nil,
-				IsPlaying:    false,
-				PositionMs:   0,
-				UpdatedAt:    time.Now(),
-				ServerTimeMs: int(time.Now().UnixMilli()),
+			return &vibe.PlaybackStateV2{
+				RoomID:              roomID,
+				CurrentPlaylistItem: nil,
+				IsPlaying:           false,
+				PositionMs:          0,
+				UpdatedAt:           time.Now(),
+				ServerTimeMs:        int(time.Now().UnixMilli()),
 			}, nil
 		}
 
 		return nil, fmt.Errorf("error fetching playback state: %w", err)
 	}
 
-	state, err := row.toPlaybackState()
+	state, err := row.toPlaybackStateV2()
 	if err != nil {
 		return nil, fmt.Errorf("error converting playback state row: %w", err)
 	}
 
-	if !row.CurrentSongID.Valid || row.CurrentSongID.String == "" {
+	if !row.CurrentPlaylistItemID.Valid || row.CurrentPlaylistItemID.String == "" {
 		return state, nil
 	}
 
-	song, err := c.GetSong(ctx, state.RoomID, row.CurrentSongID.String)
+	playlistItem, err := c.GetPlaylistItem(ctx, state.RoomID, row.CurrentPlaylistItemID.String)
 	if err != nil {
-		return nil, fmt.Errorf("error get current song %s: %w", row.CurrentSongID.String, err)
+		return nil, fmt.Errorf("error get current playlistItem %s: %w", row.CurrentPlaylistItemID.String, err)
 	}
 
-	if song.IsEmpty() {
+	if playlistItem.IsEmpty() {
 		return state, nil
 	}
 
-	state.CurrentSong = song
+	state.CurrentPlaylistItem = playlistItem
 	if !state.IsPlaying {
 		return state, nil
 	}
@@ -81,8 +81,8 @@ func (c *Client) getPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 	elapsed := time.Since(state.UpdatedAt).Milliseconds()
 	currentPosition := state.PositionMs + int(elapsed)
 
-	if state.CurrentSong.Duration > 0 {
-		duration := state.CurrentSong.Duration * 1000
+	if state.CurrentPlaylistItem.Duration > 0 {
+		duration := state.CurrentPlaylistItem.Duration * 1000
 		if currentPosition > duration {
 			currentPosition = duration
 		}
@@ -97,25 +97,25 @@ func (c *Client) getPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 	return state, nil
 }
 
-// GetPlaybackState fetches the playback state for a room.
+// GetPlaybackStateV2 fetches the playback state for a room.
 // It will automatically attempt to start playback if the room is idle.
-func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetPlaybackState")
+func (c *Client) GetPlaybackStateV2(ctx context.Context, roomID string) (*vibe.PlaybackStateV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetPlaybackStateV2")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	state, err := c.getPlaybackState(cctx, roomID)
+	state, err := c.getPlaybackStateV2(cctx, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("error get playback state: %w", err)
 	}
 
-	if state.CurrentSong != nil {
+	if state.CurrentPlaylistItem != nil {
 		return state, nil
 	}
 
-	newState, err := c.StartPlaybackIfIdle(ctx, roomID)
+	newState, err := c.StartPlaybackIfIdleV2(ctx, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("error auto-start playback: %w", err)
 	}
@@ -124,17 +124,17 @@ func (c *Client) GetPlaybackState(ctx context.Context, roomID string) (*vibe.Pla
 }
 
 type playbackStateRow struct {
-	RoomID        sql.NullString
-	CurrentSongID sql.NullString
-	IsPlaying     sql.NullBool
-	PositionMs    sql.NullInt64
-	UpdatedAt     sql.NullTime
+	RoomID                sql.NullString
+	CurrentPlaylistItemID sql.NullString
+	IsPlaying             sql.NullBool
+	PositionMs            sql.NullInt64
+	UpdatedAt             sql.NullTime
 }
 
 func (r *playbackStateRow) scan(row *sql.Row) error {
 	err := row.Scan(
 		&r.RoomID,
-		&r.CurrentSongID,
+		&r.CurrentPlaylistItemID,
 		&r.IsPlaying,
 		&r.PositionMs,
 		&r.UpdatedAt,
@@ -146,53 +146,53 @@ func (r *playbackStateRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (r *playbackStateRow) toPlaybackState() (*vibe.PlaybackState, error) {
-	return &vibe.PlaybackState{
-		RoomID:       r.RoomID.String,
-		CurrentSong:  nil,
-		IsPlaying:    r.IsPlaying.Bool,
-		PositionMs:   int(r.PositionMs.Int64),
-		UpdatedAt:    r.UpdatedAt.Time,
-		ServerTimeMs: int(time.Now().UnixMilli()),
+func (r *playbackStateRow) toPlaybackStateV2() (*vibe.PlaybackStateV2, error) {
+	return &vibe.PlaybackStateV2{
+		RoomID:              r.RoomID.String,
+		CurrentPlaylistItem: nil,
+		IsPlaying:           r.IsPlaying.Bool,
+		PositionMs:          int(r.PositionMs.Int64),
+		UpdatedAt:           r.UpdatedAt.Time,
+		ServerTimeMs:        int(time.Now().UnixMilli()),
 	}, nil
 }
 
-type playbackSongRow struct {
-	PlaybackRoomID        sql.NullString
-	PlaybackCurrentSongID sql.NullString
-	PlaybackIsPlaying     sql.NullBool
-	PlaybackPositionMs    sql.NullInt64
-	PlaybackUpdatedAt     sql.NullTime
-	Song                  songRow
+type playbackPlaylistItemRow struct {
+	PlaybackRoomID                sql.NullString
+	PlaybackCurrentPlaylistItemID sql.NullString
+	PlaybackIsPlaying             sql.NullBool
+	PlaybackPositionMs            sql.NullInt64
+	PlaybackUpdatedAt             sql.NullTime
+	PlaylistItem                  playlistItemRow
 }
 
 type playbackAdvanceRow struct {
-	Playback       playbackSongRow
-	PreviousSongID sql.NullString
+	Playback               playbackPlaylistItemRow
+	PreviousPlaylistItemID sql.NullString
 }
 
 func (r *playbackAdvanceRow) scan(row *sql.Row) error {
 	err := row.Scan(
 		&r.Playback.PlaybackRoomID,
-		&r.Playback.PlaybackCurrentSongID,
+		&r.Playback.PlaybackCurrentPlaylistItemID,
 		&r.Playback.PlaybackIsPlaying,
 		&r.Playback.PlaybackPositionMs,
 		&r.Playback.PlaybackUpdatedAt,
-		&r.Playback.Song.ID,
-		&r.Playback.Song.RoomID,
-		&r.Playback.Song.SourceType,
-		&r.Playback.Song.SourceID,
-		&r.Playback.Song.ProviderURL,
-		&r.Playback.Song.PlaybackRestriction,
-		&r.Playback.Song.Title,
-		&r.Playback.Song.Artist,
-		&r.Playback.Song.ThumbnailURL,
-		&r.Playback.Song.Duration,
-		&r.Playback.Song.AddedBySessionID,
-		&r.Playback.Song.AddedBy,
-		&r.Playback.Song.AddedAt,
-		&r.Playback.Song.VoteCount,
-		&r.PreviousSongID,
+		&r.Playback.PlaylistItem.ID,
+		&r.Playback.PlaylistItem.RoomID,
+		&r.Playback.PlaylistItem.SourceType,
+		&r.Playback.PlaylistItem.SourceID,
+		&r.Playback.PlaylistItem.ProviderURL,
+		&r.Playback.PlaylistItem.PlaybackRestriction,
+		&r.Playback.PlaylistItem.Title,
+		&r.Playback.PlaylistItem.Publisher,
+		&r.Playback.PlaylistItem.ThumbnailURL,
+		&r.Playback.PlaylistItem.Duration,
+		&r.Playback.PlaylistItem.AddedBySessionID,
+		&r.Playback.PlaylistItem.AddedBy,
+		&r.Playback.PlaylistItem.AddedAt,
+		&r.Playback.PlaylistItem.VoteCount,
+		&r.PreviousPlaylistItemID,
 	)
 	if err != nil {
 		return fmt.Errorf("error scanning playback advance row: %w", err)
@@ -201,69 +201,69 @@ func (r *playbackAdvanceRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (r *playbackSongRow) scan(row *sql.Row) error {
+func (r *playbackPlaylistItemRow) scan(row *sql.Row) error {
 	err := row.Scan(
 		&r.PlaybackRoomID,
-		&r.PlaybackCurrentSongID,
+		&r.PlaybackCurrentPlaylistItemID,
 		&r.PlaybackIsPlaying,
 		&r.PlaybackPositionMs,
 		&r.PlaybackUpdatedAt,
-		&r.Song.ID,
-		&r.Song.RoomID,
-		&r.Song.SourceType,
-		&r.Song.SourceID,
-		&r.Song.ProviderURL,
-		&r.Song.PlaybackRestriction,
-		&r.Song.Title,
-		&r.Song.Artist,
-		&r.Song.ThumbnailURL,
-		&r.Song.Duration,
-		&r.Song.AddedBySessionID,
-		&r.Song.AddedBy,
-		&r.Song.AddedAt,
-		&r.Song.VoteCount,
+		&r.PlaylistItem.ID,
+		&r.PlaylistItem.RoomID,
+		&r.PlaylistItem.SourceType,
+		&r.PlaylistItem.SourceID,
+		&r.PlaylistItem.ProviderURL,
+		&r.PlaylistItem.PlaybackRestriction,
+		&r.PlaylistItem.Title,
+		&r.PlaylistItem.Publisher,
+		&r.PlaylistItem.ThumbnailURL,
+		&r.PlaylistItem.Duration,
+		&r.PlaylistItem.AddedBySessionID,
+		&r.PlaylistItem.AddedBy,
+		&r.PlaylistItem.AddedAt,
+		&r.PlaylistItem.VoteCount,
 	)
 	if err != nil {
-		return fmt.Errorf("error scanning playback song row: %w", err)
+		return fmt.Errorf("error scanning playback playlistItem row: %w", err)
 	}
 
 	return nil
 }
 
-func (r *playbackSongRow) toPlaybackState() (*vibe.PlaybackState, error) {
-	state := &vibe.PlaybackState{
-		RoomID:       r.PlaybackRoomID.String,
-		CurrentSong:  nil,
-		IsPlaying:    r.PlaybackIsPlaying.Bool,
-		PositionMs:   int(r.PlaybackPositionMs.Int64),
-		UpdatedAt:    r.PlaybackUpdatedAt.Time,
-		ServerTimeMs: int(time.Now().UnixMilli()),
+func (r *playbackPlaylistItemRow) toPlaybackStateV2() (*vibe.PlaybackStateV2, error) {
+	state := &vibe.PlaybackStateV2{
+		RoomID:              r.PlaybackRoomID.String,
+		CurrentPlaylistItem: nil,
+		IsPlaying:           r.PlaybackIsPlaying.Bool,
+		PositionMs:          int(r.PlaybackPositionMs.Int64),
+		UpdatedAt:           r.PlaybackUpdatedAt.Time,
+		ServerTimeMs:        int(time.Now().UnixMilli()),
 	}
 
-	if !r.Song.ID.Valid || r.Song.ID.String == "" {
+	if !r.PlaylistItem.ID.Valid || r.PlaylistItem.ID.String == "" {
 		return state, nil
 	}
 
-	song, err := r.Song.toSong()
+	playlistItem, err := r.PlaylistItem.toPlaylistItem()
 	if err != nil {
-		return nil, fmt.Errorf("error mapping song: %w", err)
+		return nil, fmt.Errorf("error mapping playlistItem: %w", err)
 	}
 
-	state.CurrentSong = song
+	state.CurrentPlaylistItem = playlistItem
 
 	return state, nil
 }
 
-// prepareProcessNextExpiredPlaybackStmt prepares the ProcessNextExpiredPlaybackStatement.
-func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
+// prepareProcessNextExpiredPlaybackV2Stmt prepares the ProcessNextExpiredPlaybackV2Statement.
+func (c *Client) prepareProcessNextExpiredPlaybackV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH locked_playback_q AS (
 			SELECT
 				a.room_id,
-				a.current_song_id,
+				a.current_playlist_item_id,
 				COALESCE(d.remove_on_play, FALSE) AS remove_on_play
 			FROM playback_state a
-			JOIN songs b ON a.current_song_id = b.id
+			JOIN playlist_items b ON a.current_playlist_item_id = b.id
 			JOIN rooms c ON a.room_id = c.id
 			JOIN room_settings d ON d.room_id = c.id
 			WHERE a.is_playing
@@ -287,34 +287,34 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			DELETE FROM skip_votes a
 			USING locked_playback_q b
 			WHERE a.room_id = b.room_id
-			AND a.song_id = b.current_song_id
+			AND a.playlist_item_id = b.current_playlist_item_id
 			RETURNING 1
 		),
-		cleared_song_votes_q AS (
-			DELETE FROM song_votes a
+		cleared_playlist_item_votes_q AS (
+			DELETE FROM playlist_item_votes a
 			USING locked_playback_q b
 			WHERE a.room_id = b.room_id
-			AND a.song_id = b.current_song_id
+			AND a.playlist_item_id = b.current_playlist_item_id
 			RETURNING 1
 		),
-		removed_song_q AS (
-			DELETE FROM songs a
+		removed_playlist_item_q AS (
+			DELETE FROM playlist_items a
 			USING locked_playback_q b
 			WHERE b.remove_on_play
 			AND a.room_id = b.room_id
-			AND a.id = b.current_song_id
+			AND a.id = b.current_playlist_item_id
 			RETURNING 1
 		),
-		requeued_song_q AS (
-			UPDATE songs a
+		requeued_playlist_item_q AS (
+			UPDATE playlist_items a
 			SET added_at = NOW()
 			FROM locked_playback_q b
 			WHERE NOT b.remove_on_play
 			AND a.room_id = b.room_id
-			AND a.id = b.current_song_id
+			AND a.id = b.current_playlist_item_id
 			RETURNING 1
 		),
-		next_song_q AS (
+		next_playlist_item_q AS (
 			SELECT
 				a.id,
 				a.room_id,
@@ -323,7 +323,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 				a.provider_url,
 				a.playback_restriction,
 				a.title,
-				a.artist,
+				a.publisher,
 				a.thumbnail_url,
 				a.duration,
 				a.added_by,
@@ -332,36 +332,36 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 					a.added_by_nickname
 				) AS added_by_nickname,
 				CASE
-					WHEN a.id = c.current_song_id AND NOT c.remove_on_play THEN NOW()
+					WHEN a.id = c.current_playlist_item_id AND NOT c.remove_on_play THEN NOW()
 					ELSE a.added_at
 				END AS added_at,
 				COUNT(b.user_id) AS vote_count
-			FROM songs a
+			FROM playlist_items a
 			JOIN locked_playback_q c ON c.room_id = a.room_id
-			LEFT JOIN song_votes b
-			ON a.id = b.song_id
+			LEFT JOIN playlist_item_votes b
+			ON a.id = b.playlist_item_id
 			AND a.room_id = b.room_id
-			AND a.id IS DISTINCT FROM c.current_song_id
-			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
+			AND a.id IS DISTINCT FROM c.current_playlist_item_id
+			WHERE NOT (c.remove_on_play AND a.id = c.current_playlist_item_id)
 			AND a.source_type = ANY($1::text[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_playlist_item_id, c.remove_on_play
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
 			LIMIT 1
 		),
 		updated_playback_q AS (
 			UPDATE playback_state a
-			SET current_song_id = b.id,
+			SET current_playlist_item_id = b.id,
 			is_playing = b.id IS NOT NULL,
 			position_ms = 0,
 			updated_at = NOW()
 			FROM locked_playback_q c
-			LEFT JOIN next_song_q b ON b.room_id = c.room_id
+			LEFT JOIN next_playlist_item_q b ON b.room_id = c.room_id
 			WHERE a.room_id = c.room_id
-			RETURNING a.room_id, a.current_song_id, a.is_playing, a.position_ms, a.updated_at
+			RETURNING a.room_id, a.current_playlist_item_id, a.is_playing, a.position_ms, a.updated_at
 		)
 		SELECT
 			a.room_id,
-			a.current_song_id,
+			a.current_playlist_item_id,
 			a.is_playing,
 			a.position_ms,
 			a.updated_at,
@@ -372,7 +372,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			b.provider_url,
 			b.playback_restriction,
 			b.title,
-			b.artist,
+			b.publisher,
 			b.thumbnail_url,
 			b.duration,
 			b.added_by,
@@ -382,27 +382,27 @@ func (c *Client) prepareProcessNextExpiredPlaybackStmt() error {
 			) AS added_by_nickname,
 			b.added_at,
 			COALESCE(b.vote_count, 0) AS vote_count,
-			(SELECT current_song_id FROM locked_playback_q) AS previous_song_id
+			(SELECT current_playlist_item_id FROM locked_playback_q) AS previous_playlist_item_id
 		FROM updated_playback_q a
-		LEFT JOIN next_song_q b ON b.id = a.current_song_id
+		LEFT JOIN next_playlist_item_q b ON b.id = a.current_playlist_item_id
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing ProcessNextExpiredPlaybackStatement: %w", err)
+		return fmt.Errorf("error preparing ProcessNextExpiredPlaybackV2Statement: %w", err)
 	}
 
-	c.ProcessNextExpiredPlaybackStatement = stmt
+	c.ProcessNextExpiredPlaybackV2Statement = stmt
 
 	return nil
 }
 
-func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackAdvance, error) {
+func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackAdvanceV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "processNextExpiredPlayback")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.ProcessNextExpiredPlaybackStatement.QueryRowContext(
+	r := c.ProcessNextExpiredPlaybackV2Statement.QueryRowContext(
 		cctx,
 		c.enabledProviders,
 	)
@@ -421,20 +421,20 @@ func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.Playback
 		return nil, fmt.Errorf("error scanning expired playback: %w", err)
 	}
 
-	state, err := row.Playback.toPlaybackState()
+	state, err := row.Playback.toPlaybackStateV2()
 	if err != nil {
 		return nil, fmt.Errorf("error converting expired playback state: %w", err)
 	}
 
-	return &vibe.PlaybackAdvance{
-		Playback:       state,
-		PreviousSongID: row.PreviousSongID.String,
+	return &vibe.PlaybackAdvanceV2{
+		Playback:               state,
+		PreviousPlaylistItemID: row.PreviousPlaylistItemID.String,
 	}, nil
 }
 
-// ProcessNextExpiredPlayback checks for an expired song, skips it, and returns the new state.
-func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackAdvance, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextExpiredPlayback")
+// ProcessNextExpiredPlaybackV2 checks for an expired playlistItem, skips it, and returns the new state.
+func (c *Client) ProcessNextExpiredPlaybackV2(ctx context.Context) (*vibe.PlaybackAdvanceV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextExpiredPlaybackV2")
 	defer span.End()
 
 	advance, err := c.processNextExpiredPlayback(ctx)
@@ -445,45 +445,45 @@ func (c *Client) ProcessNextExpiredPlayback(ctx context.Context) (*vibe.Playback
 	return advance, nil
 }
 
-// prepareUpsertPlaybackStateStmt prepares the UpsertPlaybackStateStatement.
-func (c *Client) prepareUpsertPlaybackStateStmt() error {
+// prepareUpsertPlaybackStateV2Stmt prepares the UpsertPlaybackStateV2Statement.
+func (c *Client) prepareUpsertPlaybackStateV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO playback_state (room_id, current_song_id, is_playing, position_ms, updated_at)
+		INSERT INTO playback_state (room_id, current_playlist_item_id, is_playing, position_ms, updated_at)
 			SELECT a.id, $2, $3, $4, CURRENT_TIMESTAMP
 			FROM rooms a
 			WHERE a.id = $1
 			FOR KEY SHARE OF a
 			ON CONFLICT(room_id) DO UPDATE SET
-			current_song_id = EXCLUDED.current_song_id,
+			current_playlist_item_id = EXCLUDED.current_playlist_item_id,
 			is_playing = EXCLUDED.is_playing,
 			position_ms = EXCLUDED.position_ms,
 			updated_at = EXCLUDED.updated_at
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing UpsertPlaybackStateStatement: %w", err)
+		return fmt.Errorf("error preparing UpsertPlaybackStateV2Statement: %w", err)
 	}
 
-	c.UpsertPlaybackStateStatement = stmt
+	c.UpsertPlaybackStateV2Statement = stmt
 
 	return nil
 }
 
-// UpsertPlaybackState creates or updates the playback state for a room.
-func (c *Client) UpsertPlaybackState(ctx context.Context, state *vibe.PlaybackState) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "UpsertPlaybackState")
+// UpsertPlaybackStateV2 creates or updates the playback state for a room.
+func (c *Client) UpsertPlaybackStateV2(ctx context.Context, state *vibe.PlaybackStateV2) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "UpsertPlaybackStateV2")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	var currentSongID string
-	if state.CurrentSong != nil {
-		currentSongID = state.CurrentSong.ID
+	var currentPlaylistItemID string
+	if state.CurrentPlaylistItem != nil {
+		currentPlaylistItemID = state.CurrentPlaylistItem.ID
 	}
 
-	_, err := c.UpsertPlaybackStateStatement.ExecContext(cctx,
+	_, err := c.UpsertPlaybackStateV2Statement.ExecContext(cctx,
 		state.RoomID,
-		currentSongID,
+		currentPlaylistItemID,
 		state.IsPlaying,
 		state.PositionMs,
 	)
@@ -494,12 +494,12 @@ func (c *Client) UpsertPlaybackState(ctx context.Context, state *vibe.PlaybackSt
 	return nil
 }
 
-func (c *Client) prepareSkipTrackStmt() error {
+func (c *Client) prepareSkipPlaylistItemStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH locked_playback_q AS (
 			SELECT
 				a.room_id,
-				a.current_song_id,
+				a.current_playlist_item_id,
 				COALESCE(b.remove_on_play, FALSE) AS remove_on_play
 			FROM playback_state a
 			JOIN room_settings b ON b.room_id = a.room_id
@@ -508,9 +508,9 @@ func (c *Client) prepareSkipTrackStmt() error {
 				$3 = ''
 				OR EXISTS (
 					SELECT 1
-					FROM songs c
+					FROM playlist_items c
 					WHERE c.room_id = a.room_id
-					AND c.id = a.current_song_id
+					AND c.id = a.current_playlist_item_id
 					AND c.id = $3
 					AND c.playback_restriction != ''
 				)
@@ -521,36 +521,36 @@ func (c *Client) prepareSkipTrackStmt() error {
 			DELETE FROM skip_votes a
 			USING locked_playback_q b
 			WHERE a.room_id = b.room_id
-			AND a.song_id = b.current_song_id
+			AND a.playlist_item_id = b.current_playlist_item_id
 			RETURNING 1
 		),
-		cleared_song_votes_q AS (
-			DELETE FROM song_votes a
+		cleared_playlist_item_votes_q AS (
+			DELETE FROM playlist_item_votes a
 			USING locked_playback_q b
 			WHERE a.room_id = b.room_id
-			AND a.song_id = b.current_song_id
+			AND a.playlist_item_id = b.current_playlist_item_id
 			RETURNING 1
 		),
-		removed_song_q AS (
-			DELETE FROM songs a
+		removed_playlist_item_q AS (
+			DELETE FROM playlist_items a
 			USING locked_playback_q b
-			WHERE b.current_song_id IS NOT NULL
+			WHERE b.current_playlist_item_id IS NOT NULL
 			AND b.remove_on_play
 			AND a.room_id = b.room_id
-			AND a.id = b.current_song_id
+			AND a.id = b.current_playlist_item_id
 			RETURNING 1
 		),
-		requeued_song_q AS (
-			UPDATE songs a
+		requeued_playlist_item_q AS (
+			UPDATE playlist_items a
 			SET added_at = NOW()
 			FROM locked_playback_q b
-			WHERE b.current_song_id IS NOT NULL
+			WHERE b.current_playlist_item_id IS NOT NULL
 			AND NOT b.remove_on_play
 			AND a.room_id = b.room_id
-			AND a.id = b.current_song_id
+			AND a.id = b.current_playlist_item_id
 			RETURNING 1
 		),
-		next_song_q AS (
+		next_playlist_item_q AS (
 			SELECT
 				a.id,
 				a.room_id,
@@ -559,7 +559,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 				a.provider_url,
 				a.playback_restriction,
 				a.title,
-				a.artist,
+				a.publisher,
 				a.thumbnail_url,
 				a.duration,
 				a.added_by,
@@ -568,37 +568,37 @@ func (c *Client) prepareSkipTrackStmt() error {
 					a.added_by_nickname
 				) AS added_by_nickname,
 				CASE
-					WHEN a.id = c.current_song_id AND NOT c.remove_on_play THEN NOW()
+					WHEN a.id = c.current_playlist_item_id AND NOT c.remove_on_play THEN NOW()
 					ELSE a.added_at
 				END AS added_at,
 				COUNT(b.user_id) AS vote_count
-			FROM songs a
+			FROM playlist_items a
 			JOIN locked_playback_q c ON c.room_id = a.room_id
-			LEFT JOIN song_votes b
-			ON a.id = b.song_id
+			LEFT JOIN playlist_item_votes b
+			ON a.id = b.playlist_item_id
 			AND a.room_id = b.room_id
-			AND a.id IS DISTINCT FROM c.current_song_id
-			WHERE NOT (c.remove_on_play AND a.id = c.current_song_id)
+			AND a.id IS DISTINCT FROM c.current_playlist_item_id
+			WHERE NOT (c.remove_on_play AND a.id = c.current_playlist_item_id)
 			AND ($3 = '' OR a.id != $3)
 			AND a.source_type = ANY($2::text[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_song_id, c.remove_on_play
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_playlist_item_id, c.remove_on_play
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
 			LIMIT 1
 		),
 		updated_playback_q AS (
 			UPDATE playback_state a
-			SET current_song_id = b.id,
+			SET current_playlist_item_id = b.id,
 			is_playing = b.id IS NOT NULL,
 			position_ms = 0,
 			updated_at = NOW()
 			FROM locked_playback_q c
-			LEFT JOIN next_song_q b ON b.room_id = c.room_id
+			LEFT JOIN next_playlist_item_q b ON b.room_id = c.room_id
 			WHERE a.room_id = c.room_id
-			RETURNING a.room_id, a.current_song_id, a.is_playing, a.position_ms, a.updated_at
+			RETURNING a.room_id, a.current_playlist_item_id, a.is_playing, a.position_ms, a.updated_at
 		)
 		SELECT
 			a.room_id,
-			a.current_song_id,
+			a.current_playlist_item_id,
 			a.is_playing,
 			a.position_ms,
 			a.updated_at,
@@ -609,7 +609,7 @@ func (c *Client) prepareSkipTrackStmt() error {
 			b.provider_url,
 			b.playback_restriction,
 			b.title,
-			b.artist,
+			b.publisher,
 			b.thumbnail_url,
 			b.duration,
 			b.added_by,
@@ -619,81 +619,81 @@ func (c *Client) prepareSkipTrackStmt() error {
 			) AS added_by_nickname,
 			b.added_at,
 			COALESCE(b.vote_count, 0) AS vote_count,
-			(SELECT current_song_id FROM locked_playback_q) AS previous_song_id
+			(SELECT current_playlist_item_id FROM locked_playback_q) AS previous_playlist_item_id
 		FROM updated_playback_q a
-		LEFT JOIN next_song_q b ON b.id = a.current_song_id
+		LEFT JOIN next_playlist_item_q b ON b.id = a.current_playlist_item_id
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing SkipTrackStatement: %w", err)
+		return fmt.Errorf("error preparing SkipPlaylistItemStatement: %w", err)
 	}
 
-	c.SkipTrackStatement = stmt
+	c.SkipPlaylistItemStatement = stmt
 
 	return nil
 }
 
-// skipTrack skips the current track to the next one in the queue (internal).
-func (c *Client) skipTrack(ctx context.Context, roomID, restrictedSongID string) (*vibe.PlaybackAdvance, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "skipTrack")
+// skipPlaylistItem skips the current track to the next one in the queue (internal).
+func (c *Client) skipPlaylistItem(ctx context.Context, roomID, restrictedPlaylistItemID string) (*vibe.PlaybackAdvanceV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "skipPlaylistItem")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.SkipTrackStatement.QueryRowContext(
+	r := c.SkipPlaylistItemStatement.QueryRowContext(
 		cctx,
 		roomID,
 		c.enabledProviders,
-		restrictedSongID,
+		restrictedPlaylistItemID,
 	)
 
 	var row playbackAdvanceRow
 	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			if restrictedSongID != "" {
-				return &vibe.PlaybackAdvance{Playback: &vibe.PlaybackState{}}, nil
+			if restrictedPlaylistItemID != "" {
+				return &vibe.PlaybackAdvanceV2{Playback: &vibe.PlaybackStateV2{}}, nil
 			}
 
-			state, err := c.getPlaybackState(ctx, roomID)
+			state, err := c.getPlaybackStateV2(ctx, roomID)
 			if err != nil {
-				return nil, fmt.Errorf("error getting playback state in skipTrack: %w", err)
+				return nil, fmt.Errorf("error getting playback state in skipPlaylistItem: %w", err)
 			}
-			return &vibe.PlaybackAdvance{Playback: state}, nil
+			return &vibe.PlaybackAdvanceV2{Playback: state}, nil
 		}
-		return nil, fmt.Errorf("error scanning playback state in skipTrack: %w", err)
+		return nil, fmt.Errorf("error scanning playback state in skipPlaylistItem: %w", err)
 	}
 
-	state, err := row.Playback.toPlaybackState()
+	state, err := row.Playback.toPlaybackStateV2()
 	if err != nil {
-		return nil, fmt.Errorf("error converting playback state in skipTrack: %w", err)
+		return nil, fmt.Errorf("error converting playback state in skipPlaylistItem: %w", err)
 	}
 
-	return &vibe.PlaybackAdvance{
-		Playback:       state,
-		PreviousSongID: row.PreviousSongID.String,
+	return &vibe.PlaybackAdvanceV2{
+		Playback:               state,
+		PreviousPlaylistItemID: row.PreviousPlaylistItemID.String,
 	}, nil
 }
 
-func (c *Client) SkipRestrictedSong(
+func (c *Client) SkipRestrictedPlaylistItem(
 	ctx context.Context,
 	roomID string,
-	songID string,
-) (*vibe.PlaybackAdvance, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "SkipRestrictedSong")
+	playlistItemID string,
+) (*vibe.PlaybackAdvanceV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SkipRestrictedPlaylistItem")
 	defer span.End()
 
-	advance, err := c.skipTrack(ctx, roomID, songID)
+	advance, err := c.skipPlaylistItem(ctx, roomID, playlistItemID)
 	if err != nil {
-		return nil, fmt.Errorf("error skipping restricted song: %w", err)
+		return nil, fmt.Errorf("error skipping restricted playlistItem: %w", err)
 	}
 
 	return advance, nil
 }
 
-// UpdatePlayback updates the playback state based on the action (play/pause/seek).
-func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID string, action string, positionMs int) (*vibe.PlaybackState, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "UpdatePlayback")
+// UpdatePlaybackV2 updates the playback state based on the action (play/pause/seek).
+func (c *Client) UpdatePlaybackV2(ctx context.Context, roomID string, userID string, action string, positionMs int) (*vibe.PlaybackStateV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "UpdatePlaybackV2")
 	defer span.End()
 
 	err := c.checkHostPermissions(ctx, roomID, userID)
@@ -701,24 +701,24 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 		return nil, fmt.Errorf("error checking host permissions in update playback in %s: %w", roomID, err)
 	}
 
-	state, err := c.GetPlaybackState(ctx, roomID)
+	state, err := c.GetPlaybackStateV2(ctx, roomID)
 	if err != nil {
-		return nil, fmt.Errorf("error getting playback state in UpdatePlayback: %w", err)
+		return nil, fmt.Errorf("error getting playback state in UpdatePlaybackV2: %w", err)
 	}
 
 	switch action {
 	case vibe.RoomActionPlay:
 		state.IsPlaying = true
-		if state.CurrentSong != nil {
+		if state.CurrentPlaylistItem != nil {
 			break
 		}
 
-		state, err = c.StartPlaybackIfIdle(ctx, roomID)
+		state, err = c.StartPlaybackIfIdleV2(ctx, roomID)
 		if err != nil {
-			return nil, fmt.Errorf("error starting playback in UpdatePlayback: %w", err)
+			return nil, fmt.Errorf("error starting playback in UpdatePlaybackV2: %w", err)
 		}
 
-		if state.CurrentSong == nil {
+		if state.CurrentPlaylistItem == nil {
 			state.IsPlaying = false
 		}
 
@@ -732,20 +732,20 @@ func (c *Client) UpdatePlayback(ctx context.Context, roomID string, userID strin
 	case vibe.RoomActionSeek:
 		state.PositionMs = positionMs
 	default:
-		return nil, fmt.Errorf("error invalid action in UpdatePlayback: %s", action)
+		return nil, fmt.Errorf("error invalid action in UpdatePlaybackV2: %s", action)
 	}
 
 	state.UpdatedAt = time.Now()
 
-	err = c.UpsertPlaybackState(ctx, state)
+	err = c.UpsertPlaybackStateV2(ctx, state)
 	if err != nil {
-		return nil, fmt.Errorf("error upserting playback state in UpdatePlayback: %w", err)
+		return nil, fmt.Errorf("error upserting playback state in UpdatePlaybackV2: %w", err)
 	}
 
 	return state, nil
 }
 
-func (c *Client) prepareStartPlaybackIfIdleStmt() error {
+func (c *Client) prepareStartPlaybackIfIdleV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH locked_playback_q AS (
 			SELECT r.id AS room_id
@@ -753,18 +753,18 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			LEFT JOIN playback_state a ON a.room_id = r.id
 			WHERE r.id = $1
 			AND (
-				a.current_song_id IS NULL
+				a.current_playlist_item_id IS NULL
 				OR NOT EXISTS (
 					SELECT 1
-					FROM songs b
+					FROM playlist_items b
 					WHERE b.room_id = a.room_id
-					AND b.id = a.current_song_id
+					AND b.id = a.current_playlist_item_id
 					AND b.source_type = ANY($2::text[])
 				)
 			)
 			FOR UPDATE OF r SKIP LOCKED
 		),
-		next_song_q AS (
+		next_playlist_item_q AS (
 			SELECT
 				a.id,
 				a.room_id,
@@ -773,7 +773,7 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 				a.provider_url,
 				a.playback_restriction,
 				a.title,
-				a.artist,
+				a.publisher,
 				a.thumbnail_url,
 				a.duration,
 				a.added_by,
@@ -783,37 +783,37 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 				) AS added_by_nickname,
 				a.added_at,
 				COUNT(b.user_id) AS vote_count
-			FROM songs a
+			FROM playlist_items a
 			JOIN locked_playback_q c ON c.room_id = a.room_id
-			LEFT JOIN song_votes b
-			ON a.id = b.song_id
+			LEFT JOIN playlist_item_votes b
+			ON a.id = b.playlist_item_id
 			AND a.room_id = b.room_id
 			WHERE a.source_type = ANY($2::text[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.artist, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 			ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 			LIMIT 1
 		),
 		updated_playback_q AS (
-			INSERT INTO playback_state (room_id, current_song_id, is_playing, position_ms, updated_at)
+			INSERT INTO playback_state (room_id, current_playlist_item_id, is_playing, position_ms, updated_at)
 			SELECT room_id, id, TRUE, 0, NOW()
-			FROM next_song_q
+			FROM next_playlist_item_q
 			ON CONFLICT (room_id) DO UPDATE
-			SET current_song_id = EXCLUDED.current_song_id,
+			SET current_playlist_item_id = EXCLUDED.current_playlist_item_id,
 				is_playing = TRUE,
 				position_ms = 0,
 				updated_at = EXCLUDED.updated_at
-			WHERE playback_state.current_song_id IS NULL
+			WHERE playback_state.current_playlist_item_id IS NULL
 			OR NOT EXISTS (
-				SELECT 1 FROM songs s
+				SELECT 1 FROM playlist_items s
 				WHERE s.room_id = playback_state.room_id
-				AND s.id = playback_state.current_song_id
+				AND s.id = playback_state.current_playlist_item_id
 				AND s.source_type = ANY($2::text[])
 			)
-			RETURNING room_id, current_song_id, is_playing, position_ms, updated_at
+			RETURNING room_id, current_playlist_item_id, is_playing, position_ms, updated_at
 		)
 		SELECT
 			a.room_id,
-			a.current_song_id,
+			a.current_playlist_item_id,
 			a.is_playing,
 			a.position_ms,
 			a.updated_at,
@@ -824,7 +824,7 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			b.provider_url,
 			b.playback_restriction,
 			b.title,
-			b.artist,
+			b.publisher,
 			b.thumbnail_url,
 			b.duration,
 			b.added_by,
@@ -835,62 +835,62 @@ func (c *Client) prepareStartPlaybackIfIdleStmt() error {
 			b.added_at,
 			COALESCE(b.vote_count, 0) AS vote_count
 		FROM updated_playback_q a
-		JOIN next_song_q b ON b.id = a.current_song_id
+		JOIN next_playlist_item_q b ON b.id = a.current_playlist_item_id
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing StartPlaybackIfIdleStatement: %w", err)
+		return fmt.Errorf("error preparing StartPlaybackIfIdleV2Statement: %w", err)
 	}
 
-	c.StartPlaybackIfIdleStatement = stmt
+	c.StartPlaybackIfIdleV2Statement = stmt
 
 	return nil
 }
 
-func (c *Client) startPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "startPlaybackIfIdle")
+func (c *Client) startPlaybackIfIdleV2(ctx context.Context, roomID string) (*vibe.PlaybackStateV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "startPlaybackIfIdleV2")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.StartPlaybackIfIdleStatement.QueryRowContext(
+	r := c.StartPlaybackIfIdleV2Statement.QueryRowContext(
 		cctx,
 		roomID,
 		c.enabledProviders,
 	)
 
-	var row playbackSongRow
+	var row playbackPlaylistItemRow
 	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return &vibe.PlaybackState{}, nil
+			return &vibe.PlaybackStateV2{}, nil
 		}
-		return nil, fmt.Errorf("error scanning playback state in startPlaybackIfIdle: %w", err)
+		return nil, fmt.Errorf("error scanning playback state in startPlaybackIfIdleV2: %w", err)
 	}
 
-	state, err := row.toPlaybackState()
+	state, err := row.toPlaybackStateV2()
 	if err != nil {
-		return nil, fmt.Errorf("error converting playback state in startPlaybackIfIdle: %w", err)
+		return nil, fmt.Errorf("error converting playback state in startPlaybackIfIdleV2: %w", err)
 	}
 
 	return state, nil
 }
 
-// StartPlaybackIfIdle attempts to start playback if the room is currently idle.
+// StartPlaybackIfIdleV2 attempts to start playback if the room is currently idle.
 // It returns the new state if it successfully started playback, or the current state if it didn't.
-func (c *Client) StartPlaybackIfIdle(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "StartPlaybackIfIdle")
+func (c *Client) StartPlaybackIfIdleV2(ctx context.Context, roomID string) (*vibe.PlaybackStateV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "StartPlaybackIfIdleV2")
 	defer span.End()
 
-	startedState, err := c.startPlaybackIfIdle(ctx, roomID)
+	startedState, err := c.startPlaybackIfIdleV2(ctx, roomID)
 	if err != nil {
-		return nil, fmt.Errorf("error starting playback if idle in StartPlaybackIfIdle: %w", err)
+		return nil, fmt.Errorf("error starting playback if idle in StartPlaybackIfIdleV2: %w", err)
 	}
 
-	if startedState.RoomID == "" || startedState.CurrentSong == nil {
-		state, err := c.getPlaybackState(ctx, roomID)
+	if startedState.RoomID == "" || startedState.CurrentPlaylistItem == nil {
+		state, err := c.getPlaybackStateV2(ctx, roomID)
 		if err != nil {
-			return nil, fmt.Errorf("error getting playback state in StartPlaybackIfIdle: %w", err)
+			return nil, fmt.Errorf("error getting playback state in StartPlaybackIfIdleV2: %w", err)
 		}
 		return state, nil
 	}
@@ -912,7 +912,7 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 		return fmt.Errorf("error updating participant in check host permission in %s for %s: %w", roomID, userID, err)
 	}
 
-	room, err := c.GetRoom(ctx, roomID, userID)
+	room, err := c.GetRoomV2(ctx, roomID, userID)
 	if err != nil {
 		return fmt.Errorf("error getting room in check host permission in %s for %s: %w", roomID, userID, err)
 	}

@@ -50,16 +50,16 @@ func (e ErrProviderQuotaExceeded) Unwrap() error {
 	return e.Err
 }
 
-// ErrMusicTrackNotFound indicates that a provider no longer returns a track.
-type ErrMusicTrackNotFound struct {
+// ErrProviderItemNotFound indicates that a provider no longer returns a track.
+type ErrProviderItemNotFound struct {
 	Err error
 }
 
-func (e ErrMusicTrackNotFound) Error() string {
+func (e ErrProviderItemNotFound) Error() string {
 	return fmt.Sprintf("error music track not found: %v", e.Err)
 }
 
-func (e ErrMusicTrackNotFound) Unwrap() error {
+func (e ErrProviderItemNotFound) Unwrap() error {
 	return e.Err
 }
 
@@ -102,16 +102,16 @@ func (e ErrAlreadyVoted) Unwrap() error {
 	return e.Err
 }
 
-// ErrDuplicateSong is an error type for errors where a duplicate song is added.
-type ErrDuplicateSong struct {
+// ErrDuplicatePlaylistItem is an error type for errors where a duplicate song is added.
+type ErrDuplicatePlaylistItem struct {
 	Err error
 }
 
-func (e ErrDuplicateSong) Error() string {
+func (e ErrDuplicatePlaylistItem) Error() string {
 	return fmt.Sprintf("error duplicate song: %v", e.Err)
 }
 
-func (e ErrDuplicateSong) Unwrap() error {
+func (e ErrDuplicatePlaylistItem) Unwrap() error {
 	return e.Err
 }
 
@@ -206,16 +206,16 @@ func (e ErrRoomGenerationBusy) Unwrap() error {
 	return e.Err
 }
 
-// ErrRoomGenerationSongLimit is an error type for rooms with too many songs to generate a playlist.
-type ErrRoomGenerationSongLimit struct {
+// ErrRoomGenerationPlaylistItemLimit is an error type for rooms with too many songs to generate a playlist.
+type ErrRoomGenerationPlaylistItemLimit struct {
 	Err error
 }
 
-func (e ErrRoomGenerationSongLimit) Error() string {
+func (e ErrRoomGenerationPlaylistItemLimit) Error() string {
 	return fmt.Sprintf("error room generation song limit exceeded: %v", e.Err)
 }
 
-func (e ErrRoomGenerationSongLimit) Unwrap() error {
+func (e ErrRoomGenerationPlaylistItemLimit) Unwrap() error {
 	return e.Err
 }
 

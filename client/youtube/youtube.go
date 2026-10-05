@@ -41,7 +41,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	c.clientID = cfg.YouTubeClientID
 	c.clientSecret = cfg.YouTubeClientSecret
 	c.redirectURI = cfg.YouTubeRedirectURI
-	c.generatedPlaylistSelectedCount = cfg.GeneratedPlaylistSelectedTrackCount
+	c.generatedPlaylistSelectedCount = cfg.GeneratedPlaylistSelectedItemCount
 	searchQuotaZone, err := time.LoadLocation(youtubeQuotaLocation)
 	if err != nil {
 		return fmt.Errorf("error loading youtube quota location: %w", err)

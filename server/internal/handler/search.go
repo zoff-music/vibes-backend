@@ -27,6 +27,11 @@ import (
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Failure	503	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/youtube/search [get]
+//
+// Deprecated: Use GET /api/v2/rooms/{id}/search/youtube. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/rooms/{id}/search/youtube for the playlist-item contract. This endpoint retains its existing payloads.
 func SearchMusic(
 	ms vibe.MusicSearcher,
 	cache vibe.MusicSearchCache,
@@ -201,6 +206,11 @@ func SearchMusic(
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/soundcloud/search [get]
+//
+// Deprecated: Use GET /api/v2/rooms/{id}/search/soundcloud. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/rooms/{id}/search/soundcloud for the playlist-item contract. This endpoint retains its existing payloads.
 func SearchSoundCloud(
 	ms vibe.MusicSearcher,
 	cache vibe.CachedSearchTrackFetcherCreator,

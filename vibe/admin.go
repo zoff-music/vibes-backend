@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 )
 
+// Deprecated: Use AdminRoomSummaryV2 for new code. Retained for legacy API compatibility.
 type AdminRoomSummary struct {
 	ID               string   `json:"id"`
 	Name             string   `json:"name"`
@@ -17,6 +18,7 @@ type AdminRoomSummary struct {
 	HasAdminPassword bool     `json:"hasAdminPassword"`
 }
 
+// Deprecated: Use AdminRoomSearchV2 for new code. Retained for legacy API compatibility.
 type AdminRoomSearch struct {
 	Query      string
 	SortBy     AdminRoomSort
@@ -25,6 +27,7 @@ type AdminRoomSearch struct {
 	To         int
 }
 
+// Deprecated: Use AdminRoomResultV2 for new code. Retained for legacy API compatibility.
 type AdminRoomResult struct {
 	Rooms []AdminRoomSummary `json:"rooms"`
 	From  int                `json:"from"`

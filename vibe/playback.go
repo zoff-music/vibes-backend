@@ -6,6 +6,8 @@ import (
 )
 
 // PlaybackState represents the current playback state of a room
+//
+// Deprecated: Use PlaybackStateV2 for new code. Retained for legacy API compatibility.
 type PlaybackState struct {
 	RoomID       string    `json:"-"`
 	CurrentSong  *Song     `json:"currentSong"`
@@ -16,6 +18,8 @@ type PlaybackState struct {
 }
 
 // PlaybackAdvance describes one automatic queue advance and the resulting playback state.
+//
+// Deprecated: Use PlaybackAdvanceV2 for new code. Retained for legacy API compatibility.
 type PlaybackAdvance struct {
 	Playback       *PlaybackState
 	PreviousSongID string
@@ -31,6 +35,7 @@ type RoomActionRequest struct {
 	PositionMs int    `json:"positionMs,omitzero"`
 }
 
+// Deprecated: Use PlaybackFailureRequestV2 for new code. Retained for legacy API compatibility.
 type PlaybackFailureRequest struct {
 	SongID string `json:"songId"`
 }
@@ -56,8 +61,8 @@ type RestrictedPlaybackSkipper interface {
 	SkipRestrictedSong(ctx context.Context, roomID string, songID string) (*PlaybackAdvance, error)
 }
 
-type SongPlaybackRestrictionUpdater interface {
-	UpdateSongPlaybackRestriction(
+type PlaylistItemPlaybackRestrictionUpdater interface {
+	UpdatePlaylistItemPlaybackRestriction(
 		ctx context.Context,
 		roomID string,
 		songID string,
@@ -69,7 +74,7 @@ type PlaybackFailureStorage interface {
 	PlaybackFetcher
 	RestrictedPlaybackSkipper
 	SongsFetcher
-	SongPlaybackRestrictionUpdater
+	PlaylistItemPlaybackRestrictionUpdater
 }
 
 // ExpiredPlaybackProcessor defines interfaces needed for background room playback automation

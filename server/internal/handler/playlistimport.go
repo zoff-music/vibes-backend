@@ -9,12 +9,12 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-type ImportPlaylistSong struct {
+type ImportPlaylistItem struct {
 	DB     vibe.PlaylistImportProcessor
-	Events vibe.RoomBatchEventNotifier
+	Events vibe.RoomBatchEventV3Notifier
 }
 
-func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
+func (h *ImportPlaylistItem) Handle(ctx context.Context, _ []byte) error {
 	playlistImport, err := h.DB.ProcessNextPlaylistImport(
 		ctx,
 		playlistImportRetryInterval,
@@ -32,37 +32,38 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 		return nil
 	}
 
-	result, err := h.DB.AddPlaylistSong(ctx, &playlistImport.Song)
+	result, err := h.DB.AddImportedPlaylistItem(ctx, &playlistImport.PlaylistItem)
 	if err != nil {
 		return fmt.Errorf("error adding playlist import item in Handle: %w", err)
 	}
 
-	var events []vibe.RoomEvent
-	if result.Outcome == vibe.AddSongOutcomeAdded {
-		songPayload, err := json.Marshal(result.Song)
+	var events []vibe.RoomEventV3
+
+	if result.Outcome == vibe.AddPlaylistItemOutcomeAdded {
+		playlistItemPayload, err := json.Marshal(result.PlaylistItem)
 		if err != nil {
-			return fmt.Errorf("error marshaling playlist import song in Handle: %w", err)
+			return fmt.Errorf("error marshaling playlist import item in Handle: %w", err)
 		}
 
-		events = append(events, vibe.RoomEvent{
-			Type:    vibe.SongAdded,
-			Payload: songPayload,
+		events = append(events, vibe.RoomEventV3{
+			Type:    vibe.PlaylistItemAdded,
+			Payload: playlistItemPayload,
 		})
 	}
 
-	if result.Outcome == vibe.AddSongOutcomeAdded || playlistImport.Attempts > 1 {
+	if result.Outcome == vibe.AddPlaylistItemOutcomeAdded || playlistImport.Attempts > 1 {
 		playbackState, err := h.DB.StartPlaylistPlayback(ctx, playlistImport.RoomID)
 		if err != nil {
 			return fmt.Errorf("error starting playlist import playback in Handle: %w", err)
 		}
 
-		if playbackState.CurrentSong != nil {
+		if playbackState.CurrentPlaylistItem != nil {
 			playbackPayload, err := json.Marshal(playbackState)
 			if err != nil {
 				return fmt.Errorf("error marshaling playlist import playback in Handle: %w", err)
 			}
 
-			events = append(events, vibe.RoomEvent{
+			events = append(events, vibe.RoomEventV3{
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
 			})
@@ -79,7 +80,7 @@ func (h *ImportPlaylistSong) Handle(ctx context.Context, _ []byte) error {
 	}
 
 	if len(events) > 0 {
-		err = h.Events.NotifyRoomUpdates(ctx, playlistImport.RoomID, events)
+		err = h.Events.NotifyRoomUpdatesV3(ctx, playlistImport.RoomID, events)
 		if err != nil {
 			return fmt.Errorf("error notifying playlist import item in Handle: %w", err)
 		}

@@ -28,6 +28,11 @@ import (
 //	@Failure	403	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/skips [post]
+//
+// Deprecated: Use POST /api/v2/rooms/{id}/skips. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms/{id}/skips for the playlist-item contract. This endpoint retains its existing payloads.
 func SkipSong(
 	db vibe.RoomSkipper,
 	notifier vibe.RoomEventBatchNotifier,

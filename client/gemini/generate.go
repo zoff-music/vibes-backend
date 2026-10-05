@@ -120,8 +120,8 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 			"error validating generated playlist in GeneratePlaylist: playlist has no tracks",
 		)
 	}
-	if len(playlist) > c.trackCount {
-		playlist = playlist[:c.trackCount]
+	if len(playlist) > c.itemCount {
+		playlist = playlist[:c.itemCount]
 	}
 
 	return &playlist, nil

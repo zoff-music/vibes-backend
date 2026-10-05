@@ -23,6 +23,11 @@ import (
 //	@Failure	401	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/states [get]
+//
+// Deprecated: Use GET /api/v2/rooms/{id}/states. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/rooms/{id}/states for the playlist-item contract. This endpoint retains its existing payloads.
 func GetPlaybackState(
 	db vibe.PlaybackFetcher,
 ) http.HandlerFunc {
@@ -86,6 +91,11 @@ func GetPlaybackState(
 //	@Failure	409		{object}	vibe.ErrorResponse
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/playbackfailures [post]
+//
+// Deprecated: Use POST /api/v2/rooms/{id}/playbackfailures. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms/{id}/playbackfailures for the playlist-item contract. This endpoint retains its existing payloads.
 func ReportPlaybackFailure(
 	db vibe.PlaybackFailureStorage,
 	trackFetcher vibe.MusicTrackFetcher,
@@ -178,7 +188,7 @@ func ReportPlaybackFailure(
 				return
 			}
 
-			err = db.UpdateSongPlaybackRestriction(
+			err = db.UpdatePlaylistItemPlaybackRestriction(
 				ctx,
 				roomID,
 				request.SongID,
@@ -318,6 +328,11 @@ func ReportPlaybackFailure(
 //	@Failure	403		{object}	vibe.ErrorResponse
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/states [put]
+//
+// Deprecated: Use PUT /api/v2/rooms/{id}/states. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use PUT /api/v2/rooms/{id}/states for the playlist-item contract. This endpoint retains its existing payloads.
 func UpdatePlaybackState(
 	db vibe.RoomGetterPlaybackUpdater,
 	events vibe.RoomRemoteEventNotifier,

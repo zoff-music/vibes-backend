@@ -52,7 +52,7 @@ type playlistItemSchema struct {
 
 type playlistItemProperties struct {
 	Title     stringProperty `json:"title"`
-	Artist    stringProperty `json:"artist"`
+	Publisher stringProperty `json:"publisher"`
 	YouTubeID stringProperty `json:"youtubeId"`
 }
 
@@ -108,7 +108,7 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 				Schema: playlistSchema{
 					Type:     "array",
 					MinItems: 1,
-					MaxItems: c.trackCount,
+					MaxItems: c.itemCount,
 					Items: playlistItemSchema{
 						Type: "object",
 						Properties: playlistItemProperties{
@@ -116,7 +116,7 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 								Type:        "string",
 								Description: "Canonical song title",
 							},
-							Artist: stringProperty{
+							Publisher: stringProperty{
 								Type:        "string",
 								Description: "Canonical artist name",
 							},
@@ -128,7 +128,7 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 						},
 						Required: []string{
 							"title",
-							"artist",
+							"publisher",
 						},
 						AdditionalProperties: false,
 					},
@@ -193,8 +193,8 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 			"error validating generated playlist in GeneratePlaylist: playlist has no tracks",
 		)
 	}
-	if len(playlist) > c.trackCount {
-		playlist = playlist[:c.trackCount]
+	if len(playlist) > c.itemCount {
+		playlist = playlist[:c.itemCount]
 	}
 
 	return &playlist, nil

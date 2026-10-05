@@ -26,6 +26,11 @@ import (
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Failure	404	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes [post]
+//
+// Deprecated: Use POST /api/v2/remotes. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/remotes for the playlist-item contract. This endpoint retains its existing payloads.
 func CreateRemoteControl(
 	db vibe.RemoteControlEnabler,
 	notifier vibe.RemoteEventNotifier,
@@ -171,6 +176,11 @@ func CreateRemoteControl(
 //	@Failure	401	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes [get]
+//
+// Deprecated: Use GET /api/v2/remotes. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/remotes for the playlist-item contract. This endpoint retains its existing payloads.
 func GetOwnedRemoteControl(
 	fetcher vibe.OwnedRemoteControlFetcher,
 ) http.HandlerFunc {
@@ -254,6 +264,11 @@ func GetOwnedRemoteControl(
 //	@Failure	401		{object}	vibe.ErrorResponse
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes/{id}/sessions [post]
+//
+// Deprecated: Use POST /api/v2/remotes/{id}/sessions. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/remotes/{id}/sessions for the playlist-item contract. This endpoint retains its existing payloads.
 func PairRemoteControl(
 	pairer vibe.RemoteControlPairer,
 	notifier vibe.RemoteEventNotifier,
@@ -434,6 +449,11 @@ func PairRemoteControl(
 //	@Failure	404	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes/{id} [get]
+//
+// Deprecated: Use GET /api/v2/remotes/{id}. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/remotes/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func GetRemoteControl(
 	fetcher vibe.RemoteControlFetcher,
 ) http.HandlerFunc {
@@ -531,6 +551,11 @@ func GetRemoteControl(
 //	@Failure	404	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes/{id} [patch]
+//
+// Deprecated: Use PATCH /api/v2/remotes/{id}. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use PATCH /api/v2/remotes/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func UpdateRemoteControl(
 	db vibe.RemoteControlRoomUpdater,
 	notifier vibe.RemoteEventNotifier,
@@ -548,6 +573,11 @@ func UpdateRemoteControl(
 				http.StatusUnauthorized,
 				false,
 			)
+			return
+		}
+
+		if session.AuthType == "remote" && session.RemoteID != remoteID {
+			handleError(w, fmt.Errorf("error remote control access forbidden"), http.StatusForbidden, false)
 			return
 		}
 
@@ -723,6 +753,11 @@ const remotePlaybackPositionMaxMs = int64((24 * time.Hour) / time.Millisecond)
 //	@Failure	404	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/remotes/{id}/events [get]
+//
+// Deprecated: Use GET /api/v2/remotes/{id}/events. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/remotes/{id}/events for the playlist-item contract. This endpoint retains its existing payloads.
 func RemoteEvents(
 	subscriber vibe.Subscriber,
 	fetcher vibe.RemoteControlFetcher,
@@ -848,12 +883,16 @@ func RemoteEvents(
 					return
 				}
 
-				var event vibe.RemoteEvent
-				err = json.Unmarshal(data, &event)
+				event, err := vibe.ParseRemoteEvent(data)
 				if err != nil {
 					continue
 				}
-				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, data)
+				payload, err := json.Marshal(event.ToRemoteEvent())
+				if err != nil {
+					return
+				}
+
+				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, payload)
 				flusher.Flush()
 			}
 		}

@@ -17,6 +17,11 @@ import (
 //	@Success	200	{object}	vibe.Stats
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/stats [get]
+//
+// Deprecated: Use GET /api/v2/stats. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/stats for the playlist-item contract. This endpoint retains its existing payloads.
 func GetStats(
 	sf vibe.StatsFetcher,
 	cache vibe.CachedStatsFetcherCreator,

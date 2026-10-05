@@ -275,6 +275,11 @@ func AdminLogout() http.HandlerFunc {
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/rooms [get]
+//
+// Deprecated: Use GET /api/v2/admin/rooms. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/admin/rooms for the playlist-item contract. This endpoint retains its existing payloads.
 func AdminRooms(
 	db vibe.AdminRoomSearcher,
 ) http.HandlerFunc {
@@ -491,6 +496,11 @@ func AdminSearchUsage(
 //	@Failure	404		{object}	vibe.ErrorResponse
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/rooms/{id} [patch]
+//
+// Deprecated: Use PATCH /api/v2/admin/rooms/{id}. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use PATCH /api/v2/admin/rooms/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func AdminUpdateRoom(
 	db vibe.AdminRoomUpdaterLister,
 	notifier vibe.AdminEventNotifier,
@@ -603,6 +613,11 @@ func AdminUpdateRoom(
 //	@Failure	404	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/rooms/{id} [delete]
+//
+// Deprecated: Use DELETE /api/v2/admin/rooms/{id}. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use DELETE /api/v2/admin/rooms/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func AdminDeleteRoom(
 	db vibe.AdminRoomDeleterLister,
 	notifier vibe.AdminEventNotifier,
@@ -689,6 +704,11 @@ func AdminDeleteRoom(
 //	@Success	200	{string}	string "SSE frames with event-specific JSON data; see the stream description"
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/events [get]
+//
+// Deprecated: Use GET /api/v2/admin/events. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/admin/events for the playlist-item contract. This endpoint retains its existing payloads.
 func AdminEvents(
 	subscriber vibe.Subscriber,
 	db vibe.AdminRoomLister,
@@ -753,8 +773,12 @@ func AdminEvents(
 					return
 				}
 
-				var event vibe.AdminEvent
-				err := json.Unmarshal(data, &event)
+				canonical, err := vibe.ParseAdminEvent(data)
+				if err != nil {
+					continue
+				}
+
+				event, err := canonical.ToAdminEvent()
 				if err != nil {
 					continue
 				}

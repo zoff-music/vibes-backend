@@ -19,21 +19,21 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-// Search searches for videos on YouTube
-func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Search")
+// SearchProviderItems searches for videos on YouTube
+func (c *Client) SearchProviderItems(ctx context.Context, query string) ([]vibe.ProviderItem, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SearchProviderItems")
 	defer span.End()
 
 	if c.apiKey == "" {
 		return nil, fmt.Errorf(
-			"error validating youtube API key in Search: not configured",
+			"error validating youtube API key in SearchProviderItems: not configured",
 		)
 	}
 
 	result, err := c.searchVideos(ctx, query, youtubeSearchResultCount)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error searching youtube videos in Search: %w",
+			"error searching youtube videos in SearchProviderItems: %w",
 			err,
 		)
 	}
@@ -45,7 +45,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		}
 	}
 	if len(youtubeIDs) == 0 {
-		return []vibe.MusicTrack{}, nil
+		return []vibe.ProviderItem{}, nil
 	}
 
 	params := url.Values{}
@@ -64,7 +64,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	})
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error requesting youtube video details in Search: %w",
+			"error requesting youtube video details in SearchProviderItems: %w",
 			err,
 		)
 	}
@@ -73,7 +73,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 	err = json.Unmarshal(responseBody, &videoResult)
 	if err != nil {
 		return nil, fmt.Errorf(
-			"error unmarshaling youtube video details in Search: %w",
+			"error unmarshaling youtube video details in SearchProviderItems: %w",
 			err,
 		)
 	}
@@ -83,7 +83,7 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		videoItems[item.ID] = item
 	}
 
-	tracks := make([]vibe.MusicTrack, 0, len(result.Items))
+	tracks := make([]vibe.ProviderItem, 0, len(result.Items))
 	for _, item := range result.Items {
 		if item.ID.VideoID == "" {
 			continue
@@ -131,12 +131,12 @@ func (c *Client) Search(ctx context.Context, query string) ([]vibe.MusicTrack, e
 		if err != nil {
 			likeCount = 0
 		}
-		tracks = append(tracks, vibe.MusicTrack{
+		tracks = append(tracks, vibe.ProviderItem{
 			ID:                  item.ID.VideoID,
 			Source:              vibe.SourceTypeYouTube,
 			ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID.VideoID),
 			Title:               html.UnescapeString(item.Snippet.Title),
-			ChannelTitle:        html.UnescapeString(item.Snippet.ChannelTitle),
+			Publisher:           html.UnescapeString(item.Snippet.ChannelTitle),
 			ThumbnailURL:        thumbnailURL,
 			Duration:            videoItem.ContentDetails.Duration,
 			DurationSeconds:     durationSeconds,

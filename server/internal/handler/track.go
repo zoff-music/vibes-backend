@@ -23,6 +23,11 @@ import (
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/youtube/videos/{id} [get]
+//
+// Deprecated: Use GET /api/v2/youtube/videos/{id}. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/youtube/videos/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func GetMusicTrack(
 	ms vibe.MusicTrackFetcher,
 	cache vibe.CachedMusicTrackCreator,
@@ -140,6 +145,11 @@ func GetMusicTrack(
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/soundcloud/tracks/{id} [get]
+//
+// Deprecated: Use GET /api/v2/soundcloud/items/{id}. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/soundcloud/items/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func GetSoundCloudTrack(
 	ms vibe.MusicTrackFetcher,
 ) http.HandlerFunc {
@@ -196,6 +206,11 @@ func GetSoundCloudTrack(
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/soundcloud/tracks [get]
+//
+// Deprecated: Use GET /api/v2/soundcloud/items. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use GET /api/v2/soundcloud/items for the playlist-item contract. This endpoint retains its existing payloads.
 func ResolveSoundCloudTrack(
 	resolver vibe.MusicTrackResolver,
 ) http.HandlerFunc {

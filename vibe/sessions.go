@@ -46,6 +46,8 @@ type CreateSessionRequest struct {
 }
 
 // SessionResponse is returned when creating a session
+//
+// Deprecated: Use SessionResponseV2 for new clients. Retained for v1 room authentication.
 type SessionResponse struct {
 	UserID    string  `json:"userId"`
 	SessionID string  `json:"sessionId"`

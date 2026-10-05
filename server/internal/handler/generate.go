@@ -31,6 +31,11 @@ import (
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Failure	409	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/generation [post]
+//
+// Deprecated: Use POST /api/v2/rooms/generation. Retained for existing clients.
+//
+// @Deprecated
+// @Description Deprecated: Use POST /api/v2/rooms/generation for the playlist-item contract. This endpoint retains its existing payloads.
 func CreateGeneratedRoom(
 	db vibe.GeneratedRoomCreator,
 ) http.HandlerFunc {
@@ -317,7 +322,7 @@ func CreateGeneratedRoom(
 //	@Router		/api/v1/rooms/{id}/generations [post]
 func CreateRoomGeneration(
 	creator vibe.RoomGenerationCreator,
-	maxExistingSongs int,
+	maxExistingPlaylistItems int,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -393,18 +398,18 @@ func CreateRoomGeneration(
 				return
 			}
 
-			var songLimitError internalerror.ErrRoomGenerationSongLimit
-			if errors.As(err, &songLimitError) {
+			var playlistItemLimitError internalerror.ErrRoomGenerationPlaylistItemLimit
+			if errors.As(err, &playlistItemLimitError) {
 				handleError(
 					w,
 					client.ErrorCodeWrapper{
-						Err: songLimitError,
+						Err: playlistItemLimitError,
 						ResponseBody: client.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_generation_song_limit",
 							Message: fmt.Sprintf(
 								"Playlists can only be generated when the room has %d songs or fewer.",
-								maxExistingSongs,
+								maxExistingPlaylistItems,
 							),
 							Propagate: true,
 						},

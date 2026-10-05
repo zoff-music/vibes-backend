@@ -16,7 +16,7 @@ func (c *Client) prepareCreatePlaylistImportItemStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO playlist_import_items (
 			id, import_id, position, source_type, source_id, provider_url,
-			playback_restriction, title, artist, thumbnail_url, duration
+			playback_restriction, title, publisher, thumbnail_url, duration
 		)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 	`)
@@ -29,7 +29,7 @@ func (c *Client) prepareCreatePlaylistImportItemStmt() error {
 	return nil
 }
 
-func (c *Client) CreatePlaylistImportItem(ctx context.Context, importID string, position int, song vibe.Song) error {
+func (c *Client) CreatePlaylistImportItem(ctx context.Context, importID string, position int, playlistItem vibe.PlaylistItem) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "CreatePlaylistImportItem")
 	defer span.End()
 
@@ -37,9 +37,9 @@ func (c *Client) CreatePlaylistImportItem(ctx context.Context, importID string, 
 	defer cancel()
 
 	_, err := c.CreatePlaylistImportItemStatement.ExecContext(
-		cctx, song.ID, importID, position, song.SourceType, song.SourceID,
-		song.ProviderURL, song.PlaybackRestriction, song.Title, song.Artist,
-		song.ThumbnailURL, song.Duration,
+		cctx, playlistItem.ID, importID, position, playlistItem.SourceType, playlistItem.SourceID,
+		playlistItem.ProviderURL, playlistItem.PlaybackRestriction, playlistItem.Title, playlistItem.Publisher,
+		playlistItem.ThumbnailURL, playlistItem.Duration,
 	)
 	if err != nil {
 		return fmt.Errorf("error creating playlist import item: %w", err)
@@ -71,7 +71,7 @@ func (c *Client) CreatePlaylistImport(ctx context.Context, importID string, room
 	defer span.End()
 
 	if count <= 0 {
-		return fmt.Errorf("error creating playlist import: playlist has no songs")
+		return fmt.Errorf("error creating playlist import: playlist has no items")
 	}
 
 	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
@@ -191,7 +191,7 @@ func (c *Client) prepareProcessNextPlaylistImportStmt() error {
 			b.provider_url,
 			b.playback_restriction,
 			b.title,
-			b.artist,
+			b.publisher,
 			b.thumbnail_url,
 			b.duration,
 			b.created_at
@@ -254,13 +254,13 @@ type playlistImportRow struct {
 	NextPosition        sql.NullInt64
 	Attempts            sql.NullInt64
 	Exhausted           sql.NullBool
-	SongID              sql.NullString
+	PlaylistItemID      sql.NullString
 	SourceType          sql.NullString
 	SourceID            sql.NullString
 	ProviderURL         sql.NullString
 	PlaybackRestriction sql.NullString
 	Title               sql.NullString
-	Artist              sql.NullString
+	Publisher           sql.NullString
 	ThumbnailURL        sql.NullString
 	Duration            sql.NullInt64
 	AddedAt             sql.NullTime
@@ -274,13 +274,13 @@ func (r *playlistImportRow) scan(row *sql.Row) error {
 		&r.NextPosition,
 		&r.Attempts,
 		&r.Exhausted,
-		&r.SongID,
+		&r.PlaylistItemID,
 		&r.SourceType,
 		&r.SourceID,
 		&r.ProviderURL,
 		&r.PlaybackRestriction,
 		&r.Title,
-		&r.Artist,
+		&r.Publisher,
 		&r.ThumbnailURL,
 		&r.Duration,
 		&r.AddedAt,
@@ -300,15 +300,15 @@ func (r *playlistImportRow) toPlaylistImport() (*vibe.PlaylistImport, error) {
 		NextPosition: int(r.NextPosition.Int64),
 		Attempts:     int(r.Attempts.Int64),
 		Exhausted:    r.Exhausted.Bool,
-		Song: vibe.Song{
-			ID:                  r.SongID.String,
+		PlaylistItem: vibe.PlaylistItem{
+			ID:                  r.PlaylistItemID.String,
 			RoomID:              r.RoomID.String,
 			SourceType:          r.SourceType.String,
 			SourceID:            r.SourceID.String,
 			ProviderURL:         r.ProviderURL.String,
 			PlaybackRestriction: r.PlaybackRestriction.String,
 			Title:               r.Title.String,
-			Artist:              r.Artist.String,
+			Publisher:           r.Publisher.String,
 			ThumbnailURL:        r.ThumbnailURL.String,
 			Duration:            int(r.Duration.Int64),
 			AddedBySessionID:    r.AddedBy.String,
@@ -448,11 +448,11 @@ func (c *Client) DeletePlaylistImport(ctx context.Context, importID string) erro
 }
 
 // StartPlaylistPlayback returns a state only when the import starts idle playback.
-func (c *Client) StartPlaylistPlayback(ctx context.Context, roomID string) (*vibe.PlaybackState, error) {
+func (c *Client) StartPlaylistPlayback(ctx context.Context, roomID string) (*vibe.PlaybackStateV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "StartPlaylistPlayback")
 	defer span.End()
 
-	state, err := c.startPlaybackIfIdle(ctx, roomID)
+	state, err := c.startPlaybackIfIdleV2(ctx, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("error starting playlist playback: %w", err)
 	}
