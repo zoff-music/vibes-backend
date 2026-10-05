@@ -94,10 +94,10 @@ func GetPlaybackState(
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/rooms/{id}/playbackfailures [post]
 //
-// Deprecated: Use POST /api/v2/rooms/{id}/playbackfailures. Retained for existing clients.
+// Deprecated: Use POST /api/v2/rooms/{id}/failures. Retained for existing clients.
 //
 // @Deprecated
-// @Description Deprecated: Use POST /api/v2/rooms/{id}/playbackfailures for the playlist-item contract. This endpoint retains its existing payloads.
+// @Description Deprecated: Use POST /api/v2/rooms/{id}/failures for the playlist-item contract. This endpoint retains its existing payloads.
 func ReportPlaybackFailure(
 	db vibe.PlaybackFailureV2Storage,
 	itemFetcher vibe.ProviderItemFetcher,

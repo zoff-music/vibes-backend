@@ -53,7 +53,7 @@ func (s *Server) setupRoutes() {
 	apiV1.HandleFunc("/rooms/{id}/states", handler.UpdatePlaybackState(s.DB, s.Redis)).Methods(http.MethodPut, http.MethodOptions).Name("UpdatePlaybackState")
 	apiV2.HandleFunc("/rooms/{id}/states", handler.UpdatePlaybackStateV2(s.DB, s.Redis)).Methods(http.MethodPut, http.MethodOptions).Name("UpdatePlaybackStateV2")
 	apiV1.HandleFunc("/rooms/{id}/playbackfailures", handler.ReportPlaybackFailure(s.DB, s.YouTube, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("ReportPlaybackFailure")
-	apiV2.HandleFunc("/rooms/{id}/playbackfailures", handler.ReportPlaybackFailureV2(s.DB, s.YouTube, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("ReportPlaybackFailureV2")
+	apiV2.HandleFunc("/rooms/{id}/failures", handler.ReportPlaybackFailureV2(s.DB, s.YouTube, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("ReportPlaybackFailureV2")
 	apiV1.HandleFunc("/rooms/{id}/sessions", handler.CreateSession(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSession")
 	apiV1.HandleFunc("/rooms/{id}/sessions", handler.DeleteRoomAdminSession(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("DeleteRoomAdminSession")
 	apiV2.HandleFunc("/rooms/{id}/sessions", handler.CreateSessionV2(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("CreateSessionV2")
