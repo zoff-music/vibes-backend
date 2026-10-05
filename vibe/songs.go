@@ -1,7 +1,6 @@
 package vibe
 
 import (
-	"context"
 	"fmt"
 	"net/url"
 	"strings"
@@ -95,60 +94,11 @@ func (s *Song) IsEmpty() bool {
 	return s.ID == ""
 }
 
-// SongsFetcher fetches songs from the queue
-type SongsFetcher interface {
-	GetSongs(ctx context.Context, roomID string) ([]Song, error)
-}
-
-type SongFetcher interface {
-	GetSong(ctx context.Context, roomID, songID string) (*Song, error)
-}
-
-// SongAdder adds songs to the queue
-type SongAdder interface {
-	AddSong(ctx context.Context, song *Song) (*AddSongResult, error)
-}
-
-// SongRemover removes songs from the queue
-type SongRemover interface {
-	RemoveSong(ctx context.Context, roomID, songID string) error
-}
-
-// SongVoter votes for a song
-type SongVoter interface {
-	VoteSong(ctx context.Context, roomID, songID, userID string) error
-}
-
-// SongQueueAdder defines the exact operations used when adding a song.
-type SongQueueAdder interface {
-	SessionProfileFetcherCreator
-	SongAdder
-	SongsFetcher
-	RoomFetcher
-	PlaybackController
-}
-
-// CachedMusicTrackRoomEventNotifier defines the Redis capabilities used while
+// ProviderItemRoomNotifier defines the Redis capabilities used while
 // adding one song.
-type CachedMusicTrackRoomEventNotifier interface {
-	CachedMusicTrackFetcher
+type ProviderItemRoomNotifier interface {
+	CachedProviderItemFetcher
 	RoomEventNotifier
-}
-
-// SongQueueRemover defines the exact operations used when removing a song.
-type SongQueueRemover interface {
-	SessionProfileFetcherCreator
-	SongFetcher
-	SongRemover
-	SongsFetcher
-	RoomFetcher
-}
-
-// SongQueueVoter defines the exact operations used when voting for a song.
-type SongQueueVoter interface {
-	MessageAuthorFetcher
-	SongVoter
-	SongsFetcher
 }
 
 const AddSongOutcomeAdded = "added"

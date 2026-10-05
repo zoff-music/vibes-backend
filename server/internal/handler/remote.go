@@ -32,7 +32,7 @@ import (
 // @Deprecated
 // @Description Deprecated: Use POST /api/v2/remotes for the playlist-item contract. This endpoint retains its existing payloads.
 func CreateRemoteControl(
-	db vibe.RemoteControlEnabler,
+	db vibe.RemoteControlEnablerV2,
 	notifier vibe.RemoteEventNotifier,
 	secret string,
 	pairingTTL time.Duration,
@@ -64,7 +64,7 @@ func CreateRemoteControl(
 
 		request.RoomID = strings.TrimSpace(request.RoomID)
 		if request.RoomID != "" {
-			room, err := db.GetRoom(ctx, request.RoomID, session.UserID)
+			room, err := db.GetRoomV2(ctx, request.RoomID, session.UserID)
 			if err != nil {
 				handleError(
 					w,
@@ -109,7 +109,7 @@ func CreateRemoteControl(
 
 		remoteID := uuid.New().String()
 		pairingExpiresAt := time.Now().Add(pairingTTL)
-		remote, err := db.CreateRemoteControl(
+		remote, err := db.CreateRemoteControlV2(
 			ctx,
 			remoteID,
 			session.UserID,
@@ -147,7 +147,7 @@ func CreateRemoteControl(
 		}
 
 		body, err := json.Marshal(vibe.RemotePairing{
-			RemoteControl: *remote,
+			RemoteControl: *remote.ToRemoteControl(),
 			PairingToken:  pairingToken,
 			PairingCode:   pairingCode,
 		})
@@ -182,7 +182,7 @@ func CreateRemoteControl(
 // @Deprecated
 // @Description Deprecated: Use GET /api/v2/remotes for the playlist-item contract. This endpoint retains its existing payloads.
 func GetOwnedRemoteControl(
-	fetcher vibe.OwnedRemoteControlFetcher,
+	fetcher vibe.OwnedRemoteControlFetcherV2,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -197,7 +197,7 @@ func GetOwnedRemoteControl(
 			return
 		}
 
-		remote, err := fetcher.GetRemoteControlByOwner(ctx, session.UserID)
+		remote, err := fetcher.GetRemoteControlByOwnerV2(ctx, session.UserID)
 		if err != nil {
 			handleError(
 				w,
@@ -228,8 +228,8 @@ func GetOwnedRemoteControl(
 			Enabled:            true,
 			ID:                 remote.ID,
 			CurrentRoomID:      remote.CurrentRoomID,
-			CurrentSongID:      remote.CurrentSongID,
-			PlaybackPositionMs: remote.PlaybackPositionMs,
+			CurrentSongID:      remote.CurrentPlaylistItemID,
+			PlaybackPositionMs: int64(remote.PlaybackPositionMs),
 			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
 			PlaybackObservedAt: remote.PlaybackObservedAt,
 			Online:             true,
@@ -270,7 +270,7 @@ func GetOwnedRemoteControl(
 // @Deprecated
 // @Description Deprecated: Use POST /api/v2/remotes/{id}/sessions for the playlist-item contract. This endpoint retains its existing payloads.
 func PairRemoteControl(
-	pairer vibe.RemoteControlPairer,
+	pairer vibe.RemoteControlPairerV2,
 	notifier vibe.RemoteEventNotifier,
 	secret string,
 ) http.HandlerFunc {
@@ -351,7 +351,7 @@ func PairRemoteControl(
 			pairingCodeHash = helper.HashRemoteCredential(secret, request.PairingCode)
 		}
 
-		remote, err := pairer.PairRemoteControl(
+		remote, err := pairer.PairRemoteControlV2(
 			ctx,
 			remoteID,
 			pairingTokenHash,
@@ -383,8 +383,8 @@ func PairRemoteControl(
 			Origin:             vibe.RemoteOriginController,
 			Online:             true,
 			Paired:             true,
-			CurrentSongID:      remote.CurrentSongID,
-			PlaybackPositionMs: remote.PlaybackPositionMs,
+			CurrentSongID:      remote.CurrentPlaylistItemID,
+			PlaybackPositionMs: int64(remote.PlaybackPositionMs),
 			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
 			PlaybackObservedAt: remote.PlaybackObservedAt,
 		})
@@ -412,8 +412,8 @@ func PairRemoteControl(
 				Enabled:            true,
 				ID:                 remote.ID,
 				CurrentRoomID:      remote.CurrentRoomID,
-				CurrentSongID:      remote.CurrentSongID,
-				PlaybackPositionMs: remote.PlaybackPositionMs,
+				CurrentSongID:      remote.CurrentPlaylistItemID,
+				PlaybackPositionMs: int64(remote.PlaybackPositionMs),
 				PlaybackIsPlaying:  remote.PlaybackIsPlaying,
 				PlaybackObservedAt: remote.PlaybackObservedAt,
 				Online:             true,
@@ -455,7 +455,7 @@ func PairRemoteControl(
 // @Deprecated
 // @Description Deprecated: Use GET /api/v2/remotes/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func GetRemoteControl(
-	fetcher vibe.RemoteControlFetcher,
+	fetcher vibe.RemoteControlFetcherV2,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -473,7 +473,7 @@ func GetRemoteControl(
 			return
 		}
 
-		remote, err := fetcher.GetRemoteControl(ctx, remoteID)
+		remote, err := fetcher.GetRemoteControlV2(ctx, remoteID)
 		if err != nil {
 			handleError(
 				w,
@@ -515,8 +515,8 @@ func GetRemoteControl(
 			Enabled:            true,
 			ID:                 remote.ID,
 			CurrentRoomID:      remote.CurrentRoomID,
-			CurrentSongID:      remote.CurrentSongID,
-			PlaybackPositionMs: remote.PlaybackPositionMs,
+			CurrentSongID:      remote.CurrentPlaylistItemID,
+			PlaybackPositionMs: int64(remote.PlaybackPositionMs),
 			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
 			PlaybackObservedAt: remote.PlaybackObservedAt,
 			Online:             true,
@@ -557,7 +557,7 @@ func GetRemoteControl(
 // @Deprecated
 // @Description Deprecated: Use PATCH /api/v2/remotes/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func UpdateRemoteControl(
-	db vibe.RemoteControlRoomUpdater,
+	db vibe.RemoteControlRoomUpdaterV2,
 	notifier vibe.RemoteEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -605,7 +605,7 @@ func UpdateRemoteControl(
 		}
 
 		if request.RoomID != "" {
-			room, err := db.GetRoom(ctx, request.RoomID, session.UserID)
+			room, err := db.GetRoomV2(ctx, request.RoomID, session.UserID)
 			if err != nil {
 				handleError(
 					w,
@@ -627,12 +627,12 @@ func UpdateRemoteControl(
 		}
 
 		origin := vibe.RemoteOriginMachine
-		var remote *vibe.RemoteControl
+		var remote *vibe.RemoteControlV2
 		if session.AuthType == "remote" {
 			origin = vibe.RemoteOriginController
-			remote, err = db.UpdatePairedRemoteControl(ctx, remoteID, request)
+			remote, err = db.UpdatePairedRemoteControlV2(ctx, remoteID, *request.ToRemoteUpdateRequestV2())
 		} else {
-			remote, err = db.UpdateOwnedRemoteControl(ctx, remoteID, session.UserID, request)
+			remote, err = db.UpdateOwnedRemoteControlV2(ctx, remoteID, session.UserID, *request.ToRemoteUpdateRequestV2())
 		}
 		if err != nil {
 			handleError(
@@ -657,8 +657,8 @@ func UpdateRemoteControl(
 		if origin == vibe.RemoteOriginController && request.RoomID != "" {
 			eventType = vibe.RemoteRoomUpdate
 		}
-		currentSongID := remote.CurrentSongID
-		playbackPositionMs := remote.PlaybackPositionMs
+		currentSongID := remote.CurrentPlaylistItemID
+		playbackPositionMs := int64(remote.PlaybackPositionMs)
 		playbackIsPlaying := remote.PlaybackIsPlaying
 		if origin == vibe.RemoteOriginController && eventType == vibe.RemoteStateUpdate {
 			currentSongID = request.CurrentSongID
@@ -760,7 +760,7 @@ const remotePlaybackPositionMaxMs = int64((24 * time.Hour) / time.Millisecond)
 // @Description Deprecated: Use GET /api/v2/remotes/{id}/events for the playlist-item contract. This endpoint retains its existing payloads.
 func RemoteEvents(
 	subscriber vibe.Subscriber,
-	fetcher vibe.RemoteControlFetcher,
+	fetcher vibe.RemoteControlFetcherV2,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -778,7 +778,7 @@ func RemoteEvents(
 			return
 		}
 
-		remote, err := fetcher.GetRemoteControl(ctx, remoteID)
+		remote, err := fetcher.GetRemoteControlV2(ctx, remoteID)
 		if err != nil {
 			handleError(
 				w,
@@ -849,8 +849,8 @@ func RemoteEvents(
 			Origin:             vibe.RemoteOriginMachine,
 			Online:             true,
 			Paired:             remote.Paired,
-			CurrentSongID:      remote.CurrentSongID,
-			PlaybackPositionMs: remote.PlaybackPositionMs,
+			CurrentSongID:      remote.CurrentPlaylistItemID,
+			PlaybackPositionMs: int64(remote.PlaybackPositionMs),
 			PlaybackIsPlaying:  remote.PlaybackIsPlaying,
 			PlaybackObservedAt: remote.PlaybackObservedAt,
 		}

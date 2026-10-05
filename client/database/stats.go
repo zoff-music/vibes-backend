@@ -95,16 +95,3 @@ func (s *statsRow) toStatsV2() (*vibe.StatsV2, error) {
 		TotalRooms:         int(s.TotalRooms.Int64),
 	}, nil
 }
-
-func (c *Client) GetStats(ctx context.Context) (*vibe.Stats, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetStats")
-	defer span.End()
-
-	result, err := c.GetStatsV2(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error mapping legacy statistics: %w", err)
-	}
-
-	legacy := result.ToStats()
-	return legacy, nil
-}

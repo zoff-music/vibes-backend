@@ -11,7 +11,7 @@ import (
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 )
 
-// Client implements vibe.MusicSearcher
+// Client implements vibe.ProviderItemsSearcher
 type Client struct {
 	Enabled        bool
 	clientID       string

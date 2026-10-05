@@ -139,11 +139,6 @@ type PublicRoomResult struct {
 	Count int          `json:"count"`
 }
 
-// PublicRoomsSearcher searches public rooms with or without listeners.
-type PublicRoomsSearcher interface {
-	SearchPublicRooms(ctx context.Context, search PublicRoomSearch) (*PublicRoomResult, error)
-}
-
 // CreateRoomRequest is the request payload for creating a room.
 //
 // Deprecated: Use CreateRoomRequestV2 for new code. Retained for legacy API compatibility.
@@ -172,11 +167,6 @@ type UpdateRoomRequest struct {
 // IsEmpty returns true if the room is empty/not found
 func (r *Room) IsEmpty() bool {
 	return r.ID == ""
-}
-
-// RoomFetcher fetches room data
-type RoomFetcher interface {
-	GetRoom(ctx context.Context, id string, userID string) (*Room, error)
 }
 
 // PublicRoomFetcher fetches the bounded list of public rooms with active listeners.
@@ -210,33 +200,6 @@ type RoomNameReservationDeleter interface {
 // RoomExistenceChecker checks whether a room ID is already in use.
 type RoomExistenceChecker interface {
 	RoomExists(ctx context.Context, roomID string) (bool, error)
-}
-
-// RoomCreator creates rooms
-type RoomCreator interface {
-	CreateRoom(
-		ctx context.Context,
-		room *Room,
-		reservationToken string,
-	) (*Room, error)
-}
-
-// RoomCreatorExistenceChecker checks availability and creates a room.
-type RoomCreatorExistenceChecker interface {
-	RoomCreator
-	RoomExistenceChecker
-}
-
-// RoomUpdater updates room data
-type RoomUpdater interface {
-	UpdateRoom(ctx context.Context, room *Room) (*Room, error)
-}
-
-// RoomSettingsUpdater fetches and updates room data
-type RoomSettingsUpdater interface {
-	RoomFetcher
-	RoomUpdater
-	SessionProfileFetcherCreator
 }
 
 // RoomModeServer is the mode where the server controls playback

@@ -36,9 +36,9 @@ type RoomEventReplayNotifier interface {
 
 // RoomEventSnapshotFetcher fetches the authoritative state sent on connection.
 type RoomEventSnapshotFetcher interface {
-	RoomFetcher
-	SongsFetcher
-	PlaybackFetcher
+	RoomV2Fetcher
+	PlaylistItemsFetcher
+	PlaybackV2Fetcher
 }
 
 // RoomEventStateFetcherUpdater defines the persisted room state and presence

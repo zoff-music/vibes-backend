@@ -15,17 +15,17 @@ import (
 
 type remotePairingStub struct {
 	event    vibe.RemoteEvent
-	remote   *vibe.RemoteControl
+	remote   *vibe.RemoteControlV2
 	remoteID string
 }
 
-func (s *remotePairingStub) PairRemoteControl(
+func (s *remotePairingStub) PairRemoteControlV2(
 	_ context.Context,
 	_ string,
 	_ string,
 	_ string,
 	_ string,
-) (*vibe.RemoteControl, error) {
+) (*vibe.RemoteControlV2, error) {
 	return s.remote, nil
 }
 
@@ -51,14 +51,14 @@ func TestPairRemoteControlNotifiesMachine(t *testing.T) {
 			remoteID := "4f31cb5c-40f3-48b5-878a-9a61cdca9a53"
 			observedAt := time.Now()
 			stub := &remotePairingStub{
-				remote: &vibe.RemoteControl{
-					ID:                 remoteID,
-					CurrentRoomID:      "room-1",
-					CurrentSongID:      "song-1",
-					PlaybackPositionMs: 1200,
-					PlaybackIsPlaying:  true,
-					PlaybackObservedAt: observedAt,
-					Paired:             true,
+				remote: &vibe.RemoteControlV2{
+					ID:                    remoteID,
+					CurrentRoomID:         "room-1",
+					CurrentPlaylistItemID: "song-1",
+					PlaybackPositionMs:    1200,
+					PlaybackIsPlaying:     true,
+					PlaybackObservedAt:    observedAt,
+					Paired:                true,
 				},
 			}
 			request := httptest.NewRequest(

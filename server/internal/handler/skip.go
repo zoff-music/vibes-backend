@@ -34,7 +34,7 @@ import (
 // @Deprecated
 // @Description Deprecated: Use POST /api/v2/rooms/{id}/skips for the playlist-item contract. This endpoint retains its existing payloads.
 func SkipSong(
-	db vibe.RoomSkipper,
+	db vibe.RoomV2Skipper,
 	notifier vibe.RoomEventBatchNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -64,12 +64,12 @@ func SkipSong(
 
 		userID := session.UserID
 
-		previous, previousErr := db.GetPlaybackState(ctx, roomID)
+		previous, previousErr := db.GetPlaybackStateV2(ctx, roomID)
 		if previousErr != nil {
 			log.Printf("error fetching previous playback for skip chat activity: %v", previousErr)
 		}
 
-		result, err := db.SkipSong(ctx, roomID, userID)
+		result, err := db.SkipPlaylistItem(ctx, roomID, userID)
 		if err != nil {
 			var errHostMode internalerror.ErrHostModeSkipOnly
 			if errors.As(err, &errHostMode) {
@@ -131,8 +131,8 @@ func SkipSong(
 				RequiredVotes: result.RequiredVotes,
 			}
 
-			if result.Playback != nil && result.Playback.CurrentSong != nil {
-				payload.SongID = result.Playback.CurrentSong.ID
+			if result.Playback != nil && result.Playback.CurrentPlaylistItem != nil {
+				payload.SongID = result.Playback.CurrentPlaylistItem.ID
 			}
 
 			votePayload, err := json.Marshal(payload)
@@ -160,7 +160,7 @@ func SkipSong(
 		}
 
 		if result.Skipped {
-			songs, err := db.GetSongs(ctx, roomID)
+			items, err := db.GetPlaylistItems(ctx, roomID)
 			if err != nil {
 				handleError(
 					w,
@@ -169,6 +169,11 @@ func SkipSong(
 					true,
 				)
 				return
+			}
+
+			songs := make([]vibe.Song, len(items))
+			for index, item := range items {
+				songs[index] = *item.ToSong()
 			}
 
 			songsPayload, err := json.Marshal(songs)
@@ -182,7 +187,12 @@ func SkipSong(
 				return
 			}
 
-			statePayload, err := json.Marshal(result.Playback)
+			var legacyPlayback *vibe.PlaybackState
+			if result.Playback != nil {
+				legacyPlayback = result.Playback.ToPlaybackState()
+			}
+
+			statePayload, err := json.Marshal(legacyPlayback)
 			if err != nil {
 				handleError(
 					w,
@@ -195,7 +205,7 @@ func SkipSong(
 
 			var v2Event *vibe.RoomEventV2Payload
 			for position, song := range songs {
-				if song.ID != result.PreviousSongID {
+				if song.ID != result.PreviousPlaylistItemID {
 					continue
 				}
 
@@ -218,7 +228,7 @@ func SkipSong(
 			}
 
 			if v2Event == nil {
-				v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: result.PreviousSongID})
+				v2Payload, marshalErr := json.Marshal(vibe.SongIDUpdate{ID: result.PreviousPlaylistItemID})
 				if marshalErr != nil {
 					handleError(
 						w,
@@ -250,7 +260,9 @@ func SkipSong(
 			}
 		}
 
-		body, err := json.Marshal(result)
+		legacy := result.ToSkipSongResult()
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(
 				w,
@@ -275,12 +287,12 @@ func SkipSong(
 			kind = vibe.MessageKindSkipped
 		}
 
-		if previousErr == nil && previous.CurrentSong != nil &&
-			(!result.Skipped || previous.CurrentSong.ID == result.PreviousSongID) {
-			title = previous.CurrentSong.Title
+		if previousErr == nil && previous.CurrentPlaylistItem != nil &&
+			(!result.Skipped || previous.CurrentPlaylistItem.ID == result.PreviousPlaylistItemID) {
+			title = previous.CurrentPlaylistItem.Title
 		}
 
-		room, err := db.GetRoom(ctx, roomID, userID)
+		room, err := db.GetRoomV2(ctx, roomID, userID)
 		if err != nil {
 			log.Printf("error fetching skip chat room: %v", err)
 			return

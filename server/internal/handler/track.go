@@ -29,8 +29,8 @@ import (
 // @Deprecated
 // @Description Deprecated: Use GET /api/v2/youtube/videos/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func GetMusicTrack(
-	ms vibe.MusicTrackFetcher,
-	cache vibe.CachedMusicTrackCreator,
+	ms vibe.ProviderItemFetcher,
+	cache vibe.CachedProviderItemsCreator,
 	provider string,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +48,7 @@ func GetMusicTrack(
 			return
 		}
 
-		track, err := ms.GetTrack(ctx, id)
+		item, err := ms.GetProviderItem(ctx, id)
 		if err != nil {
 			var madeForKidsError internalerror.ErrMadeForKids
 			if errors.As(err, &madeForKidsError) {
@@ -94,7 +94,7 @@ func GetMusicTrack(
 		}
 
 		if provider == vibe.SourceTypeYouTube &&
-			track.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding {
+			item.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding {
 			handleError(
 				w,
 				client.ErrorCodeWrapper{
@@ -113,12 +113,14 @@ func GetMusicTrack(
 			return
 		}
 
-		err = cache.CacheMusicTracks(ctx, provider, []vibe.MusicTrack{*track})
+		err = cache.CacheProviderItems(ctx, provider, []vibe.ProviderItem{*item})
 		if err != nil {
 			log.Printf("error caching provider track metadata: %v", err)
 		}
 
-		body, err := json.Marshal(track)
+		legacy := item.ToMusicTrack()
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(
 				w,
@@ -151,7 +153,7 @@ func GetMusicTrack(
 // @Deprecated
 // @Description Deprecated: Use GET /api/v2/soundcloud/items/{id} for the playlist-item contract. This endpoint retains its existing payloads.
 func GetSoundCloudTrack(
-	ms vibe.MusicTrackFetcher,
+	ms vibe.ProviderItemFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -168,7 +170,7 @@ func GetSoundCloudTrack(
 			return
 		}
 
-		track, err := ms.GetTrack(ctx, id)
+		item, err := ms.GetProviderItem(ctx, id)
 		if err != nil {
 			handleError(
 				w,
@@ -179,7 +181,9 @@ func GetSoundCloudTrack(
 			return
 		}
 
-		body, err := json.Marshal(track)
+		legacy := item.ToMusicTrack()
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(
 				w,
@@ -212,7 +216,7 @@ func GetSoundCloudTrack(
 // @Deprecated
 // @Description Deprecated: Use GET /api/v2/soundcloud/items for the playlist-item contract. This endpoint retains its existing payloads.
 func ResolveSoundCloudTrack(
-	resolver vibe.MusicTrackResolver,
+	resolver vibe.ProviderItemResolver,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -232,7 +236,7 @@ func ResolveSoundCloudTrack(
 			return
 		}
 
-		track, err := resolver.ResolveTrack(ctx, providerURL)
+		item, err := resolver.ResolveProviderItem(ctx, providerURL)
 		if err != nil {
 			handleError(
 				w,
@@ -246,7 +250,9 @@ func ResolveSoundCloudTrack(
 			return
 		}
 
-		body, err := json.Marshal(track)
+		legacy := item.ToMusicTrack()
+
+		body, err := json.Marshal(legacy)
 		if err != nil {
 			handleError(
 				w,

@@ -12,10 +12,6 @@ func (s StatsV2) ToStats() *Stats {
 	return &Stats{TotalListeners: s.TotalListeners, TotalSongs: s.TotalPlaylistItems, TotalRooms: s.TotalRooms}
 }
 
-func (s Stats) ToStatsV2() *StatsV2 {
-	return &StatsV2{TotalListeners: s.TotalListeners, TotalPlaylistItems: s.TotalSongs, TotalRooms: s.TotalRooms}
-}
-
 type StatsV2Fetcher interface {
 	GetStatsV2(ctx context.Context) (*StatsV2, error)
 }

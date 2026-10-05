@@ -40,27 +40,6 @@ type PlaybackFailureRequest struct {
 	SongID string `json:"songId"`
 }
 
-// PlaybackFetcher fetches playback state
-type PlaybackFetcher interface {
-	GetPlaybackState(ctx context.Context, roomID string) (*PlaybackState, error)
-}
-
-// PlaybackStateUpdater defines the interface for updating playback state
-type RoomGetterPlaybackUpdater interface {
-	PlaybackFetcher
-	GetRoom(ctx context.Context, roomID string, userID string) (*Room, error)
-	UpdatePlayback(ctx context.Context, roomID string, userID string, action string, positionMs int) (*PlaybackState, error)
-}
-
-// PlaybackController controls playback
-type PlaybackController interface {
-	UpsertPlaybackState(ctx context.Context, state *PlaybackState) error
-}
-
-type RestrictedPlaybackSkipper interface {
-	SkipRestrictedSong(ctx context.Context, roomID string, songID string) (*PlaybackAdvance, error)
-}
-
 type PlaylistItemPlaybackRestrictionUpdater interface {
 	UpdatePlaylistItemPlaybackRestriction(
 		ctx context.Context,
@@ -68,23 +47,6 @@ type PlaylistItemPlaybackRestrictionUpdater interface {
 		songID string,
 		restriction string,
 	) error
-}
-
-type PlaybackFailureStorage interface {
-	PlaybackFetcher
-	RestrictedPlaybackSkipper
-	SongsFetcher
-	PlaylistItemPlaybackRestrictionUpdater
-}
-
-// ExpiredPlaybackProcessor defines interfaces needed for background room playback automation
-type ExpiredPlaybackProcessor interface {
-	ProcessNextExpiredPlayback(ctx context.Context) (*PlaybackAdvance, error)
-}
-
-type ExpiredPlaybackSongFetcher interface {
-	ExpiredPlaybackProcessor
-	SongsFetcher
 }
 
 // AbandonedHostProcessor defines interfaces needed for background host management

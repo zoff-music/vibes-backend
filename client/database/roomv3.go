@@ -151,6 +151,15 @@ type publicRoomResultRow struct {
 	Total sql.NullInt64
 }
 
+func (r *publicRoomRow) toPublicRoomV3() (*vibe.PublicRoomV3, error) {
+	return &vibe.PublicRoomV3{
+		ID:                r.ID.String,
+		Name:              r.Name.String,
+		ListenerCount:     int(r.ListenerCount.Int64),
+		PlaylistItemCount: int(r.PlaylistItemCount.Int64),
+	}, nil
+}
+
 func (r *publicRoomResultRow) scanRows(rows *sql.Rows) error {
 	err := rows.Scan(&r.ID, &r.Name, &r.ListenerCount, &r.PlaylistItemCount, &r.Total)
 	if err != nil {
