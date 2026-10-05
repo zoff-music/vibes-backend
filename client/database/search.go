@@ -15,37 +15,36 @@ func (c *Client) prepareCreateSearchUsagesStmt() error {
 		WITH deleted_q AS (
 			DELETE FROM search_usage
 			WHERE created_at < NOW() - INTERVAL '32 days'
+			RETURNING id
+		), deleted_rooms_q AS (
+			DELETE FROM room_search_usage
+			WHERE created_at < NOW() - INTERVAL '32 days'
+			RETURNING room_id
+		), recorded_q AS (
+			INSERT INTO search_usage (
+				provider,
+				query_hash,
+				cached,
+				search_count,
+				created_at
+			)
+			VALUES ($1, $2, $3, 1, DATE_TRUNC('hour', NOW(), 'UTC'))
+			ON CONFLICT (provider, query_hash, cached, created_at)
+			DO UPDATE SET
+				search_count = search_usage.search_count + EXCLUDED.search_count
+			RETURNING provider, created_at
+		), recorded_rooms_q AS (
+			INSERT INTO room_search_usage (room_id, provider, created_at, search_count, cached_count)
+			SELECT $4, provider, created_at, 1, CASE WHEN $3 THEN 1 ELSE 0 END
+			FROM recorded_q
+			ON CONFLICT (room_id, provider, created_at) DO UPDATE SET
+				search_count = room_search_usage.search_count + 1,
+				cached_count = room_search_usage.cached_count + EXCLUDED.cached_count
+			RETURNING room_id
 		)
-		INSERT INTO search_usage (
-			provider,
-			query_hash,
-			cached,
-			search_count,
-			created_at
-		)
-		SELECT
-			a.provider,
-			a.query_hash,
-			a.cached,
-			COUNT(*),
-			DATE_TRUNC('hour', NOW())
-		FROM UNNEST(
-			$1::text[],
-			$2::text[],
-			$3::boolean[]
-		) AS a(provider, query_hash, cached)
-		GROUP BY
-			a.provider,
-			a.query_hash,
-			a.cached
-		ON CONFLICT (
-			provider,
-			query_hash,
-			cached,
-			created_at
-		)
-		DO UPDATE SET
-			search_count = search_usage.search_count + EXCLUDED.search_count
+		SELECT COUNT(*) FROM recorded_rooms_q
+		UNION ALL SELECT COUNT(*) FROM deleted_q
+		UNION ALL SELECT COUNT(*) FROM deleted_rooms_q
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreateSearchUsagesStatement: %w", err)
@@ -66,26 +65,14 @@ func (c *Client) CreateSearchUsages(
 		return nil
 	}
 
-	providers := make([]string, 0, len(usages))
-	queryHashes := make([]string, 0, len(usages))
-	cached := make([]bool, 0, len(usages))
-	for _, usage := range usages {
-		providers = append(providers, usage.Provider)
-		queryHashes = append(queryHashes, usage.QueryHash)
-		cached = append(cached, usage.Cached)
-	}
-
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.CreateSearchUsagesStatement.ExecContext(
-		cctx,
-		providers,
-		queryHashes,
-		cached,
-	)
-	if err != nil {
-		return fmt.Errorf("error creating search usages in CreateSearchUsages: %w", err)
+	for _, usage := range usages {
+		_, err := c.CreateSearchUsagesStatement.ExecContext(cctx, usage.Provider, usage.QueryHash, usage.Cached, usage.RoomID)
+		if err != nil {
+			return fmt.Errorf("error creating search usages in CreateSearchUsages: %w", err)
+		}
 	}
 
 	return nil
@@ -96,7 +83,7 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 		WITH usage_q AS (
 			SELECT
 				'hour'::text AS aggregation_window,
-				DATE_TRUNC('hour', created_at) AS bucket,
+				DATE_TRUNC('hour', created_at, 'UTC') AS bucket,
 				provider,
 				SUM(search_count) AS total,
 				COUNT(DISTINCT query_hash) AS unique_count,
@@ -110,14 +97,14 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 				) AS live_count
 			FROM search_usage
 			WHERE created_at >=
-				DATE_TRUNC('hour', NOW()) - INTERVAL '23 hours'
-			GROUP BY DATE_TRUNC('hour', created_at), provider
+				DATE_TRUNC('hour', NOW(), 'UTC') - INTERVAL '23 hours'
+			GROUP BY DATE_TRUNC('hour', created_at, 'UTC'), provider
 
 			UNION ALL
 
 			SELECT
 				'day'::text AS aggregation_window,
-				DATE_TRUNC('day', created_at) AS bucket,
+				DATE_TRUNC('day', created_at, 'UTC') AS bucket,
 				provider,
 				SUM(search_count) AS total,
 				COUNT(DISTINCT query_hash) AS unique_count,
@@ -131,8 +118,8 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 				) AS live_count
 			FROM search_usage
 			WHERE created_at >=
-				DATE_TRUNC('day', NOW()) - INTERVAL '29 days'
-			GROUP BY DATE_TRUNC('day', created_at), provider
+				DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 days'
+			GROUP BY DATE_TRUNC('day', created_at, 'UTC'), provider
 		)
 		SELECT
 			aggregation_window,

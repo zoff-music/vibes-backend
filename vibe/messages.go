@@ -65,12 +65,14 @@ type MessageAuthorFetcherUsageCreator interface {
 }
 
 type MessageUsagePoint struct {
+	RoomID    string    `json:"roomId"`
 	Window    string    `json:"window"`
 	Timestamp time.Time `json:"timestamp"`
 	Messages  int       `json:"messages"`
 }
 
 type AdminMessageUsage struct {
+	RoomPoints  []MessageUsagePoint `json:"roomPoints"`
 	RoomID      string              `json:"roomId"`
 	Total       int                 `json:"total"`
 	Points      []MessageUsagePoint `json:"points"`

@@ -122,8 +122,19 @@ type AdminSearchUsagePoint struct {
 }
 
 type AdminSearchUsage struct {
+	RoomPoints  []RoomSearchUsagePoint  `json:"roomPoints"`
 	Points      []AdminSearchUsagePoint `json:"points"`
 	GeneratedAt time.Time               `json:"generatedAt"`
+}
+
+type RoomSearchUsagePoint struct {
+	RoomID    string    `json:"roomId"`
+	Window    string    `json:"window"`
+	Timestamp time.Time `json:"timestamp"`
+	Provider  string    `json:"provider"`
+	Total     int       `json:"total"`
+	Cached    int       `json:"cached"`
+	Live      int       `json:"live"`
 }
 
 type CachedAdminSearchUsage struct {
@@ -177,6 +188,7 @@ type AdminUserDeleter interface {
 }
 
 type AdminSearchUsageLister interface {
+	ListAdminRoomSearchUsage(ctx context.Context) ([]RoomSearchUsagePoint, error)
 	ListAdminSearchUsage(ctx context.Context) ([]AdminSearchUsagePoint, error)
 }
 
