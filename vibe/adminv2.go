@@ -10,6 +10,7 @@ import (
 type AdminRoomSummaryV2 struct {
 	ID                string   `json:"id"`
 	Name              string   `json:"name"`
+	RoomType          RoomType `json:"roomType"`
 	UserCount         int      `json:"userCount"`
 	PlaylistItemCount int      `json:"playlistItemCount"`
 	ActiveSources     []string `json:"activeSources"`
@@ -31,6 +32,7 @@ func (r AdminRoomSummary) ToAdminRoomSummaryV2() *AdminRoomSummaryV2 {
 	return &AdminRoomSummaryV2{
 		ID:                r.ID,
 		Name:              r.Name,
+		RoomType:          RoomTypeMusic,
 		UserCount:         r.UserCount,
 		PlaylistItemCount: r.SongCount,
 		ActiveSources:     slices.Clone(r.ActiveSources),

@@ -3,10 +3,11 @@ package vibe
 import "context"
 
 type PublicRoomV3 struct {
-	ID                string `json:"id"`
-	Name              string `json:"name"`
-	ListenerCount     int    `json:"listenerCount"`
-	PlaylistItemCount int    `json:"playlistItemCount"`
+	ID                string   `json:"id"`
+	Name              string   `json:"name"`
+	RoomType          RoomType `json:"roomType"`
+	ListenerCount     int      `json:"listenerCount"`
+	PlaylistItemCount int      `json:"playlistItemCount"`
 }
 
 func (r PublicRoomV3) ToPublicRoom() *PublicRoom {
