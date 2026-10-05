@@ -71,11 +71,18 @@ func (r RoomSettingsV2) ToRoomSettings() *RoomSettings {
 	}
 }
 
+type RoomType string
+
+const RoomTypeMusic RoomType = "MUSIC"
+
+const RoomTypeWatch RoomType = "WATCH"
+
 // RoomV2 is the playlist-item API contract; Room remains unchanged.
 type RoomV2 struct {
 	ID                                     string         `json:"id"`
 	Name                                   string         `json:"name"`
 	Mode                                   string         `json:"mode"`
+	RoomType                               RoomType       `json:"roomType"`
 	HostID                                 string         `json:"hostId,omitempty"`
 	AdminPasswordHash                      string         `json:"-"`
 	HasPassword                            bool           `json:"hasPassword"`
@@ -100,6 +107,7 @@ func (r Room) ToRoomV2() *RoomV2 {
 		ID:                                     r.ID,
 		Name:                                   r.Name,
 		Mode:                                   r.Mode,
+		RoomType:                               RoomTypeMusic,
 		HostID:                                 r.HostID,
 		AdminPasswordHash:                      r.AdminPasswordHash,
 		HasPassword:                            r.HasPassword,
