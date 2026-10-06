@@ -122,10 +122,11 @@ type PublicRoom struct {
 
 // PublicRoomSearch selects a zero-based, inclusive range of public rooms.
 type PublicRoomSearch struct {
-	Query string
-	Live  bool
-	From  int
-	To    int
+	Query    string
+	RoomType RoomType
+	Live     bool
+	From     int
+	To       int
 }
 
 // PublicRoomResult contains a page of rooms and the full matching count.

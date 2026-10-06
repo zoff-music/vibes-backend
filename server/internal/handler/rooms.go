@@ -652,6 +652,15 @@ func UpdateRoomSettings(
 		previousSettings := room.Settings
 		previousMode := room.Mode
 
+		if req.Settings != nil {
+			for _, source := range req.Settings.EnabledSources {
+				if !room.RoomType.AllowsSource(source) {
+					handleError(w, fmt.Errorf("error updating room: provider %q is not allowed for %s", source, room.RoomType), http.StatusBadRequest, false)
+					return
+				}
+			}
+		}
+
 		if req.Settings != nil && !req.Settings.IsEmpty() {
 			room.Settings = *req.Settings.ToRoomSettingsV2()
 		}

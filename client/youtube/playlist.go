@@ -17,9 +17,14 @@ import (
 func (c *Client) GetProviderPlaylist(
 	ctx context.Context,
 	id string,
+	roomType vibe.RoomType,
 ) (*vibe.ProviderPlaylist, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetProviderPlaylist")
 	defer span.End()
+
+	if !roomType.AllowsSource(vibe.SourceTypeYouTube) {
+		return nil, fmt.Errorf("error getting youtube playlist: invalid room type %q", roomType)
+	}
 
 	if c.apiKey == "" {
 		return nil, fmt.Errorf(
@@ -80,6 +85,7 @@ func (c *Client) GetProviderPlaylist(
 	playlistItems := make([]vibe.ProviderItem, 0, len(videoIDs))
 	skippedEmbeddingCount := 0
 	skippedMadeForKidsCount := 0
+	skippedRoomTypeCount := 0
 	for start := 0; start < len(videoIDs); start += youtubePlaylistPageSize {
 		end := start + youtubePlaylistPageSize
 		if end > len(videoIDs) {
@@ -122,6 +128,11 @@ func (c *Client) GetProviderPlaylist(
 				continue
 			}
 
+			if roomType == vibe.RoomTypeMusic && item.Snippet.CategoryID != youtubeMusicCategoryID {
+				skippedRoomTypeCount++
+				continue
+			}
+
 			if item.Status.MadeForKids {
 				skippedMadeForKidsCount++
 				continue
@@ -151,6 +162,7 @@ func (c *Client) GetProviderPlaylist(
 			playlistItems = append(playlistItems, vibe.ProviderItem{
 				ID:                  item.ID,
 				Source:              vibe.SourceTypeYouTube,
+				CategoryID:          item.Snippet.CategoryID,
 				ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID),
 				Title:               html.UnescapeString(item.Snippet.Title),
 				Publisher:           html.UnescapeString(item.Snippet.ChannelTitle),
@@ -168,6 +180,7 @@ func (c *Client) GetProviderPlaylist(
 		Items:                   playlistItems,
 		Truncated:               truncated,
 		SkippedEmbeddingCount:   skippedEmbeddingCount,
+		SkippedRoomTypeCount:    skippedRoomTypeCount,
 		SkippedMadeForKidsCount: skippedMadeForKidsCount,
 	}, nil
 }

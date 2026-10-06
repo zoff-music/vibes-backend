@@ -37,7 +37,7 @@ type chatCompletionResponse struct {
 	Choices []chatCompletionChoice `json:"choices"`
 }
 
-func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.GeneratedPlaylist, error) {
+func (c *Client) GeneratePlaylist(ctx context.Context, prompt string, roomType vibe.RoomType) (*vibe.GeneratedPlaylist, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GeneratePlaylist")
 	defer span.End()
 
@@ -47,12 +47,21 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 		)
 	}
 
+	if !roomType.IsValid() {
+		return nil, fmt.Errorf("error generating playlist: invalid room type %q", roomType)
+	}
+
+	instruction := c.systemInstruction
+	if roomType == vibe.RoomTypeWatch {
+		instruction = vibe.GeneratedWatchSystemInstruction(c.itemCount)
+	}
+
 	request := chatCompletionRequest{
 		Model: c.Model,
 		Messages: []chatMessage{
 			{
 				Role:    "system",
-				Content: c.systemInstruction,
+				Content: instruction,
 			},
 			{
 				Role:    "user",

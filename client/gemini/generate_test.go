@@ -91,7 +91,7 @@ func TestGeneratePlaylist(t *testing.T) {
 				},
 			}
 
-			playlist, err := geminiClient.GeneratePlaylist(context.Background(), "songs for a night drive")
+			playlist, err := geminiClient.GeneratePlaylist(context.Background(), "songs for a night drive", vibe.RoomTypeMusic)
 			if tt.expectedError != "" {
 				if err == nil {
 					t.Fatalf("expected error %q, got nil", tt.expectedError)

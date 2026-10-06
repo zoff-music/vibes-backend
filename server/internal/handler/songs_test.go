@@ -45,7 +45,7 @@ func (s *addSongStorageStub) UpsertPlaybackStateV2(_ context.Context, _ *vibe.Pl
 type addSongEventsStub struct{}
 
 func (s *addSongEventsStub) GetCachedProviderItem(_ context.Context, _ string, _ string) (*vibe.ProviderItem, error) {
-	return &vibe.ProviderItem{ID: "test", Source: "youtube", DurationSeconds: 6375}, nil
+	return &vibe.ProviderItem{ID: "test", Source: "youtube", CategoryID: vibe.YouTubeMusicCategoryID, DurationSeconds: 6375}, nil
 }
 
 func (s *addSongEventsStub) NotifyRoomUpdate(_ context.Context, _ string, _ vibe.RoomEvent) error {

@@ -1049,6 +1049,7 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 			LEFT JOIN room_settings b ON b.room_id = a.id
 			WHERE a.id = $1
 			AND $2 = ANY($12::text[])
+			AND (a.room_type = 'MUSIC' OR $2 = 'youtube')
 			FOR KEY SHARE OF a
 		),
 		existing_session_q AS MATERIALIZED (
