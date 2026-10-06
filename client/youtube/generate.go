@@ -282,7 +282,9 @@ func (c *Client) SearchGeneratedPlaylist(
 		if viewComparison != 0 {
 			return viewComparison
 		}
-		return cmp.Compare(b.LikeCount, a.LikeCount)
+		likeComparison := cmp.Compare(b.LikeCount, a.LikeCount)
+
+		return likeComparison
 	})
 	if len(found) > c.generatedPlaylistSelectedCount {
 		found = found[:c.generatedPlaylistSelectedCount]

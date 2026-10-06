@@ -4,6 +4,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"time"
 
@@ -306,6 +307,11 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	for _, prepareStmt := range prepareStatements {
 		err := prepareStmt()
 		if err != nil {
+			closeErr := c.Close()
+			if closeErr != nil {
+				err = errors.Join(err, closeErr)
+			}
+
 			return fmt.Errorf("error preparing statements: %w", err)
 		}
 	}
@@ -411,6 +417,8 @@ func (c *Client) Close() error {
 		c.DeleteRemoteControlStatement,
 	}
 
+	var closeErrors []error
+
 	for _, stmt := range statements {
 		if stmt == nil {
 			continue
@@ -418,17 +426,20 @@ func (c *Client) Close() error {
 
 		err := stmt.Close()
 		if err != nil {
-			return fmt.Errorf("error in db: close statement: %w", err)
+			closeErrors = append(closeErrors, fmt.Errorf("error closing database statement: %w", err))
 		}
 	}
 
-	if c.DB == nil {
-		return nil
+	if c.DB != nil {
+		err := c.DB.Close()
+		if err != nil {
+			closeErrors = append(closeErrors, fmt.Errorf("error closing database connection: %w", err))
+		}
 	}
 
-	err := c.DB.Close()
+	err := errors.Join(closeErrors...)
 	if err != nil {
-		return fmt.Errorf("error in db: close database: %w", err)
+		return fmt.Errorf("error closing database client: %w", err)
 	}
 
 	return nil

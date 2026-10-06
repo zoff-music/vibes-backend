@@ -328,7 +328,9 @@ func redactRawURLForLog(rawURL string) string {
 func isSensitiveLogKey(key string) bool {
 	normalized := strings.Map(func(value rune) rune {
 		if unicode.IsLetter(value) || unicode.IsDigit(value) {
-			return unicode.ToLower(value)
+			lowercase := unicode.ToLower(value)
+
+			return lowercase
 		}
 		return -1
 	}, key)
@@ -339,7 +341,7 @@ func isSensitiveLogKey(key string) bool {
 		return true
 	}
 
-	return strings.Contains(normalized, "password") ||
+	sensitive := strings.Contains(normalized, "password") ||
 		strings.HasSuffix(normalized, "token") ||
 		strings.HasSuffix(normalized, "secret") ||
 		strings.HasSuffix(normalized, "credential") ||
@@ -347,4 +349,6 @@ func isSensitiveLogKey(key string) bool {
 		strings.HasSuffix(normalized, "privatekey") ||
 		strings.HasSuffix(normalized, "signingkey") ||
 		strings.HasSuffix(normalized, "encryptionkey")
+
+	return sensitive
 }

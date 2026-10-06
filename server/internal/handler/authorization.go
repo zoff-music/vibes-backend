@@ -379,8 +379,7 @@ func (h *RefreshYouTubeTokens) Handle(ctx context.Context, _ []byte) error {
 
 	newToken, err := h.Provider.RefreshToken(ctx, token.RefreshToken)
 	if err != nil {
-		log.Printf("Failed to refresh YouTube token for user %s: %v", token.UserID, err)
-		return nil
+		return fmt.Errorf("error refreshing YouTube token in RefreshYouTubeTokens.Handle: %w", err)
 	}
 
 	expiresAt := time.Now().Add(time.Duration(newToken.ExpiresIn) * time.Second)
