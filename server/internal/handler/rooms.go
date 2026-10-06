@@ -1137,3 +1137,27 @@ func DeleteRoomAdminSession(db vibe.RoomAdminSessionV2Deleter) http.HandlerFunc 
 		_, _ = w.Write(body)
 	}
 }
+
+// CleanupRoomNameReservations cleans up expired room name reservations.
+type CleanupRoomNameReservations struct {
+	DB vibe.RoomNameReservationDeleter
+}
+
+func (h *CleanupRoomNameReservations) Handle(
+	ctx context.Context,
+	_ []byte,
+) error {
+	deleted, err := h.DB.DeleteExpiredRoomNameReservations(ctx)
+	if err != nil {
+		return fmt.Errorf(
+			"error deleting expired room name reservations in CleanupRoomNameReservations.Handle: %w",
+			err,
+		)
+	}
+
+	if deleted > 0 {
+		log.Printf("Cleaned up %d expired room name reservations", deleted)
+	}
+
+	return nil
+}

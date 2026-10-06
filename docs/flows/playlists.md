@@ -33,10 +33,12 @@ sequenceDiagram
         API->>DB: Validate staged set and publish import
         API-->>App: Import accepted
         loop Scheduled every 100 ms
-            Worker->>DB: Claim and import one item atomically
-            DB-->>Worker: Imported playlist item and playback result
+            Worker->>DB: Claim one pending item with a retry lease
+            Worker->>DB: Add item atomically or resolve its existing identity
+            DB-->>Worker: Playlist item and playback result
             Worker->>Events: Publish queue and playback changes
             Events-->>App: Playlist-item delta and playback update
+            Worker->>DB: Complete pending item after successful publication
         end
     end
 ```
@@ -46,3 +48,9 @@ calls remain bounded. Failed staging is cleaned up and abandoned work is covered
 by maintenance. Item identity and position travel together, rather than being
 zipped from parallel SQL arrays. The worker starts playback when an import adds
 the first item to an empty room.
+
+Failed event publication leaves the pending item available for the bounded retry
+policy. Retries publish a current queue snapshot instead of repeating an add
+delta, and resolve an existing item ID even when the room allows duplicates.
+Publication precedes completion, so a completion failure may cause a safe state
+refresh on the next attempt rather than silently losing the notification.

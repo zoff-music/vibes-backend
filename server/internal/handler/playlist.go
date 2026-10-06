@@ -796,7 +796,22 @@ func (h *ImportPlaylistItem) Handle(ctx context.Context, _ []byte) error {
 
 	var events []vibe.RoomEventV3
 
-	if result.Outcome == vibe.AddPlaylistItemOutcomeAdded {
+	if playlistImport.Attempts > 1 {
+		playlistItems, err := h.DB.GetPlaylistItems(ctx, playlistImport.RoomID)
+		if err != nil {
+			return fmt.Errorf("error fetching playlist import retry queue in Handle: %w", err)
+		}
+
+		payload, err := json.Marshal(playlistItems)
+		if err != nil {
+			return fmt.Errorf("error marshaling playlist import retry queue in Handle: %w", err)
+		}
+
+		events = append(events, vibe.RoomEventV3{
+			Type:    vibe.PlaylistItemsUpdate,
+			Payload: payload,
+		})
+	} else if result.Outcome == vibe.AddPlaylistItemOutcomeAdded {
 		playlistItemPayload, err := json.Marshal(result.PlaylistItem)
 		if err != nil {
 			return fmt.Errorf("error marshaling playlist import item in Handle: %w", err)
@@ -827,6 +842,13 @@ func (h *ImportPlaylistItem) Handle(ctx context.Context, _ []byte) error {
 		}
 	}
 
+	if len(events) > 0 {
+		err = h.Events.NotifyRoomUpdatesV3(ctx, playlistImport.RoomID, events)
+		if err != nil {
+			return fmt.Errorf("error notifying playlist import item in Handle: %w", err)
+		}
+	}
+
 	err = h.DB.CompletePlaylistImportItem(
 		ctx,
 		playlistImport.ID,
@@ -836,14 +858,20 @@ func (h *ImportPlaylistItem) Handle(ctx context.Context, _ []byte) error {
 		return fmt.Errorf("error completing playlist import item in Handle: %w", err)
 	}
 
-	if len(events) > 0 {
-		err = h.Events.NotifyRoomUpdatesV3(ctx, playlistImport.RoomID, events)
-		if err != nil {
-			return fmt.Errorf("error notifying playlist import item in Handle: %w", err)
-		}
-	}
-
 	return nil
 }
 
 const playlistImportRetryInterval = 5 * time.Minute
+
+type CleanupPlaylistImportItems struct {
+	DB vibe.AbandonedPlaylistImportItemDeleter
+}
+
+func (h *CleanupPlaylistImportItems) Handle(ctx context.Context, _ []byte) error {
+	err := h.DB.DeleteAbandonedPlaylistImportItems(ctx)
+	if err != nil {
+		return fmt.Errorf("error deleting abandoned playlist items in CleanupPlaylistImportItems.Handle: %w", err)
+	}
+
+	return nil
+}

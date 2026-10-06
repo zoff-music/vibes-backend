@@ -1112,6 +1112,27 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 			FROM inserted_session_q
 			LIMIT 1
 		),
+		existing_import_item_q AS MATERIALIZED (
+			SELECT
+				a.id,
+				a.room_id,
+				a.source_type,
+				a.source_id,
+				a.provider_url,
+				a.playback_restriction,
+				a.title,
+				a.publisher,
+				a.thumbnail_url,
+				a.duration,
+				a.added_by,
+				a.added_by_nickname,
+				a.added_at,
+				FALSE AS inserted
+			FROM playlist_items a
+			JOIN room_config_q b ON b.room_id = a.room_id
+			WHERE a.id = $10
+			AND NOT $11
+		),
 		upserted_playlist_item_q AS (
 			INSERT INTO playlist_items (
 				id,
@@ -1145,6 +1166,7 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 				NOW(),
 				NOT a.allow_duplicates
 			FROM room_config_q a
+			WHERE NOT EXISTS (SELECT 1 FROM existing_import_item_q)
 			ON CONFLICT (room_id, source_type, source_id)
 			WHERE duplicate_guard
 			DO UPDATE SET source_id = EXCLUDED.source_id
@@ -1164,10 +1186,15 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 				added_at,
 				id = $10 AS inserted
 		),
+		resolved_playlist_item_q AS (
+			SELECT * FROM upserted_playlist_item_q
+			UNION ALL
+			SELECT * FROM existing_import_item_q
+		),
 		inserted_vote_q AS (
 			INSERT INTO playlist_item_votes (room_id, playlist_item_id, user_id)
 			SELECT a.room_id, a.id, $8
-			FROM upserted_playlist_item_q a
+			FROM resolved_playlist_item_q a
 			WHERE $11
 			ON CONFLICT (room_id, playlist_item_id, user_id) DO NOTHING
 			RETURNING 1
@@ -1200,7 +1227,7 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 				WHERE b.room_id = a.room_id
 				AND b.playlist_item_id = a.id
 			) + (SELECT COUNT(*) FROM inserted_vote_q) AS vote_count
-		FROM upserted_playlist_item_q a
+		FROM resolved_playlist_item_q a
 		UNION ALL
 		SELECT
 			CASE
@@ -1221,7 +1248,7 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 			NULL::TEXT AS added_by_nickname,
 			NULL::TIMESTAMP AS added_at,
 			0::BIGINT AS vote_count
-		WHERE NOT EXISTS (SELECT 1 FROM upserted_playlist_item_q)
+		WHERE NOT EXISTS (SELECT 1 FROM resolved_playlist_item_q)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing AddPlaylistItemStatement: %w", err)

@@ -8,5 +8,7 @@ import (
 
 // CompressionMiddleware compresses supported responses when the client accepts gzip.
 func CompressionMiddleware(next http.Handler) http.Handler {
-	return handlers.CompressHandler(next)
+	handler := handlers.CompressHandler(next)
+
+	return handler
 }
