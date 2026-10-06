@@ -13,7 +13,7 @@ func (s StatsV2) ToStats() *Stats {
 }
 
 type StatsV2Fetcher interface {
-	GetStatsV2(ctx context.Context) (*StatsV2, error)
+	GetStatsV2(ctx context.Context, roomType RoomType) (*StatsV2, error)
 }
 
 type CachedStatsV2 struct {
@@ -26,6 +26,6 @@ func (s *CachedStatsV2) IsEmpty() bool {
 }
 
 type CachedStatsV2FetcherCreator interface {
-	GetCachedStatsV2(ctx context.Context) (*CachedStatsV2, error)
-	CacheStatsV2(ctx context.Context, stats StatsV2) error
+	GetCachedStatsV2(ctx context.Context, roomType RoomType) (*CachedStatsV2, error)
+	CacheStatsV2(ctx context.Context, roomType RoomType, stats StatsV2) error
 }
