@@ -29,7 +29,7 @@ func GetStats(
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		cachedStats, err := cache.GetCachedStatsV2(ctx)
+		cachedStats, err := cache.GetCachedStatsV2(ctx, "")
 		if err != nil {
 			log.Printf("error getting cached stats: %v", err)
 			cachedStats = &vibe.CachedStatsV2{}
@@ -37,7 +37,7 @@ func GetStats(
 
 		stats := &cachedStats.Stats
 		if cachedStats.IsEmpty() {
-			stats, err = sf.GetStatsV2(ctx)
+			stats, err = sf.GetStatsV2(ctx, "")
 			if err != nil {
 				handleError(
 					w,
@@ -48,7 +48,7 @@ func GetStats(
 				return
 			}
 
-			err = cache.CacheStatsV2(ctx, *stats)
+			err = cache.CacheStatsV2(ctx, "", *stats)
 			if err != nil {
 				log.Printf("error caching stats: %v", err)
 			}
