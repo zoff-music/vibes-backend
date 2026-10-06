@@ -4,35 +4,39 @@
 
 The HTTP handler validates permissions and resolves provider metadata before
 publishing work. Items are staged one by one; an incomplete staging attempt is
-not visible as a runnable import.
+not visible as a runnable import. WATCH permits only YouTube and accepts eligible
+videos across categories. MUSIC accepts music-category YouTube items and enabled
+SoundCloud items. Both reject live, made-for-kids and non-embeddable YouTube videos.
 
 ```mermaid
 sequenceDiagram
     actor Listener
     participant App
     participant API as Vibes backend
-    participant Provider as Music provider
+    participant Cache as Verified provider metadata in Redis
     participant DB as PostgreSQL
     participant Worker as Import app event
     participant Events as Redis room stream
 
-    Listener->>App: Import selected playlist tracks
-    App->>API: Submit playlist import
-    API->>DB: Read room settings and administrator state
+    Listener->>App: Import selected playlist items
+    App->>API: POST /api/v2/rooms/{id}/playlists
+    API->>DB: Read room type, settings and administrator state
     alt Import is not permitted
         API-->>App: Permission error with user-facing reason
     else Import is permitted
-        API->>Provider: Resolve and validate track metadata
-        loop Each accepted track
+        API->>Cache: Load metadata cached during provider playlist lookup
+        Cache-->>API: Verified provider items
+        API->>API: Validate every selected item against room type
+        loop Each accepted item
             API->>DB: Stage complete item with explicit position
         end
         API->>DB: Validate staged set and publish import
         API-->>App: Import accepted
         loop Scheduled every 100 ms
             Worker->>DB: Claim and import one item atomically
-            DB-->>Worker: Imported song and playback result
+            DB-->>Worker: Imported playlist item and playback result
             Worker->>Events: Publish queue and playback changes
-            Events-->>App: Song delta and playback update
+            Events-->>App: Playlist-item delta and playback update
         end
     end
 ```
@@ -41,4 +45,4 @@ The staging request has a two-minute overall budget, while individual database
 calls remain bounded. Failed staging is cleaned up and abandoned work is covered
 by maintenance. Item identity and position travel together, rather than being
 zipped from parallel SQL arrays. The worker starts playback when an import adds
-the first song to an empty room.
+the first item to an empty room.

@@ -53,6 +53,10 @@ sequenceDiagram
 
 ## Create a room
 
+The selected experience becomes the immutable `roomType`. It defaults to MUSIC
+when omitted; WATCH only permits YouTube. Playback `mode` remains a separate
+choice. Legacy v1 creation continues to create MUSIC rooms.
+
 ```mermaid
 sequenceDiagram
     actor Listener
@@ -60,14 +64,14 @@ sequenceDiagram
     participant API as Vibes backend
     participant DB as PostgreSQL
 
-    Listener->>Platform: Submit room settings
-    Platform->>API: POST /rooms
-    API->>API: Normalize name and validate settings
+    Listener->>Platform: Select MUSIC or WATCH and submit settings
+    Platform->>API: POST /api/v2/rooms with roomType
+    API->>API: Normalize name and validate type, sources and settings
     API->>DB: Check room does not already exist
     opt Password was supplied
         API->>API: Hash room administrator password
     end
-    API->>DB: Create room using reservation token
+    API->>DB: Create typed room using reservation token
     DB-->>API: Created room
     API-->>Platform: 201 Room
     Platform->>Platform: Navigate to room
@@ -84,11 +88,37 @@ sequenceDiagram
     participant Events as Room event stream
 
     Admin->>Platform: Change room mode or settings
-    Platform->>API: PATCH /rooms/{id}/settings
+    Platform->>API: PATCH /api/v2/rooms/{id}/settings
     API->>DB: Load room and verify administrator permission
-    API->>DB: Persist room settings
+    API->>API: Validate sources against unchanged room type
+    API->>DB: Persist room settings without changing room type
     DB-->>API: Updated room
     API->>Events: Publish settings_update
     API-->>Platform: Updated room
     Events-->>Platform: Apply settings to connected listeners
+```
+
+## Browse rooms and load community totals
+
+```mermaid
+sequenceDiagram
+    actor Participant
+    participant Platform
+    participant API as Vibes backend
+    participant DB as PostgreSQL
+    participant Cache as Redis
+
+    Participant->>Platform: Select MUSIC or WATCH
+    Platform->>API: GET /api/v3/rooms/public?roomType=MUSIC or WATCH
+    API->>DB: Filter public rooms by type and requested live state
+    DB-->>API: Matching rooms and pagination totals
+    API-->>Platform: Typed room results
+    Platform->>API: GET /api/v2/stats?roomType=MUSIC or WATCH
+    API->>Cache: Read type-specific statistics
+    opt Cache miss
+        API->>DB: Count rooms, playlist items and participants for type
+        DB-->>API: Type-specific totals
+        API->>Cache: Store type-specific statistics
+    end
+    API-->>Platform: Counts for selected experience only
 ```

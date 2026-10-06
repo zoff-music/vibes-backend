@@ -2,7 +2,8 @@
 
 ## Send and receive messages
 
-Chat uses the listener's signed session and room-scoped administrator status.
+Chat uses the participant's signed session, room-scoped administrator status,
+and host identity in both MUSIC and WATCH rooms.
 The backend validates trimmed message text independently of frontend limits.
 
 ```mermaid
@@ -35,8 +36,8 @@ administration. Clients bound their in-memory history as well.
 
 ## Show room activity
 
-Song additions, deletions, votes, skips, skip votes, display-name changes, room
-settings changes, and initial password setup
+Playlist-item additions, deletions, votes, skips, skip votes, display-name changes, room
+settings changes, host handovers, and initial password setup
 publish activity entries from their existing backend flows. They use the same
 chat presentation without requiring clients to infer actions from queue diffs.
 
