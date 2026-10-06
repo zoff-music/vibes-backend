@@ -32,8 +32,8 @@ type Config struct {
 	RedisURL                 string        `envconfig:"REDIS_URL" required:"true"`
 	RateLimitEnabled         bool          `envconfig:"RATE_LIMIT_ENABLED" default:"false"`
 	RequestBodyMaxBytes      int           `envconfig:"REQUEST_BODY_MAX_BYTES" default:"1048576"`
-	RoomEventReplayMaxEvents int           `envconfig:"ROOM_EVENT_REPLAY_MAX_EVENTS" default:"1000"`
-	RoomEventReplayMaxAge    time.Duration `envconfig:"ROOM_EVENT_REPLAY_MAX_AGE" default:"2h"`
+	RoomEventReplayMaxEvents int           `envconfig:"ROOM_EVENT_REPLAY_MAX_EVENTS" default:"100"`
+	RoomEventReplayMaxAge    time.Duration `envconfig:"ROOM_EVENT_REPLAY_MAX_AGE" default:"15m"`
 	MaxNameLength            int           `envconfig:"MAX_NAME_LENGTH" default:"100"`
 	MaxQueueLength           int           `envconfig:"MAX_QUEUE_LENGTH" default:"200"`
 	RoomNameReservationTTL   time.Duration `envconfig:"ROOM_NAME_RESERVATION_TTL" default:"2m"`

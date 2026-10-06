@@ -77,7 +77,7 @@ rules.
 | `AI_MODEL` | `PROVIDER:model` selection; default is defined in config |
 | `GROK_API_KEY`, `GEMINI_API_KEY` | Credential for the selected generation provider |
 | `RATE_LIMIT_ENABLED` | Enables general route-policy rate limiting; defaults to false. Admin sign-in is always rate-limited, including internal requests |
-| `ROOM_EVENT_REPLAY_MAX_EVENTS`, `ROOM_EVENT_REPLAY_MAX_AGE` | Replay bounds; defaults 1000 events and 2h |
+| `ROOM_EVENT_REPLAY_MAX_EVENTS`, `ROOM_EVENT_REPLAY_MAX_AGE` | Replay bounds; defaults 100 events and 15m. Older cursors receive a fresh snapshot. |
 | `CORS_ALLOWED_ORIGINS` | Allowed browser origins |
 | `OTEL_*` | Telemetry endpoint, service identity, sampling, and export timing |
 
