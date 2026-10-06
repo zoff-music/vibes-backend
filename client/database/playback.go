@@ -5,8 +5,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/http"
 	"time"
 
+	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -921,38 +923,18 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 		return fmt.Errorf("error shared playback controls are unavailable in server mode")
 	}
 
-	if room.HostID == "" {
-		err := c.SetRoomHost(ctx, roomID, userID)
-		if err != nil {
-			return fmt.Errorf("error setting room host in check host permission in %s for %s: %w", roomID, userID, err)
-		}
-		return nil
-	}
-
 	if room.HostID == userID {
 		return nil
 	}
 
-	activeParticipants, err := c.GetActiveParticipants(ctx, roomID, 30*time.Second)
-	if err != nil {
-		return fmt.Errorf("error getting active participants in check host permission in %s for %s: %w", roomID, userID, err)
+	return client.ErrorCodeWrapper{
+		Err: fmt.Errorf("error only the host can perform this action in %s for %s", roomID, userID),
+		ResponseBody: client.ErrorCodeResponseBody{
+			Namespace: "vibes-backend",
+			Error:     "playback_host_required",
+			Message:   "Only the host can seek, play or pause for everyone in this room.",
+			Propagate: true,
+		},
+		StatusCode: http.StatusForbidden,
 	}
-
-	hostStillActive := false
-	for _, p := range activeParticipants {
-		if p.UserID == room.HostID && p.IsActiveListener {
-			hostStillActive = true
-			break
-		}
-	}
-
-	if !hostStillActive {
-		err := c.SetRoomHost(ctx, roomID, userID)
-		if err != nil {
-			return fmt.Errorf("error setting room host in check host permission in %s for %s: %w", roomID, userID, err)
-		}
-		return nil
-	}
-
-	return fmt.Errorf("error only the host can perform this action in %s for %s", roomID, userID)
 }

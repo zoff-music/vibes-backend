@@ -54,6 +54,11 @@ type AbandonedHostProcessor interface {
 	ProcessNextAbandonedHost(ctx context.Context) (*RoomHostInfo, error)
 }
 
+type AbandonedHostProcessorProfileFetcher interface {
+	AbandonedHostProcessor
+	SessionProfileFetcherCreator
+}
+
 const RoomActionPlay = "play"
 const RoomActionPause = "pause"
 const RoomActionSeek = "seek"

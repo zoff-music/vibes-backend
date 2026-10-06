@@ -37,6 +37,7 @@ type SessionProfileRoomUpdater interface {
 type SessionRoom struct {
 	ID      string
 	IsAdmin bool
+	IsHost  bool
 }
 
 // CreateSessionRequest is the request payload for creating a session.

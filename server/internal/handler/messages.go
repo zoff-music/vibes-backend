@@ -78,6 +78,7 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 			UserID:    session.UserID,
 			Name:      profile.Name,
 			IsAdmin:   room.IsAdmin,
+			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
 			Kind:      vibe.MessageKindChat,
 			Text:      strings.TrimSpace(request.Text),
 			CreatedAt: time.Now().UnixMilli(),
