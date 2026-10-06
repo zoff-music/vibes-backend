@@ -31,9 +31,10 @@ func (c *Client) prepareListAdminRoomListenerUsageStmt() error {
 				u.listener_count DESC,
 				u.created_at DESC
 		)
-		SELECT p.period, p.bucket, r.room_id, r.listener_count
+		SELECT p.period, p.bucket, r.room_id, r.listener_count, rooms.room_type
 		FROM peaks_q p
 		JOIN room_listener_usage r ON r.created_at = p.created_at
+		LEFT JOIN rooms ON rooms.id = r.room_id
 		ORDER BY 1, 2, 3
 	`)
 	if err != nil {
@@ -84,6 +85,7 @@ func (c *Client) ListAdminRoomListenerUsage(ctx context.Context) ([]vibe.RoomLis
 }
 
 type roomListenerUsageRow struct {
+	RoomType  sql.NullString
 	Window    sql.NullString
 	Timestamp sql.NullTime
 	RoomID    sql.NullString
@@ -91,7 +93,7 @@ type roomListenerUsageRow struct {
 }
 
 func (r *roomListenerUsageRow) scanRows(rows *sql.Rows) error {
-	err := rows.Scan(&r.Window, &r.Timestamp, &r.RoomID, &r.Listeners)
+	err := rows.Scan(&r.Window, &r.Timestamp, &r.RoomID, &r.Listeners, &r.RoomType)
 	if err != nil {
 		return fmt.Errorf("error scanning room listener usage row: %w", err)
 	}
@@ -101,7 +103,8 @@ func (r *roomListenerUsageRow) scanRows(rows *sql.Rows) error {
 
 func (r *roomListenerUsageRow) toRoomListenerUsagePoint() (*vibe.RoomListenerUsagePoint, error) {
 	return &vibe.RoomListenerUsagePoint{
-		RoomID: r.RoomID.String,
+		RoomType: vibe.RoomType(r.RoomType.String),
+		RoomID:   r.RoomID.String,
 		ListenerUsagePoint: vibe.ListenerUsagePoint{
 			Window:    r.Window.String,
 			Timestamp: r.Timestamp.Time,
