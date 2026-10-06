@@ -23,14 +23,17 @@ func (c *Client) prepareListAdminRoomSearchUsageStmt() error {
 			u.room_id,
 			u.provider,
 			SUM(u.search_count),
-			SUM(u.cached_count)
+			SUM(u.cached_count),
+			r.room_type
 		FROM windows_q w
 		JOIN room_search_usage u ON u.created_at >= w.starts_at
+		LEFT JOIN rooms r ON r.id = u.room_id
 		GROUP BY
 			w.period,
 			DATE_TRUNC(w.period, u.created_at, 'UTC'),
 			u.room_id,
-			u.provider
+			u.provider,
+			r.room_type
 		ORDER BY 1, 2, 3, 4
 	`)
 	if err != nil {
@@ -81,6 +84,7 @@ func (c *Client) ListAdminRoomSearchUsage(ctx context.Context) ([]vibe.RoomSearc
 }
 
 type roomSearchUsageRow struct {
+	RoomType  sql.NullString
 	Window    sql.NullString
 	Timestamp sql.NullTime
 	RoomID    sql.NullString
@@ -90,7 +94,7 @@ type roomSearchUsageRow struct {
 }
 
 func (r *roomSearchUsageRow) scanRows(rows *sql.Rows) error {
-	err := rows.Scan(&r.Window, &r.Timestamp, &r.RoomID, &r.Provider, &r.Total, &r.Cached)
+	err := rows.Scan(&r.Window, &r.Timestamp, &r.RoomID, &r.Provider, &r.Total, &r.Cached, &r.RoomType)
 	if err != nil {
 		return fmt.Errorf("error scanning room search usage row: %w", err)
 	}
@@ -100,6 +104,7 @@ func (r *roomSearchUsageRow) scanRows(rows *sql.Rows) error {
 
 func (r *roomSearchUsageRow) toRoomSearchUsagePoint() (*vibe.RoomSearchUsagePoint, error) {
 	return &vibe.RoomSearchUsagePoint{
+		RoomType:  vibe.RoomType(r.RoomType.String),
 		RoomID:    r.RoomID.String,
 		Window:    r.Window.String,
 		Timestamp: r.Timestamp.Time,

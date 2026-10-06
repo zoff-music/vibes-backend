@@ -19,7 +19,8 @@ type AdminListenerUsage struct {
 
 type RoomListenerUsagePoint struct {
 	ListenerUsagePoint
-	RoomID string `json:"roomId"`
+	RoomType RoomType `json:"roomType,omitempty"`
+	RoomID   string   `json:"roomId"`
 }
 
 type CachedAdminListenerUsage struct {
