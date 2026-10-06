@@ -206,6 +206,7 @@ func CreateSessionV2(
 			Name:      profile.Name,
 			IsAdmin:   true,
 			Kind:      vibe.MessageKindAdded,
+			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
 			Activity:  true,
 			Text:      "a password to the room",
 			CreatedAt: time.Now().UnixMilli(),
@@ -861,6 +862,7 @@ func UpdateRoomSettingsV2(
 				UserID:    session.UserID,
 				Name:      profile.Name,
 				IsAdmin:   updated.IsAdmin,
+				IsHost:    updated.Mode == vibe.RoomModeHost && updated.HostID == session.UserID,
 				Kind:      vibe.MessageKindSettings,
 				Text:      change,
 				CreatedAt: time.Now().UnixMilli(),
@@ -1311,6 +1313,7 @@ func AddPlaylistItem(
 			IsAdmin:   room.IsAdmin,
 			Kind:      kind,
 			Text:      result.PlaylistItem.Title,
+			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
 			CreatedAt: time.Now().UnixMilli(),
 		}
 
@@ -1476,6 +1479,7 @@ func RemovePlaylistItem(
 			IsAdmin:   room.IsAdmin,
 			Kind:      vibe.MessageKindDeleted,
 			Text:      removedPlaylistItem.Title,
+			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
 			CreatedAt: time.Now().UnixMilli(),
 		}
 
@@ -1656,6 +1660,7 @@ func VotePlaylistItem(
 			UserID:    session.UserID,
 			Name:      profile.Name,
 			IsAdmin:   chatRoom.IsAdmin,
+			IsHost:    chatRoom.Mode == vibe.RoomModeHost && chatRoom.HostID == session.UserID,
 			Kind:      vibe.MessageKindVoted,
 			Text:      votedTitle,
 			CreatedAt: time.Now().UnixMilli(),
@@ -2216,6 +2221,7 @@ func SkipPlaylistItem(
 			IsAdmin:   room.IsAdmin,
 			Kind:      kind,
 			Text:      title,
+			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == userID,
 			CreatedAt: time.Now().UnixMilli(),
 		}
 

@@ -19,11 +19,22 @@ func (c *Client) prepareProcessNextAbandonedHostStmt() error {
 		WITH abandoned_room_q AS (
 			SELECT a.id
 			FROM rooms a
-			LEFT JOIN room_users b ON a.host_id = b.id
+			LEFT JOIN room_users b ON a.host_id = b.id AND a.id = b.room_id
 			WHERE a.mode = 'host'
-			AND a.host_id IS NOT NULL
-			AND a.host_id != ''
-			AND (b.last_seen_at IS NULL OR b.last_seen_at < NOW() - INTERVAL '15 seconds')
+			AND (
+				(a.host_id IS NOT NULL AND a.host_id != '' AND (
+					b.last_seen_at IS NULL
+					OR b.last_seen_at < NOW() - INTERVAL '15 seconds'
+					OR NOT b.is_active_listener
+				))
+				OR ((a.host_id IS NULL OR a.host_id = '') AND EXISTS (
+					SELECT 1 FROM room_users c
+					WHERE c.room_id = a.id
+					AND c.last_seen_at >= NOW() - INTERVAL '15 seconds'
+					AND c.is_active_listener
+					AND NOT c.is_cast_receiver
+				))
+			)
 			LIMIT 1
 			FOR UPDATE OF a SKIP LOCKED
 		),

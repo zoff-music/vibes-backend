@@ -175,7 +175,8 @@ func (c *Client) UpdateSessionProfile(
 
 func (c *Client) prepareGetSessionRoomsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT a.room_id, COALESCE(a.is_admin, FALSE)
+		SELECT a.room_id, COALESCE(a.is_admin, FALSE),
+			COALESCE(b.mode = 'host' AND b.host_id = a.id, FALSE)
 		FROM room_users a
 		JOIN rooms b ON b.id = a.room_id
 		JOIN room_settings c ON c.room_id = b.id
@@ -233,10 +234,11 @@ func (c *Client) GetSessionRooms(ctx context.Context, userID string) ([]vibe.Ses
 type sessionRoomRow struct {
 	ID      sql.NullString
 	IsAdmin sql.NullBool
+	IsHost  sql.NullBool
 }
 
 func (r *sessionRoomRow) scanRows(rows *sql.Rows) error {
-	err := rows.Scan(&r.ID, &r.IsAdmin)
+	err := rows.Scan(&r.ID, &r.IsAdmin, &r.IsHost)
 	if err != nil {
 		return fmt.Errorf("error scanning session room row: %w", err)
 	}
@@ -248,5 +250,6 @@ func (r *sessionRoomRow) toSessionRoom() (*vibe.SessionRoom, error) {
 	return &vibe.SessionRoom{
 		ID:      r.ID.String,
 		IsAdmin: r.IsAdmin.Bool,
+		IsHost:  r.IsHost.Bool,
 	}, nil
 }

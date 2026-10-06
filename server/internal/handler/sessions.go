@@ -152,6 +152,7 @@ func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEve
 					UserID:    session.UserID,
 					Name:      previous.Name,
 					IsAdmin:   room.IsAdmin,
+					IsHost:    room.IsHost,
 					Kind:      vibe.MessageKindRenamed,
 					Text:      profile.Name,
 					CreatedAt: time.Now().UnixMilli(),

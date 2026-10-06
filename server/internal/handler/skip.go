@@ -313,6 +313,7 @@ func SkipSong(
 			UserID:    userID,
 			Name:      profile.Name,
 			IsAdmin:   room.IsAdmin,
+			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == userID,
 			Kind:      kind,
 			Text:      title,
 			CreatedAt: time.Now().UnixMilli(),
