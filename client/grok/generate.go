@@ -75,7 +75,7 @@ type chatCompletionResponse struct {
 	Choices []chatCompletionChoice `json:"choices"`
 }
 
-func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.GeneratedPlaylist, error) {
+func (c *Client) GeneratePlaylist(ctx context.Context, prompt string, roomType vibe.RoomType) (*vibe.GeneratedPlaylist, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GeneratePlaylist")
 	defer span.End()
 
@@ -85,12 +85,25 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 		)
 	}
 
+	if !roomType.IsValid() {
+		return nil, fmt.Errorf("error generating playlist: invalid room type %q", roomType)
+	}
+
+	instruction := c.systemInstruction
+	titleDescription := "Canonical song title"
+	publisherDescription := "Canonical artist name"
+	if roomType == vibe.RoomTypeWatch {
+		instruction = vibe.GeneratedWatchSystemInstruction(c.itemCount)
+		titleDescription = "Canonical video title"
+		publisherDescription = "Publishing channel or creator"
+	}
+
 	request := chatCompletionRequest{
 		Model: c.Model,
 		Messages: []chatMessage{
 			{
 				Role:    "system",
-				Content: c.systemInstruction,
+				Content: instruction,
 			},
 			{
 				Role:    "user",
@@ -114,11 +127,11 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string) (*vibe.Gen
 						Properties: playlistItemProperties{
 							Title: stringProperty{
 								Type:        "string",
-								Description: "Canonical song title",
+								Description: titleDescription,
 							},
 							Publisher: stringProperty{
 								Type:        "string",
-								Description: "Canonical artist name",
+								Description: publisherDescription,
 							},
 							YouTubeID: stringProperty{
 								Type:        "string",

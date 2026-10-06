@@ -11,6 +11,7 @@ type ProviderItem struct {
 	ProviderURL         string `json:"providerUrl,omitempty"`
 	Title               string `json:"title"`
 	Publisher           string `json:"publisher,omitempty"`
+	CategoryID          string `json:"categoryId,omitempty"`
 	ThumbnailURL        string `json:"thumbnailUrl"`
 	Duration            string `json:"duration,omitempty"`
 	DurationSeconds     int    `json:"durationSeconds,omitzero"`
@@ -22,6 +23,24 @@ type ProviderItem struct {
 func (p *ProviderItem) IsEmpty() bool {
 	return p.ID == ""
 }
+
+func (p ProviderItem) AllowedInRoom(roomType RoomType) bool {
+	if !roomType.AllowsSource(p.Source) {
+		return false
+	}
+
+	if p.Source != SourceTypeYouTube {
+		return true
+	}
+
+	if IsLiveVideo(p.Source, p.DurationSeconds) || p.PlaybackRestriction == PlaybackRestrictionEmbedding {
+		return false
+	}
+
+	return roomType == RoomTypeWatch || p.CategoryID == YouTubeMusicCategoryID
+}
+
+const YouTubeMusicCategoryID = "10"
 
 func (p ProviderItem) ToMusicTrack() *MusicTrack {
 	return &MusicTrack{
@@ -44,7 +63,7 @@ type ProviderItemFetcher interface {
 }
 
 type ProviderItemsSearcher interface {
-	SearchProviderItems(ctx context.Context, query string) ([]ProviderItem, error)
+	SearchProviderItems(ctx context.Context, query string, roomType RoomType) ([]ProviderItem, error)
 }
 
 type ProviderItemResolver interface {
@@ -89,8 +108,8 @@ type CachedProviderItemKey struct {
 }
 
 type CachedProviderSearchFetcherCreator interface {
-	GetCachedProviderSearches(ctx context.Context, source string, queries []string) ([]CachedProviderSearch, error)
-	CacheProviderSearches(ctx context.Context, source string, searches []CachedProviderSearch) error
+	GetCachedProviderSearches(ctx context.Context, source string, queries []string, roomType RoomType) ([]CachedProviderSearch, error)
+	CacheProviderSearches(ctx context.Context, source string, searches []CachedProviderSearch, roomType RoomType) error
 }
 
 type CachedProviderItemFetcher interface {

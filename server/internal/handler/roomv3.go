@@ -447,6 +447,7 @@ func RoomEventsV3(
 //	@Produce		json
 //	@Param			q		query		string	false	"Case-insensitive room name search (literal substring, up to 100 characters)"
 //	@Param			live	query		boolean	false	"Only rooms with active listeners" default(false)
+//	@Param			roomType	query	string	false	"Room type to browse" Enums(MUSIC,WATCH) default(MUSIC)
 //	@Param			from	query		int		false	"First row, zero-based" minimum(0) default(0)
 //	@Param			to		query		int		false	"Last row, inclusive. Defaults to from + 9; at most 100 rooms per page" minimum(0)
 //	@Success		200		{object}	vibe.PublicRoomResultV3
@@ -456,6 +457,16 @@ func RoomEventsV3(
 func GetPublicRoomsV3(db vibe.PublicRoomsV3Searcher) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+		roomType := vibe.RoomType(r.URL.Query().Get("roomType"))
+		if roomType == "" {
+			roomType = vibe.RoomTypeMusic
+		}
+
+		if !roomType.IsValid() {
+			handleError(w, fmt.Errorf("error browsing public rooms: roomType must be MUSIC or WATCH"), http.StatusBadRequest, false)
+			return
+		}
+
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
 		if !utf8.ValidString(query) || strings.ContainsRune(query, '\x00') {
 			handleError(w, fmt.Errorf("error invalid room search text"), http.StatusBadRequest, false)
@@ -510,10 +521,11 @@ func GetPublicRoomsV3(db vibe.PublicRoomsV3Searcher) http.HandlerFunc {
 		}
 
 		result, err := db.SearchPublicRoomsV3(ctx, vibe.PublicRoomSearch{
-			Query: query,
-			Live:  live == "true",
-			From:  int(from),
-			To:    int(to),
+			RoomType: roomType,
+			Query:    query,
+			Live:     live == "true",
+			From:     int(from),
+			To:       int(to),
 		})
 		if err != nil {
 			handleError(w, fmt.Errorf("error searching public rooms: %w", err), http.StatusInternalServerError, true)

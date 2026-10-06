@@ -89,6 +89,7 @@ func (c *Client) GetProviderItem(ctx context.Context, id string) (*vibe.Provider
 	return &vibe.ProviderItem{
 		ID:                  item.ID,
 		Source:              vibe.SourceTypeYouTube,
+		CategoryID:          item.Snippet.CategoryID,
 		ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID),
 		Title:               html.UnescapeString(item.Snippet.Title),
 		Publisher:           html.UnescapeString(item.Snippet.ChannelTitle),

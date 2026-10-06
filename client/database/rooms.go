@@ -396,6 +396,7 @@ func (c *Client) prepareGetPublicRoomsStmt() error {
 			JOIN participant_counts_q c
 			ON c.room_id = a.id
 			WHERE b.is_public
+			AND a.room_type = 'MUSIC'
 			AND a.admin_password_hash IS NOT NULL
 			AND a.admin_password_hash != ''
 			AND (
@@ -776,8 +777,8 @@ func (c *Client) prepareCreateRoomV2Stmt() error {
 			)
 		),
 		created_room_q AS (
-			INSERT INTO rooms (id, name, mode, host_id, admin_password_hash, created_at)
-			SELECT id, $2, $3, $4, $5, $6
+			INSERT INTO rooms (id, name, mode, host_id, admin_password_hash, created_at, room_type)
+			SELECT id, $2, $3, $4, $5, $6, $18
 			FROM valid_name_q
 			ON CONFLICT (id) DO NOTHING
 			RETURNING id, room_type
@@ -843,6 +844,21 @@ func (c *Client) CreateRoomV2(
 	span, ctx := tracing.StartSpanFromContext(ctx, "CreateRoom")
 	defer span.End()
 
+	roomType := room.RoomType
+	if roomType == "" {
+		roomType = vibe.RoomTypeMusic
+	}
+
+	if !roomType.IsValid() {
+		return nil, fmt.Errorf("error creating room: invalid room type %q", roomType)
+	}
+
+	for _, source := range room.Settings.EnabledSources {
+		if !roomType.AllowsSource(source) {
+			return nil, fmt.Errorf("error creating room: provider %q is not allowed for %s", source, roomType)
+		}
+	}
+
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -864,6 +880,7 @@ func (c *Client) CreateRoomV2(
 		room.Settings.Public,
 		room.Settings.PlaylistImport,
 		reservationToken,
+		roomType,
 	)
 
 	var scanned createRoomRow
@@ -931,7 +948,7 @@ func (c *Client) prepareUpdateRoomV2Stmt() error {
 			host_id = $10,
 			admin_password_hash = $11
 			WHERE id = $2
-			RETURNING id
+			RETURNING id, room_type
 		)
 		UPDATE room_settings
 		SET skip_allowed = $3,
@@ -940,7 +957,11 @@ func (c *Client) prepareUpdateRoomV2Stmt() error {
 		max_continuous_adds = $6,
 		remove_on_play = $7,
 		allow_duplicates = $8,
-		enabled_sources = $12,
+		enabled_sources = CASE
+			WHEN a.room_type = 'WATCH' THEN
+				CASE WHEN 'youtube' = ANY(string_to_array($12, ',')) THEN 'youtube' ELSE '' END
+			ELSE $12
+		END,
 		only_admin_add_playlist_items = $13,
 		is_public = $14,
 		playlist_import = $15
