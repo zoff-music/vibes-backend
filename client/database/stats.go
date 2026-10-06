@@ -12,7 +12,10 @@ import (
 
 func (c *Client) prepareGetStatsV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH room_listener_counts AS (
+		WITH selected_rooms AS (
+			SELECT id FROM rooms
+			WHERE $1::text = '' OR room_type::text = $1
+		), room_listener_counts AS (
 			SELECT
 				room_id,
 				COUNT(*) FILTER (
@@ -23,6 +26,7 @@ func (c *Client) prepareGetStatsV2Stmt() error {
 				) AS active_cast_receivers
 			FROM room_users
 			WHERE last_seen_at > NOW() - INTERVAL '15 seconds'
+				AND room_id IN (SELECT id FROM selected_rooms)
 			GROUP BY room_id
 		)
 		SELECT COALESCE(
@@ -34,8 +38,8 @@ func (c *Client) prepareGetStatsV2Stmt() error {
 			),
 			0
 		) AS total_listeners,
-		(SELECT COUNT(*) FROM playlist_items) AS total_playlist_items,
-		(SELECT COUNT(*) FROM rooms) AS total_rooms
+		(SELECT COUNT(*) FROM playlist_items WHERE room_id IN (SELECT id FROM selected_rooms)) AS total_playlist_items,
+		(SELECT COUNT(*) FROM selected_rooms) AS total_rooms
 		FROM room_listener_counts
 	`)
 	if err != nil {
@@ -45,15 +49,15 @@ func (c *Client) prepareGetStatsV2Stmt() error {
 	return nil
 }
 
-// GetStatsV2 returns public, service-wide usage statistics.
-func (c *Client) GetStatsV2(ctx context.Context) (*vibe.StatsV2, error) {
+// GetStatsV2 returns usage statistics, optionally restricted to a room type.
+func (c *Client) GetStatsV2(ctx context.Context, roomType vibe.RoomType) (*vibe.StatsV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetStatsV2")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	row := c.GetStatsV2Statement.QueryRowContext(cctx)
+	row := c.GetStatsV2Statement.QueryRowContext(cctx, roomType)
 
 	var statsRow statsRow
 	err := statsRow.scan(row)

@@ -12,7 +12,7 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) GetCachedStatsV2(ctx context.Context) (*vibe.CachedStatsV2, error) {
+func (c *Client) GetCachedStatsV2(ctx context.Context, roomType vibe.RoomType) (*vibe.CachedStatsV2, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedStatsV2")
 	defer span.End()
 
@@ -31,7 +31,7 @@ func (c *Client) GetCachedStatsV2(ctx context.Context) (*vibe.CachedStatsV2, err
 	defer connection.Close()
 
 	body, err := redis.Bytes(
-		redis.DoContext(connection, cctx, "GET", c.statsV2CacheKey()),
+		redis.DoContext(connection, cctx, "GET", c.statsV2CacheKey(roomType)),
 	)
 	if errors.Is(err, redis.ErrNil) {
 		return cachedStats, nil
@@ -49,7 +49,7 @@ func (c *Client) GetCachedStatsV2(ctx context.Context) (*vibe.CachedStatsV2, err
 	return cachedStats, nil
 }
 
-func (c *Client) CacheStatsV2(ctx context.Context, stats vibe.StatsV2) error {
+func (c *Client) CacheStatsV2(ctx context.Context, roomType vibe.RoomType, stats vibe.StatsV2) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "CacheStatsV2")
 	defer span.End()
 
@@ -75,7 +75,7 @@ func (c *Client) CacheStatsV2(ctx context.Context, stats vibe.StatsV2) error {
 		connection,
 		cctx,
 		"SET",
-		c.statsV2CacheKey(),
+		c.statsV2CacheKey(roomType),
 		body,
 		"EX",
 		int(statsCacheExpiration.Seconds()),
@@ -87,8 +87,8 @@ func (c *Client) CacheStatsV2(ctx context.Context, stats vibe.StatsV2) error {
 	return nil
 }
 
-func (c *Client) statsV2CacheKey() string {
-	key := c.getKeyWithPrefix("stats:v2")
+func (c *Client) statsV2CacheKey(roomType vibe.RoomType) string {
+	key := c.getKeyWithPrefix("stats:v2:" + string(roomType))
 
 	return key
 }
