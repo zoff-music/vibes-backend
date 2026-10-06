@@ -61,7 +61,7 @@ func GetMusicPlaylist(
 			return
 		}
 
-		playlist, err := fetcher.GetProviderPlaylist(ctx, id)
+		playlist, err := fetcher.GetProviderPlaylist(ctx, id, vibe.RoomTypeMusic)
 		if err != nil {
 			handleError(
 				w,
@@ -300,7 +300,7 @@ func AddPlaylist(
 
 			sourceEnabled := false
 			for _, source := range room.Settings.EnabledSources {
-				if requestedSong.SourceType == source {
+				if requestedSong.SourceType == source && room.RoomType.AllowsSource(source) {
 					sourceEnabled = true
 					break
 				}
@@ -385,6 +385,10 @@ func AddPlaylist(
 				return
 			}
 
+			if !cachedTrack.IsEmpty() && !cachedTrack.AllowedInRoom(room.RoomType) {
+				continue
+			}
+
 			if !cachedTrack.IsEmpty() {
 				if vibe.IsLiveVideo(
 					requestedSong.SourceType,
@@ -430,6 +434,11 @@ func AddPlaylist(
 				AddedBySessionID:    session.UserID,
 				AddedAt:             time.Now(),
 			})
+		}
+
+		if len(playlistItems) == 0 {
+			handleError(w, fmt.Errorf("error importing playlist: no items are allowed in this room"), http.StatusBadRequest, false)
+			return
 		}
 
 		importID := uuid.NewString()

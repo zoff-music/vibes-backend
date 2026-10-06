@@ -14,9 +14,13 @@ import (
 )
 
 // SearchProviderItems searches for tracks on SoundCloud
-func (c *Client) SearchProviderItems(ctx context.Context, query string) ([]vibe.ProviderItem, error) {
+func (c *Client) SearchProviderItems(ctx context.Context, query string, roomType vibe.RoomType) ([]vibe.ProviderItem, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SearchProviderItems")
 	defer span.End()
+
+	if !roomType.AllowsSource(vibe.SourceTypeSoundCloud) {
+		return nil, fmt.Errorf("error searching soundcloud: provider is unavailable for %s", roomType)
+	}
 
 	if !c.Enabled {
 		return nil, fmt.Errorf(

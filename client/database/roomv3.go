@@ -18,6 +18,7 @@ func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
 			FROM rooms a
 			JOIN room_settings b ON b.room_id = a.id
 			WHERE b.is_public
+			AND a.room_type = $7
 			AND a.admin_password_hash IS NOT NULL
 			AND a.admin_password_hash != ''
 			AND ($1 = '' OR a.name ILIKE '%' || $1 || '%')
@@ -89,6 +90,15 @@ func (c *Client) SearchPublicRoomsV3(
 	span, ctx := tracing.StartSpanFromContext(ctx, "SearchPublicRoomsV3")
 	defer span.End()
 
+	roomType := search.RoomType
+	if roomType == "" {
+		roomType = vibe.RoomTypeMusic
+	}
+
+	if !roomType.IsValid() {
+		return nil, fmt.Errorf("error searching public rooms: invalid room type %q", roomType)
+	}
+
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
@@ -102,6 +112,7 @@ func (c *Client) SearchPublicRoomsV3(
 		c.enabledProviders,
 		search.From,
 		search.To-search.From+1,
+		roomType,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error searching public rooms: %w", err)
