@@ -289,6 +289,20 @@ func (r *eventStreams) append(ctx context.Context, topicName string, data []byte
 	defer connection.Close()
 
 	key := replayKey(topicName)
+
+	// Reclaim retained snapshots before allocating the next event. Redis can
+	// reject XADD at maxmemory even when that append would trim the stream.
+	cutoffID := replayCutoffID(time.Now(), r.maxAge)
+	_, err = redigo.DoContext(connection, cctx, "XTRIM", key, "MINID", cutoffID)
+	if err != nil {
+		return fmt.Errorf("error trimming redis stream by age in append: %w", err)
+	}
+
+	_, err = redigo.DoContext(connection, cctx, "XTRIM", key, "MAXLEN", r.maxEvents-1)
+	if err != nil {
+		return fmt.Errorf("error trimming redis stream by count in append: %w", err)
+	}
+
 	_, err = redigo.DoContext(
 		connection,
 		cctx,
@@ -304,20 +318,7 @@ func (r *eventStreams) append(ctx context.Context, topicName string, data []byte
 		return fmt.Errorf("error appending redis stream event in append: %w", err)
 	}
 
-	cutoffID := replayCutoffID(time.Now(), r.maxAge)
-	_, err = redigo.DoContext(
-		connection,
-		cctx,
-		"XTRIM",
-		key,
-		"MINID",
-		cutoffID,
-	)
-	if err != nil {
-		return fmt.Errorf("error trimming redis stream by age in append: %w", err)
-	}
-
-	maxAgeSeconds := int64(r.maxAge / time.Second)
+	maxAgeSeconds := int(r.maxAge / time.Second)
 	if maxAgeSeconds < 1 {
 		maxAgeSeconds = 1
 	}
