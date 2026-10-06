@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json/v2"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -335,4 +337,82 @@ func generateRandomString(n int) (string, error) {
 
 	value := base64.URLEncoding.EncodeToString(b)
 	return value, nil
+}
+
+// CleanupExpiredTokens cleans up expired external auth records
+type CleanupExpiredTokens struct {
+	DB vibe.AuthTokenCleaner
+}
+
+// Handle deletes expired external auth tokens
+func (h *CleanupExpiredTokens) Handle(ctx context.Context, _ []byte) error {
+	deletedAuth, err := h.DB.DeleteExpiredAuthTokens(ctx)
+	if err != nil {
+		return fmt.Errorf("error deleting expired auth tokens in CleanupExpiredTokens.Handle: %w", err)
+	}
+
+	deletedAccess, err := h.DB.DeleteExpiredAccessTokens(ctx)
+	if err != nil {
+		return fmt.Errorf("error deleting expired access tokens in CleanupExpiredTokens.Handle: %w", err)
+	}
+
+	totalDeleted := deletedAuth + deletedAccess
+	if totalDeleted > 0 {
+		log.Printf("Cleaned up %d expired auth tokens and %d expired access tokens", deletedAuth, deletedAccess)
+	}
+
+	return nil
+}
+
+// RefreshYouTubeTokens refreshes expired YouTube access tokens
+type RefreshYouTubeTokens struct {
+	DB       vibe.ExpiredTokenClaimUpdater
+	Provider vibe.TokenRefresher
+}
+
+// Handle refreshes the next expired YouTube token
+func (h *RefreshYouTubeTokens) Handle(ctx context.Context, _ []byte) error {
+	token, err := h.DB.ClaimAndGetExpiredTokenForRefresh(ctx, "youtube")
+	if err != nil {
+		return fmt.Errorf("error claiming expired token for refresh in youtube handler: %w", err)
+	}
+
+	newToken, err := h.Provider.RefreshToken(ctx, token.RefreshToken)
+	if err != nil {
+		log.Printf("Failed to refresh YouTube token for user %s: %v", token.UserID, err)
+		return nil
+	}
+
+	expiresAt := time.Now().Add(time.Duration(newToken.ExpiresIn) * time.Second)
+	refreshToken := newToken.RefreshToken
+	if refreshToken == "" {
+		refreshToken = token.RefreshToken
+	}
+
+	err = h.DB.UpsertAccessToken(ctx, token.UserID, "youtube", newToken.AccessToken, refreshToken, expiresAt, token.RefreshExpiresAt)
+	if err != nil {
+		return fmt.Errorf("error upserting access token in RefreshYouTubeTokens.Handle: %w", err)
+	}
+
+	log.Printf("Refreshed YouTube token for user %s", token.UserID)
+	return nil
+}
+
+// CleanupExpiredPendingOAuthStates cleans up expired pending OAuth states
+type CleanupExpiredPendingOAuthStates struct {
+	DB vibe.ExpiredPendingOAuthStateCleaner
+}
+
+// Handle deletes expired pending OAuth states
+func (h *CleanupExpiredPendingOAuthStates) Handle(ctx context.Context, _ []byte) error {
+	deleted, err := h.DB.DeleteExpiredPendingOAuthStates(ctx)
+	if err != nil {
+		return fmt.Errorf("error deleting expired pending OAuth states in CleanupExpiredPendingOAuthStates.Handle: %w", err)
+	}
+
+	if deleted > 0 {
+		log.Printf("Cleaned up %d expired pending OAuth states", deleted)
+	}
+
+	return nil
 }

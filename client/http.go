@@ -24,7 +24,9 @@ import (
 
 // InstrumentedTransport provides the traced transport used by external HTTP clients.
 func InstrumentedTransport() http.RoundTripper {
-	return otelhttp.NewTransport(http.DefaultTransport)
+	transport := otelhttp.NewTransport(http.DefaultTransport)
+
+	return transport
 }
 
 // HTTPRequestData contains the request data.
@@ -294,7 +296,9 @@ func redactURLForLog(value *url.URL) string {
 	if value.User != nil {
 		redacted.User = url.User(redactedValue)
 	}
-	return redacted.String()
+	redactedURL := redacted.String()
+
+	return redactedURL
 }
 
 func redactHTTPError(err error) error {

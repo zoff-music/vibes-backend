@@ -61,6 +61,7 @@ type PlaylistImportRoomCreator interface {
 }
 
 type PlaylistImportProcessor interface {
+	GetPlaylistItems(ctx context.Context, roomID string) ([]PlaylistItem, error)
 	ProcessNextPlaylistImport(
 		ctx context.Context,
 		retryAfter time.Duration,
