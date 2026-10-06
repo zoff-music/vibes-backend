@@ -514,6 +514,7 @@ func AddSong(
 			Name:      profile.Name,
 			IsAdmin:   room.IsAdmin,
 			Kind:      kind,
+			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
 			Text:      result.PlaylistItem.Title,
 			CreatedAt: time.Now().UnixMilli(),
 		}
@@ -689,6 +690,7 @@ func RemoveSong(
 			Name:      profile.Name,
 			IsAdmin:   room.IsAdmin,
 			Kind:      vibe.MessageKindDeleted,
+			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
 			Text:      removedSong.Title,
 			CreatedAt: time.Now().UnixMilli(),
 		}
@@ -880,6 +882,7 @@ func VoteSong(
 			UserID:    session.UserID,
 			Name:      profile.Name,
 			IsAdmin:   chatRoom.IsAdmin,
+			IsHost:    chatRoom.Mode == vibe.RoomModeHost && chatRoom.HostID == session.UserID,
 			Kind:      vibe.MessageKindVoted,
 			Text:      votedTitle,
 			CreatedAt: time.Now().UnixMilli(),
