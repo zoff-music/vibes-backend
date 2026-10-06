@@ -2,6 +2,7 @@
 package middleware
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -61,18 +62,47 @@ func MetricsMiddleware(next http.Handler) http.Handler {
 
 type customResponseWriter struct {
 	http.ResponseWriter
-	status int
+	status      int
+	wroteHeader bool
 }
 
 func (crw *customResponseWriter) WriteHeader(status int) {
+	if crw.wroteHeader {
+		return
+	}
+
+	if status >= 100 && status < 200 && status != http.StatusSwitchingProtocols {
+		crw.ResponseWriter.WriteHeader(status)
+		return
+	}
+
+	crw.wroteHeader = true
 	crw.status = status
 	crw.ResponseWriter.WriteHeader(status)
+}
+
+func (crw *customResponseWriter) Write(body []byte) (int, error) {
+	if !crw.wroteHeader {
+		crw.status = http.StatusOK
+		crw.wroteHeader = true
+	}
+
+	written, err := crw.ResponseWriter.Write(body)
+	if err != nil {
+		return written, fmt.Errorf("error writing HTTP response: %w", err)
+	}
+
+	return written, nil
 }
 
 func (crw *customResponseWriter) Flush() {
 	flusher, ok := crw.ResponseWriter.(http.Flusher)
 	if !ok {
 		return
+	}
+
+	if !crw.wroteHeader {
+		crw.WriteHeader(http.StatusOK)
 	}
 
 	flusher.Flush()

@@ -52,7 +52,9 @@ func (c *Client) GetProviderQuotaReset(
 		)
 	}
 
-	return time.UnixMilli(resetMilliseconds), nil
+	resetAt := time.UnixMilli(resetMilliseconds)
+
+	return resetAt, nil
 }
 
 func (c *Client) CacheProviderQuotaReset(
