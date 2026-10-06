@@ -305,6 +305,7 @@ type ProviderPlaylist struct {
 	Truncated               bool           `json:"truncated"`
 	SkippedEmbeddingCount   int            `json:"skippedEmbeddingCount"`
 	SkippedMadeForKidsCount int            `json:"skippedMadeForKidsCount"`
+	SkippedRoomTypeCount    int            `json:"skippedRoomTypeCount"`
 }
 
 func (p *ProviderPlaylist) IsEmpty() bool {
@@ -332,7 +333,7 @@ func (p ProviderPlaylist) ToMusicPlaylist() *MusicPlaylist {
 }
 
 type ProviderPlaylistFetcher interface {
-	GetProviderPlaylist(ctx context.Context, id string) (*ProviderPlaylist, error)
+	GetProviderPlaylist(ctx context.Context, id string, roomType RoomType) (*ProviderPlaylist, error)
 }
 
 type ProviderPlaylistResolver interface {

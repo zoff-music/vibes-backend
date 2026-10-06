@@ -304,6 +304,7 @@ func DeleteRoomAdminSessionV2(db vibe.RoomAdminSessionV2Deleter) http.HandlerFun
 // CreateRoomV2 handles POST /api/v2/rooms
 //
 //	@Summary		Create a room
+//	@Description	Creates an immutable MUSIC or WATCH room. MUSIC is the default; WATCH supports YouTube only.
 //	@Tags			rooms
 //	@Accept			json
 //	@Produce		json
@@ -328,6 +329,15 @@ func CreateRoomV2(
 				http.StatusBadRequest,
 				true,
 			)
+			return
+		}
+
+		if req.RoomType == "" {
+			req.RoomType = vibe.RoomTypeMusic
+		}
+
+		if !req.RoomType.IsValid() {
+			handleError(w, fmt.Errorf("error creating room: roomType must be MUSIC or WATCH"), http.StatusBadRequest, false)
 			return
 		}
 
@@ -416,6 +426,17 @@ func CreateRoomV2(
 			settings = req.Settings
 		}
 
+		if req.RoomType == vibe.RoomTypeWatch && req.Settings == nil {
+			settings.EnabledSources = []string{vibe.SourceTypeYouTube}
+		}
+
+		for _, source := range settings.EnabledSources {
+			if !req.RoomType.AllowsSource(source) {
+				handleError(w, fmt.Errorf("error creating room: provider %q is not allowed for %s", source, req.RoomType), http.StatusBadRequest, false)
+				return
+			}
+		}
+
 		if req.Settings != nil && req.Settings.OnlyAdminAddPlaylistItems && req.Password == "" {
 			handleError(
 				w,
@@ -450,6 +471,7 @@ func CreateRoomV2(
 		room := &vibe.RoomV2{
 			ID:                slug,
 			Name:              req.Name,
+			RoomType:          req.RoomType,
 			Mode:              mode,
 			HostID:            session.UserID,
 			AdminPasswordHash: passwordHash,
@@ -635,6 +657,15 @@ func UpdateRoomSettingsV2(
 
 		previousSettings := room.Settings
 		previousMode := room.Mode
+
+		if req.Settings != nil {
+			for _, source := range req.Settings.EnabledSources {
+				if !room.RoomType.AllowsSource(source) {
+					handleError(w, fmt.Errorf("error updating room: provider %q is not allowed for %s", source, room.RoomType), http.StatusBadRequest, false)
+					return
+				}
+			}
+		}
 
 		if req.Settings != nil && !req.Settings.IsEmpty() {
 			room.Settings = *req.Settings
@@ -968,7 +999,7 @@ func AddPlaylistItem(
 
 		sourceEnabled := false
 		for _, source := range room.Settings.EnabledSources {
-			if req.SourceType == source {
+			if req.SourceType == source && room.RoomType.AllowsSource(source) {
 				sourceEnabled = true
 				break
 			}
@@ -1054,6 +1085,20 @@ func AddPlaylistItem(
 		}
 
 		if err == nil && !cachedItem.IsEmpty() {
+			if !cachedItem.AllowedInRoom(room.RoomType) {
+				handleError(w, client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error adding item: provider metadata is not allowed for %s", room.RoomType),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "playlist_item_not_allowed",
+						Message:   "This item cannot be played in this room. Music rooms accept music videos; all videos must allow embedded playback and must not be live.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				}, http.StatusBadRequest, false)
+				return
+			}
+
 			if vibe.IsLiveVideo(req.SourceType, cachedItem.DurationSeconds) {
 				handleError(
 					w,
@@ -2328,7 +2373,7 @@ func AddPlaylistV2(
 
 			sourceEnabled := false
 			for _, source := range room.Settings.EnabledSources {
-				if requestedItem.SourceType == source {
+				if requestedItem.SourceType == source && room.RoomType.AllowsSource(source) {
 					sourceEnabled = true
 					break
 				}
@@ -2413,6 +2458,10 @@ func AddPlaylistV2(
 				return
 			}
 
+			if !cachedItem.IsEmpty() && !cachedItem.AllowedInRoom(room.RoomType) {
+				continue
+			}
+
 			if !cachedItem.IsEmpty() {
 				if vibe.IsLiveVideo(
 					requestedItem.SourceType,
@@ -2458,6 +2507,11 @@ func AddPlaylistV2(
 				AddedBySessionID:    session.UserID,
 				AddedAt:             time.Now(),
 			})
+		}
+
+		if len(playlistItems) == 0 {
+			handleError(w, fmt.Errorf("error importing playlist: no items are allowed in this room"), http.StatusBadRequest, false)
+			return
 		}
 
 		importID := uuid.NewString()
@@ -2790,7 +2844,7 @@ func ReportPlaybackFailureV2(
 //	@Tags		rooms
 //	@Accept		json
 //	@Produce	json
-//	@Param		request	body		vibe.GeneratedPlaylistRequest	true	"Playlist prompt"
+//	@Param		request	body		vibe.GeneratedRoomRequestV2	true	"Playlist prompt and immutable room type"
 //	@Success	201	{object}	vibe.RoomV2
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	401	{object}	vibe.ErrorResponse
@@ -2818,7 +2872,7 @@ func CreateGeneratedRoomV2(
 			return
 		}
 
-		var request vibe.GeneratedPlaylistRequest
+		var request vibe.GeneratedRoomRequestV2
 		err = json.Unmarshal(body, &request)
 		if err != nil {
 			handleError(
@@ -2830,6 +2884,15 @@ func CreateGeneratedRoomV2(
 				http.StatusBadRequest,
 				false,
 			)
+			return
+		}
+
+		if request.RoomType == "" {
+			request.RoomType = vibe.RoomTypeMusic
+		}
+
+		if !request.RoomType.IsValid() {
+			handleError(w, fmt.Errorf("error generating room: roomType must be MUSIC or WATCH"), http.StatusBadRequest, false)
 			return
 		}
 
@@ -2946,9 +3009,14 @@ func CreateGeneratedRoomV2(
 			return
 		}
 
+		if request.RoomType == vibe.RoomTypeWatch {
+			settings.EnabledSources = []string{vibe.SourceTypeYouTube}
+		}
+
 		room := vibe.RoomV2{
 			ID:            helper.Slugify(reservation.Name),
 			Name:          reservation.Name,
+			RoomType:      request.RoomType,
 			Mode:          vibe.RoomModeServer,
 			HostID:        session.UserID,
 			Settings:      *settings,
@@ -3121,7 +3189,7 @@ func SearchYouTubeV2(
 			handleError(w, fmt.Errorf("error searching room: room not found"), http.StatusNotFound, false)
 			return
 		}
-		if !slices.Contains(room.Settings.EnabledSources, vibe.SourceTypeYouTube) {
+		if !room.RoomType.AllowsSource(vibe.SourceTypeYouTube) || !slices.Contains(room.Settings.EnabledSources, vibe.SourceTypeYouTube) {
 			handleError(w, fmt.Errorf("error searching room: provider is disabled"), http.StatusBadRequest, false)
 			return
 		}
@@ -3130,6 +3198,7 @@ func SearchYouTubeV2(
 			ctx,
 			vibe.SourceTypeYouTube,
 			[]string{query},
+			room.RoomType,
 		)
 		if err != nil {
 			log.Printf("error getting cached youtube search: %v", err)
@@ -3182,7 +3251,7 @@ func SearchYouTubeV2(
 				}
 			}
 			if !quotaCheckSucceeded || !quotaExceeded {
-				items, err = ms.SearchProviderItems(ctx, query)
+				items, err = ms.SearchProviderItems(ctx, query, room.RoomType)
 			}
 		}
 		if err != nil {
@@ -3234,6 +3303,7 @@ func SearchYouTubeV2(
 				[]vibe.CachedProviderSearch{
 					search,
 				},
+				room.RoomType,
 			)
 			if err != nil {
 				log.Printf("error caching youtube search: %v", err)
@@ -3316,7 +3386,7 @@ func SearchSoundCloudV2(
 			handleError(w, fmt.Errorf("error searching room: room not found"), http.StatusNotFound, false)
 			return
 		}
-		if !slices.Contains(room.Settings.EnabledSources, vibe.SourceTypeSoundCloud) {
+		if !room.RoomType.AllowsSource(vibe.SourceTypeSoundCloud) || !slices.Contains(room.Settings.EnabledSources, vibe.SourceTypeSoundCloud) {
 			handleError(w, fmt.Errorf("error searching room: provider is disabled"), http.StatusBadRequest, false)
 			return
 		}
@@ -3325,6 +3395,7 @@ func SearchSoundCloudV2(
 			ctx,
 			vibe.SourceTypeSoundCloud,
 			[]string{query},
+			room.RoomType,
 		)
 		if err != nil {
 			log.Printf("error getting cached soundcloud search: %v", err)
@@ -3348,7 +3419,7 @@ func SearchSoundCloudV2(
 			log.Printf("error creating soundcloud search usage: %v", err)
 		}
 		if !cacheHit {
-			items, err = ms.SearchProviderItems(ctx, query)
+			items, err = ms.SearchProviderItems(ctx, query, room.RoomType)
 		}
 		if err != nil {
 			handleError(
@@ -3370,6 +3441,7 @@ func SearchSoundCloudV2(
 				[]vibe.CachedProviderSearch{
 					search,
 				},
+				room.RoomType,
 			)
 			if err != nil {
 				log.Printf("error caching soundcloud search: %v", err)

@@ -194,7 +194,7 @@ func AddSong(
 
 		sourceEnabled := false
 		for _, source := range room.Settings.EnabledSources {
-			if req.SourceType == source {
+			if req.SourceType == source && room.RoomType.AllowsSource(source) {
 				sourceEnabled = true
 				break
 			}
@@ -280,6 +280,20 @@ func AddSong(
 		}
 
 		if err == nil && !cachedItem.IsEmpty() {
+			if !cachedItem.AllowedInRoom(room.RoomType) {
+				handleError(w, client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error adding item: provider metadata is not allowed for %s", room.RoomType),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "playlist_item_not_allowed",
+						Message:   "This item cannot be played in this room. Music rooms accept music videos; all videos must allow embedded playback and must not be live.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				}, http.StatusBadRequest, false)
+				return
+			}
+
 			if vibe.IsLiveVideo(req.SourceType, cachedItem.DurationSeconds) {
 				handleError(
 					w,

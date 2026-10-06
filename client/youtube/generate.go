@@ -25,9 +25,14 @@ func (c *Client) SearchGeneratedPlaylist(
 	playlist vibe.GeneratedPlaylist,
 	cachedSearches []vibe.CachedProviderSearch,
 	searchQuotaReset time.Time,
+	roomType vibe.RoomType,
 ) (*vibe.GeneratedPlaylistSearchResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SearchGeneratedPlaylist")
 	defer span.End()
+
+	if !roomType.AllowsSource(vibe.SourceTypeYouTube) {
+		return nil, fmt.Errorf("error searching generated playlist: invalid room type %q", roomType)
+	}
 
 	if c.apiKey == "" {
 		return nil, fmt.Errorf(
@@ -58,7 +63,7 @@ func (c *Client) SearchGeneratedPlaylist(
 		youtubeIDs = append(youtubeIDs, playlistItem.YouTubeID)
 	}
 
-	itemsByID, err := c.getGeneratedPlaylistItems(ctx, youtubeIDs)
+	itemsByID, err := c.getGeneratedPlaylistItems(ctx, youtubeIDs, roomType)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"error getting generated playlist items by ID in SearchGeneratedPlaylist: %w",
@@ -100,13 +105,17 @@ func (c *Client) SearchGeneratedPlaylist(
 				),
 			)
 			for _, cachedItem := range cachedSearch.Items {
+				if !cachedItem.AllowedInRoom(roomType) {
+					continue
+				}
+
 				playlistItem, err := cachedItem.ToGeneratedPlaylistItem(query)
 				if err != nil {
 					return nil, fmt.Errorf("error converting cached generated playlist item: %w", err)
 				}
 
 				if playlistItem.Duration <= 0 ||
-					playlistItem.Duration > generatedItemMaxDurationSeconds ||
+					(roomType == vibe.RoomTypeMusic && playlistItem.Duration > generatedItemMaxDurationSeconds) ||
 					playlistItem.PlaybackRestriction == vibe.PlaybackRestrictionAge ||
 					playlistItem.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding ||
 					seen[playlistItem.YouTubeID] {
@@ -186,6 +195,7 @@ func (c *Client) SearchGeneratedPlaylist(
 			ctx,
 			query,
 			generatedItemSearchResults,
+			roomType,
 		)
 		if err != nil {
 			var quotaError internalerror.ErrProviderQuotaExceeded
@@ -211,7 +221,7 @@ func (c *Client) SearchGeneratedPlaylist(
 		})
 	}
 
-	fallbackItemsByID, err := c.getGeneratedPlaylistItems(ctx, fallbackIDs)
+	fallbackItemsByID, err := c.getGeneratedPlaylistItems(ctx, fallbackIDs, roomType)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"error getting fallback generated playlist items in SearchGeneratedPlaylist: %w",
@@ -295,6 +305,7 @@ type generatedFallbackSearch struct {
 func (c *Client) getGeneratedPlaylistItems(
 	ctx context.Context,
 	youtubeIDs []string,
+	roomType vibe.RoomType,
 ) (map[string]vibe.GeneratedPlaylistItem, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "getGeneratedPlaylistItems")
 	defer span.End()
@@ -343,11 +354,11 @@ func (c *Client) getGeneratedPlaylistItems(
 			playbackRestriction := item.playbackRestriction()
 			durationSeconds, err := youtubeDurationSeconds(item.ContentDetails.Duration)
 			if err != nil ||
-				item.Snippet.CategoryID != youtubeMusicCategoryID ||
+				(roomType == vibe.RoomTypeMusic && item.Snippet.CategoryID != youtubeMusicCategoryID) ||
 				playbackRestriction == vibe.PlaybackRestrictionAge ||
 				playbackRestriction == vibe.PlaybackRestrictionEmbedding ||
 				durationSeconds <= 0 ||
-				durationSeconds > generatedItemMaxDurationSeconds {
+				(roomType == vibe.RoomTypeMusic && durationSeconds > generatedItemMaxDurationSeconds) {
 				continue
 			}
 
@@ -368,6 +379,7 @@ func (c *Client) getGeneratedPlaylistItems(
 				likeCount = 0
 			}
 			playlistItems[item.ID] = vibe.GeneratedPlaylistItem{
+				CategoryID:          item.Snippet.CategoryID,
 				YouTubeID:           item.ID,
 				Title:               html.UnescapeString(item.Snippet.Title),
 				Publisher:           html.UnescapeString(item.Snippet.ChannelTitle),
@@ -387,17 +399,24 @@ func youtubeDurationSeconds(value string) (int, error) {
 	if value == youtubeZeroDuration {
 		return 0, nil
 	}
-	if !strings.HasPrefix(value, "PT") {
+	if !strings.HasPrefix(value, "P") {
 		return 0, fmt.Errorf(
 			"error validating youtube duration in youtubeDurationSeconds: unsupported value %q",
 			value,
 		)
 	}
 
-	duration := strings.TrimPrefix(value, "PT")
+	duration := strings.TrimPrefix(value, "P")
 	number := ""
 	totalSeconds := 0
+	inTime := false
+	lastUnit := 0
 	for _, character := range duration {
+		if character == 'T' && !inTime && number == "" {
+			inTime = true
+			continue
+		}
+
 		if character >= '0' && character <= '9' {
 			number += string(character)
 			continue
@@ -417,22 +436,48 @@ func youtubeDurationSeconds(value string) (int, error) {
 				err,
 			)
 		}
+		unit := 0
+		multiplier := 0
 		switch character {
+		case 'D':
+			if !inTime {
+				unit = 1
+				multiplier = 24 * 60 * 60
+			}
 		case 'H':
-			totalSeconds += amount * 60 * 60
+			if inTime {
+				unit = 2
+				multiplier = 60 * 60
+			}
 		case 'M':
-			totalSeconds += amount * 60
+			if inTime {
+				unit = 3
+				multiplier = 60
+			}
 		case 'S':
-			totalSeconds += amount
-		default:
+			if inTime {
+				unit = 4
+				multiplier = 1
+			}
+		}
+
+		if unit <= lastUnit {
 			return 0, fmt.Errorf(
-				"error validating youtube duration in youtubeDurationSeconds: unsupported unit %q",
+				"error validating youtube duration in youtubeDurationSeconds: invalid unit %q",
 				character,
 			)
 		}
+
+		maximumInt := int(^uint(0) >> 1)
+		if amount > (maximumInt-totalSeconds)/multiplier {
+			return 0, fmt.Errorf("error validating youtube duration in youtubeDurationSeconds: duration exceeds integer range")
+		}
+
+		totalSeconds += amount * multiplier
+		lastUnit = unit
 		number = ""
 	}
-	if number != "" {
+	if number != "" || lastUnit == 0 || strings.HasSuffix(value, "T") {
 		return 0, fmt.Errorf(
 			"error validating youtube duration in youtubeDurationSeconds: incomplete value %q",
 			value,

@@ -117,6 +117,7 @@ func isSearchNoise(value string) bool {
 
 func (t GeneratedPlaylistItem) ToProviderItem() (*ProviderItem, error) {
 	return &ProviderItem{
+		CategoryID:          t.CategoryID,
 		ID:                  t.YouTubeID,
 		Source:              SourceTypeYouTube,
 		ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", t.YouTubeID),
@@ -133,6 +134,7 @@ func (t GeneratedPlaylistItem) ToProviderItem() (*ProviderItem, error) {
 
 func (t ProviderItem) ToGeneratedPlaylistItem(query string) (*GeneratedPlaylistItem, error) {
 	return &GeneratedPlaylistItem{
+		CategoryID:          t.CategoryID,
 		Publisher:           t.Publisher,
 		Title:               t.Title,
 		YouTubeID:           t.ID,

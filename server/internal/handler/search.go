@@ -63,6 +63,7 @@ func SearchMusic(
 			ctx,
 			vibe.SourceTypeYouTube,
 			[]string{query},
+			vibe.RoomTypeMusic,
 		)
 		if err != nil {
 			log.Printf("error getting cached youtube search: %v", err)
@@ -115,7 +116,7 @@ func SearchMusic(
 				}
 			}
 			if !quotaCheckSucceeded || !quotaExceeded {
-				items, err = ms.SearchProviderItems(ctx, query)
+				items, err = ms.SearchProviderItems(ctx, query, vibe.RoomTypeMusic)
 			}
 		}
 		if err != nil {
@@ -167,6 +168,7 @@ func SearchMusic(
 				[]vibe.CachedProviderSearch{
 					search,
 				},
+				vibe.RoomTypeMusic,
 			)
 			if err != nil {
 				log.Printf("error caching youtube search: %v", err)
@@ -247,6 +249,7 @@ func SearchSoundCloud(
 			ctx,
 			vibe.SourceTypeSoundCloud,
 			[]string{query},
+			vibe.RoomTypeMusic,
 		)
 		if err != nil {
 			log.Printf("error getting cached soundcloud search: %v", err)
@@ -270,7 +273,7 @@ func SearchSoundCloud(
 			log.Printf("error creating soundcloud search usage: %v", err)
 		}
 		if !cacheHit {
-			items, err = ms.SearchProviderItems(ctx, query)
+			items, err = ms.SearchProviderItems(ctx, query, vibe.RoomTypeMusic)
 		}
 		if err != nil {
 			handleError(
@@ -292,6 +295,7 @@ func SearchSoundCloud(
 				[]vibe.CachedProviderSearch{
 					search,
 				},
+				vibe.RoomTypeMusic,
 			)
 			if err != nil {
 				log.Printf("error caching soundcloud search: %v", err)

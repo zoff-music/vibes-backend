@@ -254,6 +254,8 @@ func ResolveSoundCloudItemV2(
 // GetYouTubePlaylistV2 handles provider playlist lookups by ID.
 //
 //	@Summary	Get a provider playlist
+//	@Description	Filters the playlist for the selected experience. Importing into a room separately enforces its stored, immutable type.
+//	@Param		roomType	query	string	false	"Selected room type" Enums(MUSIC,WATCH) default(MUSIC)
 //	@Tags		providers
 //	@Produce	json
 //	@Param		id	path		string	true	"Playlist ID"
@@ -290,7 +292,17 @@ func GetYouTubePlaylistV2(
 			return
 		}
 
-		playlist, err := fetcher.GetProviderPlaylist(ctx, id)
+		roomType := vibe.RoomType(r.URL.Query().Get("roomType"))
+		if roomType == "" {
+			roomType = vibe.RoomTypeMusic
+		}
+
+		if !roomType.IsValid() {
+			handleError(w, fmt.Errorf("error getting playlist: roomType must be MUSIC or WATCH"), http.StatusBadRequest, false)
+			return
+		}
+
+		playlist, err := fetcher.GetProviderPlaylist(ctx, id, roomType)
 		if err != nil {
 			handleError(
 				w,

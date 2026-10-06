@@ -61,7 +61,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 		return fmt.Errorf("error generating playlist prompt in Handle: %w", err)
 	}
 
-	playlist, err := h.AI.GeneratePlaylist(ctx, prompt)
+	playlist, err := h.AI.GeneratePlaylist(ctx, prompt, room.RoomType)
 	if err != nil {
 		return fmt.Errorf("error generating playlist in Handle: %w", err)
 	}
@@ -75,7 +75,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 		queries = append(queries, playlistItem.Publisher+" "+playlistItem.Title)
 	}
 
-	cachedSearches, err := h.Cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, queries)
+	cachedSearches, err := h.Cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, queries, room.RoomType)
 	if err != nil {
 		log.Printf("error getting cached youtube searches for room generation: %v", err)
 		cachedSearches = []vibe.CachedProviderSearch{}
@@ -96,6 +96,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 		*playlist,
 		cachedSearches,
 		searchQuotaReset,
+		room.RoomType,
 	)
 	if err != nil {
 		var quotaError internalerror.ErrProviderQuotaExceeded
@@ -165,7 +166,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 	if err != nil {
 		log.Printf("error creating generated playlist search usage: %v", err)
 	}
-	err = h.Cache.CacheProviderSearches(ctx, vibe.SourceTypeYouTube, searchResult.CachedSearches)
+	err = h.Cache.CacheProviderSearches(ctx, vibe.SourceTypeYouTube, searchResult.CachedSearches, room.RoomType)
 	if err != nil {
 		log.Printf("error caching youtube searches for room generation: %v", err)
 	}

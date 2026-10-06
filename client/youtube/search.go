@@ -20,9 +20,13 @@ import (
 )
 
 // SearchProviderItems searches for videos on YouTube
-func (c *Client) SearchProviderItems(ctx context.Context, query string) ([]vibe.ProviderItem, error) {
+func (c *Client) SearchProviderItems(ctx context.Context, query string, roomType vibe.RoomType) ([]vibe.ProviderItem, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SearchProviderItems")
 	defer span.End()
+
+	if !roomType.AllowsSource(vibe.SourceTypeYouTube) {
+		return nil, fmt.Errorf("error searching youtube: invalid room type %q", roomType)
+	}
 
 	if c.apiKey == "" {
 		return nil, fmt.Errorf(
@@ -30,7 +34,7 @@ func (c *Client) SearchProviderItems(ctx context.Context, query string) ([]vibe.
 		)
 	}
 
-	result, err := c.searchVideos(ctx, query, youtubeSearchResultCount)
+	result, err := c.searchVideos(ctx, query, youtubeSearchResultCount, roomType)
 	if err != nil {
 		return nil, fmt.Errorf(
 			"error searching youtube videos in SearchProviderItems: %w",
@@ -93,7 +97,7 @@ func (c *Client) SearchProviderItems(ctx context.Context, query string) ([]vibe.
 		if !ok ||
 			videoItem.Status.MadeForKids ||
 			!videoItem.Status.Embeddable ||
-			videoItem.Snippet.CategoryID != youtubeMusicCategoryID ||
+			(roomType == vibe.RoomTypeMusic && videoItem.Snippet.CategoryID != youtubeMusicCategoryID) ||
 			videoItem.isLiveVideo() {
 			continue
 		}
@@ -134,6 +138,7 @@ func (c *Client) SearchProviderItems(ctx context.Context, query string) ([]vibe.
 		tracks = append(tracks, vibe.ProviderItem{
 			ID:                  item.ID.VideoID,
 			Source:              vibe.SourceTypeYouTube,
+			CategoryID:          videoItem.Snippet.CategoryID,
 			ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", item.ID.VideoID),
 			Title:               html.UnescapeString(item.Snippet.Title),
 			Publisher:           html.UnescapeString(item.Snippet.ChannelTitle),
@@ -156,12 +161,15 @@ func (c *Client) searchVideos(
 	ctx context.Context,
 	query string,
 	maxResults int,
+	roomType vibe.RoomType,
 ) (*searchResponse, error) {
 	params := url.Values{}
 	params.Set("part", "snippet")
 	params.Set("q", query)
 	params.Set("type", "video")
-	params.Set("videoCategoryId", youtubeMusicCategoryID)
+	if roomType == vibe.RoomTypeMusic {
+		params.Set("videoCategoryId", youtubeMusicCategoryID)
+	}
 	params.Set("videoEmbeddable", "true")
 	params.Set("videoSyndicated", "true")
 	params.Set("maxResults", fmt.Sprintf("%d", maxResults))

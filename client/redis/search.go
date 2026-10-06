@@ -18,6 +18,7 @@ func (c *Client) GetCachedProviderSearches(
 	ctx context.Context,
 	source string,
 	queries []string,
+	roomType vibe.RoomType,
 ) ([]vibe.CachedProviderSearch, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedProviderSearches")
 	defer span.End()
@@ -39,7 +40,7 @@ func (c *Client) GetCachedProviderSearches(
 	keys := make(redis.Args, 0, len(queries))
 	cachedQueries := make([]string, 0, len(queries))
 	for _, query := range queries {
-		key := c.providerSearchCacheKey(source, query)
+		key := c.providerSearchCacheKey(source, query, roomType)
 		if key == "" {
 			continue
 		}
@@ -81,6 +82,7 @@ func (c *Client) CacheProviderSearches(
 	ctx context.Context,
 	source string,
 	searches []vibe.CachedProviderSearch,
+	roomType vibe.RoomType,
 ) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "CacheProviderSearches")
 	defer span.End()
@@ -100,7 +102,7 @@ func (c *Client) CacheProviderSearches(
 
 	commandCount := 0
 	for _, search := range searches {
-		key := c.providerSearchCacheKey(source, search.Query)
+		key := c.providerSearchCacheKey(source, search.Query, roomType)
 		if key == "" {
 			continue
 		}
@@ -295,15 +297,15 @@ func (c *Client) CacheProviderItems(
 	return nil
 }
 
-func (c *Client) providerSearchCacheKey(source string, query string) string {
+func (c *Client) providerSearchCacheKey(source string, query string, roomType vibe.RoomType) string {
 	normalizedQuery := vibe.NormalizeSearch(query)
-	if source == "" || normalizedQuery == "" {
+	if source == "" || normalizedQuery == "" || !roomType.IsValid() {
 		return ""
 	}
 
 	hash := sha256.Sum256([]byte(normalizedQuery))
 	key := c.getKeyWithPrefix(
-		"search:v3:" + string(source) + ":" + hex.EncodeToString(hash[:]),
+		"search:v4:" + source + ":" + string(roomType) + ":" + hex.EncodeToString(hash[:]),
 	)
 
 	return key
@@ -312,7 +314,7 @@ func (c *Client) providerSearchCacheKey(source string, query string) string {
 func (c *Client) providerItemCacheKey(source string, sourceID string) string {
 	hash := sha256.Sum256([]byte(sourceID))
 	key := c.getKeyWithPrefix(
-		"provider-item:v3:" + source + ":" + hex.EncodeToString(hash[:]),
+		"provider-item:v4:" + source + ":" + hex.EncodeToString(hash[:]),
 	)
 	return key
 }

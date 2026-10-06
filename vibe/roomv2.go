@@ -77,6 +77,18 @@ const RoomTypeMusic RoomType = "MUSIC"
 
 const RoomTypeWatch RoomType = "WATCH"
 
+func (r RoomType) IsValid() bool {
+	return r == RoomTypeMusic || r == RoomTypeWatch
+}
+
+func (r RoomType) AllowsSource(source string) bool {
+	if r == RoomTypeWatch {
+		return source == SourceTypeYouTube
+	}
+
+	return r == RoomTypeMusic && (source == SourceTypeYouTube || source == SourceTypeSoundCloud)
+}
+
 // RoomV2 is the playlist-item API contract; Room remains unchanged.
 type RoomV2 struct {
 	ID                                     string         `json:"id"`
@@ -154,6 +166,7 @@ func (r RoomV2) ToRoom() *Room {
 // CreateRoomRequestV2 is the playlist-item API contract; CreateRoomRequest remains unchanged.
 type CreateRoomRequestV2 struct {
 	Name             string          `json:"name" minLength:"1" maxLength:"100"`
+	RoomType         RoomType        `json:"roomType,omitempty" enums:"MUSIC,WATCH" default:"MUSIC"`
 	Mode             string          `json:"mode,omitempty"`
 	Password         string          `json:"password,omitempty"`
 	ReservationToken string          `json:"reservationToken,omitempty"`
