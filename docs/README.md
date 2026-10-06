@@ -6,7 +6,7 @@ the sequence diagrams for the request or background flow you are changing.
 - [Architecture](ARCHITECTURE.md)
 - [Application flows](FLOWS.md)
 - [API contract](API.md)
-- [Music providers](MUSIC-PROVIDERS.md)
+- [MUSIC and WATCH providers](MUSIC-PROVIDERS.md)
 
 The generated Swagger UI at `/api/swagger/` describes current route payloads.
 PostgreSQL schema documentation belongs to the

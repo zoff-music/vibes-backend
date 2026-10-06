@@ -14,12 +14,12 @@ sequenceDiagram
     participant Events as Redis room stream
 
     Listener->>Platform: Open room
-    Platform->>API: GET /rooms/{id}
+    Platform->>API: GET /api/v2/rooms/{id}
     API->>DB: Load room, settings and generation state
     DB-->>API: Room
     API-->>Platform: Room response
 
-    Platform->>API: GET /api/v2/rooms/{id}/events with optional cursor
+    Platform->>API: GET /api/v3/rooms/{id}/events with optional cursor
     API->>Events: Prepare replay and subscribe after cursor
     API-->>Platform: Connected event
 
@@ -41,8 +41,9 @@ sequenceDiagram
 ```
 
 The v1 stream remains available for clients using full queue updates. The v2
-stream starts with `songs_snapshot` when necessary, then delivers individual
-queue changes. Clients persist the delivered cursor and reconnect using
+stream retains `songs_snapshot` and legacy song fields. The v3 stream starts with
+`playlist_items_snapshot` when necessary, then delivers individual item changes
+and typed MUSIC/WATCH room state. Clients persist the delivered cursor and reconnect using
 `Last-Event-ID` or `lastEventId`. A heartbeat is not a queue snapshot.
 
 Chat uses a separate messages stream, so clients can opt out of that UI without

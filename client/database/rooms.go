@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -1045,4 +1046,522 @@ func (c *Client) UpdateRoomV2(ctx context.Context, room *vibe.RoomV2) (*vibe.Roo
 	}
 
 	return updatedRoom, nil
+}
+
+const postgresUniqueViolation = "23505"
+
+func (c *Client) prepareReserveRoomNameStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH inserted_pool_q AS (
+			INSERT INTO room_name_pool (name, generated)
+			VALUES ($1, FALSE)
+			ON CONFLICT (name) DO NOTHING
+			RETURNING name, consumed_at
+		),
+		pool_q AS (
+			SELECT name, consumed_at
+			FROM inserted_pool_q
+
+			UNION ALL
+
+			SELECT name, consumed_at
+			FROM room_name_pool
+			WHERE name = $1
+			AND NOT EXISTS (SELECT 1 FROM inserted_pool_q)
+		),
+		candidate_q AS (
+			SELECT pool_q.name
+			FROM pool_q
+			WHERE pool_q.consumed_at IS NULL
+			AND NOT EXISTS (
+				SELECT 1
+				FROM rooms
+				WHERE rooms.id = pool_q.name
+			)
+			AND NOT EXISTS (
+				SELECT 1
+				FROM room_name_reservations
+				WHERE room_name_reservations.name = pool_q.name
+				AND room_name_reservations.owner_id != $2
+				AND room_name_reservations.expires_at >
+					CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+			)
+		),
+		deleted_owned_q AS (
+			DELETE FROM room_name_reservations
+			USING candidate_q
+			WHERE room_name_reservations.owner_id = $2
+			AND room_name_reservations.name != candidate_q.name
+			RETURNING room_name_reservations.name
+		),
+		reserved_q AS (
+			INSERT INTO room_name_reservations (
+				name,
+				owner_id,
+				expires_at
+			)
+			SELECT
+				candidate_q.name,
+				$2,
+				(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') + ($3 * INTERVAL '1 second')
+			FROM candidate_q
+			CROSS JOIN (
+				SELECT COUNT(*) AS deleted_count
+				FROM deleted_owned_q
+			) deleted_owned_count_q
+			ON CONFLICT (name) DO UPDATE
+			SET
+				token = gen_random_uuid(),
+				owner_id = EXCLUDED.owner_id,
+				created_at = CURRENT_TIMESTAMP AT TIME ZONE 'UTC',
+				expires_at = EXCLUDED.expires_at
+			WHERE room_name_reservations.expires_at <= CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+			OR room_name_reservations.owner_id = EXCLUDED.owner_id
+			RETURNING name, token, expires_at
+		)
+		SELECT name, token, expires_at
+		FROM reserved_q
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ReserveRoomNameStatement: %w", err)
+	}
+
+	c.ReserveRoomNameStatement = stmt
+
+	return nil
+}
+
+func (c *Client) ReserveRoomName(
+	ctx context.Context,
+	name string,
+	ownerID string,
+) (*vibe.RoomNameReservation, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ReserveRoomName")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	row := c.ReserveRoomNameStatement.QueryRowContext(
+		cctx,
+		name,
+		ownerID,
+		int64(c.roomNameReservationTTL/time.Second),
+	)
+
+	var rowData roomNameReservationRow
+	err := rowData.scan(row)
+	if err != nil {
+		var postgresError *pgconn.PgError
+		if errors.As(err, &postgresError) &&
+			postgresError.Code == postgresUniqueViolation {
+			return nil, internalerror.ErrRoomNameUnavailable{
+				Err: fmt.Errorf("error room name reservation conflict: %w", err),
+			}
+		}
+
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, internalerror.ErrRoomNameUnavailable{
+				Err: fmt.Errorf("error room name is unavailable"),
+			}
+		}
+
+		return nil, fmt.Errorf("error scanning room name reservation: %w", err)
+	}
+
+	reservation, err := rowData.toRoomNameReservation()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping room name reservation in ReserveRoomName: %w", err)
+	}
+
+	return reservation, nil
+}
+
+func (c *Client) prepareReserveSuggestedRoomNameStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH maximum_q AS (
+			SELECT MAX(id) AS maximum_id
+			FROM room_name_pool
+		),
+		start_q AS (
+			SELECT GREATEST(
+				1,
+				FLOOR(RANDOM() * maximum_q.maximum_id)::BIGINT
+			) AS start_id
+			FROM maximum_q
+		),
+		after_start_q AS (
+			SELECT pool_q.id, pool_q.name
+			FROM room_name_pool pool_q
+			CROSS JOIN start_q
+			WHERE pool_q.id >= start_q.start_id
+			AND pool_q.generated
+			AND pool_q.consumed_at IS NULL
+			AND NOT EXISTS (
+				SELECT 1
+				FROM room_name_reservations reservation_q
+				WHERE reservation_q.name = pool_q.name
+				AND reservation_q.expires_at > CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+			)
+			ORDER BY pool_q.id
+			FOR UPDATE OF pool_q SKIP LOCKED
+			LIMIT 1
+		),
+		before_start_q AS (
+			SELECT pool_q.id, pool_q.name
+			FROM room_name_pool pool_q
+			CROSS JOIN start_q
+			WHERE pool_q.id < start_q.start_id
+			AND pool_q.generated
+			AND pool_q.consumed_at IS NULL
+			AND NOT EXISTS (SELECT 1 FROM after_start_q)
+			AND NOT EXISTS (
+				SELECT 1
+				FROM room_name_reservations reservation_q
+				WHERE reservation_q.name = pool_q.name
+				AND reservation_q.expires_at > CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+			)
+			ORDER BY pool_q.id
+			FOR UPDATE OF pool_q SKIP LOCKED
+			LIMIT 1
+		),
+		candidate_q AS (
+			SELECT id, name
+			FROM after_start_q
+
+			UNION ALL
+
+			SELECT id, name
+			FROM before_start_q
+		),
+		deleted_owned_q AS (
+			DELETE FROM room_name_reservations
+			USING candidate_q
+			WHERE room_name_reservations.owner_id = $1
+			AND room_name_reservations.name != candidate_q.name
+			RETURNING room_name_reservations.name
+		),
+		reserved_q AS (
+			INSERT INTO room_name_reservations (
+				name,
+				owner_id,
+				expires_at
+			)
+			SELECT
+				candidate_q.name,
+				$1,
+				(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') + ($2 * INTERVAL '1 second')
+			FROM candidate_q
+			CROSS JOIN (
+				SELECT COUNT(*) AS deleted_count
+				FROM deleted_owned_q
+			) deleted_owned_count_q
+			ON CONFLICT (name) DO UPDATE
+			SET
+				token = gen_random_uuid(),
+				owner_id = EXCLUDED.owner_id,
+				created_at = CURRENT_TIMESTAMP AT TIME ZONE 'UTC',
+				expires_at = EXCLUDED.expires_at
+			WHERE room_name_reservations.expires_at <= CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+			RETURNING name, token, expires_at
+		)
+		SELECT name, token, expires_at
+		FROM reserved_q
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ReserveSuggestedRoomNameStatement: %w", err)
+	}
+
+	c.ReserveSuggestedRoomNameStatement = stmt
+
+	return nil
+}
+
+func (c *Client) ReserveSuggestedRoomName(
+	ctx context.Context,
+	ownerID string,
+) (*vibe.RoomNameReservation, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ReserveSuggestedRoomName")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	row := c.ReserveSuggestedRoomNameStatement.QueryRowContext(
+		cctx,
+		ownerID,
+		int64(c.roomNameReservationTTL/time.Second),
+	)
+
+	var rowData roomNameReservationRow
+	err := rowData.scan(row)
+	if err != nil {
+		var postgresError *pgconn.PgError
+		if errors.As(err, &postgresError) &&
+			postgresError.Code == postgresUniqueViolation {
+			return nil, internalerror.ErrRoomNameUnavailable{
+				Err: fmt.Errorf("error room name reservation conflict: %w", err),
+			}
+		}
+
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, internalerror.ErrRoomNameUnavailable{
+				Err: fmt.Errorf("error no room names are available"),
+			}
+		}
+
+		return nil, fmt.Errorf("error scanning suggested room name reservation: %w", err)
+	}
+
+	reservation, err := rowData.toRoomNameReservation()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping suggested reservation in ReserveSuggestedRoomName: %w", err)
+	}
+
+	return reservation, nil
+}
+
+type roomNameReservationRow struct {
+	Name      string
+	Token     string
+	ExpiresAt time.Time
+}
+
+func (r *roomNameReservationRow) scan(row *sql.Row) error {
+	err := row.Scan(
+		&r.Name,
+		&r.Token,
+		&r.ExpiresAt,
+	)
+	if err != nil {
+		return fmt.Errorf("error scanning room name reservation row: %w", err)
+	}
+
+	return nil
+}
+
+func (r *roomNameReservationRow) toRoomNameReservation() (*vibe.RoomNameReservation, error) {
+	return &vibe.RoomNameReservation{
+		Name:      r.Name,
+		Token:     r.Token,
+		ExpiresAt: r.ExpiresAt,
+	}, nil
+}
+
+func (c *Client) prepareDeleteExpiredRoomNameReservationsStmt() error {
+	stmt, err := c.DB.Prepare(`
+		DELETE FROM room_name_reservations
+		WHERE expires_at <= CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+	`)
+	if err != nil {
+		return fmt.Errorf(
+			"error preparing DeleteExpiredRoomNameReservationsStatement: %w",
+			err,
+		)
+	}
+
+	c.DeleteExpiredRoomNameReservationsStatement = stmt
+
+	return nil
+}
+
+func (c *Client) DeleteExpiredRoomNameReservations(
+	ctx context.Context,
+) (int, error) {
+	span, ctx := tracing.StartSpanFromContext(
+		ctx,
+		"DeleteExpiredRoomNameReservations",
+	)
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := c.DeleteExpiredRoomNameReservationsStatement.ExecContext(cctx)
+	if err != nil {
+		return 0, fmt.Errorf("error deleting expired room name reservations: %w", err)
+	}
+
+	deleted, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf(
+			"error getting deleted room name reservation count: %w",
+			err,
+		)
+	}
+
+	count := int(deleted)
+	return count, nil
+}
+
+func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH public_rooms_q AS (
+			SELECT a.id, a.name, a.room_type
+			FROM rooms a
+			JOIN room_settings b ON b.room_id = a.id
+			WHERE b.is_public
+			AND a.room_type = $7
+			AND a.admin_password_hash IS NOT NULL
+			AND a.admin_password_hash != ''
+			AND ($1 = '' OR a.name ILIKE '%' || $1 || '%')
+		),
+		participants_q AS (
+			SELECT
+				a.room_id,
+				COUNT(*) FILTER (WHERE a.is_active_listener AND NOT a.is_cast_receiver) AS listeners,
+				COUNT(*) FILTER (WHERE a.is_cast_receiver) AS receivers
+			FROM room_users a
+			JOIN public_rooms_q b ON b.id = a.room_id
+			WHERE a.last_seen_at >= $2
+			GROUP BY a.room_id
+		),
+		listeners_q AS (
+			SELECT
+				a.id,
+				a.name,
+				a.room_type,
+				CASE
+					WHEN b.listeners = 0 AND b.receivers > 0 THEN 1
+					ELSE COALESCE(b.listeners, 0)
+				END AS listener_count
+			FROM public_rooms_q a
+			LEFT JOIN participants_q b ON b.room_id = a.id
+		),
+		filtered_q AS (
+			SELECT a.id, a.name, a.room_type, a.listener_count
+			FROM listeners_q a
+			WHERE NOT $3 OR a.listener_count > 0
+		),
+		page_q AS (
+			SELECT
+				a.id,
+				a.name,
+				a.room_type,
+				a.listener_count,
+				(
+					SELECT COUNT(*)
+					FROM playlist_items b
+					WHERE b.room_id = a.id
+					AND b.source_type = ANY($4::text[])
+				) AS playlist_item_count
+			FROM filtered_q a
+			ORDER BY a.listener_count DESC, playlist_item_count DESC, a.id DESC
+			OFFSET $5 LIMIT $6
+		),
+		totals_q AS (
+			SELECT COUNT(*) AS total FROM filtered_q
+		)
+		SELECT b.id, b.name, b.room_type, b.listener_count, b.playlist_item_count, a.total
+		FROM totals_q a
+		LEFT JOIN page_q b ON TRUE
+		ORDER BY b.listener_count DESC, b.playlist_item_count DESC, b.id DESC
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing SearchPublicRoomsV3Statement: %w", err)
+	}
+
+	c.SearchPublicRoomsV3Statement = stmt
+
+	return nil
+}
+
+func (c *Client) SearchPublicRoomsV3(
+	ctx context.Context,
+	search vibe.PublicRoomSearch,
+) (*vibe.PublicRoomResultV3, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SearchPublicRoomsV3")
+	defer span.End()
+
+	roomType := search.RoomType
+	if roomType == "" {
+		roomType = vibe.RoomTypeMusic
+	}
+
+	if !roomType.IsValid() {
+		return nil, fmt.Errorf("error searching public rooms: invalid room type %q", roomType)
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// Treat LIKE metacharacters as part of the room name.
+	query := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(search.Query)
+	rows, err := c.SearchPublicRoomsV3Statement.QueryContext(
+		cctx,
+		query,
+		time.Now().UTC().Add(-15*time.Second),
+		search.Live,
+		c.enabledProviders,
+		search.From,
+		search.To-search.From+1,
+		roomType,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("error searching public rooms: %w", err)
+	}
+
+	defer rows.Close()
+
+	result := &vibe.PublicRoomResultV3{
+		Rooms: []vibe.PublicRoomV3{},
+		From:  search.From,
+		To:    search.From,
+	}
+
+	for rows.Next() {
+		var row publicRoomResultRow
+		err = row.scanRows(rows)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning public room result: %w", err)
+		}
+
+		result.Total = int(row.Total.Int64)
+		if !row.ID.Valid {
+			continue
+		}
+
+		room, err := row.toPublicRoomV3()
+		if err != nil {
+			return nil, fmt.Errorf("error converting public room in SearchPublicRoomsV3: %w", err)
+		}
+
+		result.Rooms = append(result.Rooms, *room)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error iterating public room results: %w", err)
+	}
+
+	result.Count = len(result.Rooms)
+	if result.Count > 0 {
+		result.To = result.From + result.Count - 1
+	}
+
+	return result, nil
+}
+
+type publicRoomResultRow struct {
+	publicRoomRow
+	Total sql.NullInt64
+}
+
+func (r *publicRoomRow) toPublicRoomV3() (*vibe.PublicRoomV3, error) {
+	return &vibe.PublicRoomV3{
+		ID:                r.ID.String,
+		Name:              r.Name.String,
+		RoomType:          vibe.RoomType(r.RoomType.String),
+		ListenerCount:     int(r.ListenerCount.Int64),
+		PlaylistItemCount: int(r.PlaylistItemCount.Int64),
+	}, nil
+}
+
+func (r *publicRoomResultRow) scanRows(rows *sql.Rows) error {
+	err := rows.Scan(&r.ID, &r.Name, &r.RoomType, &r.ListenerCount, &r.PlaylistItemCount, &r.Total)
+	if err != nil {
+		return fmt.Errorf("error scanning public room result row: %w", err)
+	}
+
+	return nil
 }

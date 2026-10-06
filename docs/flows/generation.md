@@ -1,9 +1,12 @@
 # AI Playlist Generation
 
-## Generate songs for an existing room
+## Generate playlist items for an existing room
 
 Generation is asynchronous. A request creates a durable PostgreSQL job, and the
-room remains recoverable if the browser refreshes or disconnects.
+room remains recoverable if the browser refreshes or disconnects. The worker
+selects the MUSIC or WATCH prompt from the stored room type. Music prompts retain
+their music-oriented wording; Watch prompts recommend videos to watch based on
+the request. Provider filtering follows the same room-type policy as search.
 
 ```mermaid
 sequenceDiagram
@@ -17,27 +20,27 @@ sequenceDiagram
     participant Events as Room event stream
 
     Admin->>Platform: Submit playlist prompt
-    Platform->>API: POST /rooms/{id}/generations
+    Platform->>API: POST /api/v1/rooms/{id}/generations
     API->>DB: Validate room size, daily limit and active jobs
     API->>DB: Insert room generation job
     API-->>Platform: 202 Generating
 
     API->>DB: Claim next generation job
-    API->>AI: Generate candidate songs
-    AI-->>API: Titles, artists and optional video IDs
+    API->>AI: Generate candidates using MUSIC or WATCH prompt
+    AI-->>API: Titles, publishers and optional video IDs
     API->>Cache: Load cached normalized searches
     API->>YouTube: Resolve and validate remaining candidates
-    YouTube-->>API: YouTube tracks and metadata
+    YouTube-->>API: Eligible YouTube items and metadata
     API->>Cache: Cache reusable search results
 
-    loop For each selected song
-        API->>DB: Add generated song without votes
-        API->>Events: Publish song_added
-        Events-->>Platform: Append song
+    loop For each selected item
+        API->>DB: Add generated playlist item without votes
+        API->>Events: Publish playlist_item_added on v3
+        Events-->>Platform: Append playlist item
     end
 
-    opt Room had no active song
-        API->>DB: Start first generated song
+    opt Room had no active playlist item
+        API->>DB: Start first generated item
         API->>Events: Publish playback_update
     end
 
@@ -61,10 +64,10 @@ sequenceDiagram
     participant Worker as Generation flow
 
     Listener->>Platform: Submit playlist prompt
-    Platform->>API: POST /rooms/generation
+    Platform->>API: POST /api/v2/rooms/generation with roomType
     API->>DB: Check for an active generation
     API->>DB: Reserve a suggested room name
-    API->>DB: Create server-mode room
+    API->>DB: Create server-mode MUSIC or WATCH room
     API->>DB: Insert room generation job
     API-->>Platform: 201 Room with isGenerating=true
     Platform->>Platform: Navigate to generated room

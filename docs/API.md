@@ -6,7 +6,7 @@ branding. It is served by the backend and loads the logo from
 `https://zoff.me/logo.png`. The header matches the platform navigation, wordmark,
 logo sizing, and pixel settings icon. Typography uses the frontend's `MSW98UI`
 font assets under `/assets/` on the same origin. Keep the content-hashed font URLs
-in `documentationpage.go` aligned with the frontend build when the fonts change;
+in `static/swagger/theme.css` aligned with the frontend build when the fonts change;
 a standalone local preview must also serve those font assets. Endpoint categories start expanded; individual operations remain collapsed.
 
 `/api/swagger/doc.json` always returns the public specification, excluding admin
@@ -31,10 +31,33 @@ Development: http://localhost:8080/api/v1
 Production: https://zoff.me/api/v1
 ```
 
-The incremental room stream is available separately at
-`/api/v2/rooms/{id}/events`; paginated public-room browsing also has a
-`/api/v2/rooms/public` endpoint. Most REST operations retain their v1 paths. See
+The examples below retain the legacy v1 contract unless a version is explicit.
+Current clients use v2 playlist-item REST contracts and the v3 room stream.
+Older versions remain supported with their existing serialized names. See
 [sessions and live updates](flows/sessions.md) for snapshot and replay behavior.
+
+## Current MUSIC and WATCH contracts
+
+| Route | Responsibility |
+| --- | --- |
+| `POST /api/v2/rooms` | Create an immutable `roomType`: `MUSIC` (default) or `WATCH` |
+| `GET /api/v2/rooms/{id}` | Room type, settings, host identity and room state |
+| `/api/v2/rooms/{id}/playlist-items` | Queue reads and additions using `playlistItem`, `publisher` and item identifiers |
+| `/api/v2/rooms/{id}/playlist-items/{playlistItemId}` | Voting and removal |
+| `GET /api/v2/rooms/{id}/search/{provider}` | Room-type-aware search for an enabled provider |
+| `/api/v2/rooms/{id}/states` | Playlist-item playback state and controls |
+| `POST /api/v2/rooms/{id}/failures` | Report provider playback restrictions |
+| `POST /api/v2/rooms/{id}/playlists` | Validate and stage playlist imports for the room type |
+| `POST /api/v2/rooms/generation` | Generate a new MUSIC or WATCH room |
+| `GET /api/v3/rooms/{id}/events` | Playlist-item snapshots, deltas and host updates |
+| `GET /api/v3/rooms/public?roomType=WATCH` | Public discovery filtered by room type |
+| `GET /api/v2/stats?roomType=WATCH` | Community totals for that type |
+
+MUSIC supports enabled YouTube and SoundCloud sources. WATCH supports YouTube
+only and searches across video categories. Room type is independent of playback
+mode and cannot be changed through room settings. Generated Swagger describes
+the exact request/response fields for every version. V1 song names are legacy
+wire fields, not the current database or domain naming.
 
 ---
 
