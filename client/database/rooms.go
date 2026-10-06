@@ -396,6 +396,7 @@ func (c *Client) prepareGetPublicRoomsStmt() error {
 			JOIN participant_counts_q c
 			ON c.room_id = a.id
 			WHERE b.is_public
+			AND a.room_type = 'MUSIC'
 			AND a.admin_password_hash IS NOT NULL
 			AND a.admin_password_hash != ''
 			AND (
