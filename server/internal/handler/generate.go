@@ -724,3 +724,26 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 
 	return nil
 }
+
+type CleanupRoomGenerations struct {
+	DB vibe.RoomGenerationCleaner
+}
+
+func (h *CleanupRoomGenerations) Handle(ctx context.Context, _ []byte) error {
+	deleted, err := h.DB.DeleteExpiredRoomGenerations(
+		ctx,
+		vibe.RoomGenerationRetention,
+	)
+	if err != nil {
+		return fmt.Errorf(
+			"error deleting expired room generations in CleanupRoomGenerations.Handle: %w",
+			err,
+		)
+	}
+
+	if deleted > 0 {
+		log.Printf("Cleaned up %d expired room generations", deleted)
+	}
+
+	return nil
+}
