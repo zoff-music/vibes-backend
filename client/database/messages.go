@@ -49,19 +49,20 @@ func (c *Client) prepareListAdminMessageUsageStmt() error {
 				('day', DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 days'),
 				('month', DATE_TRUNC('month', NOW(), 'UTC') - INTERVAL '11 months')
 		)
-		SELECT w.period, DATE_TRUNC(w.period, u.created_at, 'UTC'), SUM(u.message_count), u.room_id
+		SELECT w.period, DATE_TRUNC(w.period, u.created_at, 'UTC'), SUM(u.message_count), u.room_id, r.room_type::text
 		FROM windows_q w
 		JOIN chat_usage u ON u.created_at >= w.starts_at
+		LEFT JOIN rooms r ON r.id = u.room_id
 		WHERE ($1 = '' OR u.room_id = $1)
-		GROUP BY w.period, DATE_TRUNC(w.period, u.created_at, 'UTC'), u.room_id
+		GROUP BY w.period, DATE_TRUNC(w.period, u.created_at, 'UTC'), u.room_id, r.room_type
 		UNION ALL
-		SELECT w.period, DATE_TRUNC(w.period, u.created_at, 'UTC'), SUM(u.message_count), NULL::text
+		SELECT w.period, DATE_TRUNC(w.period, u.created_at, 'UTC'), SUM(u.message_count), NULL::text, NULL::text
 		FROM windows_q w
 		JOIN chat_usage u ON u.created_at >= w.starts_at
 		WHERE ($1 = '' OR u.room_id = $1)
 		GROUP BY w.period, DATE_TRUNC(w.period, u.created_at, 'UTC')
 		UNION ALL
-		SELECT 'total', NULL::timestamptz, COALESCE(SUM(message_count), 0), ''
+		SELECT 'total', NULL::timestamptz, COALESCE(SUM(message_count), 0), '', NULL::text
 		FROM chat_usage WHERE ($1 = '' OR room_id = $1)
 		ORDER BY 1, 2
 	`)
@@ -133,6 +134,7 @@ func (c *Client) ListAdminMessageUsage(ctx context.Context, roomID string) (*vib
 }
 
 type messageUsageRow struct {
+	RoomType  sql.NullString
 	RoomID    sql.NullString
 	Window    sql.NullString
 	Timestamp sql.NullTime
@@ -140,7 +142,7 @@ type messageUsageRow struct {
 }
 
 func (r *messageUsageRow) scanRows(rows *sql.Rows) error {
-	err := rows.Scan(&r.Window, &r.Timestamp, &r.Messages, &r.RoomID)
+	err := rows.Scan(&r.Window, &r.Timestamp, &r.Messages, &r.RoomID, &r.RoomType)
 	if err != nil {
 		return fmt.Errorf("error scanning message usage row: %w", err)
 	}
@@ -150,6 +152,7 @@ func (r *messageUsageRow) scanRows(rows *sql.Rows) error {
 
 func (r *messageUsageRow) toMessageUsagePoint() (*vibe.MessageUsagePoint, error) {
 	return &vibe.MessageUsagePoint{
+		RoomType:  vibe.RoomType(r.RoomType.String),
 		RoomID:    r.RoomID.String,
 		Window:    r.Window.String,
 		Timestamp: r.Timestamp.Time,
