@@ -12,7 +12,7 @@ sections explain how those boundaries support live rooms and background work.
 
 | Component | Responsibility |
 | --- | --- |
-| Platform web app | Primary listener interface for room discovery, search, queues, chat, casting, and synchronized playback |
+| Platform web app | MUSIC and WATCH discovery, search, queues, chat, casting, and synchronized playback |
 | Admin web app | Protected room, user, and operational administration |
 | Embed web app | Standalone embeddable room player |
 | Remote web app | Lightweight controller that pairs with another Zoff screen |
@@ -21,10 +21,10 @@ sections explain how those boundaries support live rooms and background work.
 | TV app | One television product delivered through native Expo Android TV and DOM-based Samsung Tizen renderers |
 | Shared frontend packages | Typed API and SSE access, schemas, domain models, state, utilities, renderer-specific UI, SSR serving, styling, and icon exports |
 | Vibes backend | Go HTTP API, SSE delivery, remote pairing, playback coordination, and scheduled application-event processing |
-| PostgreSQL | Persistent rooms, songs, playback, participants, generations, staged imports, authorization, and usage counters |
+| PostgreSQL | Persistent typed rooms, playlist items, playback, participants, generations, staged imports, authorization, and usage counters |
 | Redis | Retained event streams for replay, rate limiting, provider-search caching, and short-lived statistics |
 | Vibes migrator | Applies PostgreSQL schema changes |
-| Music providers | YouTube and SoundCloud search, metadata, authorization, and playback surfaces |
+| Media providers | YouTube for MUSIC and WATCH; SoundCloud for MUSIC only |
 | Playlist-generation providers | xAI Grok and Google Gemini produce candidate playlists from natural-language prompts |
 | Google Cast | Sender SDK, receiver runtime, and media-message transport between Cast-capable clients and the receiver |
 
@@ -70,14 +70,23 @@ capabilities without importing DOM workflows.
 | `vibe` | Domain types, validation, event contracts, and narrow capability interfaces |
 | `client/database` | Prepared atomic SQL, row scanning, and mapping to domain data |
 | `client/redis` | Event retention/replay, caching, rate-limit state, and statistics |
-| Provider clients | External HTTP calls for music metadata, OAuth, and generation |
+| Provider clients | External HTTP calls for media metadata, OAuth, and generation |
 | `monitoring` | Shared request instrumentation, tracing, and metrics |
 
 There is no service/repository layer. Each handler receives a concrete client
 only once through a domain interface containing the capabilities it uses.
 Handlers keep their business flow visible; clients implement storage or
 provider-specific operations and do not call other clients. The v1 and v2 room
-event handlers have separate implementations in `events.go` and `eventsv2.go`.
+event handlers have separate implementations in `events.go` and `eventsv2.go`;
+the playlist-item v3 stream lives in `roomv3.go`.
+
+Feature files group their HTTP flows and scheduled work together: `admin.go`,
+`listener.go`, `playback.go`, `playlist.go`, and `generate.go`. Client feature
+files keep the matching prepared statements, operations, scans, and mappings
+together. Admin search-usage reads belong in `client/database/admin.go`;
+listener-usage reads belong in `client/database/listener.go`. API versions retain
+their explicit files and wire contracts, rather than sharing a version-switching
+handler.
 
 Database methods use context-aware prepared statements and bounded timeouts.
 Row scanning is separate from `toXxx` domain mapping. Atomic statements and
@@ -94,32 +103,59 @@ inside the Go process; Redis is not a separate worker/job runner. Their handlers
 claim persistent work, advance playback, import or generate playlists, refresh
 provider state, and perform maintenance.
 
-Music-provider integration crosses two boundaries: the backend calls provider
+Media-provider integration crosses two boundaries: the backend calls provider
 APIs for search, metadata, playlists, and authorization where supported, while
 playback applications use the providers' official players or SDKs. Cast-capable
 clients communicate with the Cast receiver through Google Cast media messages;
 the receiver also uses the same backend API and SSE contracts as the other
 applications.
 
+## MUSIC and WATCH rooms
+
+Room type and playback mode are independent. PostgreSQL stores the immutable
+`rooms.room_type` enum as `MUSIC` or `WATCH`; existing rooms were backfilled to
+`MUSIC`. Both types use the same playlist-item storage and event infrastructure.
+
+| Behaviour | MUSIC | WATCH |
+| --- | --- | --- |
+| Providers | YouTube and SoundCloud when configured and enabled | YouTube only |
+| YouTube search and imports | Music-category videos | Videos across categories |
+| Generation | Music-oriented prompt and candidates | Viewing-oriented prompt and candidates |
+| Discovery and totals | MUSIC rooms, queued items, listeners | WATCH rooms, queued items, watchers |
+| Playback authority | Server or host mode | Server or host mode |
+
+Room-scoped search loads the stored type before choosing provider policy. Search
+cache keys include the type, and additions/imports revalidate provider metadata
+against the destination room. Both types reject live, made-for-kids, and
+non-embeddable YouTube videos; age and regional restrictions remain represented
+in provider metadata. WATCH does not apply a music-category or video-length
+restriction. Public lists and community totals accept a room-type filter so the
+two experiences do not mix results. Host identity and handovers travel through
+room events and system activity, independently of room-administrator status.
+
 ## State and event delivery
 
 | Channel | Responsibility |
 | --- | --- |
-| `/api/v1` REST | Room discovery and settings, queues, playback, authentication, messages, and remote commands |
+| `/api/v1` REST | Retained compatibility contracts, plus shared sessions, chat, generation requests, and provider configuration |
+| `/api/v2/rooms` REST | Typed rooms, playlist items, settings, playback, failures, and imports |
+| `/api/v2/rooms/{id}/search/{provider}` | Search using the stored room type and enabled providers |
 | `/api/v1/rooms/{id}/events` | Compatibility room stream with full queue updates |
 | `/api/v2/rooms/{id}/events` | Initial room/queue state followed by incremental song and playback events |
-| `/api/v2/rooms/public` | Paginated public-room browsing, separate from the live-room summary |
+| `/api/v3/rooms/{id}/events` | Playlist-item snapshots and incremental room, queue, host, and playback events |
+| `/api/v3/rooms/public` | Paginated public-room browsing filtered by MUSIC or WATCH |
+| `/api/v2/stats` | Community counts filtered by room type |
 | `/api/v1/rooms/{id}/messages` | POST chat messages and GET the chat/activity SSE stream |
-| `/api/v1/remotes/{id}/events` | Paired-player state and targeted remote commands |
+| `/api/v2/remotes/{id}/events` | Paired-player state and targeted remote commands using playlist-item contracts |
 
 Room event IDs support reconnect replay. A valid retained cursor resumes after
 the last event; a new connection or expired cursor requires a fresh snapshot.
-The v2 queue sends additions, updates, removals, and position changes rather
+The v2 and v3 queues send additions, updates, removals, and position changes rather
 than a full playlist for each mutation. Heartbeats keep streams and presence
 alive without repeatedly transmitting the queue.
 
 Redis replay is bounded by `ROOM_EVENT_REPLAY_MAX_EVENTS` and
-`ROOM_EVENT_REPLAY_MAX_AGE` (defaults: 1000 events and two hours). It is a recovery
+`ROOM_EVENT_REPLAY_MAX_AGE` (defaults: 100 events and 15 minutes). It is a recovery
 window, not a permanent event archive. Chat and room activity share this live
 delivery infrastructure; PostgreSQL stores usage counters, not an unbounded
 message transcript. Clients also bound their rendered message history. A
@@ -146,18 +182,18 @@ responses report separate counts for made-for-kids and embedding exclusions.
 YouTube additions require recently verified provider metadata in the shared
 cache; expired previews must be loaded again instead of trusting client data.
 
-Provider metadata refresh includes the currently selected song, even when
+Provider metadata refresh includes the currently selected playlist item, even when
 paused, and broadcasts updated queue and playback metadata. A separate expiry
 worker removes unrefreshed YouTube metadata after 25 days, independently of
 provider availability or quota. It claims one room at a time and atomically
-removes stale songs and votes, clearing playback if its selected song expires.
+removes stale items and votes, clearing playback if its selected item expires.
 The cutoff leaves headroom for three-day caches, one-day import staging, and
 short-lived event replay before the 30-day metadata limit. Import cleanup also
 expires unfinished imports after one day rather than retaining their items.
 
 ## Sessions and permissions
 
-Listeners use signed anonymous sessions, not required user accounts. Room
+Listeners and watchers use signed anonymous sessions, not required user accounts. Room
 administrator authentication is scoped to that room; creating a room with an
 administrator password also authenticates its creator. Global administration
 has a separate protected session and permission boundary.

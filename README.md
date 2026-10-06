@@ -1,7 +1,8 @@
 # Vibes Backend
 
 Go API and background processing for [Zoff](https://zoff.me), a free shared
-music queue for listening together. Listeners join without creating an account;
+MUSIC queues for listening together and WATCH rooms for watching together.
+Participants join without creating an account;
 each room has its own settings and optional administrator password.
 
 ## Architecture Overview
@@ -15,12 +16,13 @@ playlist imports, generation, playback, and remote control.
 
 ## Features
 
-- Shared YouTube and SoundCloud queues, song voting, playlist imports, and
+- MUSIC rooms with YouTube and SoundCloud, and YouTube-only WATCH rooms.
+- Shared playlist items, voting, playlist imports, and
   synchronized playback through official provider players.
 - Server-controlled playback or host-controlled rooms, administrator-only
   adding/skipping, democratic skip votes, and public-room browsing.
 - Room chat and activity for additions, votes, removals, skips, and name changes.
-- Versioned REST endpoints and replayable SSE, including incremental v2 queue
+- Versioned REST endpoints and replayable SSE, including incremental v3 playlist-item
   updates instead of repeatedly sending the full playlist.
 - Paired remote controls, room-scoped Cast tokens, and shared contracts for web,
   mobile, television, Cast, and embed clients.
@@ -31,7 +33,7 @@ playlist imports, generation, playback, and remote control.
 
 The [frontend](https://github.com/zoff-music/vibes-frontend) owns user interfaces.
 The [migrator](https://github.com/zoff-music/vibes-migrator) owns PostgreSQL schema
-changes. This service coordinates state; it does not host or extract music streams.
+changes. This service coordinates state; it does not host or extract media streams.
 
 ## Getting Started
 
@@ -84,15 +86,14 @@ rules.
 ### Checks and Builds
 
 ```bash
-make test          # Swagger generation and Go race tests
+make test          # Swagger generation and race-enabled package compilation
 GOFLAGS=-mod=mod go vet ./...
 make build
 make docs          # Regenerate Swagger from handler/domain declarations
 make docker        # Build the production image
 ```
 
-Database integration tests use `VIBES_TEST_DATABASE_URL` pointing to a migrated,
-disposable local PostgreSQL database. The production Docker target uses a
+The production Docker target uses a
 statically linked Go binary in a scratch image.
 
 ## Architecture

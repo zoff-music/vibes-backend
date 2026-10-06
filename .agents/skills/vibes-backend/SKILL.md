@@ -63,6 +63,8 @@ Use these rules for Go backend work in this repository.
 - If empty struct data is meaningful, return a struct pointer and give the struct an `IsEmpty` method instead of returning the struct by value.
 - Scalar data such as `string`, `bool`, `int`, `int64`, and slices/maps can still be returned normally with `error`.
 - Only Go test files may use underscores in filenames. Non-test Go files should use plain domain names such as `song.go`; avoid hyperspecific names like `song_skip.go`, `song_next.go`, or `song_playback.go`.
+- Consolidate related operations and scheduled handlers into the existing feature file. Use `admin.go` for administration and its users/reviews, `listener.go` for listener usage, `playback.go` for playback reviews, and `playlist.go` for playlist imports. Do not create compound feature filenames such as `adminreview.go` or `playlistimport.go`.
+- Keep client methods in the corresponding handler feature file, including their prepared statements, row types, scans, and mapping methods. Keep genuine API-version boundaries such as `roomv2.go` separate; do not create both `roomv2.go` and `roomsv2.go` for the same version.
 - Do not use `any` or `interface{}`. Prefer explicit concrete types, even when it is more verbose.
 - Never build JSON payloads with string formatting; define structs and use `json.Marshal`.
 - Do not directly return another method call. Assign to a local variable first, then return it so error handling and wrapping can stay explicit.
