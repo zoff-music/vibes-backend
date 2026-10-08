@@ -508,15 +508,18 @@ func AddSong(
 			return
 		}
 
+		_, isModerator := helper.GetAdminUserFromContext(ctx)
+
 		message := vibe.RoomMessage{
-			ID:        uuid.NewString(),
-			UserID:    session.UserID,
-			Name:      profile.Name,
-			IsAdmin:   room.IsAdmin,
-			Kind:      kind,
-			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
-			Text:      result.PlaylistItem.Title,
-			CreatedAt: time.Now().UnixMilli(),
+			IsModerator: isModerator,
+			ID:          uuid.NewString(),
+			UserID:      session.UserID,
+			Name:        profile.Name,
+			IsAdmin:     room.IsAdmin,
+			Kind:        kind,
+			IsHost:      room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
+			Text:        result.PlaylistItem.Title,
+			CreatedAt:   time.Now().UnixMilli(),
 		}
 
 		chatPayload, err := json.Marshal(message)
@@ -684,15 +687,18 @@ func RemoveSong(
 			return
 		}
 
+		_, isModerator := helper.GetAdminUserFromContext(ctx)
+
 		message := vibe.RoomMessage{
-			ID:        uuid.NewString(),
-			UserID:    session.UserID,
-			Name:      profile.Name,
-			IsAdmin:   room.IsAdmin,
-			Kind:      vibe.MessageKindDeleted,
-			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
-			Text:      removedSong.Title,
-			CreatedAt: time.Now().UnixMilli(),
+			IsModerator: isModerator,
+			ID:          uuid.NewString(),
+			UserID:      session.UserID,
+			Name:        profile.Name,
+			IsAdmin:     room.IsAdmin,
+			Kind:        vibe.MessageKindDeleted,
+			IsHost:      room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
+			Text:        removedSong.Title,
+			CreatedAt:   time.Now().UnixMilli(),
 		}
 
 		chatPayload, err := json.Marshal(message)
@@ -877,15 +883,18 @@ func VoteSong(
 			return
 		}
 
+		_, isModerator := helper.GetAdminUserFromContext(ctx)
+
 		message := vibe.RoomMessage{
-			ID:        uuid.NewString(),
-			UserID:    session.UserID,
-			Name:      profile.Name,
-			IsAdmin:   chatRoom.IsAdmin,
-			IsHost:    chatRoom.Mode == vibe.RoomModeHost && chatRoom.HostID == session.UserID,
-			Kind:      vibe.MessageKindVoted,
-			Text:      votedTitle,
-			CreatedAt: time.Now().UnixMilli(),
+			IsModerator: isModerator,
+			ID:          uuid.NewString(),
+			UserID:      session.UserID,
+			Name:        profile.Name,
+			IsAdmin:     chatRoom.IsAdmin,
+			IsHost:      chatRoom.Mode == vibe.RoomModeHost && chatRoom.HostID == session.UserID,
+			Kind:        vibe.MessageKindVoted,
+			Text:        votedTitle,
+			CreatedAt:   time.Now().UnixMilli(),
 		}
 
 		chatPayload, err := json.Marshal(message)
