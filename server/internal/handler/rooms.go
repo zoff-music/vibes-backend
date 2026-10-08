@@ -852,15 +852,18 @@ func UpdateRoomSettings(
 
 		events := []vibe.RoomEvent{}
 		for _, change := range changes {
+			_, isModerator := helper.GetAdminUserFromContext(ctx)
+
 			message := vibe.RoomMessage{
-				ID:        uuid.NewString(),
-				UserID:    session.UserID,
-				Name:      profile.Name,
-				IsAdmin:   updated.IsAdmin,
-				IsHost:    updated.Mode == vibe.RoomModeHost && updated.HostID == session.UserID,
-				Kind:      vibe.MessageKindSettings,
-				Text:      change,
-				CreatedAt: time.Now().UnixMilli(),
+				IsModerator: isModerator,
+				ID:          uuid.NewString(),
+				UserID:      session.UserID,
+				Name:        profile.Name,
+				IsAdmin:     updated.IsAdmin,
+				IsHost:      updated.Mode == vibe.RoomModeHost && updated.HostID == session.UserID,
+				Kind:        vibe.MessageKindSettings,
+				Text:        change,
+				CreatedAt:   time.Now().UnixMilli(),
 			}
 
 			payload, err := json.Marshal(message)
@@ -1031,16 +1034,19 @@ func CreateSession(
 			return
 		}
 
+		_, isModerator := helper.GetAdminUserFromContext(ctx)
+
 		message := vibe.RoomMessage{
-			ID:        uuid.NewString(),
-			UserID:    session.UserID,
-			Name:      profile.Name,
-			IsAdmin:   true,
-			Kind:      vibe.MessageKindAdded,
-			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
-			Activity:  true,
-			Text:      "a password to the room",
-			CreatedAt: time.Now().UnixMilli(),
+			IsModerator: isModerator,
+			ID:          uuid.NewString(),
+			UserID:      session.UserID,
+			Name:        profile.Name,
+			IsAdmin:     true,
+			Kind:        vibe.MessageKindAdded,
+			IsHost:      room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
+			Activity:    true,
+			Text:        "a password to the room",
+			CreatedAt:   time.Now().UnixMilli(),
 		}
 
 		payload, err := json.Marshal(message)

@@ -496,6 +496,22 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 	am := middleware.AdminMiddleware{
 		DB:           s.DB,
 		CookieSecret: s.Config.CookieSecret,
+		OptionalRoutes: map[string]bool{
+			"CreateMessages":       true,
+			"CreateSession":        true,
+			"CreateSessionV2":      true,
+			"UpdateSessionProfile": true,
+			"UpdateRoomSettings":   true,
+			"UpdateRoomSettingsV2": true,
+			"AddSong":              true,
+			"AddPlaylistItem":      true,
+			"RemoveSong":           true,
+			"RemovePlaylistItem":   true,
+			"VoteSong":             true,
+			"VotePlaylistItem":     true,
+			"SkipSong":             true,
+			"SkipPlaylistItem":     true,
+		},
 		ProtectedRoutes: map[string]bool{
 			"AdminSession":       true,
 			"AdminDocumentation": true,

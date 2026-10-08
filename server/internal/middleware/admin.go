@@ -11,18 +11,21 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-// AdminMiddleware enforces access to authenticated admin users.
+// AdminMiddleware enforces admin access on protected routes and verifies
+// optional moderator identity on room activity routes without granting access.
 type AdminMiddleware struct {
 	DB              vibe.AdminUserFetcher
 	CookieSecret    string
 	ProtectedRoutes map[string]bool
+	OptionalRoutes  map[string]bool
 }
 
 // Middleware is the actual middleware function
 func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		routeName := mux.CurrentRoute(r).GetName()
-		if !m.ProtectedRoutes[routeName] {
+		required := m.ProtectedRoutes[routeName]
+		if !required && !m.OptionalRoutes[routeName] {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -33,6 +36,11 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 		ctx := r.Context()
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
+			if !required {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			log.Printf("AdminMiddleware: missing user session")
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
@@ -40,6 +48,11 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 
 		cookie, err := r.Cookie(helper.AdminAuthCookieName)
 		if err != nil {
+			if !required {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			log.Printf("AdminMiddleware: missing admin cookie")
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
@@ -47,12 +60,22 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 
 		payload, err := helper.ParseAdminAuthPayload(cookie.Value, m.CookieSecret)
 		if err != nil {
+			if !required {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			log.Printf("AdminMiddleware: invalid admin session: %v", err)
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
 
 		if session.UserID != payload.UserID {
+			if !required {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			log.Printf("AdminMiddleware: session/user mismatch")
 			http.Error(w, "forbidden", http.StatusForbidden)
 			return
@@ -61,6 +84,11 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 		issuedAt := time.Unix(payload.IssuedAt, 0)
 		if issuedAt.After(time.Now().Add(adminSessionClockSkew)) ||
 			time.Since(issuedAt) > adminSessionDuration {
+			if !required {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			log.Printf("AdminMiddleware: expired admin session")
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
@@ -69,10 +97,21 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 		admin, err := m.DB.GetAdminUser(ctx, payload.AdminID)
 		if err != nil {
 			log.Printf("AdminMiddleware: error getting admin user: %v", err)
+
+			if !required {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
 		if admin.IsEmpty() || admin.SessionVersion != payload.SessionVersion {
+			if !required {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			log.Printf("AdminMiddleware: invalid admin user session")
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return

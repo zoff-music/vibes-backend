@@ -147,15 +147,18 @@ func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEve
 			}
 
 			for _, room := range rooms {
+				_, isModerator := helper.GetAdminUserFromContext(ctx)
+
 				message := vibe.RoomMessage{
-					ID:        uuid.NewString(),
-					UserID:    session.UserID,
-					Name:      previous.Name,
-					IsAdmin:   room.IsAdmin,
-					IsHost:    room.IsHost,
-					Kind:      vibe.MessageKindRenamed,
-					Text:      profile.Name,
-					CreatedAt: time.Now().UnixMilli(),
+					IsModerator: isModerator,
+					ID:          uuid.NewString(),
+					UserID:      session.UserID,
+					Name:        previous.Name,
+					IsAdmin:     room.IsAdmin,
+					IsHost:      room.IsHost,
+					Kind:        vibe.MessageKindRenamed,
+					Text:        profile.Name,
+					CreatedAt:   time.Now().UnixMilli(),
 				}
 
 				payload, chatErr := json.Marshal(message)

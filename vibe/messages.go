@@ -30,15 +30,18 @@ const MessageKindRenamed = "renamed"
 const MessageKindSettings = "settings"
 
 type RoomMessage struct {
-	ID        string `json:"id"`
-	UserID    string `json:"userId"`
-	Name      string `json:"name"`
-	IsAdmin   bool   `json:"isAdmin"`
-	IsHost    bool   `json:"isHost"`
-	Kind      string `json:"kind"`
-	Activity  bool   `json:"activity,omitempty"`
-	Text      string `json:"text"`
-	CreatedAt int64  `json:"createdAt"`
+	ID      string `json:"id"`
+	UserID  string `json:"userId"`
+	Name    string `json:"name"`
+	IsAdmin bool   `json:"isAdmin"`
+
+	// IsModerator records verified platform-admin status when the message was sent.
+	IsModerator bool   `json:"isModerator"`
+	IsHost      bool   `json:"isHost"`
+	Kind        string `json:"kind"`
+	Activity    bool   `json:"activity,omitempty"`
+	Text        string `json:"text"`
+	CreatedAt   int64  `json:"createdAt"`
 }
 
 type CreateMessageRequest struct {
