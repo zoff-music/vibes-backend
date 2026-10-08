@@ -11,6 +11,7 @@ type AdminRoomSummaryV2 struct {
 	ID                string   `json:"id"`
 	Name              string   `json:"name"`
 	RoomType          RoomType `json:"roomType"`
+	IsPublic          bool     `json:"isPublic"`
 	UserCount         int      `json:"userCount"`
 	PlaylistItemCount int      `json:"playlistItemCount"`
 	ActiveSources     []string `json:"activeSources"`

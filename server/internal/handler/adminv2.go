@@ -17,7 +17,7 @@ import (
 // AdminRoomsV2 handles GET /api/v2/admin/rooms
 //
 //	@Summary		Search rooms
-//	@Description	Returns filtered, sorted, row-number-paginated room summaries with listener counts, queued playlist item counts, active sources, and room password status.
+//	@Description	Returns filtered, sorted, row-number-paginated room summaries with listener counts, queued playlist item counts, active sources, public visibility, and room password status.
 //	@Tags		admin
 //	@Produce	json
 //	@Param		q		query		string	false	"Room name search"
