@@ -73,15 +73,18 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 			return
 		}
 
+		_, isModerator := helper.GetAdminUserFromContext(ctx)
+
 		message := vibe.RoomMessage{
-			ID:        uuid.NewString(),
-			UserID:    session.UserID,
-			Name:      profile.Name,
-			IsAdmin:   room.IsAdmin,
-			IsHost:    room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
-			Kind:      vibe.MessageKindChat,
-			Text:      strings.TrimSpace(request.Text),
-			CreatedAt: time.Now().UnixMilli(),
+			IsModerator: isModerator,
+			ID:          uuid.NewString(),
+			UserID:      session.UserID,
+			Name:        profile.Name,
+			IsAdmin:     room.IsAdmin,
+			IsHost:      room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
+			Kind:        vibe.MessageKindChat,
+			Text:        strings.TrimSpace(request.Text),
+			CreatedAt:   time.Now().UnixMilli(),
 		}
 
 		payload, err := json.Marshal(message)
