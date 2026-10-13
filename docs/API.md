@@ -27,13 +27,14 @@ control.
 ## Base URL
 
 ```
-Development: http://localhost:8080/api/v1
-Production: https://zoff.me/api/v1
+Development: http://localhost:8080
+Production: https://zoff.me
 ```
 
-The examples below retain the legacy v1 contract unless a version is explicit.
-Current clients use v2 playlist-item REST contracts and the v3 room stream.
-Older versions remain supported with their existing serialized names. See
+Each endpoint below includes its API version. Current clients use v2
+playlist-item REST contracts and the v3 room stream. Shared session, chat,
+OAuth, provider, and administration operations retain their supported v1 routes.
+Deprecated room, provider, remote, and admin contracts have been removed. See
 [sessions and live updates](flows/sessions.md) for snapshot and replay behavior.
 
 ## Current MUSIC and WATCH contracts
@@ -56,16 +57,15 @@ Older versions remain supported with their existing serialized names. See
 MUSIC supports enabled YouTube and SoundCloud sources. WATCH supports YouTube
 only and searches across video categories. Room type is independent of playback
 mode and cannot be changed through room settings. Generated Swagger describes
-the exact request/response fields for every version. V1 song names are legacy
-wire fields, not the current database or domain naming.
+the exact request/response fields for each supported route.
 
 ---
 
 ## Authentication
 
-- **Room Admin**: Password-based authentication via `POST /rooms/{id}/sessions`
+- **Room Admin**: Password-based authentication via `POST /api/v2/rooms/{id}/sessions`
 - **Regular User**: Anonymous session auto-created via middleware on first request
-- **Global Admin**: Password-based authentication via `POST /admin/sessions`
+- **Global Admin**: Password-based authentication via `POST /api/v1/admin/sessions`
 - **Session Storage**: HTTP-only cookie with UUID-based user ID
 - **OAuth**: YouTube and SoundCloud via OAuth 2.0 flow
 
@@ -93,8 +93,8 @@ wire fields, not the current database or domain naming.
 
 ### Room Management
 
-#### Browse Public Rooms (v2)
-`GET /api/v2/rooms/public?live=true&from=0&to=9`
+#### Browse Public Rooms (v3)
+`GET /api/v3/rooms/public?roomType=MUSIC&live=true&from=0&to=9`
 
 Returns public rooms with password-protected admin controls. The password is
 not required to listen. Private rooms are never included.
@@ -102,18 +102,19 @@ not required to listen. Private rooms are never included.
 | Parameter | Meaning | Default |
 | --- | --- | --- |
 | `q` | Case-insensitive, literal substring of the room name; up to 100 characters | Empty |
+| `roomType` | `MUSIC` or `WATCH` | `MUSIC` |
 | `live` | `true` limits results to rooms with active listeners; `false` includes empty rooms | `false` |
 | `from` | First row, zero-based | `0` |
 | `to` | Last row, inclusive; at most 100 rooms per request | `from + 9` |
 
-Rooms are ordered by listener count, song count, then ID, all descending.
-Song counts include enabled providers. Listener counts use current presence;
+Rooms are ordered by listener count, playlist-item count, then ID, all descending.
+Playlist-item counts include enabled providers. Listener counts use current presence;
 cast receivers only count as one listener when there are no other listeners.
 
 ```json
 {
   "rooms": [
-    { "id": "electro", "name": "electro", "listenerCount": 3, "songCount": 24 }
+    { "id": "electro", "name": "electro", "roomType": "MUSIC", "listenerCount": 3, "playlistItemCount": 24 }
   ],
   "from": 0,
   "to": 0,
@@ -125,7 +126,6 @@ cast receivers only count as one listener when there are no other listeners.
 `to` identifies the last returned row. With no matches, `rooms` is an empty
 array, `count` is zero, and `to` equals `from`. `total` remains available for
 requests beyond the last page. Invalid filters and ranges return `400`.
-The v1 public list keeps its existing top-three live-room contract.
 
 Deploy migration 0025 from `zoff-music/vibes-migrator` for indexed room-name
 search, then the backend, then clients using this endpoint. The index is
@@ -134,7 +134,7 @@ additive; this query also works before the migration is applied.
 ---
 
 #### Create Room
-`POST /rooms`
+`POST /api/v2/rooms`
 
 **Request Body:**
 ```json
@@ -150,7 +150,7 @@ additive; this query also works before the migration is applied.
     "removeOnPlay": true,
     "allowDuplicates": false,
     "enabledSources": ["youtube", "soundcloud"],
-    "onlyAdminAddSongs": false
+    "onlyAdminAddPlaylistItems": false
   }
 }
 ```
@@ -160,7 +160,7 @@ additive; this query also works before the migration is applied.
 ---
 
 #### Suggest Room Name
-`GET /rooms/suggestions`
+`GET /api/v1/rooms/suggestions`
 
 Returns an easy-to-say, currently available room name for the create-room form:
 
@@ -173,7 +173,7 @@ Returns an easy-to-say, currently available room name for the create-room form:
 ---
 
 #### Check Whether a Room Exists
-`HEAD /rooms/{id}`
+`HEAD /api/v1/rooms/{id}`
 
 Returns `200 OK` when the room ID exists and `404 Not Found` when it is
 available.
@@ -181,12 +181,12 @@ available.
 ---
 
 #### Get Room
-`GET /rooms/{id}`
+`GET /api/v2/rooms/{id}`
 
 ---
 
 #### Create Session (Join Room / Authenticate as Admin)
-`POST /rooms/{id}/sessions`
+`POST /api/v2/rooms/{id}/sessions`
 
 **Request Body:**
 ```json
@@ -199,19 +199,19 @@ available.
 ---
 
 #### Update Room Settings (Admin/Host Only)
-`PATCH /rooms/{id}/settings`
+`PATCH /api/v2/rooms/{id}/settings`
 
 ---
 
 ### Queue Management
 
-#### Get Songs
-`GET /rooms/{id}/songs`
+#### Get Playlist Items
+`GET /api/v2/rooms/{id}/playlist-items`
 
 ---
 
-#### Add Song to Queue
-`POST /rooms/{id}/songs`
+#### Add Playlist Item to Queue
+`POST /api/v2/rooms/{id}/playlist-items`
 
 **Request Body:**
 ```json
@@ -223,25 +223,25 @@ available.
 
 ---
 
-#### Remove Song from Queue
-`DELETE /rooms/{id}/songs/{songId}`
+#### Remove Playlist Item from Queue
+`DELETE /api/v2/rooms/{id}/playlist-items/{playlistItemId}`
 
 ---
 
-#### Vote for Song
-`POST /rooms/{id}/songs/{songId}`
+#### Vote for Playlist Item
+`POST /api/v2/rooms/{id}/playlist-items/{playlistItemId}`
 
 ---
 
 ### Playback Control
 
 #### Get Playback State
-`GET /rooms/{id}/states`
+`GET /api/v2/rooms/{id}/states`
 
 ---
 
 #### Update Playback State
-`PUT /rooms/{id}/states`
+`PUT /api/v2/rooms/{id}/states`
 
 **Request Body:**
 ```json
@@ -253,45 +253,47 @@ available.
 
 ---
 
-#### Skip Song
-`POST /rooms/{id}/skips`
+#### Skip Playlist Item
+`POST /api/v2/rooms/{id}/skips`
 
 ---
 
 ### Real-time Events (SSE)
 
 #### Subscribe to Room Events
-`GET /rooms/{id}/events`
+`GET /api/v3/rooms/{id}/events`
 
 ---
 
-### Music Search & Track Details
+### Provider Search & Item Details
 
-#### Search Music
-`GET /{youtube|soundcloud}/search?q=query`
+#### Search an Enabled Room Provider
+`GET /api/v2/rooms/{id}/search/{provider}?q=query`
 
-#### Get Track Details
-`GET /{youtube|videos|tracks}/{id}`
+#### Get Item Details
+`GET /api/v2/youtube/videos/{id}`
+
+`GET /api/v2/soundcloud/items/{id}`
 
 ---
 
 ### OAuth & Authorization
 
 #### Start OAuth Flow
-`GET /authorizations/{provider}`
+`GET /api/v1/authorizations/{provider}`
 
 #### Get/Refresh Access Token
-`GET /tokens/{provider}`
+`GET /api/v1/tokens/{provider}`
 
 #### Get Enabled Providers
-`GET /providers`
+`GET /api/v1/providers`
 
 ---
 
 ### Global Admin Routes (Admin Only)
 
 #### Admin Login
-`POST /admin/sessions`
+`POST /api/v1/admin/sessions`
 
 **Request Body:**
 ```json
@@ -303,17 +305,17 @@ available.
 ---
 
 #### Admin Logout
-`DELETE /admin/sessions`
+`DELETE /api/v1/admin/sessions`
 
 ---
 
 #### List All Rooms
-`GET /admin/rooms`
+`GET /api/v2/admin/rooms`
 
 ---
 
 #### Delete Room
-`DELETE /admin/rooms/{id}`
+`DELETE /api/v2/admin/rooms/{id}`
 
 Returns `204 No Content` and publishes the refreshed room list through the admin
 event stream.
@@ -321,7 +323,7 @@ event stream.
 ---
 
 #### Global Admin Events (SSE)
-`GET /admin/events`
+`GET /api/v2/admin/events`
 
 ---
 

@@ -78,7 +78,7 @@ func GetSessionProfile(db vibe.SessionProfileFetcherCreator) http.HandlerFunc {
 //	@Failure	401		{object}	vibe.ErrorResponse
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/sessions [patch]
-func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEventNotifier) http.HandlerFunc {
+func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEventV3Notifier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		session, ok := helper.GetSessionFromContext(ctx)
@@ -167,7 +167,7 @@ func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEve
 					continue
 				}
 
-				chatErr = events.NotifyRoomUpdate(context.WithoutCancel(ctx), room.ID, vibe.RoomEvent{
+				chatErr = events.NotifyRoomUpdateV3(context.WithoutCancel(ctx), room.ID, vibe.RoomEventV3{
 					Type:    vibe.MessageEvent,
 					Payload: payload,
 				})

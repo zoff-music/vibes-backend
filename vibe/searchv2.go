@@ -42,22 +42,6 @@ func (p ProviderItem) AllowedInRoom(roomType RoomType) bool {
 
 const YouTubeMusicCategoryID = "10"
 
-func (p ProviderItem) ToMusicTrack() *MusicTrack {
-	return &MusicTrack{
-		ID:                  p.ID,
-		Source:              p.Source,
-		ProviderURL:         p.ProviderURL,
-		Title:               p.Title,
-		ChannelTitle:        p.Publisher,
-		ThumbnailURL:        p.ThumbnailURL,
-		Duration:            p.Duration,
-		DurationSeconds:     p.DurationSeconds,
-		ViewCount:           p.ViewCount,
-		LikeCount:           p.LikeCount,
-		PlaybackRestriction: p.PlaybackRestriction,
-	}
-}
-
 type ProviderItemFetcher interface {
 	GetProviderItem(ctx context.Context, id string) (*ProviderItem, error)
 }
@@ -68,22 +52,6 @@ type ProviderItemsSearcher interface {
 
 type ProviderItemResolver interface {
 	ResolveProviderItem(ctx context.Context, providerURL string) (*ProviderItem, error)
-}
-
-func (t MusicTrack) ToProviderItem() *ProviderItem {
-	return &ProviderItem{
-		ID:                  t.ID,
-		Source:              t.Source,
-		ProviderURL:         t.ProviderURL,
-		Title:               t.Title,
-		Publisher:           t.ChannelTitle,
-		ThumbnailURL:        t.ThumbnailURL,
-		Duration:            t.Duration,
-		DurationSeconds:     t.DurationSeconds,
-		ViewCount:           t.ViewCount,
-		LikeCount:           t.LikeCount,
-		PlaybackRestriction: t.PlaybackRestriction,
-	}
 }
 
 type RoomSearchUsageCreator interface {

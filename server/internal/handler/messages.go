@@ -25,7 +25,7 @@ import (
 // @Success 201 {object} vibe.RoomMessage
 // @Failure 400,401,404,500 {object} vibe.ErrorResponse
 // @Router /api/v1/rooms/{id}/messages [post]
-func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEventNotifier) http.HandlerFunc {
+func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEventV3Notifier) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		roomID := mux.Vars(r)["id"]
@@ -93,7 +93,7 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 			return
 		}
 
-		err = events.NotifyRoomUpdate(ctx, roomID, vibe.RoomEvent{
+		err = events.NotifyRoomUpdateV3(ctx, roomID, vibe.RoomEventV3{
 			Type:    vibe.MessageEvent,
 			Payload: payload,
 		})
@@ -206,7 +206,7 @@ func Messages(db vibe.RoomV2Fetcher, events vibe.ReplaySubscriber) http.HandlerF
 					return
 				}
 
-				event, err := vibe.ParseLegacyRoomEvent(data)
+				event, err := vibe.ParseRoomEvent(data)
 				if err != nil {
 					log.Printf("error decoding chat event: %v", err)
 					continue

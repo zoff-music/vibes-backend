@@ -46,17 +46,6 @@ type CreateSessionRequest struct {
 	Password string `json:"password,omitempty"`
 }
 
-// SessionResponse is returned when creating a session
-//
-// Deprecated: Use SessionResponseV2 for new clients. Retained for v1 room authentication.
-type SessionResponse struct {
-	UserID    string  `json:"userId"`
-	SessionID string  `json:"sessionId"`
-	Nickname  *string `json:"nickname,omitempty"`
-	IsAdmin   bool    `json:"isAdmin"`
-	Room      *Room   `json:"room"`
-}
-
 // AdminAuthResult represents the result of an admin authentication attempt
 type AdminAuthResult struct {
 	IsAdmin          bool

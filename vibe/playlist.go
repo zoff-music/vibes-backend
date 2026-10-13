@@ -8,28 +8,6 @@ import (
 	"time"
 )
 
-// Deprecated: Use ProviderPlaylist for new code. Retained for legacy API compatibility.
-type MusicPlaylist struct {
-	ID                      string       `json:"id"`
-	Source                  string       `json:"source"`
-	Title                   string       `json:"title,omitempty"`
-	Tracks                  []MusicTrack `json:"tracks"`
-	Truncated               bool         `json:"truncated"`
-	SkippedEmbeddingCount   int          `json:"skippedEmbeddingCount"`
-	SkippedMadeForKidsCount int          `json:"skippedMadeForKidsCount"`
-}
-
-func (p *MusicPlaylist) GetMusicTracks() []MusicTrack {
-	tracks := append([]MusicTrack{}, p.Tracks...)
-
-	return tracks
-}
-
-// Deprecated: Use AddPlaylistRequestV2 for new code. Retained for legacy API compatibility.
-type AddPlaylistRequest struct {
-	Songs []AddSongRequest `json:"songs"`
-}
-
 type AddPlaylistResult struct {
 	ImportID    string `json:"importId"`
 	QueuedCount int    `json:"queuedCount"`
@@ -53,11 +31,6 @@ type PlaylistImportCreator interface {
 
 type AbandonedPlaylistImportItemDeleter interface {
 	DeleteAbandonedPlaylistImportItems(ctx context.Context) error
-}
-
-type PlaylistImportRoomCreator interface {
-	PlaylistImportCreator
-	RoomV2Fetcher
 }
 
 type PlaylistImportProcessor interface {
@@ -158,45 +131,6 @@ func (p *PlaylistItem) IsEmpty() bool {
 	return p.ID == ""
 }
 
-// ToSong preserves the original API representation for installed clients.
-func (p PlaylistItem) ToSong() *Song {
-	return &Song{
-		ID:                  p.ID,
-		RoomID:              p.RoomID,
-		SourceType:          p.SourceType,
-		SourceID:            p.SourceID,
-		ProviderURL:         p.ProviderURL,
-		Title:               p.Title,
-		Artist:              p.Publisher,
-		ThumbnailURL:        p.ThumbnailURL,
-		Duration:            p.Duration,
-		AddedBySessionID:    p.AddedBySessionID,
-		AddedBy:             p.AddedBy,
-		AddedAt:             p.AddedAt,
-		VoteCount:           p.VoteCount,
-		PlaybackRestriction: p.PlaybackRestriction,
-	}
-}
-
-func (s Song) ToPlaylistItem() *PlaylistItem {
-	return &PlaylistItem{
-		ID:                  s.ID,
-		RoomID:              s.RoomID,
-		SourceType:          s.SourceType,
-		SourceID:            s.SourceID,
-		ProviderURL:         s.ProviderURL,
-		Title:               s.Title,
-		Publisher:           s.Artist,
-		ThumbnailURL:        s.ThumbnailURL,
-		Duration:            s.Duration,
-		AddedBySessionID:    s.AddedBySessionID,
-		AddedBy:             s.AddedBy,
-		AddedAt:             s.AddedAt,
-		VoteCount:           s.VoteCount,
-		PlaybackRestriction: s.PlaybackRestriction,
-	}
-}
-
 type PlaylistItemsFetcher interface {
 	GetPlaylistItems(ctx context.Context, roomID string) ([]PlaylistItem, error)
 }
@@ -218,15 +152,6 @@ type AddPlaylistItemRequest struct {
 type AddPlaylistItemResult struct {
 	PlaylistItem PlaylistItem `json:"playlistItem"`
 	Outcome      string       `json:"outcome"`
-}
-
-func (r AddPlaylistItemResult) ToAddSongResult() *AddSongResult {
-	song := r.PlaylistItem.ToSong()
-
-	return &AddSongResult{
-		Song:    *song,
-		Outcome: r.Outcome,
-	}
 }
 
 const AddPlaylistItemOutcomeAdded = "added"
@@ -313,26 +238,6 @@ func (p *ProviderPlaylist) IsEmpty() bool {
 	return p.ID == ""
 }
 
-func (p ProviderPlaylist) ToMusicPlaylist() *MusicPlaylist {
-	var tracks []MusicTrack
-	if p.Items != nil {
-		tracks = make([]MusicTrack, len(p.Items))
-		for index, item := range p.Items {
-			tracks[index] = *item.ToMusicTrack()
-		}
-	}
-
-	return &MusicPlaylist{
-		ID:                      p.ID,
-		Source:                  p.Source,
-		Title:                   p.Title,
-		Tracks:                  tracks,
-		Truncated:               p.Truncated,
-		SkippedEmbeddingCount:   p.SkippedEmbeddingCount,
-		SkippedMadeForKidsCount: p.SkippedMadeForKidsCount,
-	}
-}
-
 type ProviderPlaylistFetcher interface {
 	GetProviderPlaylist(ctx context.Context, id string, roomType RoomType) (*ProviderPlaylist, error)
 }
@@ -340,3 +245,34 @@ type ProviderPlaylistFetcher interface {
 type ProviderPlaylistResolver interface {
 	ResolveProviderPlaylist(ctx context.Context, providerURL string) (*ProviderPlaylist, error)
 }
+
+func ResolveSoundCloudTrackURL(value string) (string, error) {
+	providerURL, err := url.Parse(value)
+	if err != nil {
+		return "", fmt.Errorf("error parsing soundcloud track URL: %w", err)
+	}
+
+	hostname := strings.ToLower(providerURL.Hostname())
+	isSoundCloudHost := hostname == "soundcloud.com" ||
+		strings.HasSuffix(hostname, ".soundcloud.com")
+	pathSegments := strings.Split(strings.Trim(providerURL.Path, "/"), "/")
+	isShortLink := hostname == "on.soundcloud.com" && len(pathSegments) >= 1
+	if providerURL.Scheme != "https" ||
+		!isSoundCloudHost ||
+		providerURL.User != nil ||
+		(!isShortLink && len(pathSegments) < 2) {
+		return "", fmt.Errorf("error validating soundcloud track URL")
+	}
+
+	providerURL.RawQuery = ""
+	providerURL.Fragment = ""
+
+	url := providerURL.String()
+	return url, nil
+}
+
+const PlaybackRestrictionAge = "age"
+
+const PlaybackRestrictionRegion = "region"
+
+const PlaybackRestrictionEmbedding = "embedding"

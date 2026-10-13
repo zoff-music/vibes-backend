@@ -22,23 +22,6 @@ type eventStreams struct {
 	maxAge    time.Duration
 }
 
-func (c *Client) NotifyAdminUpdate(ctx context.Context, event vibe.AdminEvent) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyAdminUpdate")
-	defer span.End()
-
-	canonical, err := event.ToAdminEventV2()
-	if err != nil {
-		return fmt.Errorf("error converting legacy admin update: %w", err)
-	}
-
-	err = c.NotifyAdminUpdateV2(ctx, *canonical)
-	if err != nil {
-		return fmt.Errorf("error notifying legacy admin update: %w", err)
-	}
-
-	return nil
-}
-
 func (c *Client) NotifyAdminUpdateV2(ctx context.Context, event vibe.AdminEventV2) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyAdminUpdateV2")
 	defer span.End()
@@ -51,22 +34,6 @@ func (c *Client) NotifyAdminUpdateV2(ctx context.Context, event vibe.AdminEventV
 	err = c.appendEvent(ctx, adminTopicName, data)
 	if err != nil {
 		return fmt.Errorf("error appending admin event in NotifyAdminUpdate: %w", err)
-	}
-
-	return nil
-}
-
-func (c *Client) NotifyRemoteUpdate(
-	ctx context.Context,
-	remoteID string,
-	event vibe.RemoteEvent,
-) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRemoteUpdate")
-	defer span.End()
-
-	err := c.NotifyRemoteUpdateV2(ctx, remoteID, *event.ToRemoteEventV2())
-	if err != nil {
-		return fmt.Errorf("error notifying legacy remote update: %w", err)
 	}
 
 	return nil
@@ -88,44 +55,6 @@ func (c *Client) NotifyRemoteUpdateV2(
 	err = c.appendEvent(ctx, remoteTopicName(remoteID), data)
 	if err != nil {
 		return fmt.Errorf("error appending remote event in NotifyRemoteUpdate: %w", err)
-	}
-
-	return nil
-}
-
-func (c *Client) NotifyRoomUpdate(ctx context.Context, roomID string, event vibe.RoomEvent) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdate")
-	defer span.End()
-
-	canonical, err := event.ToRoomEventV3()
-	if err != nil {
-		return fmt.Errorf("error converting legacy room event: %w", err)
-	}
-
-	err = c.NotifyRoomUpdateV3(ctx, roomID, *canonical)
-	if err != nil {
-		return fmt.Errorf("error notifying legacy room event: %w", err)
-	}
-
-	return nil
-}
-
-func (c *Client) NotifyRoomUpdates(ctx context.Context, roomID string, events []vibe.RoomEvent) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdates")
-	defer span.End()
-
-	canonical := make([]vibe.RoomEventV3, 0, len(events))
-	for _, event := range events {
-		converted, err := event.ToRoomEventV3()
-		if err != nil {
-			return fmt.Errorf("error converting legacy room batch event: %w", err)
-		}
-		canonical = append(canonical, *converted)
-	}
-
-	err := c.NotifyRoomUpdatesV3(ctx, roomID, canonical)
-	if err != nil {
-		return fmt.Errorf("error notifying legacy room batch: %w", err)
 	}
 
 	return nil
@@ -607,12 +536,12 @@ func compactReplayMessages(messages []streamMessage) []streamMessage {
 	for index := len(messages) - 1; index >= 0; index-- {
 		messageType := messages[index].Type
 		switch messageType {
-		case vibe.PlaylistItemsUpdate, vibe.QueueReordered:
+		case vibe.PlaylistItemsUpdate:
 			if !queueSnapshotSeen {
 				keep[index] = true
 				queueSnapshotSeen = true
 			}
-		case vibe.PlaylistItemAdded, vibe.PlaylistItemRemoved, vibe.SongAdded, vibe.SongRemoved:
+		case vibe.PlaylistItemAdded, vibe.PlaylistItemRemoved:
 			keep[index] = !queueSnapshotSeen
 		case vibe.UsersUpdate:
 			if !usersSnapshotSeen {

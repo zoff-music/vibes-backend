@@ -4,7 +4,7 @@ YouTube and SoundCloud searches use the normalized Redis cache before spending
 provider search quota. The room's immutable type selects the search policy:
 MUSIC permits music-category YouTube results and SoundCloud, while WATCH permits
 YouTube videos across categories. Both exclude live, made-for-kids, and
-non-embeddable YouTube results. The legacy unscoped v1 search remains music-only.
+non-embeddable YouTube results. Search is scoped to the stored room type.
 
 ```mermaid
 sequenceDiagram

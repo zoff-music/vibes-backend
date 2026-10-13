@@ -14,30 +14,6 @@ type SkipPlaylistItemResult struct {
 	PreviousPlaylistItemID string           `json:"-"`
 }
 
-func (s SkipPlaylistItemResult) ToSkipSongResult() *SkipSongResult {
-	var next *Song
-	if s.NextPlaylistItem != nil {
-		next = s.NextPlaylistItem.ToSong()
-	}
-
-	var playback *PlaybackState
-	if s.Playback != nil {
-		playback = s.Playback.ToPlaybackState()
-	}
-
-	return &SkipSongResult{
-		Action:         s.Action,
-		Skipped:        s.Skipped,
-		Voted:          s.Voted,
-		AlreadyVoted:   s.AlreadyVoted,
-		CurrentVotes:   s.CurrentVotes,
-		RequiredVotes:  s.RequiredVotes,
-		NextSong:       next,
-		Playback:       playback,
-		PreviousSongID: s.PreviousPlaylistItemID,
-	}
-}
-
 type RoomV2Skipper interface {
 	RoomV2Fetcher
 	SessionProfileFetcherCreator
