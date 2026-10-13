@@ -106,8 +106,9 @@ On a fresh checkout, run `make docs` before standalone scanner checks.
 running Make; scanner binaries are resolved by Go rather than taken from `PATH`.
 The [security workflow](.github/workflows/security.yaml) checks pull requests.
 The [release workflow](.github/workflows/release.yaml) only builds and publishes
-production images after a pull request is merged into `main`, rechecking security
-on that exact merged commit. Registry credentials
+production images on pushes to `main` in `zoff-music/vibes-backend`, including
+PR merges and direct commits, checking security on that exact pushed commit.
+Forks and other branches cannot publish. Registry credentials
 use a temporary Docker configuration that is removed after publishing or failure.
 
 ## Architecture

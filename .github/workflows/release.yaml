@@ -1,9 +1,8 @@
 name: release
 
 on:
-  pull_request:
+  push:
     branches: ["main"]
-    types: [closed]
 
 permissions:
   contents: read
@@ -14,14 +13,14 @@ concurrency:
 
 jobs:
   security:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    if: github.repository == 'zoff-music/vibes-backend' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.sha }}
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
@@ -32,7 +31,7 @@ jobs:
 
   build:
     needs: security
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
+    if: github.repository == 'zoff-music/vibes-backend' && github.event_name == 'push' && github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
@@ -41,10 +40,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
         with:
-          ref: ${{ github.event.pull_request.merge_commit_sha }}
+          ref: ${{ github.sha }}
       - name: Build
         env:
-          RELEASE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          RELEASE_SHA: ${{ github.sha }}
         run: |
           IMAGE_REPOSITORY="ghcr.io/${GITHUB_REPOSITORY,,}"
           IMAGE_VERSION="main-$(date -u +%Y%m%d%H%M%S)-${RELEASE_SHA}"
