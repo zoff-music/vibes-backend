@@ -2,6 +2,8 @@ package vibe
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 )
 
 // ProviderItem describes a provider result before it becomes a room entry.
@@ -61,7 +63,24 @@ type RoomSearchUsageCreator interface {
 
 type CachedProviderSearch struct {
 	Query string         `json:"query"`
-	Items []ProviderItem `json:"items,format:emitempty"`
+	Items []ProviderItem `json:"items"`
+}
+
+// MarshalJSON preserves empty collections in the public JSON contract.
+func (v CachedProviderSearch) MarshalJSON() ([]byte, error) {
+	type payload CachedProviderSearch
+	result := payload(v)
+
+	if result.Items == nil {
+		result.Items = make([]ProviderItem, 0)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling CachedProviderSearch: %w", err)
+	}
+
+	return body, nil
 }
 
 func (s CachedProviderSearch) GetProviderItems() []ProviderItem {

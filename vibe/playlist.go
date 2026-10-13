@@ -2,6 +2,7 @@ package vibe
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -227,11 +228,28 @@ type ProviderPlaylist struct {
 	ID                      string         `json:"id"`
 	Source                  string         `json:"source"`
 	Title                   string         `json:"title,omitempty"`
-	Items                   []ProviderItem `json:"items,format:emitempty"`
+	Items                   []ProviderItem `json:"items"`
 	Truncated               bool           `json:"truncated"`
 	SkippedEmbeddingCount   int            `json:"skippedEmbeddingCount"`
 	SkippedMadeForKidsCount int            `json:"skippedMadeForKidsCount"`
 	SkippedRoomTypeCount    int            `json:"skippedRoomTypeCount"`
+}
+
+// MarshalJSON preserves empty collections in the public JSON contract.
+func (v ProviderPlaylist) MarshalJSON() ([]byte, error) {
+	type payload ProviderPlaylist
+	result := payload(v)
+
+	if result.Items == nil {
+		result.Items = make([]ProviderItem, 0)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling ProviderPlaylist: %w", err)
+	}
+
+	return body, nil
 }
 
 func (p *ProviderPlaylist) IsEmpty() bool {

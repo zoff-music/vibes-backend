@@ -2,6 +2,7 @@ package vibe
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -95,9 +96,30 @@ type AdminSearchUsagePoint struct {
 }
 
 type AdminSearchUsage struct {
-	RoomPoints  []RoomSearchUsagePoint  `json:"roomPoints,format:emitempty"`
-	Points      []AdminSearchUsagePoint `json:"points,format:emitempty"`
+	RoomPoints  []RoomSearchUsagePoint  `json:"roomPoints"`
+	Points      []AdminSearchUsagePoint `json:"points"`
 	GeneratedAt time.Time               `json:"generatedAt"`
+}
+
+// MarshalJSON preserves empty collections in the public JSON contract.
+func (v AdminSearchUsage) MarshalJSON() ([]byte, error) {
+	type payload AdminSearchUsage
+	result := payload(v)
+
+	if result.RoomPoints == nil {
+		result.RoomPoints = make([]RoomSearchUsagePoint, 0)
+	}
+
+	if result.Points == nil {
+		result.Points = make([]AdminSearchUsagePoint, 0)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling AdminSearchUsage: %w", err)
+	}
+
+	return body, nil
 }
 
 type RoomSearchUsagePoint struct {

@@ -2,6 +2,8 @@ package vibe
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -15,10 +17,27 @@ type RoomSettingsV2 struct {
 	MaxContinuousAdds         int      `json:"maxContinuousAdds"`
 	RemoveOnPlay              bool     `json:"removeOnPlay"`
 	AllowDuplicates           bool     `json:"allowDuplicates"`
-	EnabledSources            []string `json:"enabledSources,format:emitempty"`
+	EnabledSources            []string `json:"enabledSources"`
 	OnlyAdminAddPlaylistItems bool     `json:"onlyAdminAddPlaylistItems"`
 	Public                    bool     `json:"public"`
 	PlaylistImport            bool     `json:"playlistImport"`
+}
+
+// MarshalJSON preserves empty collections in the public JSON contract.
+func (v RoomSettingsV2) MarshalJSON() ([]byte, error) {
+	type payload RoomSettingsV2
+	result := payload(v)
+
+	if result.EnabledSources == nil {
+		result.EnabledSources = make([]string, 0)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling RoomSettingsV2: %w", err)
+	}
+
+	return body, nil
 }
 
 type SessionResponseV2 struct {
@@ -72,13 +91,30 @@ type RoomV2 struct {
 	UserCount                              int            `json:"userCount,omitzero"`
 	IsAdmin                                bool           `json:"isAdmin"`
 	UserID                                 string         `json:"userId,omitempty"`
-	ActiveSources                          []string       `json:"activeSources,format:emitempty"`
+	ActiveSources                          []string       `json:"activeSources"`
 	IsGenerating                           bool           `json:"isGenerating"`
 	GenerationCount                        int            `json:"generationCount"`
 	RoomGenerationMaxDailyCount            int            `json:"roomGenerationMaxDailyCount"`
 	RoomGenerationMaxExistingPlaylistItems int            `json:"roomGenerationMaxExistingPlaylistItems"`
 	GenerationError                        string         `json:"generationError,omitempty"`
 	StoredEnabledSources                   []string       `json:"-"`
+}
+
+// MarshalJSON preserves empty collections in the public JSON contract.
+func (v RoomV2) MarshalJSON() ([]byte, error) {
+	type payload RoomV2
+	result := payload(v)
+
+	if result.ActiveSources == nil {
+		result.ActiveSources = make([]string, 0)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling RoomV2: %w", err)
+	}
+
+	return body, nil
 }
 
 // CreateRoomRequestV2 creates a MUSIC or WATCH room.
@@ -145,7 +181,24 @@ func (r RoomSettingsV2) IsEmpty() bool {
 }
 
 type AddPlaylistRequestV2 struct {
-	PlaylistItems []AddPlaylistItemRequest `json:"playlistItems,format:emitempty"`
+	PlaylistItems []AddPlaylistItemRequest `json:"playlistItems"`
+}
+
+// MarshalJSON preserves empty collections in the public JSON contract.
+func (v AddPlaylistRequestV2) MarshalJSON() ([]byte, error) {
+	type payload AddPlaylistRequestV2
+	result := payload(v)
+
+	if result.PlaylistItems == nil {
+		result.PlaylistItems = make([]AddPlaylistItemRequest, 0)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling AddPlaylistRequestV2: %w", err)
+	}
+
+	return body, nil
 }
 
 type PlaylistImportRoomV2Creator interface {
