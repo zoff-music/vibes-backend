@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"os"
-	"path/filepath"
 
 	httpSwagger "github.com/swaggo/http-swagger"
 	"github.com/swaggo/swag"
@@ -39,13 +38,23 @@ func Documentation(directory string) http.HandlerFunc {
 		case "/api/swagger/doc.json":
 			document, err := swag.ReadDoc()
 			if err != nil {
-				handleError(w, fmt.Errorf("error reading documentation in Documentation: %w", err), http.StatusInternalServerError, true)
+				handleError(
+					w,
+					fmt.Errorf("error reading documentation in Documentation: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
 				return
 			}
 
 			body, err := helper.PublicDocumentation(document)
 			if err != nil {
-				handleError(w, fmt.Errorf("error filtering documentation in Documentation: %w", err), http.StatusInternalServerError, true)
+				handleError(
+					w,
+					fmt.Errorf("error filtering documentation in Documentation: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
 				return
 			}
 
@@ -67,9 +76,26 @@ func Documentation(directory string) http.HandlerFunc {
 			return
 		}
 
-		body, err := os.ReadFile(filepath.Join(directory, filename))
+		root, err := os.OpenRoot(directory)
 		if err != nil {
-			handleError(w, fmt.Errorf("error reading static file in Documentation: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error opening static directory in Documentation: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+		defer root.Close()
+
+		body, err := root.ReadFile(filename)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error reading static file in Documentation: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -86,13 +112,23 @@ func AdminDocumentation() http.HandlerFunc {
 
 		_, ok := helper.GetAdminUserFromContext(r.Context())
 		if !ok {
-			handleError(w, fmt.Errorf("error unauthorized documentation access"), http.StatusUnauthorized, false)
+			handleError(
+				w,
+				fmt.Errorf("error unauthorized documentation access"),
+				http.StatusUnauthorized,
+				false,
+			)
 			return
 		}
 
 		document, err := swag.ReadDoc()
 		if err != nil {
-			handleError(w, fmt.Errorf("error reading documentation in AdminDocumentation: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error reading documentation in AdminDocumentation: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 

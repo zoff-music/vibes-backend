@@ -227,7 +227,7 @@ type ProviderPlaylist struct {
 	ID                      string         `json:"id"`
 	Source                  string         `json:"source"`
 	Title                   string         `json:"title,omitempty"`
-	Items                   []ProviderItem `json:"items"`
+	Items                   []ProviderItem `json:"items,format:emitempty"`
 	Truncated               bool           `json:"truncated"`
 	SkippedEmbeddingCount   int            `json:"skippedEmbeddingCount"`
 	SkippedMadeForKidsCount int            `json:"skippedMadeForKidsCount"`

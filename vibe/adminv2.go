@@ -2,7 +2,7 @@ package vibe
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 )
 
@@ -13,12 +13,12 @@ type AdminRoomSummaryV2 struct {
 	IsPublic          bool     `json:"isPublic"`
 	UserCount         int      `json:"userCount"`
 	PlaylistItemCount int      `json:"playlistItemCount"`
-	ActiveSources     []string `json:"activeSources"`
+	ActiveSources     []string `json:"activeSources,format:emitempty"`
 	HasAdminPassword  bool     `json:"hasAdminPassword"`
 }
 
 type AdminRoomResultV2 struct {
-	Rooms []AdminRoomSummaryV2 `json:"rooms"`
+	Rooms []AdminRoomSummaryV2 `json:"rooms,format:emitempty"`
 	From  int                  `json:"from"`
 	To    int                  `json:"to"`
 	Total int                  `json:"total"`
@@ -59,7 +59,7 @@ type AdminRoomV2DeleterLister interface {
 
 type AdminEventV2 struct {
 	Type    string `json:"type"`
-	Payload []byte `json:"payload"`
+	Payload []byte `json:"payload,format:emitempty"`
 }
 
 type AdminEventRecord struct {

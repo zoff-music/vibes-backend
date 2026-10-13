@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -28,7 +28,12 @@ func GetStatsV2(
 
 		roomType := vibe.RoomType(r.URL.Query().Get("roomType"))
 		if roomType != "" && !roomType.IsValid() {
-			handleError(w, fmt.Errorf("error fetching stats: roomType must be MUSIC or WATCH"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error fetching stats: roomType must be MUSIC or WATCH"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 

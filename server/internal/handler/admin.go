@@ -2,7 +2,8 @@ package handler
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"log"
@@ -39,7 +40,7 @@ func AdminLogin(
 		ctx := r.Context()
 
 		var req vibe.AdminLoginRequest
-		err := json.UnmarshalRead(r.Body, &req)
+		err := jsonv2.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -298,7 +299,12 @@ func AdminSearchUsage(
 
 			roomPoints, err := db.ListAdminRoomSearchUsage(ctx)
 			if err != nil {
-				handleError(w, fmt.Errorf("error fetching room search usage: %w", err), http.StatusInternalServerError, true)
+				handleError(
+					w,
+					fmt.Errorf("error fetching room search usage: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
 				return
 			}
 
@@ -400,7 +406,7 @@ func AdminCreateUser(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var request vibe.AdminCreateUserRequest
-		err := json.UnmarshalRead(r.Body, &request)
+		err := jsonv2.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -541,7 +547,7 @@ func AdminUpdateUser(
 		}
 
 		var request vibe.AdminUpdateUserRequest
-		err := json.UnmarshalRead(r.Body, &request)
+		err := jsonv2.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,

@@ -1,7 +1,8 @@
 package handler
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"strings"
@@ -46,7 +47,7 @@ func CreateRemoteControlV2(
 		}
 
 		var request vibe.RemoteUpdateRequestV2
-		err := json.UnmarshalRead(r.Body, &request)
+		err := jsonv2.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -274,7 +275,7 @@ func PairRemoteControlV2(
 		}
 
 		var request vibe.RemotePairingRequest
-		err = json.UnmarshalRead(r.Body, &request)
+		err = jsonv2.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -552,12 +553,17 @@ func UpdateRemoteControlV2(
 		}
 
 		if session.AuthType == "remote" && session.RemoteID != remoteID {
-			handleError(w, fmt.Errorf("error remote control access forbidden"), http.StatusForbidden, false)
+			handleError(
+				w,
+				fmt.Errorf("error remote control access forbidden"),
+				http.StatusForbidden,
+				false,
+			)
 			return
 		}
 
 		var request vibe.RemoteUpdateRequestV2
-		err := json.UnmarshalRead(r.Body, &request)
+		err := jsonv2.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,

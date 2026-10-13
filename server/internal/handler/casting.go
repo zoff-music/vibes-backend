@@ -1,7 +1,8 @@
 package handler
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"fmt"
 	"net/http"
 	"time"
@@ -53,7 +54,7 @@ func CreateCastingToken(
 		}
 
 		var req vibe.CreateCastingTokenRequest
-		err := json.UnmarshalRead(r.Body, &req)
+		err := jsonv2.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,

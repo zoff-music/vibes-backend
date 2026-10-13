@@ -1,0 +1,76 @@
+name: release
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prod-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  security:
+    if: github.repository == 'zoff-music/vibes-backend' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+      - name: Generate documentation
+        run: make docs
+      - name: Security checks
+        run: make security
+
+  build:
+    needs: security
+    if: github.repository == 'zoff-music/vibes-backend' && github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.sha }}
+      - name: Build
+        env:
+          RELEASE_SHA: ${{ github.sha }}
+        run: |
+          IMAGE_REPOSITORY="ghcr.io/${GITHUB_REPOSITORY,,}"
+          IMAGE_VERSION="main-$(date -u +%Y%m%d%H%M%S)-${RELEASE_SHA}"
+          IMAGE="${IMAGE_REPOSITORY}:${RELEASE_SHA}"
+          VERSIONED_IMAGE="${IMAGE_REPOSITORY}:${IMAGE_VERSION}"
+          docker build --target prod -t "$IMAGE" -t "$VERSIONED_IMAGE" .
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          echo "VERSIONED_IMAGE=$VERSIONED_IMAGE" >> "$GITHUB_ENV"
+      - name: Prepare Docker credentials
+        run: |
+          docker_config=$(mktemp -d "$RUNNER_TEMP/zoff-docker.XXXXXX")
+          echo "DOCKER_CONFIG=$docker_config" >> "$GITHUB_ENV"
+      - name: Push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker push "$IMAGE"
+          docker push "$VERSIONED_IMAGE"
+      - name: Remove Docker credentials
+        if: always() && env.DOCKER_CONFIG != ''
+        run: |
+          case "$DOCKER_CONFIG" in
+            "$RUNNER_TEMP"/zoff-docker.*) ;;
+            *) exit 1 ;;
+          esac
+
+          docker logout ghcr.io || true
+          rm -f -- "$DOCKER_CONFIG/config.json"
+          rmdir -- "$DOCKER_CONFIG"

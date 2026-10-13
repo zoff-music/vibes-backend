@@ -12,8 +12,8 @@ type ListenerUsagePoint struct {
 }
 
 type AdminListenerUsage struct {
-	RoomPoints  []RoomListenerUsagePoint `json:"roomPoints"`
-	Points      []ListenerUsagePoint     `json:"points"`
+	RoomPoints  []RoomListenerUsagePoint `json:"roomPoints,format:emitempty"`
+	Points      []ListenerUsagePoint     `json:"points,format:emitempty"`
 	GeneratedAt time.Time                `json:"generatedAt"`
 }
 

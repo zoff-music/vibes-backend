@@ -11,7 +11,7 @@ type PublicRoomV3 struct {
 }
 
 type PublicRoomResultV3 struct {
-	Rooms []PublicRoomV3 `json:"rooms"`
+	Rooms []PublicRoomV3 `json:"rooms,format:emitempty"`
 	From  int            `json:"from"`
 	To    int            `json:"to"`
 	Total int            `json:"total"`

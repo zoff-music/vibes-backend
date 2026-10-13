@@ -2,7 +2,7 @@ package youtube
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html"

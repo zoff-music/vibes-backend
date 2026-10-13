@@ -1,12 +1,15 @@
-.PHONY: build serve dev install update test docs help gosec govulncheck docker
+.PHONY: build serve dev install update test docs help security gosec govulncheck docker
 
 PROJECT_NAME=$(shell basename $(CURDIR))
 PORT ?= 8080
 DEV_PORT ?= 8080
+GOSEC_VERSION ?= 71577268350e1e0f2f1491de1ef53f1227b43c1f
+GOVULNCHECK_VERSION ?= latest
 
 ## build: builds the Go binaries
 build: docs
-	go mod download; \
+	$(MAKE) security
+	go mod download
 	CGO_ENABLED=1 GOFLAGS=-mod=mod go build -ldflags '-w -s' -o main cmd/server/main.go
 
 ## serve: runs the server
@@ -24,10 +27,10 @@ install:
 
 ## update: updates Go dependencies
 update:
-	go get -u ./...; \
-	go mod vendor; \
-	go mod download; \
+	GOFLAGS=-mod=mod go get -u ./...
 	go mod tidy
+	go mod vendor
+	go mod download
 
 ## test: runs tests
 test: docs
@@ -42,13 +45,16 @@ help:
 	@echo "Usage:"
 	@sed -n 's/^##//p' ${MAKEFILE_LIST} | column -t -s ':' |  sed -e 's/^/ /'
 
-## gosec: Runs gosec
+## security: runs both security checks before building
+security: gosec govulncheck
+
+## gosec: runs gosec at the configured upstream commit
 gosec:
-	@echo "Running gosec:" && gosec -conf gosec-config.json ./...
+	GOFLAGS=-mod=mod go run github.com/securego/gosec/v2/cmd/gosec@$(GOSEC_VERSION) -conf gosec-config.json ./...
 
 ## govulncheck: Runs govulncheck
 govulncheck:
-	@echo "Running govulncheck:" && govulncheck ./...
+	GOFLAGS=-mod=mod go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 ## docker: builds the production image
 docker:

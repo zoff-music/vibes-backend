@@ -1,7 +1,8 @@
 package handler
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"fmt"
 	"log"
 	"net/http"
@@ -196,7 +197,7 @@ func AdminUpdateRoomV2(
 		}
 
 		var req vibe.AdminUpdateRoomRequest
-		err := json.UnmarshalRead(r.Body, &req)
+		err := jsonv2.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,

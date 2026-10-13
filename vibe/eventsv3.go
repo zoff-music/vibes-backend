@@ -2,7 +2,7 @@ package vibe
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 )
 
@@ -15,7 +15,7 @@ type RoomEventV3StateFetcherUpdater interface {
 
 type RoomEventV3Payload struct {
 	Type    string `json:"type"`
-	Payload []byte `json:"payload"`
+	Payload []byte `json:"payload,format:emitempty"`
 }
 
 type PlaylistItemPositionUpdate struct {
@@ -43,7 +43,7 @@ type RoomEventV3 struct {
 	Version int                 `json:"version"`
 	ID      string              `json:"id,omitempty"`
 	Type    string              `json:"type"`
-	Payload []byte              `json:"payload"`
+	Payload []byte              `json:"payload,format:emitempty"`
 	UserID  string              `json:"userId,omitempty"`
 	Origin  string              `json:"origin,omitempty"`
 	Compact *RoomEventV3Payload `json:"compact,omitempty"`

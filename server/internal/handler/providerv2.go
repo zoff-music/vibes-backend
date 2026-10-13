@@ -1,7 +1,7 @@
 package handler
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -298,7 +298,12 @@ func GetYouTubePlaylistV2(
 		}
 
 		if !roomType.IsValid() {
-			handleError(w, fmt.Errorf("error getting playlist: roomType must be MUSIC or WATCH"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error getting playlist: roomType must be MUSIC or WATCH"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 

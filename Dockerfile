@@ -1,4 +1,4 @@
-ARG GO_BASE_IMAGE=golang:1.27.1-bookworm
+ARG GO_BASE_IMAGE=golang:1.27.2-bookworm
 
 FROM ${GO_BASE_IMAGE} AS builder
 

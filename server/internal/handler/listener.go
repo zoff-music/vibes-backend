@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -47,7 +47,12 @@ func AdminListenerUsage(
 
 			roomPoints, err := db.ListAdminRoomListenerUsage(ctx)
 			if err != nil {
-				handleError(w, fmt.Errorf("error fetching room listener usage: %w", err), http.StatusInternalServerError, true)
+				handleError(
+					w,
+					fmt.Errorf("error fetching room listener usage: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
 				return
 			}
 
