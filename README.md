@@ -104,7 +104,7 @@ On a fresh checkout, run `make docs` before standalone scanner checks.
 `GOSEC_VERSION` pins the current upstream commit while
 `GOVULNCHECK_VERSION` defaults to the latest release. Both can be overridden when
 running Make; scanner binaries are resolved by Go rather than taken from `PATH`.
-The [security workflow](.github/workflows/security.yaml) checks pull requests.
+Pull requests do not trigger workflows; security checks run within releases.
 The [release workflow](.github/workflows/release.yaml) only builds and publishes
 production images on pushes to `main` in `zoff-music/vibes-backend`, including
 PR merges and direct commits, checking security on that exact pushed commit.
