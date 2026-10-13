@@ -2,9 +2,10 @@ package handler
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -39,7 +40,18 @@ func AdminLogin(
 		ctx := r.Context()
 
 		var req vibe.AdminLoginRequest
-		err := json.UnmarshalRead(r.Body, &req)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -400,7 +412,18 @@ func AdminCreateUser(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var request vibe.AdminCreateUserRequest
-		err := json.UnmarshalRead(r.Body, &request)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding admin user request: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -541,7 +564,18 @@ func AdminUpdateUser(
 		}
 
 		var request vibe.AdminUpdateUserRequest
-		err := json.UnmarshalRead(r.Body, &request)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding admin password request: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &request)
 		if err != nil {
 			handleError(
 				w,

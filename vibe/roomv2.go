@@ -15,7 +15,7 @@ type RoomSettingsV2 struct {
 	MaxContinuousAdds         int      `json:"maxContinuousAdds"`
 	RemoveOnPlay              bool     `json:"removeOnPlay"`
 	AllowDuplicates           bool     `json:"allowDuplicates"`
-	EnabledSources            []string `json:"enabledSources"`
+	EnabledSources            []string `json:"enabledSources,format:emitempty"`
 	OnlyAdminAddPlaylistItems bool     `json:"onlyAdminAddPlaylistItems"`
 	Public                    bool     `json:"public"`
 	PlaylistImport            bool     `json:"playlistImport"`
@@ -72,7 +72,7 @@ type RoomV2 struct {
 	UserCount                              int            `json:"userCount,omitzero"`
 	IsAdmin                                bool           `json:"isAdmin"`
 	UserID                                 string         `json:"userId,omitempty"`
-	ActiveSources                          []string       `json:"activeSources"`
+	ActiveSources                          []string       `json:"activeSources,format:emitempty"`
 	IsGenerating                           bool           `json:"isGenerating"`
 	GenerationCount                        int            `json:"generationCount"`
 	RoomGenerationMaxDailyCount            int            `json:"roomGenerationMaxDailyCount"`
@@ -145,7 +145,7 @@ func (r RoomSettingsV2) IsEmpty() bool {
 }
 
 type AddPlaylistRequestV2 struct {
-	PlaylistItems []AddPlaylistItemRequest `json:"playlistItems"`
+	PlaylistItems []AddPlaylistItemRequest `json:"playlistItems,format:emitempty"`
 }
 
 type PlaylistImportRoomV2Creator interface {

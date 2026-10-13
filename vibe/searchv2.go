@@ -61,7 +61,7 @@ type RoomSearchUsageCreator interface {
 
 type CachedProviderSearch struct {
 	Query string         `json:"query"`
-	Items []ProviderItem `json:"items"`
+	Items []ProviderItem `json:"items,format:emitempty"`
 }
 
 func (s CachedProviderSearch) GetProviderItems() []ProviderItem {

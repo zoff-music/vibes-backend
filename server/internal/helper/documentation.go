@@ -1,8 +1,8 @@
 package helper
 
 import (
+	"encoding/json"
 	"encoding/json/jsontext"
-	"encoding/json/v2"
 	"fmt"
 	"strings"
 )
@@ -67,7 +67,7 @@ func PublicDocumentation(document string) ([]byte, error) {
 		}
 	}
 
-	spec["paths"], err = json.Marshal(paths, json.Deterministic(true))
+	spec["paths"], err = json.Marshal(paths)
 	if err != nil {
 		return nil, fmt.Errorf("error encoding public documentation paths: %w", err)
 	}
@@ -85,7 +85,7 @@ func PublicDocumentation(document string) ([]byte, error) {
 
 	delete(spec, "definitions")
 
-	root, err := json.Marshal(spec, json.Deterministic(true))
+	root, err := json.Marshal(spec)
 	if err != nil {
 		return nil, fmt.Errorf("error encoding documentation root: %w", err)
 	}
@@ -124,12 +124,12 @@ func PublicDocumentation(document string) ([]byte, error) {
 		references = append(references, nested...)
 	}
 
-	spec["definitions"], err = json.Marshal(reachable, json.Deterministic(true))
+	spec["definitions"], err = json.Marshal(reachable)
 	if err != nil {
 		return nil, fmt.Errorf("error encoding public documentation definitions: %w", err)
 	}
 
-	body, err := json.Marshal(spec, json.Deterministic(true))
+	body, err := json.Marshal(spec)
 	if err != nil {
 		return nil, fmt.Errorf("error encoding public documentation: %w", err)
 	}

@@ -3,7 +3,7 @@ package youtube
 import (
 	"cmp"
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"html"

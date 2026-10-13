@@ -39,7 +39,7 @@ changes. This service coordinates state; it does not host or extract media strea
 
 ### Prerequisites
 
-- Go matching [go.mod](go.mod), currently 1.27.1 or newer.
+- Go matching [go.mod](go.mod), currently 1.27.2 or newer.
 - PostgreSQL with the migrator's schema applied before starting the backend.
 - Redis, required for event replay, caches, and remote state even when rate
   limiting is disabled.
@@ -87,6 +87,7 @@ rules.
 
 ```bash
 make test          # Swagger generation and race-enabled package compilation
+make security      # gosec and govulncheck; also required before make build
 GOFLAGS=-mod=mod go vet ./...
 make build
 make docs          # Regenerate Swagger from handler/domain declarations
@@ -95,6 +96,16 @@ make docker        # Build the production image
 
 The production Docker target uses a
 statically linked Go binary in a scratch image.
+
+The production workflow requires both security scanners to pass before building
+or publishing the image. `GOSEC_VERSION` pins the current upstream commit while
+`GOVULNCHECK_VERSION` defaults to the latest release. Both can be overridden when
+running Make; scanner binaries are resolved by Go rather than taken from `PATH`.
+The [security workflow](.github/workflows/security.yaml) checks pull requests.
+The [release workflow](.github/workflows/release.yaml) only builds and publishes
+production images after a pull request is merged into `main`, rechecking security
+on that exact merged commit. Registry credentials
+use a temporary Docker configuration that is removed after publishing or failure.
 
 ## Architecture
 

@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -53,7 +54,18 @@ func CreateCastingToken(
 		}
 
 		var req vibe.CreateCastingTokenRequest
-		err := json.UnmarshalRead(r.Body, &req)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &req)
 		if err != nil {
 			handleError(
 				w,

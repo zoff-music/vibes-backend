@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -43,6 +43,10 @@ func GetPlaylistItems(db vibe.PlaylistItemsFetcher) http.HandlerFunc {
 			return
 		}
 
+		if items == nil {
+			items = []vibe.PlaylistItem{}
+		}
+
 		body, err := json.Marshal(items)
 		if err != nil {
 			handleError(w, fmt.Errorf("error marshaling playlist items: %w", err), http.StatusInternalServerError, true)
@@ -79,7 +83,18 @@ func CreateSessionV2(
 		roomID := vars["id"]
 
 		var req vibe.CreateSessionRequest
-		err := json.UnmarshalRead(r.Body, &req)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -325,7 +340,18 @@ func CreateRoomV2(
 		ctx := r.Context()
 
 		var req vibe.CreateRoomRequestV2
-		err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 8192), &req)
+		requestData, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 8192))
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -616,7 +642,18 @@ func UpdateRoomSettingsV2(
 		roomID := vars["id"]
 
 		var req vibe.UpdateRoomRequestV2
-		err := json.UnmarshalRead(r.Body, &req)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error invalid request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -916,7 +953,27 @@ func AddPlaylistItem(
 		roomID := vars["id"]
 
 		var req vibe.AddPlaylistItemRequest
-		err := json.UnmarshalRead(r.Body, &req)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error decoding request body: %w", err),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_request_invalid",
+						Message:   "The playlist item details could not be read. Search for the playlist item again and retry.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -1779,7 +1836,18 @@ func UpdatePlaybackStateV2(
 		roomID := mux.Vars(r)["id"]
 
 		var req vibe.RoomActionRequest
-		err := json.UnmarshalRead(r.Body, &req)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding request body: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -2284,7 +2352,18 @@ func AddPlaylistV2(
 		roomID := vars["id"]
 
 		var req vibe.AddPlaylistRequestV2
-		err := json.UnmarshalRead(r.Body, &req)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding playlist request body: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -2648,7 +2727,18 @@ func ReportPlaybackFailureV2(
 		roomID := mux.Vars(r)["id"]
 
 		var request vibe.PlaybackFailureRequestV2
-		err := json.UnmarshalRead(r.Body, &request)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding playback failure request: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -3339,6 +3429,10 @@ func SearchYouTubeV2(
 			log.Printf("error caching youtube item metadata: %v", err)
 		}
 
+		if items == nil {
+			items = []vibe.ProviderItem{}
+		}
+
 		body, err := json.Marshal(items)
 		if err != nil {
 			handleError(
@@ -3475,6 +3569,10 @@ func SearchSoundCloudV2(
 		err = cache.CacheProviderItems(ctx, vibe.SourceTypeSoundCloud, items)
 		if err != nil {
 			log.Printf("error caching soundcloud item metadata: %v", err)
+		}
+
+		if items == nil {
+			items = []vibe.ProviderItem{}
 		}
 
 		body, err := json.Marshal(items)

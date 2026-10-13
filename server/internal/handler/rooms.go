@@ -2,9 +2,10 @@ package handler
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 
@@ -33,7 +34,18 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 		ctx := r.Context()
 
 		var req vibe.RoomNameReservationRequest
-		err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 4096), &req)
+		requestData, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 4096))
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding room name reservation request: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &req)
 		if err != nil {
 			handleError(
 				w,

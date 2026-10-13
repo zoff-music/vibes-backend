@@ -1,7 +1,7 @@
 package client
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 )
 

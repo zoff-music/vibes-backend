@@ -2,8 +2,9 @@ package handler
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -93,7 +94,18 @@ func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEve
 		}
 
 		var request vibe.UpdateSessionProfileRequest
-		err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 4096), &request)
+		requestData, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 4096))
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding session profile: %w", err),
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &request)
 		if err != nil {
 			handleError(
 				w,

@@ -39,7 +39,7 @@ type RoomMessage struct {
 	IsModerator bool   `json:"isModerator"`
 	IsHost      bool   `json:"isHost"`
 	Kind        string `json:"kind"`
-	Activity    bool   `json:"activity,omitempty"`
+	Activity    bool   `json:"activity"`
 	Text        string `json:"text"`
 	CreatedAt   int64  `json:"createdAt"`
 }
@@ -77,10 +77,10 @@ type MessageUsagePoint struct {
 }
 
 type AdminMessageUsage struct {
-	RoomPoints  []MessageUsagePoint `json:"roomPoints"`
+	RoomPoints  []MessageUsagePoint `json:"roomPoints,format:emitempty"`
 	RoomID      string              `json:"roomId"`
 	Total       int                 `json:"total"`
-	Points      []MessageUsagePoint `json:"points"`
+	Points      []MessageUsagePoint `json:"points,format:emitempty"`
 	GeneratedAt time.Time           `json:"generatedAt"`
 }
 

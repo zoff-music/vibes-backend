@@ -2,7 +2,7 @@ package handler
 
 import (
 	"context"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -127,7 +127,31 @@ func RoomEventsV3(
 			)
 			return
 		}
-		container, err := events.SubscribeFrom(ctx, topicName, replay.AfterID)
+
+		cursorID := ""
+		if replay.AfterID != "" {
+			milliseconds, sequence, found := strings.Cut(replay.AfterID, "-")
+			if !found {
+				handleError(w, fmt.Errorf("error parsing replay cursor in RoomEventsV3: missing sequence"), http.StatusInternalServerError, true)
+				return
+			}
+
+			cursorTime, err := strconv.ParseUint(milliseconds, 10, 64)
+			if err != nil {
+				handleError(w, fmt.Errorf("error parsing replay cursor time in RoomEventsV3: %w", err), http.StatusInternalServerError, true)
+				return
+			}
+
+			cursorSequence, err := strconv.ParseUint(sequence, 10, 64)
+			if err != nil {
+				handleError(w, fmt.Errorf("error parsing replay cursor sequence in RoomEventsV3: %w", err), http.StatusInternalServerError, true)
+				return
+			}
+
+			cursorID = strconv.FormatUint(cursorTime, 10) + "-" + strconv.FormatUint(cursorSequence, 10)
+		}
+
+		container, err := events.SubscribeFrom(ctx, topicName, cursorID)
 		if err != nil {
 			handleError(
 				w,
@@ -218,8 +242,8 @@ func RoomEventsV3(
 				return
 			}
 
-			if replay.AfterID != "" {
-				_, err = fmt.Fprintf(w, "id: %s\n", replay.AfterID)
+			if cursorID != "" {
+				_, err = fmt.Fprintf(w, "id: %s\n", cursorID)
 				if err != nil {
 					log.Printf("error writing room snapshot event id in RoomEventsV3: %v", err)
 					return
@@ -230,13 +254,13 @@ func RoomEventsV3(
 				log.Printf("error writing room snapshot in RoomEventsV3: %v", err)
 				return
 			}
-			if replay.AfterID != "" {
-				cursorData, marshalErr := json.Marshal(vibe.RoomEventCursor{ID: replay.AfterID})
+			if cursorID != "" {
+				cursorData, marshalErr := json.Marshal(vibe.RoomEventCursor{ID: cursorID})
 				if marshalErr != nil {
 					log.Printf("error marshaling room snapshot cursor in RoomEventsV3: %v", marshalErr)
 					return
 				}
-				_, err = fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", replay.AfterID, vibe.EventCursor, cursorData)
+				_, err = fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", cursorID, vibe.EventCursor, cursorData)
 				if err != nil {
 					log.Printf("error writing room snapshot cursor in RoomEventsV3: %v", err)
 					return
@@ -244,8 +268,8 @@ func RoomEventsV3(
 			}
 			flusher.Flush()
 
-			if replay.AfterID != "" {
-				_, err = fmt.Fprintf(w, "id: %s\n", replay.AfterID)
+			if cursorID != "" {
+				_, err = fmt.Fprintf(w, "id: %s\n", cursorID)
 				if err != nil {
 					log.Printf("error writing playlist items snapshot event id in RoomEventsV3: %v", err)
 					return
@@ -256,13 +280,13 @@ func RoomEventsV3(
 				log.Printf("error writing playlist items snapshot in RoomEventsV3: %v", err)
 				return
 			}
-			if replay.AfterID != "" {
-				cursorData, marshalErr := json.Marshal(vibe.RoomEventCursor{ID: replay.AfterID})
+			if cursorID != "" {
+				cursorData, marshalErr := json.Marshal(vibe.RoomEventCursor{ID: cursorID})
 				if marshalErr != nil {
 					log.Printf("error marshaling playlist items snapshot cursor in RoomEventsV3: %v", marshalErr)
 					return
 				}
-				_, err = fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", replay.AfterID, vibe.EventCursor, cursorData)
+				_, err = fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", cursorID, vibe.EventCursor, cursorData)
 				if err != nil {
 					log.Printf("error writing playlist items snapshot cursor in RoomEventsV3: %v", err)
 					return
@@ -270,8 +294,8 @@ func RoomEventsV3(
 			}
 			flusher.Flush()
 
-			if replay.AfterID != "" {
-				_, err = fmt.Fprintf(w, "id: %s\n", replay.AfterID)
+			if cursorID != "" {
+				_, err = fmt.Fprintf(w, "id: %s\n", cursorID)
 				if err != nil {
 					log.Printf("error writing playback snapshot event id in RoomEventsV3: %v", err)
 					return
@@ -282,13 +306,13 @@ func RoomEventsV3(
 				log.Printf("error writing playback snapshot in RoomEventsV3: %v", err)
 				return
 			}
-			if replay.AfterID != "" {
-				cursorData, marshalErr := json.Marshal(vibe.RoomEventCursor{ID: replay.AfterID})
+			if cursorID != "" {
+				cursorData, marshalErr := json.Marshal(vibe.RoomEventCursor{ID: cursorID})
 				if marshalErr != nil {
 					log.Printf("error marshaling playback snapshot cursor in RoomEventsV3: %v", marshalErr)
 					return
 				}
-				_, err = fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", replay.AfterID, vibe.EventCursor, cursorData)
+				_, err = fmt.Fprintf(w, "id: %s\nevent: %s\ndata: %s\n\n", cursorID, vibe.EventCursor, cursorData)
 				if err != nil {
 					log.Printf("error writing playback snapshot cursor in RoomEventsV3: %v", err)
 					return

@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -46,7 +47,18 @@ func CreateRemoteControlV2(
 		}
 
 		var request vibe.RemoteUpdateRequestV2
-		err := json.UnmarshalRead(r.Body, &request)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding remote control request: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -274,7 +286,18 @@ func PairRemoteControlV2(
 		}
 
 		var request vibe.RemotePairingRequest
-		err = json.UnmarshalRead(r.Body, &request)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding remote pairing request: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -557,7 +580,18 @@ func UpdateRemoteControlV2(
 		}
 
 		var request vibe.RemoteUpdateRequestV2
-		err := json.UnmarshalRead(r.Body, &request)
+		requestData, err := io.ReadAll(r.Body)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding remote update request: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &request)
 		if err != nil {
 			handleError(
 				w,

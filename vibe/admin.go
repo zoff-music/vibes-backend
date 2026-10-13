@@ -95,8 +95,8 @@ type AdminSearchUsagePoint struct {
 }
 
 type AdminSearchUsage struct {
-	RoomPoints  []RoomSearchUsagePoint  `json:"roomPoints"`
-	Points      []AdminSearchUsagePoint `json:"points"`
+	RoomPoints  []RoomSearchUsagePoint  `json:"roomPoints,format:emitempty"`
+	Points      []AdminSearchUsagePoint `json:"points,format:emitempty"`
 	GeneratedAt time.Time               `json:"generatedAt"`
 }
 

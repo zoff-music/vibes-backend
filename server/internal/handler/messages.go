@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -36,7 +37,13 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 		}
 
 		var request vibe.CreateMessageRequest
-		err := json.UnmarshalRead(http.MaxBytesReader(w, r.Body, 4096), &request)
+		requestData, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 4096))
+		if err != nil {
+			handleError(w, fmt.Errorf("error decoding chat message: %w", err), http.StatusBadRequest, false)
+			return
+		}
+
+		err = json.Unmarshal(requestData, &request)
 		if err != nil {
 			handleError(w, fmt.Errorf("error decoding chat message: %w", err), http.StatusBadRequest, false)
 			return

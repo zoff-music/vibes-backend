@@ -4,7 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/json/v2"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"

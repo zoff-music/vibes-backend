@@ -1,10 +1,11 @@
 package handler
 
 import (
-	"encoding/json/v2"
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -17,7 +18,7 @@ func handleError(
 	shouldLog bool,
 ) {
 	if shouldLog {
-		log.Println(err.Error())
+		log.Println(strconv.Quote(err.Error()))
 	}
 
 	w.Header().Set("Content-Type", "application/json")
