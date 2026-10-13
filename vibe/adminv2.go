@@ -13,16 +13,50 @@ type AdminRoomSummaryV2 struct {
 	IsPublic          bool     `json:"isPublic"`
 	UserCount         int      `json:"userCount"`
 	PlaylistItemCount int      `json:"playlistItemCount"`
-	ActiveSources     []string `json:"activeSources,format:emitempty"`
+	ActiveSources     []string `json:"activeSources"`
 	HasAdminPassword  bool     `json:"hasAdminPassword"`
 }
 
+// MarshalJSON preserves empty collections in the public JSON contract.
+func (v AdminRoomSummaryV2) MarshalJSON() ([]byte, error) {
+	type payload AdminRoomSummaryV2
+	result := payload(v)
+
+	if result.ActiveSources == nil {
+		result.ActiveSources = make([]string, 0)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling AdminRoomSummaryV2: %w", err)
+	}
+
+	return body, nil
+}
+
 type AdminRoomResultV2 struct {
-	Rooms []AdminRoomSummaryV2 `json:"rooms,format:emitempty"`
+	Rooms []AdminRoomSummaryV2 `json:"rooms"`
 	From  int                  `json:"from"`
 	To    int                  `json:"to"`
 	Total int                  `json:"total"`
 	Count int                  `json:"count"`
+}
+
+// MarshalJSON preserves empty collections in the public JSON contract.
+func (v AdminRoomResultV2) MarshalJSON() ([]byte, error) {
+	type payload AdminRoomResultV2
+	result := payload(v)
+
+	if result.Rooms == nil {
+		result.Rooms = make([]AdminRoomSummaryV2, 0)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling AdminRoomResultV2: %w", err)
+	}
+
+	return body, nil
 }
 
 type AdminRoomSortV2 string
@@ -59,7 +93,24 @@ type AdminRoomV2DeleterLister interface {
 
 type AdminEventV2 struct {
 	Type    string `json:"type"`
-	Payload []byte `json:"payload,format:emitempty"`
+	Payload []byte `json:"payload"`
+}
+
+// MarshalJSON preserves empty collections in the public JSON contract.
+func (v AdminEventV2) MarshalJSON() ([]byte, error) {
+	type payload AdminEventV2
+	result := payload(v)
+
+	if result.Payload == nil {
+		result.Payload = make([]byte, 0)
+	}
+
+	body, err := json.Marshal(result)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling AdminEventV2: %w", err)
+	}
+
+	return body, nil
 }
 
 type AdminEventRecord struct {
