@@ -42,3 +42,28 @@ func (v PublicRoomResultV3) MarshalJSON() ([]byte, error) {
 type PublicRoomsV3Searcher interface {
 	SearchPublicRoomsV3(ctx context.Context, search PublicRoomSearch) (*PublicRoomResultV3, error)
 }
+
+type ItemResultV3 struct {
+	Data    []PlaylistItem `json:"data"`
+	From    int            `json:"from"`
+	To      int            `json:"to"`
+	ReqFrom int            `json:"reqFrom"`
+	ReqTo   int            `json:"reqTo"`
+	Count   int            `json:"count"`
+	Total   int            `json:"total"`
+}
+
+func (r *ItemResultV3) IsEmpty() bool {
+	return len(r.Data) == 0
+}
+
+type ItemSearchV3 struct {
+	From           int
+	To             int
+	SourceType     string
+	ExcludeCurrent bool
+}
+
+type ItemsV3Fetcher interface {
+	GetItemsV3(ctx context.Context, roomID string, search ItemSearchV3) (*ItemResultV3, error)
+}

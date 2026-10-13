@@ -25,6 +25,10 @@ import (
 
 // GetPlaylistItems lists room queue entries using the v2 contract.
 //
+// Deprecated: Use GetItemsV3 and /api/v3/rooms/{id}/items for the paginated contract.
+//
+// @Deprecated
+//
 //	@Summary	List room playlist items
 //	@Tags		playlist-items
 //	@Produce	json
@@ -937,6 +941,10 @@ func UpdateRoomSettingsV2(
 
 // AddPlaylistItem handles the addition of a new playlistItem to the room
 //
+// Deprecated: Use AddItemV3 and the v3 /rooms/{id}/items routes.
+//
+// @Deprecated
+//
 //	@Summary	Add a playlist item
 //	@Tags		playlist-items
 //	@Accept		json
@@ -1124,31 +1132,41 @@ func AddPlaylistItem(
 		}
 
 		if req.SourceType == vibe.SourceTypeYouTube && (err != nil || cachedItem.IsEmpty()) {
-			handleError(w, client.ErrorCodeWrapper{
-				Err: fmt.Errorf("error adding youtube track: verified metadata is unavailable"),
-				ResponseBody: client.ErrorCodeResponseBody{
-					Namespace: "vibes-backend",
-					Error:     "youtube_track_verification_required",
-					Message:   "This video's availability needs to be checked again. Search for it or paste its YouTube link again before adding it.",
-					Propagate: true,
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error adding youtube track: verified metadata is unavailable"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "youtube_track_verification_required",
+						Message:   "This video's availability needs to be checked again. Search for it or paste its YouTube link again before adding it.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
 				},
-				StatusCode: http.StatusBadRequest,
-			}, http.StatusBadRequest, false)
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
 		if err == nil && !cachedItem.IsEmpty() {
 			if !cachedItem.AllowedInRoom(room.RoomType) {
-				handleError(w, client.ErrorCodeWrapper{
-					Err: fmt.Errorf("error adding item: provider metadata is not allowed for %s", room.RoomType),
-					ResponseBody: client.ErrorCodeResponseBody{
-						Namespace: "vibes-backend",
-						Error:     "playlist_item_not_allowed",
-						Message:   "This item cannot be played in this room. Music rooms accept music videos; all videos must allow embedded playback and must not be live.",
-						Propagate: true,
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error adding item: provider metadata is not allowed for %s", room.RoomType),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "playlist_item_not_allowed",
+							Message:   "This item cannot be played in this room. Music rooms accept music videos; all videos must allow embedded playback and must not be live.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusBadRequest,
 					},
-					StatusCode: http.StatusBadRequest,
-				}, http.StatusBadRequest, false)
+					http.StatusBadRequest,
+					false,
+				)
 				return
 			}
 
@@ -1302,7 +1320,8 @@ func AddPlaylistItem(
 
 			playbackPayload, err := json.Marshal(playbackState)
 			if err != nil {
-				handleError(w,
+				handleError(
+					w,
 					fmt.Errorf("error marshaling playback payload in add playlist item: %w", err),
 					http.StatusInternalServerError,
 					true,
@@ -1388,6 +1407,10 @@ func AddPlaylistItem(
 }
 
 // RemovePlaylistItem handles the removal of a playlist item from the room
+//
+// Deprecated: Use RemoveItemV3 and the v3 /rooms/{id}/items routes.
+//
+// @Deprecated
 //
 //	@Summary	Remove a playlist item
 //	@Tags		playlist-items
@@ -1567,6 +1590,10 @@ func RemovePlaylistItem(
 }
 
 // VotePlaylistItem handles voting for a playlist item
+//
+// Deprecated: Use VoteItemV3 and the v3 /rooms/{id}/items routes.
+//
+// @Deprecated
 //
 //	@Summary	Vote for a playlist item
 //	@Tags		playlist-items
@@ -2524,16 +2551,21 @@ func AddPlaylistV2(
 			key := vibe.CachedProviderItemKey{Provider: requestedItem.SourceType, ID: requestedItem.SourceID}
 			cachedItem := cachedItemsByKey[key]
 			if requestedItem.SourceType == vibe.SourceTypeYouTube && cachedItem.IsEmpty() {
-				handleError(w, client.ErrorCodeWrapper{
-					Err: fmt.Errorf("error importing youtube playlist: verified metadata is unavailable"),
-					ResponseBody: client.ErrorCodeResponseBody{
-						Namespace: "vibes-backend",
-						Error:     "youtube_track_verification_required",
-						Message:   "This playlist's availability needs to be checked again. Paste its link again before importing it.",
-						Propagate: true,
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error importing youtube playlist: verified metadata is unavailable"),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "youtube_track_verification_required",
+							Message:   "This playlist's availability needs to be checked again. Paste its link again before importing it.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusBadRequest,
 					},
-					StatusCode: http.StatusBadRequest,
-				}, http.StatusBadRequest, false)
+					http.StatusBadRequest,
+					false,
+				)
 				return
 			}
 
