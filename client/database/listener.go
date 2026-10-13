@@ -243,22 +243,22 @@ func (c *Client) prepareListAdminRoomListenerUsageStmt() error {
 				('week', DATE_TRUNC('week', NOW(), 'UTC'), 'day'),
 				('month', DATE_TRUNC('month', NOW(), 'UTC'), 'day')
 		), peaks_q AS (
-			SELECT DISTINCT ON (w.period, DATE_TRUNC(w.granularity, u.created_at, 'UTC'))
-				w.period,
-				DATE_TRUNC(w.granularity, u.created_at, 'UTC') AS bucket,
-				u.created_at
-			FROM windows_q w
-			JOIN listener_usage u ON u.created_at >= w.starts_at
+			SELECT DISTINCT ON (a.period, DATE_TRUNC(a.granularity, b.created_at, 'UTC'))
+				a.period,
+				DATE_TRUNC(a.granularity, b.created_at, 'UTC') AS bucket,
+				b.created_at
+			FROM windows_q a
+			JOIN listener_usage b ON b.created_at >= a.starts_at
 			ORDER BY
-				w.period,
-				DATE_TRUNC(w.granularity, u.created_at, 'UTC'),
-				u.listener_count DESC,
-				u.created_at DESC
+				a.period,
+				DATE_TRUNC(a.granularity, b.created_at, 'UTC'),
+				b.listener_count DESC,
+				b.created_at DESC
 		)
-		SELECT p.period, p.bucket, r.room_id, r.listener_count, rooms.room_type
-		FROM peaks_q p
-		JOIN room_listener_usage r ON r.created_at = p.created_at
-		LEFT JOIN rooms ON rooms.id = r.room_id
+		SELECT a.period, a.bucket, b.room_id, b.listener_count, c.room_type
+		FROM peaks_q a
+		JOIN room_listener_usage b ON b.created_at = a.created_at
+		LEFT JOIN rooms c ON c.id = b.room_id
 		ORDER BY 1, 2, 3
 	`)
 	if err != nil {

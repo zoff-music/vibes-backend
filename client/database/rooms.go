@@ -972,14 +972,14 @@ func (c *Client) prepareReserveRoomNameStmt() error {
 				expires_at
 			)
 			SELECT
-				candidate_q.name,
+				a.name,
 				$2,
 				(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') + ($3 * INTERVAL '1 second')
-			FROM candidate_q
+			FROM candidate_q a
 			CROSS JOIN (
 				SELECT COUNT(*) AS deleted_count
 				FROM deleted_owned_q
-			) deleted_owned_count_q
+			) b
 			ON CONFLICT (name) DO UPDATE
 			SET
 				token = gen_random_uuid(),
@@ -1057,43 +1057,43 @@ func (c *Client) prepareReserveSuggestedRoomNameStmt() error {
 		start_q AS (
 			SELECT GREATEST(
 				1,
-				FLOOR(RANDOM() * maximum_q.maximum_id)::BIGINT
+				FLOOR(RANDOM() * a.maximum_id)::BIGINT
 			) AS start_id
-			FROM maximum_q
+			FROM maximum_q a
 		),
 		after_start_q AS (
-			SELECT pool_q.id, pool_q.name
-			FROM room_name_pool pool_q
-			CROSS JOIN start_q
-			WHERE pool_q.id >= start_q.start_id
-			AND pool_q.generated
-			AND pool_q.consumed_at IS NULL
+			SELECT a.id, a.name
+			FROM room_name_pool a
+			CROSS JOIN start_q b
+			WHERE a.id >= b.start_id
+			AND a.generated
+			AND a.consumed_at IS NULL
 			AND NOT EXISTS (
 				SELECT 1
-				FROM room_name_reservations reservation_q
-				WHERE reservation_q.name = pool_q.name
-				AND reservation_q.expires_at > CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+				FROM room_name_reservations c
+				WHERE c.name = a.name
+				AND c.expires_at > CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
 			)
-			ORDER BY pool_q.id
-			FOR UPDATE OF pool_q SKIP LOCKED
+			ORDER BY a.id
+			FOR UPDATE OF a SKIP LOCKED
 			LIMIT 1
 		),
 		before_start_q AS (
-			SELECT pool_q.id, pool_q.name
-			FROM room_name_pool pool_q
-			CROSS JOIN start_q
-			WHERE pool_q.id < start_q.start_id
-			AND pool_q.generated
-			AND pool_q.consumed_at IS NULL
+			SELECT a.id, a.name
+			FROM room_name_pool a
+			CROSS JOIN start_q b
+			WHERE a.id < b.start_id
+			AND a.generated
+			AND a.consumed_at IS NULL
 			AND NOT EXISTS (SELECT 1 FROM after_start_q)
 			AND NOT EXISTS (
 				SELECT 1
-				FROM room_name_reservations reservation_q
-				WHERE reservation_q.name = pool_q.name
-				AND reservation_q.expires_at > CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
+				FROM room_name_reservations c
+				WHERE c.name = a.name
+				AND c.expires_at > CURRENT_TIMESTAMP AT TIME ZONE 'UTC'
 			)
-			ORDER BY pool_q.id
-			FOR UPDATE OF pool_q SKIP LOCKED
+			ORDER BY a.id
+			FOR UPDATE OF a SKIP LOCKED
 			LIMIT 1
 		),
 		candidate_q AS (
@@ -1119,14 +1119,14 @@ func (c *Client) prepareReserveSuggestedRoomNameStmt() error {
 				expires_at
 			)
 			SELECT
-				candidate_q.name,
+				a.name,
 				$1,
 				(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') + ($2 * INTERVAL '1 second')
-			FROM candidate_q
+			FROM candidate_q a
 			CROSS JOIN (
 				SELECT COUNT(*) AS deleted_count
 				FROM deleted_owned_q
-			) deleted_owned_count_q
+			) b
 			ON CONFLICT (name) DO UPDATE
 			SET
 				token = gen_random_uuid(),

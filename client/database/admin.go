@@ -756,22 +756,22 @@ func (c *Client) prepareListAdminRoomSearchUsageStmt() error {
 				('day', DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 days')
 		)
 		SELECT
-			w.period,
-			DATE_TRUNC(w.period, u.created_at, 'UTC'),
-			u.room_id,
-			u.provider,
-			SUM(u.search_count),
-			SUM(u.cached_count),
-			r.room_type
-		FROM windows_q w
-		JOIN room_search_usage u ON u.created_at >= w.starts_at
-		LEFT JOIN rooms r ON r.id = u.room_id
+			a.period,
+			DATE_TRUNC(a.period, b.created_at, 'UTC'),
+			b.room_id,
+			b.provider,
+			SUM(b.search_count),
+			SUM(b.cached_count),
+			c.room_type
+		FROM windows_q a
+		JOIN room_search_usage b ON b.created_at >= a.starts_at
+		LEFT JOIN rooms c ON c.id = b.room_id
 		GROUP BY
-			w.period,
-			DATE_TRUNC(w.period, u.created_at, 'UTC'),
-			u.room_id,
-			u.provider,
-			r.room_type
+			a.period,
+			DATE_TRUNC(a.period, b.created_at, 'UTC'),
+			b.room_id,
+			b.provider,
+			c.room_type
 		ORDER BY 1, 2, 3, 4
 	`)
 	if err != nil {

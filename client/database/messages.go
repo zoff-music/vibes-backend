@@ -49,18 +49,18 @@ func (c *Client) prepareListAdminMessageUsageStmt() error {
 				('day', DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 days'),
 				('month', DATE_TRUNC('month', NOW(), 'UTC') - INTERVAL '11 months')
 		)
-		SELECT w.period, DATE_TRUNC(w.period, u.created_at, 'UTC'), SUM(u.message_count), u.room_id, r.room_type::text
-		FROM windows_q w
-		JOIN chat_usage u ON u.created_at >= w.starts_at
-		LEFT JOIN rooms r ON r.id = u.room_id
-		WHERE ($1 = '' OR u.room_id = $1)
-		GROUP BY w.period, DATE_TRUNC(w.period, u.created_at, 'UTC'), u.room_id, r.room_type
+		SELECT a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), SUM(b.message_count), b.room_id, c.room_type::text
+		FROM windows_q a
+		JOIN chat_usage b ON b.created_at >= a.starts_at
+		LEFT JOIN rooms c ON c.id = b.room_id
+		WHERE ($1 = '' OR b.room_id = $1)
+		GROUP BY a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), b.room_id, c.room_type
 		UNION ALL
-		SELECT w.period, DATE_TRUNC(w.period, u.created_at, 'UTC'), SUM(u.message_count), NULL::text, NULL::text
-		FROM windows_q w
-		JOIN chat_usage u ON u.created_at >= w.starts_at
-		WHERE ($1 = '' OR u.room_id = $1)
-		GROUP BY w.period, DATE_TRUNC(w.period, u.created_at, 'UTC')
+		SELECT a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), SUM(b.message_count), NULL::text, NULL::text
+		FROM windows_q a
+		JOIN chat_usage b ON b.created_at >= a.starts_at
+		WHERE ($1 = '' OR b.room_id = $1)
+		GROUP BY a.period, DATE_TRUNC(a.period, b.created_at, 'UTC')
 		UNION ALL
 		SELECT 'total', NULL::timestamptz, COALESCE(SUM(message_count), 0), '', NULL::text
 		FROM chat_usage WHERE ($1 = '' OR room_id = $1)
