@@ -3,6 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	jsonv2 "encoding/json/v2"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,10 +13,955 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
+
+// AddItemV3 handles the addition of a new playlistItem to the room
+//
+//	@Summary	Add a playlist item
+//	@Tags		playlist-items
+//	@Accept		json
+//	@Produce	json
+//	@Param		id		path		string				true	"Room ID"
+//	@Param		request	body		vibe.AddPlaylistItemRequest	true	"Playlist item payload"
+//	@Success	200		{object}	vibe.AddPlaylistItemResult
+//	@Success	201		{object}	vibe.AddPlaylistItemResult
+//	@Failure	400		{object}	vibe.ErrorResponse
+//	@Failure	401		{object}	vibe.ErrorResponse
+//	@Failure	403		{object}	vibe.ErrorResponse
+//	@Failure	404		{object}	vibe.ErrorResponse
+//	@Failure	500		{object}	vibe.ErrorResponse
+//	@Router		/api/v3/rooms/{id}/items [post]
+func AddItemV3(
+	db vibe.PlaylistItemQueueAdder,
+	events vibe.CachedProviderItemRoomEventNotifier,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		vars := mux.Vars(r)
+		roomID := vars["id"]
+
+		var req vibe.AddPlaylistItemRequest
+		err := jsonv2.UnmarshalRead(r.Body, &req)
+		if err != nil {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error decoding request body: %w", err),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_request_invalid",
+						Message:   "The playlist item details could not be read. Search for the playlist item again and retry.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
+				http.StatusBadRequest,
+				true,
+			)
+			return
+		}
+
+		session, ok := helper.GetSessionFromContext(ctx)
+		if !ok || session.UserID == "" {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error unauthorized"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_session_required",
+						Message:   "Your room session is missing. Rejoin the room and try adding the playlist item again.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusUnauthorized,
+				},
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+
+		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		if room.IsEmpty() {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error room not found"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_room_not_found",
+						Message:   "This room no longer exists. Join another room to add playlist items.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusNotFound,
+				},
+				http.StatusNotFound,
+				false,
+			)
+			return
+		}
+
+		if room.Settings.OnlyAdminAddPlaylistItems && !room.IsAdmin {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error only admins can add playlist items in this room"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_room_admin_required",
+						Message:   "Only room admins can add playlist items here. Log in as a room admin in room settings, or ask an admin to allow everyone to add playlist items.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusForbidden,
+				},
+				http.StatusForbidden,
+				false,
+			)
+			return
+		}
+
+		sourceEnabled := false
+		for _, source := range room.Settings.EnabledSources {
+			if req.SourceType == source && room.RoomType.AllowsSource(source) {
+				sourceEnabled = true
+				break
+			}
+		}
+
+		if !sourceEnabled {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error source type %s is not enabled for this room", req.SourceType),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_provider_disabled",
+						Message:   "This music provider is not enabled for this room. Choose another provider or ask a room admin to enable it.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		if vibe.IsLiveVideo(req.SourceType, req.Duration) {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error live videos cannot be added to rooms"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "youtube_live_video_not_supported",
+						Message:   "Live videos cannot be added to rooms.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		providerURL, err := req.CanonicalProviderURL()
+		if err != nil {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error getting canonical provider URL: %w", err),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "song_provider_url_invalid",
+						Message:   "The playlist item link is not valid for this provider. Search for the playlist item again or paste a valid track link.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		publisher := req.Publisher
+		playbackRestriction := ""
+		cachedItem, err := events.GetCachedProviderItem(ctx, req.SourceType, req.SourceID)
+		if err != nil {
+			log.Printf("error getting cached provider track metadata: %v", err)
+		}
+
+		if req.SourceType == vibe.SourceTypeYouTube && (err != nil || cachedItem.IsEmpty()) {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error adding youtube track: verified metadata is unavailable"),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "youtube_track_verification_required",
+						Message:   "This video's availability needs to be checked again. Search for it or paste its YouTube link again before adding it.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
+				},
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		if err == nil && !cachedItem.IsEmpty() {
+			if !cachedItem.AllowedInRoom(room.RoomType) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error adding item: provider metadata is not allowed for %s", room.RoomType),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "playlist_item_not_allowed",
+							Message:   "This item cannot be played in this room. Music rooms accept music videos; all videos must allow embedded playback and must not be live.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusBadRequest,
+					},
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+
+			if vibe.IsLiveVideo(req.SourceType, cachedItem.DurationSeconds) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error live videos cannot be added to rooms"),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "youtube_live_video_not_supported",
+							Message:   "Live videos cannot be added to rooms.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusBadRequest,
+					},
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+
+			playbackRestriction = cachedItem.PlaybackRestriction
+			if req.SourceType == vibe.SourceTypeYouTube {
+				req.Title = cachedItem.Title
+				publisher = cachedItem.Publisher
+				req.Thumbnail = cachedItem.ThumbnailURL
+				req.Duration = cachedItem.DurationSeconds
+			}
+		}
+
+		playlistItem := &vibe.PlaylistItem{
+			ID:                  uuid.New().String(),
+			RoomID:              roomID,
+			SourceType:          req.SourceType,
+			SourceID:            req.SourceID,
+			ProviderURL:         providerURL,
+			PlaybackRestriction: playbackRestriction,
+			Title:               req.Title,
+			Publisher:           publisher,
+			ThumbnailURL:        req.Thumbnail,
+			Duration:            req.Duration,
+			AddedBySessionID:    session.UserID,
+			AddedAt:             time.Now(),
+		}
+
+		result, err := db.AddPlaylistItem(ctx, playlistItem)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error adding playlist item: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		playlistItems, err := db.GetPlaylistItems(ctx, roomID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching playlist items: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		playlistItemsPayload, err := json.Marshal(playlistItems)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling playlist items payload in add playlist item: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		var compactEvent *vibe.RoomEventV3Payload
+		if result.Outcome == vibe.AddPlaylistItemOutcomeAdded || result.Outcome == vibe.AddPlaylistItemOutcomeDuplicateVoted {
+			for position, playlistItem := range playlistItems {
+				if playlistItem.ID != result.PlaylistItem.ID {
+					continue
+				}
+
+				compactPayload, marshalErr := json.Marshal(vibe.PlaylistItemPositionUpdate{
+					PlaylistItem: playlistItem,
+					Position:     position,
+				})
+				if marshalErr != nil {
+					handleError(
+						w,
+						fmt.Errorf("error marshaling compact positioned playlist item event in add playlist item: %w", marshalErr),
+						http.StatusInternalServerError,
+						true,
+					)
+					return
+				}
+
+				compactEvent = &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemUpdated, Payload: compactPayload}
+				break
+			}
+
+			if compactEvent == nil {
+				compactPayload, marshalErr := json.Marshal(vibe.PlaylistItemIDUpdate{ID: result.PlaylistItem.ID})
+				if marshalErr != nil {
+					handleError(
+						w,
+						fmt.Errorf("error marshaling compact playlist item removal fallback in add playlist item: %w", marshalErr),
+						http.StatusInternalServerError,
+						true,
+					)
+					return
+				}
+
+				compactEvent = &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemRemoved, Payload: compactPayload}
+			}
+		}
+
+		err = events.NotifyRoomUpdateV3(context.WithoutCancel(ctx), roomID, vibe.RoomEventV3{
+			Type:    vibe.PlaylistItemsUpdate,
+			Payload: playlistItemsPayload,
+			Origin:  session.EventOrigin,
+			Compact: compactEvent,
+		})
+		if err != nil {
+			log.Printf("failed to notify room: %v", err)
+		}
+
+		if result.Outcome == vibe.AddPlaylistItemOutcomeAdded && len(playlistItems) == 1 {
+			playbackState := &vibe.PlaybackStateV2{
+				RoomID:              roomID,
+				CurrentPlaylistItem: &result.PlaylistItem,
+				IsPlaying:           true,
+				PositionMs:          0,
+				UpdatedAt:           time.Now(),
+				ServerTimeMs:        int(time.Now().UnixMilli()),
+			}
+
+			err := db.UpsertPlaybackStateV2(ctx, playbackState)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error auto-playing first playlist item: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			playbackPayload, err := json.Marshal(playbackState)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshaling playback payload in add playlist item: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			err = events.NotifyRoomUpdateV3(context.WithoutCancel(ctx), roomID, vibe.RoomEventV3{
+				Type:    vibe.PlaybackUpdate,
+				Payload: playbackPayload,
+				Origin:  session.EventOrigin,
+			})
+			if err != nil {
+				log.Printf("failed to notify room: %v", err)
+			}
+
+		}
+
+		body, err := json.Marshal(result)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshal response: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		status := http.StatusOK
+		if result.Outcome == vibe.AddPlaylistItemOutcomeAdded {
+			status = http.StatusCreated
+		}
+
+		w.WriteHeader(status)
+		_, _ = w.Write(body)
+
+		// Activity is best-effort after the playlistItem and playback changes succeed.
+		if result.Outcome == vibe.AddPlaylistItemOutcomeDuplicateAlreadyVoted {
+			return
+		}
+
+		kind := vibe.MessageKindAdded
+		if result.Outcome == vibe.AddPlaylistItemOutcomeDuplicateVoted {
+			kind = vibe.MessageKindVoted
+		}
+
+		profile, err := db.GetOrCreateSessionProfile(ctx, session.UserID)
+		if err != nil {
+			log.Printf("error fetching AddItemV3 chat author: %v", err)
+			return
+		}
+
+		_, isModerator := helper.GetAdminUserFromContext(ctx)
+
+		message := vibe.RoomMessage{
+			IsModerator: isModerator,
+			ID:          uuid.NewString(),
+			UserID:      session.UserID,
+			Name:        profile.Name,
+			IsAdmin:     room.IsAdmin,
+			Kind:        kind,
+			Text:        result.PlaylistItem.Title,
+			IsHost:      room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
+			CreatedAt:   time.Now().UnixMilli(),
+		}
+
+		chatPayload, err := json.Marshal(message)
+		if err != nil {
+			log.Printf("error marshaling AddItemV3 chat activity: %v", err)
+			return
+		}
+
+		err = events.NotifyRoomUpdateV3(context.WithoutCancel(ctx), roomID, vibe.RoomEventV3{
+			Type:    vibe.MessageEvent,
+			Payload: chatPayload,
+		})
+		if err != nil {
+			log.Printf("error publishing AddItemV3 chat activity: %v", err)
+		}
+	}
+}
+
+// RemoveItemV3 handles the removal of a playlist item from the room
+//
+//	@Summary	Remove a playlist item
+//	@Tags		playlist-items
+//	@Param		id		path	string	true	"Room ID"
+//	@Param		itemId	path	string	true	"Playlist item ID"
+//	@Success	204
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	403	{object}	vibe.ErrorResponse
+//	@Failure	404	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
+//	@Router		/api/v3/rooms/{id}/items/{itemId} [delete]
+func RemoveItemV3(
+	db vibe.PlaylistItemQueueRemover,
+	notifier vibe.RoomEventV3Notifier,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		vars := mux.Vars(r)
+		roomID := vars["id"]
+		playlistItemID := vars["itemId"]
+
+		session, ok := helper.GetSessionFromContext(ctx)
+		if !ok || session.UserID == "" {
+			handleError(
+				w,
+				fmt.Errorf("error unauthorized"),
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+
+		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		if room.IsEmpty() {
+			handleError(
+				w,
+				fmt.Errorf("error room not found"),
+				http.StatusNotFound,
+				false,
+			)
+			return
+		}
+
+		if !room.IsAdmin {
+			handleError(
+				w,
+				fmt.Errorf("error forbidden"),
+				http.StatusForbidden,
+				false,
+			)
+			return
+		}
+
+		removedPlaylistItem, err := db.GetPlaylistItem(ctx, roomID, playlistItemID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error finding playlist item to remove: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		if removedPlaylistItem.IsEmpty() {
+			handleError(
+				w,
+				fmt.Errorf("error finding playlist item to remove"),
+				http.StatusNotFound,
+				false,
+			)
+			return
+		}
+
+		err = db.RemovePlaylistItem(ctx, roomID, playlistItemID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error removing playlist item: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		playlistItems, err := db.GetPlaylistItems(ctx, roomID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetch playlist items in remove playlist item: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		playlistItemsPayload, err := json.Marshal(playlistItems)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling playlist items payload in remove playlist item: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		compactPayload, err := json.Marshal(vibe.PlaylistItemIDUpdate{ID: playlistItemID})
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling compact remove playlist item event: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		compactEvent := &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemRemoved, Payload: compactPayload}
+
+		err = notifier.NotifyRoomUpdateV3(ctx, roomID, vibe.RoomEventV3{
+			Type:    vibe.PlaylistItemsUpdate,
+			Payload: playlistItemsPayload,
+			Origin:  session.EventOrigin,
+			Compact: compactEvent,
+		})
+		if err != nil {
+			log.Printf("failed to notify room in remove playlist item: %v", err)
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+
+		profile, err := db.GetOrCreateSessionProfile(ctx, session.UserID)
+		if err != nil {
+			log.Printf("error fetching RemoveItemV3 chat author: %v", err)
+			return
+		}
+
+		_, isModerator := helper.GetAdminUserFromContext(ctx)
+
+		message := vibe.RoomMessage{
+			IsModerator: isModerator,
+			ID:          uuid.NewString(),
+			UserID:      session.UserID,
+			Name:        profile.Name,
+			IsAdmin:     room.IsAdmin,
+			Kind:        vibe.MessageKindDeleted,
+			Text:        removedPlaylistItem.Title,
+			IsHost:      room.Mode == vibe.RoomModeHost && room.HostID == session.UserID,
+			CreatedAt:   time.Now().UnixMilli(),
+		}
+
+		chatPayload, err := json.Marshal(message)
+		if err != nil {
+			log.Printf("error marshaling RemoveItemV3 chat activity: %v", err)
+			return
+		}
+
+		err = notifier.NotifyRoomUpdateV3(context.WithoutCancel(ctx), roomID, vibe.RoomEventV3{
+			Type:    vibe.MessageEvent,
+			Payload: chatPayload,
+		})
+		if err != nil {
+			log.Printf("error publishing RemoveItemV3 chat activity: %v", err)
+		}
+	}
+}
+
+// VoteItemV3 handles voting for a playlist item
+//
+//	@Summary	Vote for a playlist item
+//	@Tags		playlist-items
+//	@Param		id		path	string	true	"Room ID"
+//	@Param		itemId	path	string	true	"Playlist item ID"
+//	@Success	204
+//	@Failure	401	{object}	vibe.ErrorResponse
+//	@Failure	409	{object}	vibe.ErrorResponse
+//	@Failure	500	{object}	vibe.ErrorResponse
+//	@Router		/api/v3/rooms/{id}/items/{itemId} [post]
+func VoteItemV3(
+	db vibe.PlaylistItemQueueVoter,
+	notifier vibe.RoomEventV3Notifier,
+) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		vars := mux.Vars(r)
+		roomID := vars["id"]
+		playlistItemID := vars["itemId"]
+
+		session, ok := helper.GetSessionFromContext(ctx)
+		if !ok || session.UserID == "" {
+			handleError(
+				w,
+				fmt.Errorf("error unauthorized"),
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+
+		userID := session.UserID
+
+		err := db.VotePlaylistItem(ctx, roomID, playlistItemID, userID)
+		if err != nil {
+			var alreadyVotedError internalerror.ErrAlreadyVoted
+			if errors.As(err, &alreadyVotedError) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: alreadyVotedError,
+						ResponseBody: client.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "song_vote_already_exists",
+							Message:   "Your vote is already counted for this playlist item.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusConflict,
+					},
+					http.StatusConflict,
+					false,
+				)
+				return
+			}
+
+			handleError(
+				w,
+				fmt.Errorf("error voting for playlist item: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		playlistItems, err := db.GetPlaylistItems(ctx, roomID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetch playlist items in vote playlist item: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		playlistItemsPayload, err := json.Marshal(playlistItems)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling playlist items payload: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		var compactEvent *vibe.RoomEventV3Payload
+		votedTitle := "playlist item"
+		for position, playlistItem := range playlistItems {
+			if playlistItem.ID != playlistItemID {
+				continue
+			}
+
+			compactPayload, marshalErr := json.Marshal(vibe.PlaylistItemPositionUpdate{
+				PlaylistItem: playlistItem,
+				Position:     position,
+			})
+			if marshalErr != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshaling compact vote playlist item event: %w", marshalErr),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			compactEvent = &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemUpdated, Payload: compactPayload}
+			votedTitle = playlistItem.Title
+			break
+		}
+
+		if compactEvent == nil {
+			compactPayload, marshalErr := json.Marshal(vibe.PlaylistItemIDUpdate{ID: playlistItemID})
+			if marshalErr != nil {
+				handleError(
+					w,
+					fmt.Errorf("error marshaling compact vote playlist item removal fallback: %w", marshalErr),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+
+			compactEvent = &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemRemoved, Payload: compactPayload}
+		}
+
+		err = notifier.NotifyRoomUpdateV3(context.WithoutCancel(ctx), roomID, vibe.RoomEventV3{
+			Type:    vibe.PlaylistItemsUpdate,
+			Payload: playlistItemsPayload,
+			Origin:  session.EventOrigin,
+			Compact: compactEvent,
+		})
+		if err != nil {
+			log.Printf("failed to notify room in vote playlist item: %v", err)
+		}
+
+		w.WriteHeader(http.StatusNoContent)
+
+		chatRoom, err := db.GetRoomV2(ctx, roomID, userID)
+		if err != nil {
+			log.Printf("error fetching VoteItemV3 chat room: %v", err)
+			return
+		}
+
+		if chatRoom.IsEmpty() {
+			return
+		}
+
+		profile, err := db.GetOrCreateSessionProfile(ctx, session.UserID)
+		if err != nil {
+			log.Printf("error fetching VoteItemV3 chat author: %v", err)
+			return
+		}
+
+		_, isModerator := helper.GetAdminUserFromContext(ctx)
+
+		message := vibe.RoomMessage{
+			IsModerator: isModerator,
+			ID:          uuid.NewString(),
+			UserID:      session.UserID,
+			Name:        profile.Name,
+			IsAdmin:     chatRoom.IsAdmin,
+			IsHost:      chatRoom.Mode == vibe.RoomModeHost && chatRoom.HostID == session.UserID,
+			Kind:        vibe.MessageKindVoted,
+			Text:        votedTitle,
+			CreatedAt:   time.Now().UnixMilli(),
+		}
+
+		chatPayload, err := json.Marshal(message)
+		if err != nil {
+			log.Printf("error marshaling VoteItemV3 chat activity: %v", err)
+			return
+		}
+
+		err = notifier.NotifyRoomUpdateV3(context.WithoutCancel(ctx), roomID, vibe.RoomEventV3{
+			Type:    vibe.MessageEvent,
+			Payload: chatPayload,
+		})
+		if err != nil {
+			log.Printf("error publishing VoteItemV3 chat activity: %v", err)
+		}
+	}
+}
+
+// GetItemsV3 returns room items with optional row-number pagination.
+//
+// @Summary List room items
+// @Description With neither from nor to, returns the full list. Bounds are inclusive and one-based, and must be supplied together. reqFrom/reqTo preserve requested bounds (zero when omitted); from/to identify returned rows (zero for an empty page). total counts matching items before pagination; count is the size of data.
+// @Tags playlist-items
+// @Produce json
+// @Param id path string true "Room ID"
+// @Param from query int false "First row, inclusive; requires to" minimum(1)
+// @Param to query int false "Last row, inclusive; requires from; maximum 100 items per page" minimum(1)
+// @Param sourceType query string false "Filter by provider" Enums(youtube,soundcloud)
+// @Param excludeCurrent query bool false "Exclude the currently playing item from data and total" default(false)
+// @Success 200 {object} vibe.ItemResultV3
+// @Failure 400 {object} vibe.ErrorResponse
+// @Failure 500 {object} vibe.ErrorResponse
+// @Router /api/v3/rooms/{id}/items [get]
+func GetItemsV3(db vibe.ItemsV3Fetcher) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		roomID := mux.Vars(r)["id"]
+		query := r.URL.Query()
+		search := vibe.ItemSearchV3{
+			SourceType: query.Get("sourceType"),
+		}
+
+		if search.SourceType != "" && search.SourceType != vibe.SourceTypeYouTube && search.SourceType != vibe.SourceTypeSoundCloud {
+			handleError(
+				w,
+				fmt.Errorf("error invalid item provider"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		if query.Has("from") || query.Has("to") {
+			from, err := strconv.Atoi(query.Get("from"))
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error parsing pagination from: %w", err),
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+
+			to, err := strconv.Atoi(query.Get("to"))
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error parsing pagination to: %w", err),
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+
+			if from < 1 || to < from || to-from >= 100 {
+				handleError(
+					w,
+					fmt.Errorf("error invalid pagination: from and to must be positive inclusive row numbers spanning at most 100 items"),
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+
+			search.From = from
+			search.To = to
+		}
+
+		if query.Has("excludeCurrent") {
+			excludeCurrent, err := strconv.ParseBool(query.Get("excludeCurrent"))
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error parsing excludeCurrent: %w", err),
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+
+			search.ExcludeCurrent = excludeCurrent
+		}
+
+		result, err := db.GetItemsV3(ctx, roomID, search)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching room items: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		body, err := json.Marshal(result)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling room items: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}
+}
 
 // RoomEventsV3 handles GET /api/v3/rooms/:id/events (SSE).
 //
