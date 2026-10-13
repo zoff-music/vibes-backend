@@ -12,10 +12,10 @@ import (
 
 func (c *Client) prepareGetStatsV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH selected_rooms AS (
+		WITH selected_rooms_q AS (
 			SELECT id FROM rooms
 			WHERE $1::text = '' OR room_type::text = $1
-		), room_listener_counts AS (
+		), room_listener_counts_q AS (
 			SELECT
 				room_id,
 				COUNT(*) FILTER (
@@ -26,7 +26,7 @@ func (c *Client) prepareGetStatsV2Stmt() error {
 				) AS active_cast_receivers
 			FROM room_users
 			WHERE last_seen_at > NOW() - INTERVAL '15 seconds'
-				AND room_id IN (SELECT id FROM selected_rooms)
+				AND room_id IN (SELECT id FROM selected_rooms_q)
 			GROUP BY room_id
 		)
 		SELECT COALESCE(
@@ -38,9 +38,9 @@ func (c *Client) prepareGetStatsV2Stmt() error {
 			),
 			0
 		) AS total_listeners,
-		(SELECT COUNT(*) FROM playlist_items WHERE room_id IN (SELECT id FROM selected_rooms)) AS total_playlist_items,
-		(SELECT COUNT(*) FROM selected_rooms) AS total_rooms
-		FROM room_listener_counts
+		(SELECT COUNT(*) FROM playlist_items WHERE room_id IN (SELECT id FROM selected_rooms_q)) AS total_playlist_items,
+		(SELECT COUNT(*) FROM selected_rooms_q) AS total_rooms
+		FROM room_listener_counts_q
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetStatsV2Statement: %w", err)

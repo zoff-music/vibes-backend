@@ -12,7 +12,7 @@ import (
 
 func (c *Client) prepareGetItemsV3Stmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH items AS (
+		WITH items_q AS (
 			SELECT
 				a.id,
 				a.room_id,
@@ -45,37 +45,37 @@ func (c *Client) prepareGetItemsV3Stmt() error {
 			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url,
 				a.playback_restriction, a.title, a.publisher, a.thumbnail_url,
 				a.duration, a.added_by, a.added_by_nickname, a.added_at
-		), numbered AS (
-			SELECT items.*,
+		), numbered_q AS (
+			SELECT a.*,
 				ROW_NUMBER() OVER (
-					ORDER BY vote_count DESC, last_vote_at ASC, added_at ASC, id ASC
+					ORDER BY a.vote_count DESC, a.last_vote_at ASC, a.added_at ASC, a.id ASC
 				)::int AS row_number
-			FROM items
-		), totals AS (
-			SELECT COUNT(*)::int AS total FROM items
+			FROM items_q a
+		), totals_q AS (
+			SELECT COUNT(*)::int AS total FROM items_q a
 		)
 		SELECT
-			n.id,
-			n.room_id,
-			n.source_type,
-			n.source_id,
-			n.provider_url,
-			n.playback_restriction,
-			n.title,
-			n.publisher,
-			n.thumbnail_url,
-			n.duration,
-			n.added_by,
-			n.added_by_nickname,
-			n.added_at,
-			n.vote_count,
-			n.row_number,
-			t.total
-		FROM totals t
-		LEFT JOIN numbered n
-			ON ($3 = 0 OR n.row_number >= $3)
-			AND ($4 = 0 OR n.row_number <= $4)
-		ORDER BY n.row_number
+			b.id,
+			b.room_id,
+			b.source_type,
+			b.source_id,
+			b.provider_url,
+			b.playback_restriction,
+			b.title,
+			b.publisher,
+			b.thumbnail_url,
+			b.duration,
+			b.added_by,
+			b.added_by_nickname,
+			b.added_at,
+			b.vote_count,
+			b.row_number,
+			a.total
+		FROM totals_q a
+		LEFT JOIN numbered_q b
+			ON ($3 = 0 OR b.row_number >= $3)
+			AND ($4 = 0 OR b.row_number <= $4)
+		ORDER BY b.row_number
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetItemsV3Statement: %w", err)

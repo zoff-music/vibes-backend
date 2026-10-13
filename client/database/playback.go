@@ -334,31 +334,31 @@ func (c *Client) prepareProcessNextExpiredPlaybackV2Stmt() error {
 					a.added_by_nickname
 				) AS added_by_nickname,
 				CASE
-					WHEN a.id = c.current_playlist_item_id AND NOT c.remove_on_play THEN NOW()
+					WHEN a.id = b.current_playlist_item_id AND NOT b.remove_on_play THEN NOW()
 					ELSE a.added_at
 				END AS added_at,
-				COUNT(b.user_id) AS vote_count
+				COUNT(c.user_id) AS vote_count
 			FROM playlist_items a
-			JOIN locked_playback_q c ON c.room_id = a.room_id
-			LEFT JOIN playlist_item_votes b
-			ON a.id = b.playlist_item_id
-			AND a.room_id = b.room_id
-			AND a.id IS DISTINCT FROM c.current_playlist_item_id
-			WHERE NOT (c.remove_on_play AND a.id = c.current_playlist_item_id)
+			JOIN locked_playback_q b ON b.room_id = a.room_id
+			LEFT JOIN playlist_item_votes c
+			ON a.id = c.playlist_item_id
+			AND a.room_id = c.room_id
+			AND a.id IS DISTINCT FROM b.current_playlist_item_id
+			WHERE NOT (b.remove_on_play AND a.id = b.current_playlist_item_id)
 			AND a.source_type = ANY($1::text[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_playlist_item_id, c.remove_on_play
-			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, b.current_playlist_item_id, b.remove_on_play
+			ORDER BY vote_count DESC, MAX(c.created_at) ASC, added_at ASC
 			LIMIT 1
 		),
 		updated_playback_q AS (
 			UPDATE playback_state a
-			SET current_playlist_item_id = b.id,
-			is_playing = b.id IS NOT NULL,
+			SET current_playlist_item_id = c.id,
+			is_playing = c.id IS NOT NULL,
 			position_ms = 0,
 			updated_at = NOW()
-			FROM locked_playback_q c
-			LEFT JOIN next_playlist_item_q b ON b.room_id = c.room_id
-			WHERE a.room_id = c.room_id
+			FROM locked_playback_q b
+			LEFT JOIN next_playlist_item_q c ON c.room_id = b.room_id
+			WHERE a.room_id = b.room_id
 			RETURNING a.room_id, a.current_playlist_item_id, a.is_playing, a.position_ms, a.updated_at
 		)
 		SELECT
@@ -379,7 +379,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackV2Stmt() error {
 			b.duration,
 			b.added_by,
 			COALESCE(
-				(SELECT d.name FROM sessions d WHERE d.id = b.added_by),
+				(SELECT c.name FROM sessions c WHERE c.id = b.added_by),
 				b.added_by_nickname
 			) AS added_by_nickname,
 			b.added_at,
@@ -570,32 +570,32 @@ func (c *Client) prepareSkipPlaylistItemStmt() error {
 					a.added_by_nickname
 				) AS added_by_nickname,
 				CASE
-					WHEN a.id = c.current_playlist_item_id AND NOT c.remove_on_play THEN NOW()
+					WHEN a.id = b.current_playlist_item_id AND NOT b.remove_on_play THEN NOW()
 					ELSE a.added_at
 				END AS added_at,
-				COUNT(b.user_id) AS vote_count
+				COUNT(c.user_id) AS vote_count
 			FROM playlist_items a
-			JOIN locked_playback_q c ON c.room_id = a.room_id
-			LEFT JOIN playlist_item_votes b
-			ON a.id = b.playlist_item_id
-			AND a.room_id = b.room_id
-			AND a.id IS DISTINCT FROM c.current_playlist_item_id
-			WHERE NOT (c.remove_on_play AND a.id = c.current_playlist_item_id)
+			JOIN locked_playback_q b ON b.room_id = a.room_id
+			LEFT JOIN playlist_item_votes c
+			ON a.id = c.playlist_item_id
+			AND a.room_id = c.room_id
+			AND a.id IS DISTINCT FROM b.current_playlist_item_id
+			WHERE NOT (b.remove_on_play AND a.id = b.current_playlist_item_id)
 			AND ($3 = '' OR a.id != $3)
 			AND a.source_type = ANY($2::text[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, c.current_playlist_item_id, c.remove_on_play
-			ORDER BY vote_count DESC, MAX(b.created_at) ASC, added_at ASC
+			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, b.current_playlist_item_id, b.remove_on_play
+			ORDER BY vote_count DESC, MAX(c.created_at) ASC, added_at ASC
 			LIMIT 1
 		),
 		updated_playback_q AS (
 			UPDATE playback_state a
-			SET current_playlist_item_id = b.id,
-			is_playing = b.id IS NOT NULL,
+			SET current_playlist_item_id = c.id,
+			is_playing = c.id IS NOT NULL,
 			position_ms = 0,
 			updated_at = NOW()
-			FROM locked_playback_q c
-			LEFT JOIN next_playlist_item_q b ON b.room_id = c.room_id
-			WHERE a.room_id = c.room_id
+			FROM locked_playback_q b
+			LEFT JOIN next_playlist_item_q c ON c.room_id = b.room_id
+			WHERE a.room_id = b.room_id
 			RETURNING a.room_id, a.current_playlist_item_id, a.is_playing, a.position_ms, a.updated_at
 		)
 		SELECT
@@ -616,7 +616,7 @@ func (c *Client) prepareSkipPlaylistItemStmt() error {
 			b.duration,
 			b.added_by,
 			COALESCE(
-				(SELECT d.name FROM sessions d WHERE d.id = b.added_by),
+				(SELECT c.name FROM sessions c WHERE c.id = b.added_by),
 				b.added_by_nickname
 			) AS added_by_nickname,
 			b.added_at,
@@ -750,21 +750,21 @@ func (c *Client) UpdatePlaybackV2(ctx context.Context, roomID string, userID str
 func (c *Client) prepareStartPlaybackIfIdleV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH locked_playback_q AS (
-			SELECT r.id AS room_id
-			FROM rooms r
-			LEFT JOIN playback_state a ON a.room_id = r.id
-			WHERE r.id = $1
+			SELECT a.id AS room_id
+			FROM rooms a
+			LEFT JOIN playback_state b ON b.room_id = a.id
+			WHERE a.id = $1
 			AND (
-				a.current_playlist_item_id IS NULL
+				b.current_playlist_item_id IS NULL
 				OR NOT EXISTS (
 					SELECT 1
-					FROM playlist_items b
-					WHERE b.room_id = a.room_id
-					AND b.id = a.current_playlist_item_id
-					AND b.source_type = ANY($2::text[])
+					FROM playlist_items c
+					WHERE c.room_id = b.room_id
+					AND c.id = b.current_playlist_item_id
+					AND c.source_type = ANY($2::text[])
 				)
 			)
-			FOR UPDATE OF r SKIP LOCKED
+			FOR UPDATE OF a SKIP LOCKED
 		),
 		next_playlist_item_q AS (
 			SELECT
@@ -784,15 +784,15 @@ func (c *Client) prepareStartPlaybackIfIdleV2Stmt() error {
 					a.added_by_nickname
 				) AS added_by_nickname,
 				a.added_at,
-				COUNT(b.user_id) AS vote_count
+				COUNT(c.user_id) AS vote_count
 			FROM playlist_items a
-			JOIN locked_playback_q c ON c.room_id = a.room_id
-			LEFT JOIN playlist_item_votes b
-			ON a.id = b.playlist_item_id
-			AND a.room_id = b.room_id
+			JOIN locked_playback_q b ON b.room_id = a.room_id
+			LEFT JOIN playlist_item_votes c
+			ON a.id = c.playlist_item_id
+			AND a.room_id = c.room_id
 			WHERE a.source_type = ANY($2::text[])
 			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
-			ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
+			ORDER BY vote_count DESC, MAX(c.created_at) ASC, a.added_at ASC
 			LIMIT 1
 		),
 		updated_playback_q AS (
@@ -806,10 +806,10 @@ func (c *Client) prepareStartPlaybackIfIdleV2Stmt() error {
 				updated_at = EXCLUDED.updated_at
 			WHERE playback_state.current_playlist_item_id IS NULL
 			OR NOT EXISTS (
-				SELECT 1 FROM playlist_items s
-				WHERE s.room_id = playback_state.room_id
-				AND s.id = playback_state.current_playlist_item_id
-				AND s.source_type = ANY($2::text[])
+				SELECT 1 FROM playlist_items a
+				WHERE a.room_id = playback_state.room_id
+				AND a.id = playback_state.current_playlist_item_id
+				AND a.source_type = ANY($2::text[])
 			)
 			RETURNING room_id, current_playlist_item_id, is_playing, position_ms, updated_at
 		)
@@ -831,7 +831,7 @@ func (c *Client) prepareStartPlaybackIfIdleV2Stmt() error {
 			b.duration,
 			b.added_by,
 			COALESCE(
-				(SELECT d.name FROM sessions d WHERE d.id = b.added_by),
+				(SELECT c.name FROM sessions c WHERE c.id = b.added_by),
 				b.added_by_nickname
 			) AS added_by_nickname,
 			b.added_at,

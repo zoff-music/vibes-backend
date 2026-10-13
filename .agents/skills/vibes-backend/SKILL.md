@@ -74,6 +74,8 @@ Use these rules for Go backend work in this repository.
 - Postgres uses `database/sql` with the `pgx` driver and prepared statements.
 - All database SQL should use prepared statements.
 - Postgres placeholders should use `$1`, `$2`, and so on.
+- Table and derived-table aliases must use sequential letters (`a`, `b`, `c`, `d`, `e`, and so on), not name abbreviations. Keep correlated subquery aliases distinct from their outer query aliases.
+- Every common table expression (CTE) name must end in `_q`.
 - Prefer one atomic SQL statement over Go-managed transactions.
 - App-event worker claim queries that can be processed by multiple backend pods must use concurrency guards such as `FOR UPDATE SKIP LOCKED`.
 - Do not add foreign keys unless explicitly requested.
