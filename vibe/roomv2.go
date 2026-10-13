@@ -2,13 +2,12 @@ package vibe
 
 import (
 	"context"
-	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
 )
 
-// RoomSettingsV2 is the playlist-item API contract; RoomSettings remains unchanged.
+// RoomSettingsV2 configures the room's playlist and playback behavior.
 type RoomSettingsV2 struct {
 	SkipAllowed               bool     `json:"skipAllowed"`
 	DemocraticSkip            bool     `json:"democraticSkip"`
@@ -41,36 +40,6 @@ type RoomAdminSessionV2Deleter interface {
 	ClearRoomAdmin(ctx context.Context, roomID, userID string) error
 }
 
-func (r RoomSettings) ToRoomSettingsV2() *RoomSettingsV2 {
-	return &RoomSettingsV2{
-		SkipAllowed:               r.SkipAllowed,
-		DemocraticSkip:            r.DemocraticSkip,
-		SkipVoteThreshold:         r.SkipVoteThreshold,
-		MaxContinuousAdds:         r.MaxContinuousAdds,
-		RemoveOnPlay:              r.RemoveOnPlay,
-		AllowDuplicates:           r.AllowDuplicates,
-		EnabledSources:            slices.Clone(r.EnabledSources),
-		OnlyAdminAddPlaylistItems: r.OnlyAdminAddSongs,
-		Public:                    r.Public,
-		PlaylistImport:            r.PlaylistImport,
-	}
-}
-
-func (r RoomSettingsV2) ToRoomSettings() *RoomSettings {
-	return &RoomSettings{
-		SkipAllowed:       r.SkipAllowed,
-		DemocraticSkip:    r.DemocraticSkip,
-		SkipVoteThreshold: r.SkipVoteThreshold,
-		MaxContinuousAdds: r.MaxContinuousAdds,
-		RemoveOnPlay:      r.RemoveOnPlay,
-		AllowDuplicates:   r.AllowDuplicates,
-		EnabledSources:    slices.Clone(r.EnabledSources),
-		OnlyAdminAddSongs: r.OnlyAdminAddPlaylistItems,
-		Public:            r.Public,
-		PlaylistImport:    r.PlaylistImport,
-	}
-}
-
 type RoomType string
 
 const RoomTypeMusic RoomType = "MUSIC"
@@ -89,7 +58,7 @@ func (r RoomType) AllowsSource(source string) bool {
 	return r == RoomTypeMusic && (source == SourceTypeYouTube || source == SourceTypeSoundCloud)
 }
 
-// RoomV2 is the playlist-item API contract; Room remains unchanged.
+// RoomV2 is the typed room and playlist-item API contract.
 type RoomV2 struct {
 	ID                                     string         `json:"id"`
 	Name                                   string         `json:"name"`
@@ -112,58 +81,7 @@ type RoomV2 struct {
 	StoredEnabledSources                   []string       `json:"-"`
 }
 
-func (r Room) ToRoomV2() *RoomV2 {
-	settings := r.Settings.ToRoomSettingsV2()
-
-	return &RoomV2{
-		ID:                                     r.ID,
-		Name:                                   r.Name,
-		Mode:                                   r.Mode,
-		RoomType:                               RoomTypeMusic,
-		HostID:                                 r.HostID,
-		AdminPasswordHash:                      r.AdminPasswordHash,
-		HasPassword:                            r.HasPassword,
-		Settings:                               *settings,
-		CreatedAt:                              r.CreatedAt,
-		UserCount:                              r.UserCount,
-		IsAdmin:                                r.IsAdmin,
-		UserID:                                 r.UserID,
-		ActiveSources:                          slices.Clone(r.ActiveSources),
-		IsGenerating:                           r.IsGenerating,
-		GenerationCount:                        r.GenerationCount,
-		RoomGenerationMaxDailyCount:            r.RoomGenerationMaxDailyCount,
-		RoomGenerationMaxExistingPlaylistItems: r.RoomGenerationMaxExistingSongs,
-		GenerationError:                        r.GenerationError,
-		StoredEnabledSources:                   slices.Clone(r.StoredEnabledSources),
-	}
-}
-
-func (r RoomV2) ToRoom() *Room {
-	settings := r.Settings.ToRoomSettings()
-
-	return &Room{
-		ID:                             r.ID,
-		Name:                           r.Name,
-		Mode:                           r.Mode,
-		HostID:                         r.HostID,
-		AdminPasswordHash:              r.AdminPasswordHash,
-		HasPassword:                    r.HasPassword,
-		Settings:                       *settings,
-		CreatedAt:                      r.CreatedAt,
-		UserCount:                      r.UserCount,
-		IsAdmin:                        r.IsAdmin,
-		UserID:                         r.UserID,
-		ActiveSources:                  slices.Clone(r.ActiveSources),
-		IsGenerating:                   r.IsGenerating,
-		GenerationCount:                r.GenerationCount,
-		RoomGenerationMaxDailyCount:    r.RoomGenerationMaxDailyCount,
-		RoomGenerationMaxExistingSongs: r.RoomGenerationMaxExistingPlaylistItems,
-		GenerationError:                r.GenerationError,
-		StoredEnabledSources:           slices.Clone(r.StoredEnabledSources),
-	}
-}
-
-// CreateRoomRequestV2 is the playlist-item API contract; CreateRoomRequest remains unchanged.
+// CreateRoomRequestV2 creates a MUSIC or WATCH room.
 type CreateRoomRequestV2 struct {
 	Name             string          `json:"name" minLength:"1" maxLength:"100"`
 	RoomType         RoomType        `json:"roomType,omitempty" enums:"MUSIC,WATCH" default:"MUSIC"`
@@ -173,64 +91,10 @@ type CreateRoomRequestV2 struct {
 	Settings         *RoomSettingsV2 `json:"settings,omitempty"`
 }
 
-func (r CreateRoomRequest) ToCreateRoomRequestV2() *CreateRoomRequestV2 {
-	var settings *RoomSettingsV2
-	if r.Settings != nil {
-		settings = r.Settings.ToRoomSettingsV2()
-	}
-
-	return &CreateRoomRequestV2{
-		Name:             r.Name,
-		Mode:             r.Mode,
-		Password:         r.Password,
-		ReservationToken: r.ReservationToken,
-		Settings:         settings,
-	}
-}
-
-func (r CreateRoomRequestV2) ToCreateRoomRequest() *CreateRoomRequest {
-	var settings *RoomSettings
-	if r.Settings != nil {
-		settings = r.Settings.ToRoomSettings()
-	}
-
-	return &CreateRoomRequest{
-		Name:             r.Name,
-		Mode:             r.Mode,
-		Password:         r.Password,
-		ReservationToken: r.ReservationToken,
-		Settings:         settings,
-	}
-}
-
-// UpdateRoomRequestV2 is the playlist-item API contract; UpdateRoomRequest remains unchanged.
+// UpdateRoomRequestV2 updates playback mode and room settings.
 type UpdateRoomRequestV2 struct {
 	Mode     string          `json:"mode,omitempty"`
 	Settings *RoomSettingsV2 `json:"settings,omitempty"`
-}
-
-func (r UpdateRoomRequest) ToUpdateRoomRequestV2() *UpdateRoomRequestV2 {
-	var settings *RoomSettingsV2
-	if r.Settings != nil {
-		settings = r.Settings.ToRoomSettingsV2()
-	}
-
-	return &UpdateRoomRequestV2{
-		Mode:     r.Mode,
-		Settings: settings,
-	}
-}
-
-func (r UpdateRoomRequestV2) ToUpdateRoomRequest() *UpdateRoomRequest {
-	var settings *RoomSettings
-	if r.Settings != nil {
-		settings = r.Settings.ToRoomSettings()
-	}
-
-	return &UpdateRoomRequest{
-		Mode:     r.Mode,
-		Settings: settings,
-	}
 }
 
 func (r *RoomV2) IsEmpty() bool { return r.ID == "" }

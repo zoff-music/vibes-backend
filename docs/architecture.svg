@@ -134,7 +134,7 @@
   <text class="detail" x="695" y="185">playback · settings · authorization</text>
   <text class="detail" x="695" y="206">remote pairing and control</text>
   <text class="detail" x="695" y="225">chat · type-filtered discovery and totals</text>
-  <text class="detail" x="695" y="242">v2 REST · v3 SSE · legacy contracts retained</text>
+  <text class="detail" x="695" y="242">v2 REST · v3 SSE · typed playlist items</text>
   <text class="detail" x="695" y="263">shared by every frontend application</text>
 
   <rect class="node backend" x="550" y="325" width="290" height="110" rx="10"/>

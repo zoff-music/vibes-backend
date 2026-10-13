@@ -12,27 +12,6 @@ import (
 	"unicode"
 )
 
-// MusicTrack represents a generic music track
-//
-// Deprecated: Use ProviderItem for new code. Retained for legacy API compatibility.
-type MusicTrack struct {
-	ID                  string `json:"id"`
-	Source              string `json:"source"`
-	ProviderURL         string `json:"providerUrl,omitempty"`
-	Title               string `json:"title"`
-	ChannelTitle        string `json:"channelTitle,omitempty"`
-	ThumbnailURL        string `json:"thumbnailUrl"`
-	Duration            string `json:"duration,omitempty"` // ISO 8601 duration
-	DurationSeconds     int    `json:"durationSeconds,omitzero"`
-	ViewCount           uint64 `json:"viewCount,omitzero"`
-	LikeCount           uint64 `json:"likeCount,omitzero"`
-	PlaybackRestriction string `json:"playbackRestriction,omitempty"`
-}
-
-func (t *MusicTrack) IsEmpty() bool {
-	return t.ID == ""
-}
-
 func IsLiveVideo(source string, duration int) bool {
 	return source == SourceTypeYouTube && duration <= 0
 }

@@ -2,80 +2,12 @@ package vibe
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 	"unicode/utf8"
 )
 
 const RoomNameMaxLength = 100
-
-// RoomSettings holds configuration for a room
-//
-// Deprecated: Use RoomSettingsV2 for new code. Retained for legacy API compatibility.
-type RoomSettings struct {
-	SkipAllowed       bool     `json:"skipAllowed"`
-	DemocraticSkip    bool     `json:"democraticSkip"`
-	SkipVoteThreshold float64  `json:"skipVoteThreshold"`
-	MaxContinuousAdds int      `json:"maxContinuousAdds"`
-	RemoveOnPlay      bool     `json:"removeOnPlay"`
-	AllowDuplicates   bool     `json:"allowDuplicates"`
-	EnabledSources    []string `json:"enabledSources"`
-	OnlyAdminAddSongs bool     `json:"onlyAdminAddSongs"`
-	Public            bool     `json:"public"`
-	PlaylistImport    bool     `json:"playlistImport"`
-}
-
-func (r RoomSettings) IsEmpty() bool {
-	return r.SkipAllowed == false &&
-		r.DemocraticSkip == false &&
-		r.SkipVoteThreshold == 0 &&
-		r.MaxContinuousAdds == 0 &&
-		r.RemoveOnPlay == false &&
-		r.AllowDuplicates == false &&
-		len(r.EnabledSources) == 0 &&
-		r.OnlyAdminAddSongs == false &&
-		r.Public == false &&
-		r.PlaylistImport == false
-}
-
-// DefaultRoomSettings returns sensible defaults
-//
-// Deprecated: Use DefaultRoomSettingsV2 for new code.
-func DefaultRoomSettings() (*RoomSettings, error) {
-	settings, err := DefaultRoomSettingsV2()
-	if err != nil {
-		return nil, fmt.Errorf("error getting default room settings: %w", err)
-	}
-
-	legacy := settings.ToRoomSettings()
-
-	return legacy, nil
-}
-
-// Room represents a music room
-//
-// Deprecated: Use RoomV2 for new code. Retained for legacy API compatibility.
-type Room struct {
-	ID                             string       `json:"id"`
-	Name                           string       `json:"name"`
-	Mode                           string       `json:"mode"`
-	HostID                         string       `json:"hostId,omitempty"`
-	AdminPasswordHash              string       `json:"-"`
-	HasPassword                    bool         `json:"hasPassword"`
-	Settings                       RoomSettings `json:"settings"`
-	CreatedAt                      time.Time    `json:"createdAt"`
-	UserCount                      int          `json:"userCount,omitzero"`
-	IsAdmin                        bool         `json:"isAdmin"`
-	UserID                         string       `json:"userId,omitempty"`
-	ActiveSources                  []string     `json:"activeSources"`
-	IsGenerating                   bool         `json:"isGenerating"`
-	GenerationCount                int          `json:"generationCount"`
-	RoomGenerationMaxDailyCount    int          `json:"roomGenerationMaxDailyCount"`
-	RoomGenerationMaxExistingSongs int          `json:"roomGenerationMaxExistingSongs"`
-	GenerationError                string       `json:"generationError,omitempty"`
-	StoredEnabledSources           []string     `json:"-"`
-}
 
 // RoomNameReservation is a temporarily reserved room name.
 type RoomNameReservation struct {
@@ -110,16 +42,6 @@ type NewHostUpdate struct {
 	Message string `json:"message"`
 }
 
-// PublicRoom is a publicly listed room with protected admin controls.
-//
-// Deprecated: Use PublicRoomV3 for new code. Retained for legacy API compatibility.
-type PublicRoom struct {
-	ID            string `json:"id"`
-	Name          string `json:"name"`
-	ListenerCount int    `json:"listenerCount"`
-	SongCount     int    `json:"songCount"`
-}
-
 // PublicRoomSearch selects a zero-based, inclusive range of public rooms.
 type PublicRoomSearch struct {
 	Query    string
@@ -127,52 +49,6 @@ type PublicRoomSearch struct {
 	Live     bool
 	From     int
 	To       int
-}
-
-// PublicRoomResult contains a page of rooms and the full matching count.
-//
-// Deprecated: Use PublicRoomResultV3 for new code. Retained for legacy API compatibility.
-type PublicRoomResult struct {
-	Rooms []PublicRoom `json:"rooms"`
-	From  int          `json:"from"`
-	To    int          `json:"to"`
-	Total int          `json:"total"`
-	Count int          `json:"count"`
-}
-
-// CreateRoomRequest is the request payload for creating a room.
-//
-// Deprecated: Use CreateRoomRequestV2 for new code. Retained for legacy API compatibility.
-type CreateRoomRequest struct {
-	Name             string        `json:"name" minLength:"1" maxLength:"100"`
-	Mode             string        `json:"mode,omitempty"`
-	Password         string        `json:"password,omitempty"`
-	ReservationToken string        `json:"reservationToken,omitempty"`
-	Settings         *RoomSettings `json:"settings,omitempty"`
-}
-
-func (r CreateRoomRequest) Validate() bool {
-	length := utf8.RuneCountInString(strings.TrimSpace(r.Name))
-
-	return length > 0 && length <= RoomNameMaxLength
-}
-
-// UpdateRoomRequest is the request payload for updating a room.
-//
-// Deprecated: Use UpdateRoomRequestV2 for new code. Retained for legacy API compatibility.
-type UpdateRoomRequest struct {
-	Mode     string        `json:"mode,omitempty"`
-	Settings *RoomSettings `json:"settings,omitempty"`
-}
-
-// IsEmpty returns true if the room is empty/not found
-func (r *Room) IsEmpty() bool {
-	return r.ID == ""
-}
-
-// PublicRoomFetcher fetches the bounded list of public rooms with active listeners.
-type PublicRoomFetcher interface {
-	GetPublicRooms(ctx context.Context) ([]PublicRoom, error)
 }
 
 // RoomNameReserver reserves custom or generated room names.

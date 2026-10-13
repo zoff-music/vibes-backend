@@ -13,8 +13,6 @@ item in the client. The existing ordered-playlist read supplies that position.
 The v3 stream receives `playlist_item_updated` with the item and its zero-based
 `position`. Clients insert missing items as well as move existing items for this
 event. Background imports append unvoted items through `playlist_item_added`.
-The v1 `songs_update` and v2 `song_updated`/`song_added` contracts remain supported
-through explicit legacy mapping.
 
 ```mermaid
 sequenceDiagram

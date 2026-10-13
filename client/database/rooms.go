@@ -376,141 +376,12 @@ func (c *Client) getRoomByName(ctx context.Context, name string, userID string) 
 	return room, nil
 }
 
-func (c *Client) prepareGetPublicRoomsStmt() error {
-	stmt, err := c.DB.Prepare(`
-		WITH participant_counts_q AS (
-			SELECT
-				room_id,
-				COUNT(*) FILTER (
-					WHERE is_active_listener
-					AND NOT is_cast_receiver
-				) AS active_listeners,
-				COUNT(*) FILTER (
-					WHERE is_cast_receiver
-				) AS active_cast_receivers
-			FROM room_users
-			WHERE last_seen_at >= NOW() - INTERVAL '15 seconds'
-			GROUP BY room_id
-		),
-		active_rooms_q AS (
-			SELECT
-				a.id,
-				a.name,
-				CASE
-					WHEN c.active_listeners = 0
-					AND c.active_cast_receivers > 0
-					THEN 1
-					ELSE c.active_listeners
-				END AS listener_count
-			FROM rooms a
-			JOIN room_settings b
-			ON b.room_id = a.id
-			JOIN participant_counts_q c
-			ON c.room_id = a.id
-			WHERE b.is_public
-			AND a.room_type = 'MUSIC'
-			AND a.admin_password_hash IS NOT NULL
-			AND a.admin_password_hash != ''
-			AND (
-				c.active_listeners > 0
-				OR c.active_cast_receivers > 0
-			)
-		)
-		SELECT
-			a.id,
-			a.name,
-			a.listener_count,
-			COUNT(b.id) AS playlist_item_count
-		FROM active_rooms_q a
-		LEFT JOIN playlist_items b
-		ON b.room_id = a.id
-		AND b.source_type = ANY($1::text[])
-		GROUP BY a.id, a.name, a.listener_count
-		ORDER BY
-			a.listener_count DESC,
-			playlist_item_count DESC,
-			a.name ASC
-		LIMIT 3
-	`)
-	if err != nil {
-		return fmt.Errorf("error preparing GetPublicRoomsStatement: %w", err)
-	}
-
-	c.GetPublicRoomsStatement = stmt
-
-	return nil
-}
-
-// GetPublicRooms fetches public, password-protected rooms with active listeners.
-func (c *Client) GetPublicRooms(ctx context.Context) ([]vibe.PublicRoom, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetPublicRooms")
-	defer span.End()
-
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	rows, err := c.GetPublicRoomsStatement.QueryContext(
-		cctx,
-		c.enabledProviders,
-	)
-	if err != nil {
-		return nil, fmt.Errorf("error querying public rooms: %w", err)
-	}
-	defer rows.Close()
-
-	publicRooms := []vibe.PublicRoom{}
-	for rows.Next() {
-		var row publicRoomRow
-		err = row.scanRows(rows)
-		if err != nil {
-			return nil, fmt.Errorf("error scanning public room: %w", err)
-		}
-
-		room, err := row.toPublicRoom()
-		if err != nil {
-			return nil, fmt.Errorf("error converting public room in GetPublicRooms: %w", err)
-		}
-
-		publicRooms = append(publicRooms, *room)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return nil, fmt.Errorf("error iterating public rooms: %w", err)
-	}
-
-	return publicRooms, nil
-}
-
 type publicRoomRow struct {
 	ID                sql.NullString
 	Name              sql.NullString
 	RoomType          sql.NullString
 	ListenerCount     sql.NullInt64
 	PlaylistItemCount sql.NullInt64
-}
-
-func (r *publicRoomRow) scanRows(rows *sql.Rows) error {
-	err := rows.Scan(
-		&r.ID,
-		&r.Name,
-		&r.ListenerCount,
-		&r.PlaylistItemCount,
-	)
-	if err != nil {
-		return fmt.Errorf("error scanning public room row: %w", err)
-	}
-
-	return nil
-}
-
-func (r *publicRoomRow) toPublicRoom() (*vibe.PublicRoom, error) {
-	return &vibe.PublicRoom{
-		ID:            r.ID.String,
-		Name:          r.Name.String,
-		ListenerCount: int(r.ListenerCount.Int64),
-		SongCount:     int(r.PlaylistItemCount.Int64),
-	}, nil
 }
 
 // prepareRoomExistsStmt prepares the RoomExistsStatement.
@@ -622,9 +493,9 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 }
 
 func (r *roomRow) toRoomV2(enabledProviders []string) (*vibe.RoomV2, error) {
-	defaultSettings, err := vibe.DefaultRoomSettings()
+	defaultSettings, err := vibe.DefaultRoomSettingsV2()
 	if err != nil {
-		return nil, fmt.Errorf("error getting default room settings in toRoom: %w", err)
+		return nil, fmt.Errorf("error getting default room settings in toRoomV2: %w", err)
 	}
 
 	storedSources := defaultSettings.EnabledSources

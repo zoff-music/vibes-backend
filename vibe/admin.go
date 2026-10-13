@@ -8,36 +8,6 @@ import (
 	"unicode/utf8"
 )
 
-// Deprecated: Use AdminRoomSummaryV2 for new code. Retained for legacy API compatibility.
-type AdminRoomSummary struct {
-	ID               string   `json:"id"`
-	Name             string   `json:"name"`
-	UserCount        int      `json:"userCount"`
-	SongCount        int      `json:"songCount"`
-	ActiveSources    []string `json:"activeSources"`
-	HasAdminPassword bool     `json:"hasAdminPassword"`
-}
-
-// Deprecated: Use AdminRoomSearchV2 for new code. Retained for legacy API compatibility.
-type AdminRoomSearch struct {
-	Query      string
-	SortBy     AdminRoomSort
-	Descending bool
-	From       int
-	To         int
-}
-
-// Deprecated: Use AdminRoomResultV2 for new code. Retained for legacy API compatibility.
-type AdminRoomResult struct {
-	Rooms []AdminRoomSummary `json:"rooms"`
-	From  int                `json:"from"`
-	To    int                `json:"to"`
-	Total int                `json:"total"`
-	Count int                `json:"count"`
-}
-
-type AdminRoomSort string
-
 type AdminUpdateRoomRequest struct {
 	Name               *string `json:"name,omitempty"`
 	ClearAdminPassword *bool   `json:"clearAdminPassword,omitempty"`
@@ -150,11 +120,6 @@ func (u *CachedAdminSearchUsage) IsEmpty() bool {
 	return !u.Found
 }
 
-type AdminEvent struct {
-	Type    string `json:"type"`
-	Payload []byte `json:"payload"`
-}
-
 type AdminUserFetcher interface {
 	GetAdminUser(ctx context.Context, adminID string) (*AdminUser, error)
 }
@@ -209,15 +174,7 @@ type AdminRoomDeleter interface {
 	DeleteAdminRoom(ctx context.Context, roomID string) (bool, error)
 }
 
-type AdminEventNotifier interface {
-	NotifyAdminUpdate(ctx context.Context, event AdminEvent) error
-}
-
 const AdminRoomsUpdate = "admin_rooms_update"
-
-const AdminRoomSortListeners AdminRoomSort = "listeners"
-
-const AdminRoomSortSongs AdminRoomSort = "songs"
 
 const AdminUsernameMinimumLength = 3
 

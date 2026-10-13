@@ -18,53 +18,9 @@ func (p *PlaybackStateV2) IsEmpty() bool {
 	return p.RoomID == ""
 }
 
-func (p PlaybackStateV2) ToPlaybackState() *PlaybackState {
-	var current *Song
-	if p.CurrentPlaylistItem != nil {
-		current = p.CurrentPlaylistItem.ToSong()
-	}
-
-	return &PlaybackState{
-		RoomID:       p.RoomID,
-		CurrentSong:  current,
-		IsPlaying:    p.IsPlaying,
-		PositionMs:   p.PositionMs,
-		UpdatedAt:    p.UpdatedAt,
-		ServerTimeMs: p.ServerTimeMs,
-	}
-}
-
-func (p PlaybackState) ToPlaybackStateV2() *PlaybackStateV2 {
-	var current *PlaylistItem
-	if p.CurrentSong != nil {
-		current = p.CurrentSong.ToPlaylistItem()
-	}
-
-	return &PlaybackStateV2{
-		RoomID:              p.RoomID,
-		CurrentPlaylistItem: current,
-		IsPlaying:           p.IsPlaying,
-		PositionMs:          p.PositionMs,
-		UpdatedAt:           p.UpdatedAt,
-		ServerTimeMs:        p.ServerTimeMs,
-	}
-}
-
 type PlaybackAdvanceV2 struct {
 	Playback               *PlaybackStateV2
 	PreviousPlaylistItemID string
-}
-
-func (p PlaybackAdvanceV2) ToPlaybackAdvance() *PlaybackAdvance {
-	var playback *PlaybackState
-	if p.Playback != nil {
-		playback = p.Playback.ToPlaybackState()
-	}
-
-	return &PlaybackAdvance{
-		Playback:       playback,
-		PreviousSongID: p.PreviousPlaylistItemID,
-	}
 }
 
 type PlaybackV2Fetcher interface {

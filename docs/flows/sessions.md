@@ -40,8 +40,7 @@ sequenceDiagram
     API-->>Platform: Incremental events with IDs
 ```
 
-The v1 stream remains available for clients using full queue updates. The v2
-stream retains `songs_snapshot` and legacy song fields. The v3 stream starts with
+The v3 stream starts with
 `playlist_items_snapshot` when necessary, then delivers individual item changes
 and typed MUSIC/WATCH room state. Clients persist the delivered cursor and reconnect using
 `Last-Event-ID` or `lastEventId`. A heartbeat is not a queue snapshot.
@@ -63,7 +62,7 @@ sequenceDiagram
     participant Events as Room event stream
 
     User->>Platform: Submit room password
-    Platform->>API: POST /rooms/{id}/sessions
+    Platform->>API: POST /api/v2/rooms/{id}/sessions
     API->>DB: Load room and password state
 
     alt Room does not have a password yet

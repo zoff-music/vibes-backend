@@ -26,8 +26,7 @@ in room creation, settings, search, additions and imports.
 ## Provider contract
 
 Current provider responses use `ProviderItem` and `ProviderPlaylist`, with
-`publisher` metadata. Legacy v1 endpoints retain `MusicTrack` and `MusicPlaylist`
-through explicit mapping. `GET /api/v1/providers` reports only providers with the required server
+`publisher` metadata. `GET /api/v1/providers` reports only providers with the required server
 credentials configured. Room `enabledSources` values are limited to the same
 provider set and the room type. MUSIC YouTube searches/imports accept the music
 category; WATCH is not category-limited. Both reject live, made-for-kids and

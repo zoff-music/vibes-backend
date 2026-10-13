@@ -8,10 +8,6 @@ type StatsV2 struct {
 	TotalRooms         int `json:"totalRooms"`
 }
 
-func (s StatsV2) ToStats() *Stats {
-	return &Stats{TotalListeners: s.TotalListeners, TotalSongs: s.TotalPlaylistItems, TotalRooms: s.TotalRooms}
-}
-
 type StatsV2Fetcher interface {
 	GetStatsV2(ctx context.Context, roomType RoomType) (*StatsV2, error)
 }

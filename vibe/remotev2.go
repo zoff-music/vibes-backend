@@ -20,21 +20,11 @@ func ParseRemoteEvent(data []byte) (*RemoteEventV2, error) {
 		return nil, fmt.Errorf("error decoding remote event record: %w", err)
 	}
 
-	if record.Version == 2 {
-		return &record.Event, nil
-	}
-	if record.Version != 0 {
+	if record.Version != 2 {
 		return nil, fmt.Errorf("error unsupported remote event version: %d", record.Version)
 	}
 
-	var legacy RemoteEvent
-	err = json.Unmarshal(data, &legacy)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding retained legacy remote event: %w", err)
-	}
-
-	event := legacy.ToRemoteEventV2()
-	return event, nil
+	return &record.Event, nil
 }
 
 type RemoteControlV2 struct {
@@ -52,36 +42,6 @@ type RemoteControlV2 struct {
 
 func (r *RemoteControlV2) IsEmpty() bool {
 	return r.ID == ""
-}
-
-func (r RemoteControlV2) ToRemoteControl() *RemoteControl {
-	return &RemoteControl{
-		ID:                 r.ID,
-		OwnerUserID:        r.OwnerUserID,
-		CurrentRoomID:      r.CurrentRoomID,
-		CurrentSongID:      r.CurrentPlaylistItemID,
-		PlaybackPositionMs: int64(r.PlaybackPositionMs),
-		PlaybackIsPlaying:  r.PlaybackIsPlaying,
-		PlaybackObservedAt: r.PlaybackObservedAt,
-		Paired:             r.Paired,
-		PairingExpiresAt:   r.PairingExpiresAt,
-		LastSeenAt:         r.LastSeenAt,
-	}
-}
-
-func (r RemoteControl) ToRemoteControlV2() *RemoteControlV2 {
-	return &RemoteControlV2{
-		ID:                    r.ID,
-		OwnerUserID:           r.OwnerUserID,
-		CurrentRoomID:         r.CurrentRoomID,
-		CurrentPlaylistItemID: r.CurrentSongID,
-		PlaybackPositionMs:    int(r.PlaybackPositionMs),
-		PlaybackIsPlaying:     r.PlaybackIsPlaying,
-		PlaybackObservedAt:    r.PlaybackObservedAt,
-		Paired:                r.Paired,
-		PairingExpiresAt:      r.PairingExpiresAt,
-		LastSeenAt:            r.LastSeenAt,
-	}
 }
 
 type RemotePairingV2 struct {
@@ -102,34 +62,6 @@ type RemoteStatusV2 struct {
 	Paired                bool      `json:"paired"`
 }
 
-func (r RemoteStatusV2) ToRemoteStatus() *RemoteStatus {
-	return &RemoteStatus{
-		Enabled:            r.Enabled,
-		ID:                 r.ID,
-		CurrentRoomID:      r.CurrentRoomID,
-		CurrentSongID:      r.CurrentPlaylistItemID,
-		PlaybackPositionMs: int64(r.PlaybackPositionMs),
-		PlaybackIsPlaying:  r.PlaybackIsPlaying,
-		PlaybackObservedAt: r.PlaybackObservedAt,
-		Online:             r.Online,
-		Paired:             r.Paired,
-	}
-}
-
-func (r RemoteStatus) ToRemoteStatusV2() *RemoteStatusV2 {
-	return &RemoteStatusV2{
-		Enabled:               r.Enabled,
-		ID:                    r.ID,
-		CurrentRoomID:         r.CurrentRoomID,
-		CurrentPlaylistItemID: r.CurrentSongID,
-		PlaybackPositionMs:    int(r.PlaybackPositionMs),
-		PlaybackIsPlaying:     r.PlaybackIsPlaying,
-		PlaybackObservedAt:    r.PlaybackObservedAt,
-		Online:                r.Online,
-		Paired:                r.Paired,
-	}
-}
-
 type RemoteSessionV2 struct {
 	RemoteStatusV2
 	ControllerToken string `json:"controllerToken"`
@@ -142,24 +74,6 @@ type RemoteUpdateRequestV2 struct {
 	PlaybackIsPlaying     bool   `json:"playbackIsPlaying"`
 }
 
-func (r RemoteUpdateRequestV2) ToRemoteUpdateRequest() *RemoteUpdateRequest {
-	return &RemoteUpdateRequest{
-		RoomID:             r.RoomID,
-		CurrentSongID:      r.CurrentPlaylistItemID,
-		PlaybackPositionMs: int64(r.PlaybackPositionMs),
-		PlaybackIsPlaying:  r.PlaybackIsPlaying,
-	}
-}
-
-func (r RemoteUpdateRequest) ToRemoteUpdateRequestV2() *RemoteUpdateRequestV2 {
-	return &RemoteUpdateRequestV2{
-		RoomID:                r.RoomID,
-		CurrentPlaylistItemID: r.CurrentSongID,
-		PlaybackPositionMs:    int(r.PlaybackPositionMs),
-		PlaybackIsPlaying:     r.PlaybackIsPlaying,
-	}
-}
-
 type RemoteEventV2 struct {
 	Type                  string    `json:"type"`
 	RoomID                string    `json:"roomId"`
@@ -170,34 +84,6 @@ type RemoteEventV2 struct {
 	PlaybackPositionMs    int       `json:"playbackPositionMs"`
 	PlaybackIsPlaying     bool      `json:"playbackIsPlaying"`
 	PlaybackObservedAt    time.Time `json:"playbackObservedAt"`
-}
-
-func (r RemoteEventV2) ToRemoteEvent() *RemoteEvent {
-	return &RemoteEvent{
-		Type:               r.Type,
-		RoomID:             r.RoomID,
-		Origin:             r.Origin,
-		Online:             r.Online,
-		Paired:             r.Paired,
-		CurrentSongID:      r.CurrentPlaylistItemID,
-		PlaybackPositionMs: int64(r.PlaybackPositionMs),
-		PlaybackIsPlaying:  r.PlaybackIsPlaying,
-		PlaybackObservedAt: r.PlaybackObservedAt,
-	}
-}
-
-func (r RemoteEvent) ToRemoteEventV2() *RemoteEventV2 {
-	return &RemoteEventV2{
-		Type:                  r.Type,
-		RoomID:                r.RoomID,
-		Origin:                r.Origin,
-		Online:                r.Online,
-		Paired:                r.Paired,
-		CurrentPlaylistItemID: r.CurrentSongID,
-		PlaybackPositionMs:    int(r.PlaybackPositionMs),
-		PlaybackIsPlaying:     r.PlaybackIsPlaying,
-		PlaybackObservedAt:    r.PlaybackObservedAt,
-	}
 }
 
 type RemoteControlCreatorV2 interface {

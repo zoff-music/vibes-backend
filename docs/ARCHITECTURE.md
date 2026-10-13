@@ -137,11 +137,9 @@ room events and system activity, independently of room-administrator status.
 
 | Channel | Responsibility |
 | --- | --- |
-| `/api/v1` REST | Retained compatibility contracts, plus shared sessions, chat, generation requests, and provider configuration |
+| `/api/v1` REST | Shared sessions, chat, generation requests, OAuth, provider configuration, and supported administration operations |
 | `/api/v2/rooms` REST | Typed rooms, playlist items, settings, playback, failures, and imports |
 | `/api/v2/rooms/{id}/search/{provider}` | Search using the stored room type and enabled providers |
-| `/api/v1/rooms/{id}/events` | Compatibility room stream with full queue updates |
-| `/api/v2/rooms/{id}/events` | Initial room/queue state followed by incremental song and playback events |
 | `/api/v3/rooms/{id}/events` | Playlist-item snapshots and incremental room, queue, host, and playback events |
 | `/api/v3/rooms/public` | Paginated public-room browsing filtered by MUSIC or WATCH |
 | `/api/v2/stats` | Community counts filtered by room type |
@@ -150,7 +148,7 @@ room events and system activity, independently of room-administrator status.
 
 Room event IDs support reconnect replay. A valid retained cursor resumes after
 the last event; a new connection or expired cursor requires a fresh snapshot.
-The v2 and v3 queues send additions, updates, removals, and position changes rather
+The v3 queue sends additions, updates, removals, and position changes rather
 than a full playlist for each mutation. Heartbeats keep streams and presence
 alive without repeatedly transmitting the queue.
 
