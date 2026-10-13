@@ -7,7 +7,8 @@ GOSEC_VERSION ?= 71577268350e1e0f2f1491de1ef53f1227b43c1f
 GOVULNCHECK_VERSION ?= latest
 
 ## build: builds the Go binaries
-build: security
+build: docs
+	$(MAKE) security
 	go mod download
 	CGO_ENABLED=1 GOFLAGS=-mod=mod go build -ldflags '-w -s' -o main cmd/server/main.go
 
@@ -48,11 +49,11 @@ help:
 security: gosec govulncheck
 
 ## gosec: runs gosec at the configured upstream commit
-gosec: docs
+gosec:
 	GOFLAGS=-mod=mod go run github.com/securego/gosec/v2/cmd/gosec@$(GOSEC_VERSION) -conf gosec-config.json ./...
 
 ## govulncheck: Runs govulncheck
-govulncheck: docs
+govulncheck:
 	GOFLAGS=-mod=mod go run golang.org/x/vuln/cmd/govulncheck@$(GOVULNCHECK_VERSION) ./...
 
 ## docker: builds the production image

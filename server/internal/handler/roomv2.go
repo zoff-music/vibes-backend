@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"errors"
 	"fmt"
 	"io"
@@ -39,7 +40,12 @@ func GetPlaylistItems(db vibe.PlaylistItemsFetcher) http.HandlerFunc {
 
 		items, err := db.GetPlaylistItems(ctx, roomID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error fetching playlist items: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error fetching playlist items: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -49,7 +55,12 @@ func GetPlaylistItems(db vibe.PlaylistItemsFetcher) http.HandlerFunc {
 
 		body, err := json.Marshal(items)
 		if err != nil {
-			handleError(w, fmt.Errorf("error marshaling playlist items: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error marshaling playlist items: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -83,18 +94,7 @@ func CreateSessionV2(
 		roomID := vars["id"]
 
 		var req vibe.CreateSessionRequest
-		requestData, err := io.ReadAll(r.Body)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error decoding request body: %w", err),
-				http.StatusBadRequest,
-				true,
-			)
-			return
-		}
-
-		err = json.Unmarshal(requestData, &req)
+		err := jsonv2.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -340,18 +340,7 @@ func CreateRoomV2(
 		ctx := r.Context()
 
 		var req vibe.CreateRoomRequestV2
-		requestData, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 8192))
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error decoding request body: %w", err),
-				http.StatusBadRequest,
-				true,
-			)
-			return
-		}
-
-		err = json.Unmarshal(requestData, &req)
+		err := jsonv2.UnmarshalRead(http.MaxBytesReader(w, r.Body, 8192), &req)
 		if err != nil {
 			handleError(
 				w,
@@ -367,7 +356,12 @@ func CreateRoomV2(
 		}
 
 		if !req.RoomType.IsValid() {
-			handleError(w, fmt.Errorf("error creating room: roomType must be MUSIC or WATCH"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error creating room: roomType must be MUSIC or WATCH"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
@@ -448,7 +442,12 @@ func CreateRoomV2(
 
 		settings, err := vibe.DefaultRoomSettingsV2()
 		if err != nil {
-			handleError(w, fmt.Errorf("error getting default room settings: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error getting default room settings: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -462,7 +461,12 @@ func CreateRoomV2(
 
 		for _, source := range settings.EnabledSources {
 			if !req.RoomType.AllowsSource(source) {
-				handleError(w, fmt.Errorf("error creating room: provider %q is not allowed for %s", source, req.RoomType), http.StatusBadRequest, false)
+				handleError(
+					w,
+					fmt.Errorf("error creating room: provider %q is not allowed for %s", source, req.RoomType),
+					http.StatusBadRequest,
+					false,
+				)
 				return
 			}
 		}
@@ -642,18 +646,7 @@ func UpdateRoomSettingsV2(
 		roomID := vars["id"]
 
 		var req vibe.UpdateRoomRequestV2
-		requestData, err := io.ReadAll(r.Body)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error invalid request body: %w", err),
-				http.StatusBadRequest,
-				true,
-			)
-			return
-		}
-
-		err = json.Unmarshal(requestData, &req)
+		err := jsonv2.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -666,7 +659,12 @@ func UpdateRoomSettingsV2(
 
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
-			handleError(w, fmt.Errorf("error updating room settings: missing session"), http.StatusUnauthorized, false)
+			handleError(
+				w,
+				fmt.Errorf("error updating room settings: missing session"),
+				http.StatusUnauthorized,
+				false,
+			)
 			return
 		}
 
@@ -692,7 +690,12 @@ func UpdateRoomSettingsV2(
 		}
 
 		if room.HasPassword && !room.IsAdmin {
-			handleError(w, fmt.Errorf("error updating room settings: admin required"), http.StatusForbidden, false)
+			handleError(
+				w,
+				fmt.Errorf("error updating room settings: admin required"),
+				http.StatusForbidden,
+				false,
+			)
 			return
 		}
 
@@ -702,7 +705,12 @@ func UpdateRoomSettingsV2(
 		if req.Settings != nil {
 			for _, source := range req.Settings.EnabledSources {
 				if !room.RoomType.AllowsSource(source) {
-					handleError(w, fmt.Errorf("error updating room: provider %q is not allowed for %s", source, room.RoomType), http.StatusBadRequest, false)
+					handleError(
+						w,
+						fmt.Errorf("error updating room: provider %q is not allowed for %s", source, room.RoomType),
+						http.StatusBadRequest,
+						false,
+					)
 					return
 				}
 			}
@@ -953,27 +961,7 @@ func AddPlaylistItem(
 		roomID := vars["id"]
 
 		var req vibe.AddPlaylistItemRequest
-		requestData, err := io.ReadAll(r.Body)
-		if err != nil {
-			handleError(
-				w,
-				client.ErrorCodeWrapper{
-					Err: fmt.Errorf("error decoding request body: %w", err),
-					ResponseBody: client.ErrorCodeResponseBody{
-						Namespace: "vibes-backend",
-						Error:     "song_request_invalid",
-						Message:   "The playlist item details could not be read. Search for the playlist item again and retry.",
-						Propagate: true,
-					},
-					StatusCode: http.StatusBadRequest,
-				},
-				http.StatusBadRequest,
-				true,
-			)
-			return
-		}
-
-		err = json.Unmarshal(requestData, &req)
+		err := jsonv2.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -1465,12 +1453,22 @@ func RemovePlaylistItem(
 
 		removedPlaylistItem, err := db.GetPlaylistItem(ctx, roomID, playlistItemID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error finding playlist item to remove: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error finding playlist item to remove: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		if removedPlaylistItem.IsEmpty() {
-			handleError(w, fmt.Errorf("error finding playlist item to remove"), http.StatusNotFound, false)
+			handleError(
+				w,
+				fmt.Errorf("error finding playlist item to remove"),
+				http.StatusNotFound,
+				false,
+			)
 			return
 		}
 
@@ -1836,18 +1834,7 @@ func UpdatePlaybackStateV2(
 		roomID := mux.Vars(r)["id"]
 
 		var req vibe.RoomActionRequest
-		requestData, err := io.ReadAll(r.Body)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error decoding request body: %w", err),
-				http.StatusBadRequest,
-				true,
-			)
-			return
-		}
-
-		err = json.Unmarshal(requestData, &req)
+		err := jsonv2.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -2352,18 +2339,7 @@ func AddPlaylistV2(
 		roomID := vars["id"]
 
 		var req vibe.AddPlaylistRequestV2
-		requestData, err := io.ReadAll(r.Body)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error decoding playlist request body: %w", err),
-				http.StatusBadRequest,
-				false,
-			)
-			return
-		}
-
-		err = json.Unmarshal(requestData, &req)
+		err := jsonv2.UnmarshalRead(r.Body, &req)
 		if err != nil {
 			handleError(
 				w,
@@ -2613,7 +2589,12 @@ func AddPlaylistV2(
 		}
 
 		if len(playlistItems) == 0 {
-			handleError(w, fmt.Errorf("error importing playlist: no items are allowed in this room"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error importing playlist: no items are allowed in this room"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
@@ -2727,18 +2708,7 @@ func ReportPlaybackFailureV2(
 		roomID := mux.Vars(r)["id"]
 
 		var request vibe.PlaybackFailureRequestV2
-		requestData, err := io.ReadAll(r.Body)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error decoding playback failure request: %w", err),
-				http.StatusBadRequest,
-				true,
-			)
-			return
-		}
-
-		err = json.Unmarshal(requestData, &request)
+		err := jsonv2.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -2927,7 +2897,12 @@ func ReportPlaybackFailureV2(
 
 		playbackBody, err := json.Marshal(advance.Playback)
 		if err != nil {
-			handleError(w, fmt.Errorf("error marshaling restricted playback: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error marshaling restricted playback: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -3006,7 +2981,12 @@ func CreateGeneratedRoomV2(
 		}
 
 		if !request.RoomType.IsValid() {
-			handleError(w, fmt.Errorf("error generating room: roomType must be MUSIC or WATCH"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error generating room: roomType must be MUSIC or WATCH"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
@@ -3119,7 +3099,12 @@ func CreateGeneratedRoomV2(
 
 		settings, err := vibe.DefaultRoomSettingsV2()
 		if err != nil {
-			handleError(w, fmt.Errorf("error getting generated room defaults: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error getting generated room defaults: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -3271,7 +3256,12 @@ func SearchYouTubeV2(
 		vars := mux.Vars(r)
 		roomID := vars["id"]
 		if utf8.RuneCountInString(roomID) > 200 {
-			handleError(w, fmt.Errorf("error validating room attribution: room ID is too long"), http.StatusBadRequest, true)
+			handleError(
+				w,
+				fmt.Errorf("error validating room attribution: room ID is too long"),
+				http.StatusBadRequest,
+				true,
+			)
 			return
 		}
 
@@ -3290,21 +3280,41 @@ func SearchYouTubeV2(
 
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
-			handleError(w, fmt.Errorf("error searching room: missing session"), http.StatusUnauthorized, false)
+			handleError(
+				w,
+				fmt.Errorf("error searching room: missing session"),
+				http.StatusUnauthorized,
+				false,
+			)
 			return
 		}
 
 		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error fetching search room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error fetching search room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 		if room.IsEmpty() {
-			handleError(w, fmt.Errorf("error searching room: room not found"), http.StatusNotFound, false)
+			handleError(
+				w,
+				fmt.Errorf("error searching room: room not found"),
+				http.StatusNotFound,
+				false,
+			)
 			return
 		}
 		if !room.RoomType.AllowsSource(vibe.SourceTypeYouTube) || !slices.Contains(room.Settings.EnabledSources, vibe.SourceTypeYouTube) {
-			handleError(w, fmt.Errorf("error searching room: provider is disabled"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error searching room: provider is disabled"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
@@ -3472,7 +3482,12 @@ func SearchSoundCloudV2(
 		vars := mux.Vars(r)
 		roomID := vars["id"]
 		if utf8.RuneCountInString(roomID) > 200 {
-			handleError(w, fmt.Errorf("error validating room attribution: room ID is too long"), http.StatusBadRequest, true)
+			handleError(
+				w,
+				fmt.Errorf("error validating room attribution: room ID is too long"),
+				http.StatusBadRequest,
+				true,
+			)
 			return
 		}
 
@@ -3491,21 +3506,41 @@ func SearchSoundCloudV2(
 
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" {
-			handleError(w, fmt.Errorf("error searching room: missing session"), http.StatusUnauthorized, false)
+			handleError(
+				w,
+				fmt.Errorf("error searching room: missing session"),
+				http.StatusUnauthorized,
+				false,
+			)
 			return
 		}
 
 		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error fetching search room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error fetching search room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 		if room.IsEmpty() {
-			handleError(w, fmt.Errorf("error searching room: room not found"), http.StatusNotFound, false)
+			handleError(
+				w,
+				fmt.Errorf("error searching room: room not found"),
+				http.StatusNotFound,
+				false,
+			)
 			return
 		}
 		if !room.RoomType.AllowsSource(vibe.SourceTypeSoundCloud) || !slices.Contains(room.Settings.EnabledSources, vibe.SourceTypeSoundCloud) {
-			handleError(w, fmt.Errorf("error searching room: provider is disabled"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error searching room: provider is disabled"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 

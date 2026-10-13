@@ -2,8 +2,8 @@ package handler
 
 import (
 	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -32,20 +32,24 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 		roomID := mux.Vars(r)["id"]
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" || session.AuthType == "cast" {
-			handleError(w, fmt.Errorf("error sending message: unauthorized"), http.StatusUnauthorized, false)
+			handleError(
+				w,
+				fmt.Errorf("error sending message: unauthorized"),
+				http.StatusUnauthorized,
+				false,
+			)
 			return
 		}
 
 		var request vibe.CreateMessageRequest
-		requestData, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 4096))
+		err := jsonv2.UnmarshalRead(http.MaxBytesReader(w, r.Body, 4096), &request)
 		if err != nil {
-			handleError(w, fmt.Errorf("error decoding chat message: %w", err), http.StatusBadRequest, false)
-			return
-		}
-
-		err = json.Unmarshal(requestData, &request)
-		if err != nil {
-			handleError(w, fmt.Errorf("error decoding chat message: %w", err), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error decoding chat message: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
@@ -65,18 +69,33 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 
 		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error fetching message room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error fetching message room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		if room.IsEmpty() {
-			handleError(w, fmt.Errorf("error sending message: room not found"), http.StatusNotFound, false)
+			handleError(
+				w,
+				fmt.Errorf("error sending message: room not found"),
+				http.StatusNotFound,
+				false,
+			)
 			return
 		}
 
 		profile, err := db.GetOrCreateSessionProfile(ctx, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error fetching message author: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error fetching message author: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -96,7 +115,12 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 
 		payload, err := json.Marshal(message)
 		if err != nil {
-			handleError(w, fmt.Errorf("error marshaling message: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error marshaling message: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -105,7 +129,12 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 			Payload: payload,
 		})
 		if err != nil {
-			handleError(w, fmt.Errorf("error retaining message: %w", err), http.StatusServiceUnavailable, true)
+			handleError(
+				w,
+				fmt.Errorf("error retaining message: %w", err),
+				http.StatusServiceUnavailable,
+				true,
+			)
 			return
 		}
 
@@ -137,19 +166,34 @@ func Messages(db vibe.RoomV2Fetcher, events vibe.ReplaySubscriber) http.HandlerF
 		ctx := r.Context()
 		session, ok := helper.GetSessionFromContext(ctx)
 		if !ok || session.UserID == "" || session.AuthType == "cast" {
-			handleError(w, fmt.Errorf("error reading messages: unauthorized"), http.StatusUnauthorized, false)
+			handleError(
+				w,
+				fmt.Errorf("error reading messages: unauthorized"),
+				http.StatusUnauthorized,
+				false,
+			)
 			return
 		}
 
 		roomID := mux.Vars(r)["id"]
 		room, err := db.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error fetching messages room: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error fetching messages room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		if room.IsEmpty() {
-			handleError(w, fmt.Errorf("error reading messages: room not found"), http.StatusNotFound, false)
+			handleError(
+				w,
+				fmt.Errorf("error reading messages: room not found"),
+				http.StatusNotFound,
+				false,
+			)
 			return
 		}
 
@@ -161,7 +205,12 @@ func Messages(db vibe.RoomV2Fetcher, events vibe.ReplaySubscriber) http.HandlerF
 		topic := "chat:" + roomID
 		replay, err := events.PrepareReplay(ctx, topic, cursor)
 		if err != nil {
-			handleError(w, fmt.Errorf("error preparing messages replay: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error preparing messages replay: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -172,7 +221,12 @@ func Messages(db vibe.RoomV2Fetcher, events vibe.ReplaySubscriber) http.HandlerF
 
 		container, err := events.SubscribeFrom(ctx, topic, afterID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error subscribing to messages: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error subscribing to messages: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -180,7 +234,12 @@ func Messages(db vibe.RoomV2Fetcher, events vibe.ReplaySubscriber) http.HandlerF
 
 		flusher, ok := w.(http.Flusher)
 		if !ok {
-			handleError(w, fmt.Errorf("error streaming messages: response flushing unavailable"), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error streaming messages: response flushing unavailable"),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
@@ -253,19 +312,34 @@ func AdminMessageUsage(db vibe.AdminMessageUsageLister) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		roomID := strings.TrimSpace(r.URL.Query().Get("roomId"))
 		if len(roomID) > 200 {
-			handleError(w, fmt.Errorf("error reading message usage: room ID too long"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error reading message usage: room ID too long"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
 		usage, err := db.ListAdminMessageUsage(r.Context(), roomID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error reading message usage: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error reading message usage: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		body, err := json.Marshal(usage)
 		if err != nil {
-			handleError(w, fmt.Errorf("error marshaling message usage: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error marshaling message usage: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 

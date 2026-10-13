@@ -132,19 +132,34 @@ func RoomEventsV3(
 		if replay.AfterID != "" {
 			milliseconds, sequence, found := strings.Cut(replay.AfterID, "-")
 			if !found {
-				handleError(w, fmt.Errorf("error parsing replay cursor in RoomEventsV3: missing sequence"), http.StatusInternalServerError, true)
+				handleError(
+					w,
+					fmt.Errorf("error parsing replay cursor in RoomEventsV3: missing sequence"),
+					http.StatusInternalServerError,
+					true,
+				)
 				return
 			}
 
 			cursorTime, err := strconv.ParseUint(milliseconds, 10, 64)
 			if err != nil {
-				handleError(w, fmt.Errorf("error parsing replay cursor time in RoomEventsV3: %w", err), http.StatusInternalServerError, true)
+				handleError(
+					w,
+					fmt.Errorf("error parsing replay cursor time in RoomEventsV3: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
 				return
 			}
 
 			cursorSequence, err := strconv.ParseUint(sequence, 10, 64)
 			if err != nil {
-				handleError(w, fmt.Errorf("error parsing replay cursor sequence in RoomEventsV3: %w", err), http.StatusInternalServerError, true)
+				handleError(
+					w,
+					fmt.Errorf("error parsing replay cursor sequence in RoomEventsV3: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
 				return
 			}
 
@@ -487,24 +502,44 @@ func GetPublicRoomsV3(db vibe.PublicRoomsV3Searcher) http.HandlerFunc {
 		}
 
 		if !roomType.IsValid() {
-			handleError(w, fmt.Errorf("error browsing public rooms: roomType must be MUSIC or WATCH"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error browsing public rooms: roomType must be MUSIC or WATCH"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
 		if !utf8.ValidString(query) || strings.ContainsRune(query, '\x00') {
-			handleError(w, fmt.Errorf("error invalid room search text"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error invalid room search text"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
 		if utf8.RuneCountInString(query) > publicRoomMaximumQueryLength {
-			handleError(w, fmt.Errorf("error room search is too long"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error room search is too long"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
 		live := r.URL.Query().Get("live")
 		if live != "" && live != "true" && live != "false" {
-			handleError(w, fmt.Errorf("error invalid live room filter"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error invalid live room filter"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
@@ -514,12 +549,22 @@ func GetPublicRoomsV3(db vibe.PublicRoomsV3Searcher) http.HandlerFunc {
 		if fromValue != "" {
 			from, err = strconv.ParseInt(fromValue, 10, 32)
 			if err != nil {
-				handleError(w, fmt.Errorf("error parsing first room row: %w", err), http.StatusBadRequest, false)
+				handleError(
+					w,
+					fmt.Errorf("error parsing first room row: %w", err),
+					http.StatusBadRequest,
+					false,
+				)
 				return
 			}
 
 			if from < 0 {
-				handleError(w, fmt.Errorf("error invalid first room row"), http.StatusBadRequest, false)
+				handleError(
+					w,
+					fmt.Errorf("error invalid first room row"),
+					http.StatusBadRequest,
+					false,
+				)
 				return
 			}
 		}
@@ -529,18 +574,33 @@ func GetPublicRoomsV3(db vibe.PublicRoomsV3Searcher) http.HandlerFunc {
 		if toValue != "" {
 			to, err = strconv.ParseInt(toValue, 10, 32)
 			if err != nil {
-				handleError(w, fmt.Errorf("error parsing last room row: %w", err), http.StatusBadRequest, false)
+				handleError(
+					w,
+					fmt.Errorf("error parsing last room row: %w", err),
+					http.StatusBadRequest,
+					false,
+				)
 				return
 			}
 
 			if to < from {
-				handleError(w, fmt.Errorf("error invalid last room row"), http.StatusBadRequest, false)
+				handleError(
+					w,
+					fmt.Errorf("error invalid last room row"),
+					http.StatusBadRequest,
+					false,
+				)
 				return
 			}
 		}
 
 		if to-from+1 > publicRoomMaximumPageSize {
-			handleError(w, fmt.Errorf("error room page is too large"), http.StatusBadRequest, false)
+			handleError(
+				w,
+				fmt.Errorf("error room page is too large"),
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 
@@ -552,13 +612,23 @@ func GetPublicRoomsV3(db vibe.PublicRoomsV3Searcher) http.HandlerFunc {
 			To:       int(to),
 		})
 		if err != nil {
-			handleError(w, fmt.Errorf("error searching public rooms: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error searching public rooms: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 
 		body, err := json.Marshal(result)
 		if err != nil {
-			handleError(w, fmt.Errorf("error marshaling public rooms: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error marshaling public rooms: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 

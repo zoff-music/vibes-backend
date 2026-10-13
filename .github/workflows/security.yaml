@@ -19,5 +19,7 @@ jobs:
       - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+      - name: Generate documentation
+        run: make docs
       - name: Security checks
         run: make security

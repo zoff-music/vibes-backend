@@ -98,7 +98,10 @@ The production Docker target uses a
 statically linked Go binary in a scratch image.
 
 The production workflow requires both security scanners to pass before building
-or publishing the image. `GOSEC_VERSION` pins the current upstream commit while
+or publishing the image. Documentation generation remains a separate `docs`
+target and CI step; `make build` generates docs, runs security, then compiles.
+On a fresh checkout, run `make docs` before standalone scanner checks.
+`GOSEC_VERSION` pins the current upstream commit while
 `GOVULNCHECK_VERSION` defaults to the latest release. Both can be overridden when
 running Make; scanner binaries are resolved by Go rather than taken from `PATH`.
 The [security workflow](.github/workflows/security.yaml) checks pull requests.

@@ -2,8 +2,8 @@ package handler
 
 import (
 	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -47,18 +47,7 @@ func CreateRemoteControlV2(
 		}
 
 		var request vibe.RemoteUpdateRequestV2
-		requestData, err := io.ReadAll(r.Body)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error decoding remote control request: %w", err),
-				http.StatusBadRequest,
-				false,
-			)
-			return
-		}
-
-		err = json.Unmarshal(requestData, &request)
+		err := jsonv2.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -286,18 +275,7 @@ func PairRemoteControlV2(
 		}
 
 		var request vibe.RemotePairingRequest
-		requestData, err := io.ReadAll(r.Body)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error decoding remote pairing request: %w", err),
-				http.StatusBadRequest,
-				false,
-			)
-			return
-		}
-
-		err = json.Unmarshal(requestData, &request)
+		err = jsonv2.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,
@@ -575,23 +553,17 @@ func UpdateRemoteControlV2(
 		}
 
 		if session.AuthType == "remote" && session.RemoteID != remoteID {
-			handleError(w, fmt.Errorf("error remote control access forbidden"), http.StatusForbidden, false)
-			return
-		}
-
-		var request vibe.RemoteUpdateRequestV2
-		requestData, err := io.ReadAll(r.Body)
-		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf("error decoding remote update request: %w", err),
-				http.StatusBadRequest,
+				fmt.Errorf("error remote control access forbidden"),
+				http.StatusForbidden,
 				false,
 			)
 			return
 		}
 
-		err = json.Unmarshal(requestData, &request)
+		var request vibe.RemoteUpdateRequestV2
+		err := jsonv2.UnmarshalRead(r.Body, &request)
 		if err != nil {
 			handleError(
 				w,

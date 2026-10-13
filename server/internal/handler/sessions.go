@@ -3,8 +3,8 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	jsonv2 "encoding/json/v2"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"strings"
@@ -94,18 +94,7 @@ func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEve
 		}
 
 		var request vibe.UpdateSessionProfileRequest
-		requestData, err := io.ReadAll(http.MaxBytesReader(w, r.Body, 4096))
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error decoding session profile: %w", err),
-				http.StatusBadRequest,
-				true,
-			)
-			return
-		}
-
-		err = json.Unmarshal(requestData, &request)
+		err := jsonv2.UnmarshalRead(http.MaxBytesReader(w, r.Body, 4096), &request)
 		if err != nil {
 			handleError(
 				w,
@@ -137,7 +126,12 @@ func UpdateSessionProfile(db vibe.SessionProfileRoomUpdater, events vibe.RoomEve
 
 		previous, err := db.GetOrCreateSessionProfile(ctx, session.UserID)
 		if err != nil {
-			handleError(w, fmt.Errorf("error reading previous profile: %w", err), http.StatusInternalServerError, true)
+			handleError(
+				w,
+				fmt.Errorf("error reading previous profile: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
 			return
 		}
 

@@ -47,7 +47,12 @@ func AdminListenerUsage(
 
 			roomPoints, err := db.ListAdminRoomListenerUsage(ctx)
 			if err != nil {
-				handleError(w, fmt.Errorf("error fetching room listener usage: %w", err), http.StatusInternalServerError, true)
+				handleError(
+					w,
+					fmt.Errorf("error fetching room listener usage: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
 				return
 			}
 
