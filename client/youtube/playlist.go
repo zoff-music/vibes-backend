@@ -3,11 +3,14 @@ package youtube
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"html"
+	"net"
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
@@ -21,6 +24,9 @@ func (c *Client) GetProviderPlaylist(
 ) (*vibe.ProviderPlaylist, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetProviderPlaylist")
 	defer span.End()
+
+	ctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
 
 	if !roomType.AllowsSource(vibe.SourceTypeYouTube) {
 		return nil, fmt.Errorf("error getting youtube playlist: invalid room type %q", roomType)
@@ -45,7 +51,7 @@ func (c *Client) GetProviderPlaylist(
 			params.Set("pageToken", nextPageToken)
 		}
 
-		responseBody, err := c.HTTPClient.RequestBytes(ctx, client.HTTPRequestData{
+		responseBody, err := c.requestPlaylistPage(ctx, client.HTTPRequestData{
 			Method:  http.MethodGet,
 			URL:     fmt.Sprintf("%s/playlistItems", c.Endpoint),
 			Payload: &params,
@@ -97,7 +103,7 @@ func (c *Client) GetProviderPlaylist(
 		params.Set("id", strings.Join(videoIDs[start:end], ","))
 		params.Set("key", c.apiKey)
 
-		responseBody, err := c.HTTPClient.RequestBytes(ctx, client.HTTPRequestData{
+		responseBody, err := c.requestPlaylistPage(ctx, client.HTTPRequestData{
 			Method:  http.MethodGet,
 			URL:     fmt.Sprintf("%s/videos", c.Endpoint),
 			Payload: &params,
@@ -183,6 +189,42 @@ func (c *Client) GetProviderPlaylist(
 		SkippedRoomTypeCount:    skippedRoomTypeCount,
 		SkippedMadeForKidsCount: skippedMadeForKidsCount,
 	}, nil
+}
+
+func (c *Client) requestPlaylistPage(ctx context.Context, request client.HTTPRequestData) ([]byte, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "requestPlaylistPage")
+	defer span.End()
+
+	transport := *c.HTTPClient.Client
+	transport.Timeout = 15 * time.Second
+	httpClient := client.HTTPClient{Client: &transport}
+
+	for attempt := 0; attempt < 3; attempt++ {
+		body, err := httpClient.RequestBytes(ctx, request)
+		if err == nil {
+			return body, nil
+		}
+
+		var networkError net.Error
+		var statusError client.HTTPStatusCodeError
+		retryable := errors.As(err, &networkError)
+		if errors.As(err, &statusError) {
+			retryable = statusError.StatusCode == http.StatusTooManyRequests || statusError.StatusCode >= http.StatusInternalServerError
+		}
+		if !retryable || attempt == 2 || ctx.Err() != nil {
+			return nil, fmt.Errorf("error requesting page in requestPlaylistPage: %w", err)
+		}
+
+		timer := time.NewTimer(time.Duration(attempt+1) * time.Second)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, fmt.Errorf("error waiting to retry in requestPlaylistPage: %w", ctx.Err())
+		case <-timer.C:
+		}
+	}
+
+	return nil, fmt.Errorf("error requesting page in requestPlaylistPage: attempts exhausted")
 }
 
 type youtubePlaylistItemsResponse struct {
