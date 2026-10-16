@@ -223,6 +223,7 @@ func GetOwnedRemoteControlV2(
 			PlaybackPositionMs:    remote.PlaybackPositionMs,
 			PlaybackIsPlaying:     remote.PlaybackIsPlaying,
 			PlaybackObservedAt:    remote.PlaybackObservedAt,
+			PartyMode:             remote.PartyMode,
 			Online:                true,
 			Paired:                remote.Paired,
 		})
@@ -373,6 +374,7 @@ func PairRemoteControlV2(
 			PlaybackPositionMs:    remote.PlaybackPositionMs,
 			PlaybackIsPlaying:     remote.PlaybackIsPlaying,
 			PlaybackObservedAt:    remote.PlaybackObservedAt,
+			PartyMode:             remote.PartyMode,
 		})
 		if err != nil {
 			handleError(
@@ -402,6 +404,7 @@ func PairRemoteControlV2(
 				PlaybackPositionMs:    remote.PlaybackPositionMs,
 				PlaybackIsPlaying:     remote.PlaybackIsPlaying,
 				PlaybackObservedAt:    remote.PlaybackObservedAt,
+				PartyMode:             remote.PartyMode,
 				Online:                true,
 				Paired:                remote.Paired,
 			},
@@ -500,6 +503,7 @@ func GetRemoteControlV2(
 			PlaybackPositionMs:    remote.PlaybackPositionMs,
 			PlaybackIsPlaying:     remote.PlaybackIsPlaying,
 			PlaybackObservedAt:    remote.PlaybackObservedAt,
+			PartyMode:             remote.PartyMode,
 			Online:                true,
 			Paired:                remote.Paired,
 		})
@@ -575,6 +579,16 @@ func UpdateRemoteControlV2(
 		}
 		request.RoomID = strings.TrimSpace(request.RoomID)
 		request.CurrentPlaylistItemID = strings.TrimSpace(request.CurrentPlaylistItemID)
+		if session.AuthType == "remote" && request.PartyMode != nil && request.RoomID == "" {
+			handleError(
+				w,
+				fmt.Errorf("error party mode requires the controlled room"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
 		if request.PlaybackPositionMs < 0 || request.PlaybackPositionMs > int(remotePlaybackPositionMaxMs) {
 			handleError(
 				w,
@@ -635,7 +649,9 @@ func UpdateRemoteControlV2(
 		}
 
 		eventType := vibe.RemoteStateUpdate
-		if origin == vibe.RemoteOriginController && request.RoomID != "" {
+		if origin == vibe.RemoteOriginController && request.PartyMode != nil {
+			eventType = vibe.RemotePresentationUpdate
+		} else if origin == vibe.RemoteOriginController && request.RoomID != "" {
 			eventType = vibe.RemoteRoomUpdate
 		}
 		currentPlaylistItemID := remote.CurrentPlaylistItemID
@@ -656,6 +672,7 @@ func UpdateRemoteControlV2(
 			PlaybackPositionMs:    playbackPositionMs,
 			PlaybackIsPlaying:     playbackIsPlaying,
 			PlaybackObservedAt:    remote.PlaybackObservedAt,
+			PartyMode:             remote.PartyMode,
 		})
 		if err != nil {
 			handleError(
@@ -782,6 +799,7 @@ func RemoteEventsV2(
 			PlaybackPositionMs:    remote.PlaybackPositionMs,
 			PlaybackIsPlaying:     remote.PlaybackIsPlaying,
 			PlaybackObservedAt:    remote.PlaybackObservedAt,
+			PartyMode:             remote.PartyMode,
 		}
 		data, err := json.Marshal(initialEvent)
 		if err != nil {

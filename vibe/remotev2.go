@@ -36,6 +36,7 @@ type RemoteControlV2 struct {
 	PlaybackIsPlaying     bool      `json:"playbackIsPlaying"`
 	PlaybackObservedAt    time.Time `json:"playbackObservedAt"`
 	Paired                bool      `json:"paired"`
+	PartyMode             bool      `json:"partyMode"`
 	PairingExpiresAt      time.Time `json:"pairingExpiresAt"`
 	LastSeenAt            time.Time `json:"lastSeenAt"`
 }
@@ -60,6 +61,7 @@ type RemoteStatusV2 struct {
 	PlaybackObservedAt    time.Time `json:"playbackObservedAt"`
 	Online                bool      `json:"online"`
 	Paired                bool      `json:"paired"`
+	PartyMode             bool      `json:"partyMode"`
 }
 
 type RemoteSessionV2 struct {
@@ -68,6 +70,7 @@ type RemoteSessionV2 struct {
 }
 
 type RemoteUpdateRequestV2 struct {
+	PartyMode             *bool  `json:"partyMode,omitempty"`
 	RoomID                string `json:"roomId"`
 	CurrentPlaylistItemID string `json:"currentPlaylistItemId"`
 	PlaybackPositionMs    int    `json:"playbackPositionMs"`
@@ -75,6 +78,7 @@ type RemoteUpdateRequestV2 struct {
 }
 
 type RemoteEventV2 struct {
+	PartyMode             bool      `json:"partyMode"`
 	Type                  string    `json:"type"`
 	RoomID                string    `json:"roomId"`
 	Origin                string    `json:"origin"`
