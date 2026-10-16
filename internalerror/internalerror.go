@@ -50,6 +50,19 @@ func (e ErrProviderQuotaExceeded) Unwrap() error {
 	return e.Err
 }
 
+// ErrProviderPlaylistInvalid indicates that a URL resolves to a different resource.
+type ErrProviderPlaylistInvalid struct {
+	Err error
+}
+
+func (e ErrProviderPlaylistInvalid) Error() string {
+	return e.Err.Error()
+}
+
+func (e ErrProviderPlaylistInvalid) Unwrap() error {
+	return e.Err
+}
+
 // ErrProviderItemNotFound indicates that a provider no longer returns a track.
 type ErrProviderItemNotFound struct {
 	Err error

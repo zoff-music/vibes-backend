@@ -368,6 +368,25 @@ func ResolveSoundCloudPlaylistV2(
 
 		playlist, err := resolver.ResolveProviderPlaylist(ctx, providerURL)
 		if err != nil {
+			var invalidPlaylist internalerror.ErrProviderPlaylistInvalid
+			if errors.As(err, &invalidPlaylist) {
+				handleError(
+					w,
+					client.ErrorCodeWrapper{
+						Err: fmt.Errorf("error resolving soundcloud playlist: %w", err),
+						ResponseBody: client.ErrorCodeResponseBody{
+							Error:     "soundcloud_playlist_invalid",
+							Message:   "This SoundCloud link does not point to a playlist. Use a playlist link containing /sets/.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusBadRequest,
+					},
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+
 			handleError(
 				w,
 				fmt.Errorf("error resolving soundcloud playlist: %w", err),
