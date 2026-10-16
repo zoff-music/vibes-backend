@@ -1428,7 +1428,7 @@ func RoomEventsV3(
 // GetPublicRoomsV3 handles GET /api/v3/rooms/public.
 //
 //	@Summary		Browse public rooms
-//	@Description	Returns public rooms ordered by listener count, playlist item count, then ID, all descending. Ranges are zero-based and inclusive. Only rooms with protected admin controls are listed.
+//	@Description	Returns public rooms ordered by listener count, playlist item count, then ID, all descending. Ranges are zero-based and inclusive. Only rooms with protected admin controls and at least one playlist item from an enabled provider are listed, including when filtering for live rooms.
 //	@Tags			rooms
 //	@Produce		json
 //	@Param			q		query		string	false	"Case-insensitive room name search (literal substring, up to 100 characters)"

@@ -1276,6 +1276,12 @@ func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
 			AND a.admin_password_hash IS NOT NULL
 			AND a.admin_password_hash != ''
 			AND ($1 = '' OR a.name ILIKE '%' || $1 || '%')
+			AND EXISTS (
+				SELECT 1
+				FROM playlist_items c
+				WHERE c.room_id = a.id
+				AND c.source_type = ANY($4::text[])
+			)
 		),
 		participants_q AS (
 			SELECT
