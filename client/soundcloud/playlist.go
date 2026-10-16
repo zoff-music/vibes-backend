@@ -143,4 +143,4 @@ type soundCloudPlaylistTracksResponse struct {
 
 const soundCloudPlaylistPageSize = 200
 
-const playlistItemLimit = 500
+const playlistItemLimit = 5000

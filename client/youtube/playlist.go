@@ -200,4 +200,4 @@ type youtubePlaylistItemContentDetails struct {
 
 const youtubePlaylistPageSize = 50
 
-const playlistItemLimit = 500
+const playlistItemLimit = 5000

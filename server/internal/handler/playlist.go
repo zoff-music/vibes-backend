@@ -12,7 +12,7 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-const playlistImportItemLimit = 500
+const playlistImportItemLimit = 5000
 
 type MetaRefresh struct {
 	DB           vibe.PlaylistItemMetadataRefreshStorage

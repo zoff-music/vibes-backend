@@ -2651,26 +2651,24 @@ func AddPlaylistV2(
 			}
 		}()
 
-		for position, playlistItem := range playlistItems {
-			err = db.CreatePlaylistImportItem(importCtx, importID, position, playlistItem)
-			if err != nil {
-				handleError(
-					w,
-					client.ErrorCodeWrapper{
-						Err: fmt.Errorf("error staging playlist item %d: %w", position, err),
-						ResponseBody: client.ErrorCodeResponseBody{
-							Namespace: "vibes-backend",
-							Error:     "playlist_import_failed",
-							Message:   "The playlist could not be queued. Please try again.",
-							Propagate: true,
-						},
-						StatusCode: http.StatusInternalServerError,
+		err = db.CreatePlaylistImportItems(importCtx, importID, playlistItems)
+		if err != nil {
+			handleError(
+				w,
+				client.ErrorCodeWrapper{
+					Err: fmt.Errorf("error staging playlist items: %w", err),
+					ResponseBody: client.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "playlist_import_failed",
+						Message:   "The playlist could not be queued. Please try again.",
+						Propagate: true,
 					},
-					http.StatusInternalServerError,
-					true,
-				)
-				return
-			}
+					StatusCode: http.StatusInternalServerError,
+				},
+				http.StatusInternalServerError,
+				true,
+			)
+			return
 		}
 
 		err = db.CreatePlaylistImport(importCtx, importID, roomID, session.UserID, len(playlistItems))
