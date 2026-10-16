@@ -31,7 +31,7 @@ type Config struct {
 	DatabaseMaxIdleConns     int           `envconfig:"DATABASE_MAX_IDLE_CONNECTIONS" default:"2"`
 	RedisURL                 string        `envconfig:"REDIS_URL" required:"true"`
 	RateLimitEnabled         bool          `envconfig:"RATE_LIMIT_ENABLED" default:"false"`
-	RequestBodyMaxBytes      int           `envconfig:"REQUEST_BODY_MAX_BYTES" default:"1048576"`
+	RequestBodyMaxBytes      int           `envconfig:"REQUEST_BODY_MAX_BYTES" default:"8388608"`
 	RoomEventReplayMaxEvents int           `envconfig:"ROOM_EVENT_REPLAY_MAX_EVENTS" default:"100"`
 	RoomEventReplayMaxAge    time.Duration `envconfig:"ROOM_EVENT_REPLAY_MAX_AGE" default:"15m"`
 	MaxNameLength            int           `envconfig:"MAX_NAME_LENGTH" default:"100"`

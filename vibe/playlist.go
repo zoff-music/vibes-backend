@@ -25,7 +25,7 @@ type PlaylistImport struct {
 }
 
 type PlaylistImportCreator interface {
-	CreatePlaylistImportItem(ctx context.Context, importID string, position int, playlistItem PlaylistItem) error
+	CreatePlaylistImportItems(ctx context.Context, importID string, playlistItems []PlaylistItem) error
 	CreatePlaylistImport(ctx context.Context, importID string, roomID string, userID string, count int) error
 	DeletePlaylistImport(ctx context.Context, importID string) error
 }

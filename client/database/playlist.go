@@ -3,6 +3,7 @@ package database
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -13,37 +14,43 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) prepareCreatePlaylistImportItemStmt() error {
+func (c *Client) prepareCreatePlaylistImportItemsStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO playlist_import_items (
 			id, import_id, position, source_type, source_id, provider_url,
 			playback_restriction, title, publisher, thumbnail_url, duration
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		SELECT a.value->>'id', $1, a.ordinality - 1,
+			a.value->>'sourceType', a.value->>'sourceId', a.value->>'providerUrl',
+			COALESCE(a.value->>'playbackRestriction', ''), a.value->>'title',
+			COALESCE(a.value->>'publisher', ''), a.value->>'thumbnailUrl',
+			(a.value->>'duration')::integer
+		FROM jsonb_array_elements($2::jsonb) WITH ORDINALITY AS a(value, ordinality)
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing CreatePlaylistImportItemStatement: %w", err)
+		return fmt.Errorf("error preparing CreatePlaylistImportItemsStatement: %w", err)
 	}
 
-	c.CreatePlaylistImportItemStatement = stmt
+	c.CreatePlaylistImportItemsStatement = stmt
 
 	return nil
 }
 
-func (c *Client) CreatePlaylistImportItem(ctx context.Context, importID string, position int, playlistItem vibe.PlaylistItem) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "CreatePlaylistImportItem")
+func (c *Client) CreatePlaylistImportItems(ctx context.Context, importID string, playlistItems []vibe.PlaylistItem) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "CreatePlaylistImportItems")
 	defer span.End()
 
-	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
+	payload, err := json.Marshal(playlistItems)
+	if err != nil {
+		return fmt.Errorf("error marshaling items in CreatePlaylistImportItems: %w", err)
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.CreatePlaylistImportItemStatement.ExecContext(
-		cctx, playlistItem.ID, importID, position, playlistItem.SourceType, playlistItem.SourceID,
-		playlistItem.ProviderURL, playlistItem.PlaybackRestriction, playlistItem.Title, playlistItem.Publisher,
-		playlistItem.ThumbnailURL, playlistItem.Duration,
-	)
+	_, err = c.CreatePlaylistImportItemsStatement.ExecContext(cctx, importID, payload)
 	if err != nil {
-		return fmt.Errorf("error creating playlist import item: %w", err)
+		return fmt.Errorf("error staging items in CreatePlaylistImportItems: %w", err)
 	}
 
 	return nil
