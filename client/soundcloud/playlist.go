@@ -8,6 +8,7 @@ import (
 	"net/url"
 
 	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -56,9 +57,19 @@ func (c *Client) ResolveProviderPlaylist(
 			err,
 		)
 	}
-	if resolved.URN == "" || (resolved.Kind != "playlist" && resolved.Kind != "system-playlist") {
+	if resolved.Kind == "" {
+		return nil, fmt.Errorf("error resolving soundcloud playlist in ResolveProviderPlaylist: resource kind is missing")
+	}
+
+	if resolved.Kind != "playlist" && resolved.Kind != "system-playlist" {
+		return nil, internalerror.ErrProviderPlaylistInvalid{
+			Err: fmt.Errorf("error resolving soundcloud playlist in ResolveProviderPlaylist: URL did not resolve to a playlist"),
+		}
+	}
+
+	if resolved.URN == "" {
 		return nil, fmt.Errorf(
-			"error resolving soundcloud playlist in ResolveProviderPlaylist: URL did not resolve to a playlist",
+			"error resolving soundcloud playlist in ResolveProviderPlaylist: playlist identifier is missing",
 		)
 	}
 
