@@ -127,7 +127,7 @@ func (s *Server) setupRoutes() {
 	s.addPermissionMiddleware(apiV1, apiV2, apiV3)
 
 	if s.Config.AdminPasswordPepper != "" {
-		s.addAdminMiddleware(apiV1, apiV2)
+		s.addAdminMiddleware(apiV1, apiV2, apiV3)
 	}
 	s.addTracingAndMetrics(apiV1, apiV2, apiV3)
 	s.addCORSMiddleware(s.Router)
