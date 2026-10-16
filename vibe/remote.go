@@ -17,6 +17,8 @@ const RemoteRoomUpdate = "remote_room_update"
 
 const RemoteStateUpdate = "remote_state_update"
 
+const RemotePresentationUpdate = "remote_presentation_update"
+
 const RemoteOriginMachine = "machine"
 
 const RemoteOriginController = "controller"
