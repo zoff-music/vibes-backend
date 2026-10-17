@@ -41,6 +41,12 @@ type RemoteControlV2 struct {
 	LastSeenAt            time.Time `json:"lastSeenAt"`
 }
 
+type ErrRemoteUnchanged struct{}
+
+func (ErrRemoteUnchanged) Error() string {
+	return "error remote state unchanged"
+}
+
 func (r *RemoteControlV2) IsEmpty() bool {
 	return r.ID == ""
 }

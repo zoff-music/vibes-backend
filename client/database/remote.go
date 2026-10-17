@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -281,19 +282,39 @@ func (c *Client) AuthenticateRemoteControlV2(ctx context.Context, remoteID, cont
 
 func (c *Client) prepareUpdateOwnedRemoteControlV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE remote_controls
+		WITH existing_q AS (
+			SELECT a.* FROM remote_controls a
+			WHERE a.id = $1 AND a.owner_user_id = $2
+			FOR UPDATE
+		), updated_q AS (
+		UPDATE remote_controls b
 		SET current_room_id = $3,
 			current_playlist_item_id = $4,
 			playback_position_ms = $5,
 			playback_is_playing = $6,
-			party_mode = CASE WHEN $3 = '' THEN FALSE ELSE COALESCE($7, party_mode) END,
+			party_mode = CASE WHEN $3 = '' THEN FALSE ELSE COALESCE($7, a.party_mode) END,
 			playback_observed_at = NOW(),
 			last_seen_at = NOW(),
 			updated_at = NOW()
-		WHERE id = $1 AND owner_user_id = $2
-		RETURNING id, owner_user_id, current_room_id, current_playlist_item_id,
-			playback_position_ms, playback_is_playing, playback_observed_at,
-			controller_token_hash != '', pairing_expires_at, last_seen_at, party_mode
+		FROM existing_q a
+		WHERE b.id = a.id AND (
+			-- Repeating a playing position establishes a new seek/time anchor.
+			$6 OR
+			(a.current_room_id, a.current_playlist_item_id, a.playback_position_ms,
+			 a.playback_is_playing, a.party_mode) IS DISTINCT FROM
+			($3, $4, $5, $6, CASE WHEN $3 = '' THEN FALSE ELSE COALESCE($7, a.party_mode) END)
+		)
+		RETURNING b.*
+		)
+		SELECT c.id, c.owner_user_id, c.current_room_id, c.current_playlist_item_id,
+			c.playback_position_ms, c.playback_is_playing, c.playback_observed_at,
+			c.controller_token_hash != '', c.pairing_expires_at, c.last_seen_at, c.party_mode, TRUE
+		FROM updated_q c
+		UNION ALL
+		SELECT d.id, d.owner_user_id, d.current_room_id, d.current_playlist_item_id,
+			d.playback_position_ms, d.playback_is_playing, d.playback_observed_at,
+			d.controller_token_hash != '', d.pairing_expires_at, d.last_seen_at, d.party_mode, FALSE
+		FROM existing_q d WHERE NOT EXISTS (SELECT 1 FROM updated_q)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateOwnedRemoteControlV2Statement: %w", err)
@@ -322,7 +343,7 @@ func (c *Client) UpdateOwnedRemoteControlV2(ctx context.Context, remoteID, owner
 		request.PartyMode,
 	)
 
-	var row remoteControlRow
+	var row remoteControlUpdateRow
 	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -332,12 +353,45 @@ func (c *Client) UpdateOwnedRemoteControlV2(ctx context.Context, remoteID, owner
 		return nil, fmt.Errorf("error updating owned remote control: %w", err)
 	}
 
+	if !row.Updated {
+		return nil, internalerror.ErrExpected{
+			Err: internalerror.ErrNonRecoverable{Err: vibe.ErrRemoteUnchanged{}},
+		}
+	}
+
 	remote, err := row.toRemoteControlV2()
 	if err != nil {
 		return nil, fmt.Errorf("error mapping remote: %w", err)
 	}
 
 	return remote, nil
+}
+
+type remoteControlUpdateRow struct {
+	remoteControlRow
+	Updated bool
+}
+
+func (r *remoteControlUpdateRow) scan(row *sql.Row) error {
+	err := row.Scan(
+		&r.ID,
+		&r.OwnerUserID,
+		&r.CurrentRoomID,
+		&r.CurrentPlaylistItemID,
+		&r.PlaybackPositionMs,
+		&r.PlaybackIsPlaying,
+		&r.PlaybackObservedAt,
+		&r.Paired,
+		&r.PairingExpiresAt,
+		&r.LastSeenAt,
+		&r.PartyMode,
+		&r.Updated,
+	)
+	if err != nil {
+		return fmt.Errorf("error scanning remote control update row: %w", err)
+	}
+
+	return nil
 }
 
 func (c *Client) prepareUpdatePairedRemoteControlV2Stmt() error {

@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
@@ -629,6 +630,12 @@ func UpdateRemoteControlV2(
 		} else {
 			remote, err = db.UpdateOwnedRemoteControlV2(ctx, remoteID, session.UserID, request)
 		}
+		var unchanged vibe.ErrRemoteUnchanged
+		if errors.As(err, &unchanged) {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
 		if err != nil {
 			handleError(
 				w,
