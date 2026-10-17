@@ -100,7 +100,11 @@ func (c *Client) CreateListenerUsage(ctx context.Context) error {
 func (c *Client) prepareListAdminListenerUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH windows_q AS (
-			SELECT *
+			SELECT
+				a.period,
+				a.starts_at,
+				a.granularity,
+				a.window_order
 			FROM (
 				VALUES
 					(

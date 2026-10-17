@@ -15,7 +15,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -51,9 +50,9 @@ func AddItemV3(
 		if err != nil {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error decoding request body: %w", err),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_request_invalid",
 						Message:   "The playlist item details could not be read. Search for the playlist item again and retry.",
@@ -71,9 +70,9 @@ func AddItemV3(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error unauthorized"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_session_required",
 						Message:   "Your room session is missing. Rejoin the room and try adding the playlist item again.",
@@ -101,9 +100,9 @@ func AddItemV3(
 		if room.IsEmpty() {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error room not found"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_room_not_found",
 						Message:   "This room no longer exists. Join another room to add playlist items.",
@@ -120,9 +119,9 @@ func AddItemV3(
 		if room.Settings.OnlyAdminAddPlaylistItems && !room.IsAdmin {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error only admins can add playlist items in this room"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_room_admin_required",
 						Message:   "Only room admins can add playlist items here. Log in as a room admin in room settings, or ask an admin to allow everyone to add playlist items.",
@@ -147,9 +146,9 @@ func AddItemV3(
 		if !sourceEnabled {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error source type %s is not enabled for this room", req.SourceType),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_provider_disabled",
 						Message:   "This music provider is not enabled for this room. Choose another provider or ask a room admin to enable it.",
@@ -166,9 +165,9 @@ func AddItemV3(
 		if vibe.IsLiveVideo(req.SourceType, req.Duration) {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error live videos cannot be added to rooms"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "youtube_live_video_not_supported",
 						Message:   "Live videos cannot be added to rooms.",
@@ -186,9 +185,9 @@ func AddItemV3(
 		if err != nil {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error getting canonical provider URL: %w", err),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_provider_url_invalid",
 						Message:   "The playlist item link is not valid for this provider. Search for the playlist item again or paste a valid track link.",
@@ -212,9 +211,9 @@ func AddItemV3(
 		if req.SourceType == vibe.SourceTypeYouTube && (err != nil || cachedItem.IsEmpty()) {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error adding youtube track: verified metadata is unavailable"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "youtube_track_verification_required",
 						Message:   "This video's availability needs to be checked again. Search for it or paste its YouTube link again before adding it.",
@@ -232,9 +231,9 @@ func AddItemV3(
 			if !cachedItem.AllowedInRoom(room.RoomType) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: fmt.Errorf("error adding item: provider metadata is not allowed for %s", room.RoomType),
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "playlist_item_not_allowed",
 							Message:   "This item cannot be played in this room. Music rooms accept music videos; all videos must allow embedded playback and must not be live.",
@@ -251,9 +250,9 @@ func AddItemV3(
 			if vibe.IsLiveVideo(req.SourceType, cachedItem.DurationSeconds) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: fmt.Errorf("error live videos cannot be added to rooms"),
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "youtube_live_video_not_supported",
 							Message:   "Live videos cannot be added to rooms.",
@@ -703,9 +702,9 @@ func VoteItemV3(
 			if errors.As(err, &alreadyVotedError) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: alreadyVotedError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "song_vote_already_exists",
 							Message:   "Your vote is already counted for this playlist item.",

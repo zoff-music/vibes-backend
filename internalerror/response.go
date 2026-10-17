@@ -1,4 +1,4 @@
-package client
+package internalerror
 
 import (
 	"encoding/json"
@@ -34,7 +34,7 @@ func (e ErrorCodeWrapper) GetResponseBody() ([]byte, error) {
 	// We don't want to overwrite the namespace
 	// if we are already propagating something here
 	if e.ResponseBody.Namespace == "" {
-		e.ResponseBody.Namespace = applicationName
+		e.ResponseBody.Namespace = "vibes-backend"
 	}
 
 	resp, err := json.Marshal(&e.ResponseBody)

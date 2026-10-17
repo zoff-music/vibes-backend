@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -927,9 +926,9 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 		return nil
 	}
 
-	return client.ErrorCodeWrapper{
+	return internalerror.ErrorCodeWrapper{
 		Err: fmt.Errorf("error only the host can perform this action in %s for %s", roomID, userID),
-		ResponseBody: client.ErrorCodeResponseBody{
+		ResponseBody: internalerror.ErrorCodeResponseBody{
 			Namespace: "vibes-backend",
 			Error:     "playback_host_required",
 			Message:   "Only the host can seek, play or pause for everyone in this room.",

@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -47,9 +46,9 @@ func GetYouTubeItemV2(
 		if err != nil {
 			var madeForKidsError internalerror.ErrMadeForKids
 			if errors.As(err, &madeForKidsError) {
-				handleError(w, client.ErrorCodeWrapper{
+				handleError(w, internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error getting youtube item: %w", err),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "youtube_made_for_kids_not_supported",
 						Message:   "This video is marked as made for kids on YouTube and cannot be added to Zoff. Try another version of the song.",
@@ -64,9 +63,9 @@ func GetYouTubeItemV2(
 			if errors.As(err, &liveVideoError) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: liveVideoError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "youtube_live_video_not_supported",
 							Message:   "Live videos cannot be added to rooms.",
@@ -92,9 +91,9 @@ func GetYouTubeItemV2(
 			item.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error getting youtube item in GetYouTubeItemV2 handler: embedding is disabled"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "youtube_embedding_not_allowed",
 						Message:   "This video cannot play outside YouTube. Try another version of the song.",
@@ -372,9 +371,9 @@ func ResolveSoundCloudPlaylistV2(
 			if errors.As(err, &invalidPlaylist) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: fmt.Errorf("error resolving soundcloud playlist: %w", err),
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Error:     "soundcloud_playlist_invalid",
 							Message:   "This SoundCloud link does not point to a playlist. Use a playlist link containing /sets/.",
 							Propagate: true,

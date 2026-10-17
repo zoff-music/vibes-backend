@@ -182,9 +182,23 @@ func (c *Client) prepareProcessNextPlaylistImportStmt() error {
 			WHERE a.attempts >= $1
 		),
 		processed_import_q AS (
-			SELECT * FROM updated_import_q
+			SELECT
+				id,
+				room_id,
+				added_by,
+				next_position,
+				attempts,
+				exhausted
+			FROM updated_import_q
 			UNION ALL
-			SELECT * FROM exhausted_import_q
+			SELECT
+				id,
+				room_id,
+				added_by,
+				next_position,
+				attempts,
+				exhausted
+			FROM exhausted_import_q
 		)
 		SELECT
 			a.id,
@@ -1194,9 +1208,39 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 				id = $10 AS inserted
 		),
 		resolved_playlist_item_q AS (
-			SELECT * FROM upserted_playlist_item_q
+			SELECT
+				id,
+				room_id,
+				source_type,
+				source_id,
+				provider_url,
+				playback_restriction,
+				title,
+				publisher,
+				thumbnail_url,
+				duration,
+				added_by,
+				added_by_nickname,
+				added_at,
+				inserted
+			FROM upserted_playlist_item_q
 			UNION ALL
-			SELECT * FROM existing_import_item_q
+			SELECT
+				id,
+				room_id,
+				source_type,
+				source_id,
+				provider_url,
+				playback_restriction,
+				title,
+				publisher,
+				thumbnail_url,
+				duration,
+				added_by,
+				added_by_nickname,
+				added_at,
+				inserted
+			FROM existing_import_item_q
 		),
 		inserted_vote_q AS (
 			INSERT INTO playlist_item_votes (room_id, playlist_item_id, user_id)

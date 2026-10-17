@@ -46,7 +46,22 @@ func (c *Client) prepareGetItemsV3Stmt() error {
 				a.playback_restriction, a.title, a.publisher, a.thumbnail_url,
 				a.duration, a.added_by, a.added_by_nickname, a.added_at
 		), numbered_q AS (
-			SELECT a.*,
+			SELECT
+				a.id,
+				a.room_id,
+				a.source_type,
+				a.source_id,
+				a.provider_url,
+				a.playback_restriction,
+				a.title,
+				a.publisher,
+				a.thumbnail_url,
+				a.duration,
+				a.added_by,
+				a.added_by_nickname,
+				a.added_at,
+				a.vote_count,
+				a.last_vote_at,
 				ROW_NUMBER() OVER (
 					ORDER BY a.vote_count DESC, a.last_vote_at ASC, a.added_at ASC, a.id ASC
 				)::int AS row_number

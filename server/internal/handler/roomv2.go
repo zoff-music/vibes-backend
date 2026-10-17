@@ -16,7 +16,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -372,9 +371,9 @@ func CreateRoomV2(
 		if !req.Validate() {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error validating room name"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "room_name_invalid",
 						Message:   fmt.Sprintf("Use between 1 and %d characters for the room name.", vibe.RoomNameMaxLength),
@@ -488,11 +487,11 @@ func CreateRoomV2(
 		if req.Settings != nil && req.Settings.Public && req.Password == "" {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: internalerror.ErrMissingAdminPassword{
 						Err: fmt.Errorf("error room must have a password to be public"),
 					},
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "public_room_password_required",
 						Message:   "Add an admin password before making this room public.",
@@ -525,9 +524,9 @@ func CreateRoomV2(
 			if errors.As(err, &unavailableError) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: unavailableError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_name_unavailable",
 							Message:   "This room name is unavailable or its reservation expired.",
@@ -740,11 +739,11 @@ func UpdateRoomSettingsV2(
 		if room.Settings.Public && !room.HasPassword {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: internalerror.ErrMissingAdminPassword{
 						Err: fmt.Errorf("error room must have a password to be public"),
 					},
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "public_room_password_required",
 						Message:   "Add an admin password before making this room public.",
@@ -973,9 +972,9 @@ func AddPlaylistItem(
 		if err != nil {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error decoding request body: %w", err),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_request_invalid",
 						Message:   "The playlist item details could not be read. Search for the playlist item again and retry.",
@@ -993,9 +992,9 @@ func AddPlaylistItem(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error unauthorized"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_session_required",
 						Message:   "Your room session is missing. Rejoin the room and try adding the playlist item again.",
@@ -1023,9 +1022,9 @@ func AddPlaylistItem(
 		if room.IsEmpty() {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error room not found"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_room_not_found",
 						Message:   "This room no longer exists. Join another room to add playlist items.",
@@ -1042,9 +1041,9 @@ func AddPlaylistItem(
 		if room.Settings.OnlyAdminAddPlaylistItems && !room.IsAdmin {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error only admins can add playlist items in this room"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_room_admin_required",
 						Message:   "Only room admins can add playlist items here. Log in as a room admin in room settings, or ask an admin to allow everyone to add playlist items.",
@@ -1069,9 +1068,9 @@ func AddPlaylistItem(
 		if !sourceEnabled {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error source type %s is not enabled for this room", req.SourceType),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_provider_disabled",
 						Message:   "This music provider is not enabled for this room. Choose another provider or ask a room admin to enable it.",
@@ -1088,9 +1087,9 @@ func AddPlaylistItem(
 		if vibe.IsLiveVideo(req.SourceType, req.Duration) {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error live videos cannot be added to rooms"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "youtube_live_video_not_supported",
 						Message:   "Live videos cannot be added to rooms.",
@@ -1108,9 +1107,9 @@ func AddPlaylistItem(
 		if err != nil {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error getting canonical provider URL: %w", err),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_provider_url_invalid",
 						Message:   "The playlist item link is not valid for this provider. Search for the playlist item again or paste a valid track link.",
@@ -1134,9 +1133,9 @@ func AddPlaylistItem(
 		if req.SourceType == vibe.SourceTypeYouTube && (err != nil || cachedItem.IsEmpty()) {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error adding youtube track: verified metadata is unavailable"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "youtube_track_verification_required",
 						Message:   "This video's availability needs to be checked again. Search for it or paste its YouTube link again before adding it.",
@@ -1154,9 +1153,9 @@ func AddPlaylistItem(
 			if !cachedItem.AllowedInRoom(room.RoomType) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: fmt.Errorf("error adding item: provider metadata is not allowed for %s", room.RoomType),
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "playlist_item_not_allowed",
 							Message:   "This item cannot be played in this room. Music rooms accept music videos; all videos must allow embedded playback and must not be live.",
@@ -1173,9 +1172,9 @@ func AddPlaylistItem(
 			if vibe.IsLiveVideo(req.SourceType, cachedItem.DurationSeconds) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: fmt.Errorf("error live videos cannot be added to rooms"),
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "youtube_live_video_not_supported",
 							Message:   "Live videos cannot be added to rooms.",
@@ -1633,9 +1632,9 @@ func VotePlaylistItem(
 			if errors.As(err, &alreadyVotedError) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: alreadyVotedError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "song_vote_already_exists",
 							Message:   "Your vote is already counted for this playlist item.",
@@ -2061,9 +2060,9 @@ func SkipPlaylistItem(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error missing skip session"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "skip_session_required",
 						Message:   "Rejoin the room before skipping playlist items.",
@@ -2090,9 +2089,9 @@ func SkipPlaylistItem(
 			if errors.As(err, &errHostMode) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: fmt.Errorf("error host mode skip permission: %w", err),
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "skip_host_required",
 							Message:   "Only the host or a room admin can skip playlist items in host mode.",
@@ -2110,9 +2109,9 @@ func SkipPlaylistItem(
 			if errors.As(err, &errDisabled) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: fmt.Errorf("error skipping requires room admin: %w", err),
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "skip_room_admin_required",
 							Message:   "Only room admins can skip playlist items here. Log in as a room admin in room settings.",
@@ -2393,9 +2392,9 @@ func AddPlaylistV2(
 		if !ok || session.UserID == "" {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error importing playlist: missing session"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "playlist_session_required",
 						Message:   "Rejoin the room before importing a playlist.",
@@ -2431,9 +2430,9 @@ func AddPlaylistV2(
 		if !room.Settings.PlaylistImport {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error playlist import is disabled for this room"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "room_playlist_import_disabled",
 						Message:   "Playlist importing is disabled in this room.",
@@ -2449,9 +2448,9 @@ func AddPlaylistV2(
 		if room.Settings.OnlyAdminAddPlaylistItems && !room.IsAdmin {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error only admins can import playlists in this room"),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "song_room_admin_required",
 						Message:   "Only room admins can import playlists here. Log in as a room admin in room settings.",
@@ -2499,9 +2498,9 @@ func AddPlaylistV2(
 			if vibe.IsLiveVideo(requestedItem.SourceType, requestedItem.Duration) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: fmt.Errorf("error playlist contains a live video"),
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "youtube_live_video_not_supported",
 							Message:   "Live videos cannot be added to rooms.",
@@ -2553,9 +2552,9 @@ func AddPlaylistV2(
 			if requestedItem.SourceType == vibe.SourceTypeYouTube && cachedItem.IsEmpty() {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: fmt.Errorf("error importing youtube playlist: verified metadata is unavailable"),
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "youtube_track_verification_required",
 							Message:   "This playlist's availability needs to be checked again. Paste its link again before importing it.",
@@ -2580,9 +2579,9 @@ func AddPlaylistV2(
 				) {
 					handleError(
 						w,
-						client.ErrorCodeWrapper{
+						internalerror.ErrorCodeWrapper{
 							Err: fmt.Errorf("error playlist contains a live video"),
-							ResponseBody: client.ErrorCodeResponseBody{
+							ResponseBody: internalerror.ErrorCodeResponseBody{
 								Namespace: "vibes-backend",
 								Error:     "youtube_live_video_not_supported",
 								Message:   "Live videos cannot be added to rooms.",
@@ -2655,9 +2654,9 @@ func AddPlaylistV2(
 		if err != nil {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error staging playlist items: %w", err),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "playlist_import_failed",
 						Message:   "The playlist could not be queued. Please try again.",
@@ -2675,9 +2674,9 @@ func AddPlaylistV2(
 		if err != nil {
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf("error creating playlist import: %w", err),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "playlist_import_failed",
 						Message:   "The playlist could not be queued. Please try again.",
@@ -3075,11 +3074,11 @@ func CreateGeneratedRoomV2(
 			w.Header().Set("Retry-After", roomGenerationBusyRetryAfterSeconds)
 			handleError(
 				w,
-				client.ErrorCodeWrapper{
+				internalerror.ErrorCodeWrapper{
 					Err: fmt.Errorf(
 						"error validating room generation in CreateGeneratedRoomV2 handler: active generation already exists",
 					),
-					ResponseBody: client.ErrorCodeResponseBody{
+					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
 						Error:     "room_generation_busy",
 						Message:   "A playlist is already being generated. Please wait and try again.",
@@ -3099,9 +3098,9 @@ func CreateGeneratedRoomV2(
 			if errors.As(err, &unavailableError) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: unavailableError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_name_unavailable",
 							Message:   "This room name is unavailable or its reservation expired.",
@@ -3158,9 +3157,9 @@ func CreateGeneratedRoomV2(
 			if errors.As(err, &unavailableError) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: unavailableError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_name_unavailable",
 							Message:   "This room name is unavailable or its reservation expired.",
@@ -3193,9 +3192,9 @@ func CreateGeneratedRoomV2(
 				w.Header().Set("Retry-After", roomGenerationBusyRetryAfterSeconds)
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: busyError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_generation_busy",
 							Message:   "A playlist is already being generated. Please wait and try again.",
@@ -3213,9 +3212,9 @@ func CreateGeneratedRoomV2(
 			if errors.As(err, &dailyLimitError) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: dailyLimitError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_generation_daily_limit",
 							Message:   "This room has reached its daily playlist generation limit.",
@@ -3425,9 +3424,9 @@ func SearchYouTubeV2(
 
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: quotaError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "youtube_search_quota_exhausted",
 							Message:   vibe.RoomGenerationYouTubeQuotaFailure,

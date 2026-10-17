@@ -10,7 +10,6 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
@@ -46,9 +45,9 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 		}
 
 		if !req.Validate() {
-			handleError(w, client.ErrorCodeWrapper{
+			handleError(w, internalerror.ErrorCodeWrapper{
 				Err: fmt.Errorf("error validating room name reservation"),
-				ResponseBody: client.ErrorCodeResponseBody{
+				ResponseBody: internalerror.ErrorCodeResponseBody{
 					Namespace: "vibes-backend",
 					Error:     "room_name_invalid",
 					Message:   fmt.Sprintf("Use between 1 and %d characters for the room name.", vibe.RoomNameMaxLength),
@@ -99,9 +98,9 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 			if errors.As(err, &unavailableError) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: unavailableError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_name_unavailable",
 							Message:   "This room name is unavailable or its reservation expired.",
@@ -172,9 +171,9 @@ func SuggestRoomName(db vibe.RoomNameSuggester) http.HandlerFunc {
 			if errors.As(err, &unavailableError) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: unavailableError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_name_unavailable",
 							Message:   "This room name is unavailable or its reservation expired.",

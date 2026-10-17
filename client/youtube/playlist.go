@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"html"
 	"net"
 	"net/http"
@@ -206,7 +207,7 @@ func (c *Client) requestPlaylistPage(ctx context.Context, request client.HTTPReq
 		}
 
 		var networkError net.Error
-		var statusError client.HTTPStatusCodeError
+		var statusError internalerror.HTTPStatusCodeError
 		retryable := errors.As(err, &networkError)
 		if errors.As(err, &statusError) {
 			retryable = statusError.StatusCode == http.StatusTooManyRequests || statusError.StatusCode >= http.StatusInternalServerError
