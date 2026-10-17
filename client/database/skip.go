@@ -207,7 +207,7 @@ func (c *Client) clearSkipVotes(ctx context.Context, roomID, playlistItemID stri
 	return nil
 }
 
-// SkipPlaylistItem advances to the next playlist item, either immediately (if host/admin/forced) or by voting.
+// SkipPlaylistItem advances immediately or records a vote according to the room's skip settings.
 func (c *Client) SkipPlaylistItem(ctx context.Context, roomID, userID string) (*vibe.SkipPlaylistItemResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SkipPlaylistItem")
 	defer span.End()
@@ -232,15 +232,10 @@ func (c *Client) SkipPlaylistItem(ctx context.Context, roomID, userID string) (*
 		}
 	}
 
-	shouldForce := isHost || isAdmin
-	if !room.Settings.DemocraticSkip {
-		shouldForce = true
-	}
-
-	if shouldForce {
+	if !room.RequiresSkipVote(userID) {
 		advance, err := c.skipPlaylistItem(ctx, roomID, "")
 		if err != nil {
-			return nil, fmt.Errorf("error skipping track in shouldForce: %w", err)
+			return nil, fmt.Errorf("error skipping track in SkipPlaylistItem: %w", err)
 		}
 
 		return &vibe.SkipPlaylistItemResult{
