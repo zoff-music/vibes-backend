@@ -43,7 +43,7 @@ func (c *Client) GetProviderItem(ctx context.Context, id string) (*vibe.Provider
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
-		var statusCodeError client.HTTPStatusCodeError
+		var statusCodeError internalerror.HTTPStatusCodeError
 		if errors.As(err, &statusCodeError) {
 			if statusCodeError.StatusCode == http.StatusNotFound {
 				return nil, internalerror.ErrProviderItemNotFound{
@@ -126,7 +126,7 @@ func (c *Client) ResolveProviderItem(
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
-		var statusCodeError client.HTTPStatusCodeError
+		var statusCodeError internalerror.HTTPStatusCodeError
 		if errors.As(err, &statusCodeError) {
 			if statusCodeError.StatusCode == http.StatusNotFound {
 				return nil, internalerror.ErrProviderItemNotFound{

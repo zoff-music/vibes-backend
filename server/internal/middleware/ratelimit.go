@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"log"
 	"net"
 	"net/http"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -90,7 +90,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			if !globalResult.Allowed {
 				retryAfter := max(globalResult.RetryAfter, time.Second)
 				retryAfterSeconds := (retryAfter + time.Second - 1) / time.Second
-				body, err := json.Marshal(client.ErrorCodeResponseBody{
+				body, err := json.Marshal(internalerror.ErrorCodeResponseBody{
 					Namespace: "vibes-backend",
 					Error:     "rate_limit",
 					Message:   "Too many requests. Please wait and try again.",
@@ -138,7 +138,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		if !result.Allowed {
 			retryAfter := max(result.RetryAfter, time.Second)
 			retryAfterSeconds := (retryAfter + time.Second - 1) / time.Second
-			body, err := json.Marshal(client.ErrorCodeResponseBody{
+			body, err := json.Marshal(internalerror.ErrorCodeResponseBody{
 				Namespace: "vibes-backend",
 				Error:     "rate_limit",
 				Message:   "Too many requests. Please wait and try again.",

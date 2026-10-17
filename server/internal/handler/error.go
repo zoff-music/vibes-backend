@@ -3,11 +3,11 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"log"
 	"net/http"
 	"strconv"
 
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -32,7 +32,7 @@ func handleError(
 		return
 	}
 
-	var publicError client.ErrorCodeWrapper
+	var publicError internalerror.ErrorCodeWrapper
 	if !errors.As(err, &publicError) ||
 		!publicError.ResponseBody.Propagate ||
 		publicError.StatusCode < 400 ||

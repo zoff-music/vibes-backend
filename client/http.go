@@ -8,6 +8,7 @@ import (
 	"encoding/json/jsontext"
 	"errors"
 	"fmt"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"io"
 	"log"
 	"mime"
@@ -50,21 +51,6 @@ type HTTPClient struct {
 	*http.Client
 }
 
-// HTTPStatusCodeError is an error that occurs when receiving an unexpected status
-// code (>= 400).
-type HTTPStatusCodeError struct {
-	URL        string
-	StatusCode int
-	Message    string
-	// ResponseBody is for provider-specific classification, never logging or propagation.
-	ResponseBody []byte `json:"-"`
-}
-
-// Error return an error string.
-func (e HTTPStatusCodeError) Error() string {
-	return fmt.Sprintf("error response from %s, got status: %d. Message: %s", e.URL, e.StatusCode, e.Message)
-}
-
 // RequestBytes does the actual HTTP request.
 // Returns a slice of bytes or an error.
 func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestData) ([]byte, error) {
@@ -98,7 +84,7 @@ func (client *HTTPClient) RequestBytes(ctx context.Context, reqData HTTPRequestD
 		span.SetStatus(codes.Error, "error making request")
 		span.SetAttributes(attribute.String("message", requestErr.Error()))
 
-		httpStatusCodeError := HTTPStatusCodeError{
+		httpStatusCodeError := internalerror.HTTPStatusCodeError{
 			URL:          requestURL,
 			StatusCode:   r.StatusCode,
 			Message:      message,

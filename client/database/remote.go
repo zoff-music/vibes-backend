@@ -283,38 +283,97 @@ func (c *Client) AuthenticateRemoteControlV2(ctx context.Context, remoteID, cont
 func (c *Client) prepareUpdateOwnedRemoteControlV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH existing_q AS (
-			SELECT a.* FROM remote_controls a
-			WHERE a.id = $1 AND a.owner_user_id = $2
+			SELECT
+				a.id,
+				a.owner_user_id,
+				a.current_room_id,
+				a.current_playlist_item_id,
+				a.playback_position_ms,
+				a.playback_is_playing,
+				a.playback_observed_at,
+				a.controller_token_hash,
+				a.pairing_expires_at,
+				a.last_seen_at,
+				a.party_mode
+			FROM remote_controls a
+			WHERE a.id = $1
+			AND a.owner_user_id = $2
 			FOR UPDATE
-		), updated_q AS (
-		UPDATE remote_controls b
-		SET current_room_id = $3,
-			current_playlist_item_id = $4,
-			playback_position_ms = $5,
-			playback_is_playing = $6,
-			party_mode = CASE WHEN $3 = '' THEN FALSE ELSE COALESCE($7, a.party_mode) END,
-			playback_observed_at = NOW(),
-			last_seen_at = NOW(),
-			updated_at = NOW()
-		FROM existing_q a
-		WHERE b.id = a.id AND (
-			-- Repeating a playing position establishes a new seek/time anchor.
-			$6 OR
-			(a.current_room_id, a.current_playlist_item_id, a.playback_position_ms,
-			 a.playback_is_playing, a.party_mode) IS DISTINCT FROM
-			($3, $4, $5, $6, CASE WHEN $3 = '' THEN FALSE ELSE COALESCE($7, a.party_mode) END)
+		),
+		updated_q AS (
+			UPDATE remote_controls b
+			SET
+				current_room_id = $3,
+				current_playlist_item_id = $4,
+				playback_position_ms = $5,
+				playback_is_playing = $6,
+				party_mode = CASE
+					WHEN $3 = '' THEN FALSE
+					ELSE COALESCE($7, c.party_mode)
+				END,
+				playback_observed_at = NOW(),
+				last_seen_at = NOW(),
+				updated_at = NOW()
+			FROM existing_q c
+			WHERE b.id = c.id
+			AND (
+				-- A repeated playing position establishes a new seek/time anchor.
+				$6
+				OR c.current_room_id IS DISTINCT FROM $3
+				OR c.current_playlist_item_id IS DISTINCT FROM $4
+				OR c.playback_position_ms IS DISTINCT FROM $5
+				OR c.playback_is_playing IS DISTINCT FROM $6
+				OR c.party_mode IS DISTINCT FROM CASE
+					WHEN $3 = '' THEN FALSE
+					ELSE COALESCE($7, c.party_mode)
+				END
+			)
+			RETURNING
+				b.id,
+				b.owner_user_id,
+				b.current_room_id,
+				b.current_playlist_item_id,
+				b.playback_position_ms,
+				b.playback_is_playing,
+				b.playback_observed_at,
+				b.controller_token_hash,
+				b.pairing_expires_at,
+				b.last_seen_at,
+				b.party_mode
 		)
-		RETURNING b.*
-		)
-		SELECT c.id, c.owner_user_id, c.current_room_id, c.current_playlist_item_id,
-			c.playback_position_ms, c.playback_is_playing, c.playback_observed_at,
-			c.controller_token_hash != '', c.pairing_expires_at, c.last_seen_at, c.party_mode, TRUE
-		FROM updated_q c
+		SELECT
+			d.id,
+			d.owner_user_id,
+			d.current_room_id,
+			d.current_playlist_item_id,
+			d.playback_position_ms,
+			d.playback_is_playing,
+			d.playback_observed_at,
+			d.controller_token_hash != '',
+			d.pairing_expires_at,
+			d.last_seen_at,
+			d.party_mode,
+			TRUE
+		FROM updated_q d
 		UNION ALL
-		SELECT d.id, d.owner_user_id, d.current_room_id, d.current_playlist_item_id,
-			d.playback_position_ms, d.playback_is_playing, d.playback_observed_at,
-			d.controller_token_hash != '', d.pairing_expires_at, d.last_seen_at, d.party_mode, FALSE
-		FROM existing_q d WHERE NOT EXISTS (SELECT 1 FROM updated_q)
+		SELECT
+			e.id,
+			e.owner_user_id,
+			e.current_room_id,
+			e.current_playlist_item_id,
+			e.playback_position_ms,
+			e.playback_is_playing,
+			e.playback_observed_at,
+			e.controller_token_hash != '',
+			e.pairing_expires_at,
+			e.last_seen_at,
+			e.party_mode,
+			FALSE
+		FROM existing_q e
+		WHERE NOT EXISTS (
+			SELECT 1
+			FROM updated_q
+		)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateOwnedRemoteControlV2Statement: %w", err)
@@ -355,7 +414,9 @@ func (c *Client) UpdateOwnedRemoteControlV2(ctx context.Context, remoteID, owner
 
 	if !row.Updated {
 		return nil, internalerror.ErrExpected{
-			Err: internalerror.ErrNonRecoverable{Err: vibe.ErrRemoteUnchanged{}},
+			Err: internalerror.ErrNonRecoverable{Err: internalerror.ErrRemoteUnchanged{
+				Err: fmt.Errorf("error remote report contains no changes"),
+			}},
 		}
 	}
 

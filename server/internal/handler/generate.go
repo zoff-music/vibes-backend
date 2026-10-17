@@ -14,7 +14,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -97,9 +96,9 @@ func CreateRoomGeneration(
 				w.Header().Set("Retry-After", roomGenerationBusyRetryAfterSeconds)
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: busyError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_generation_busy",
 							Message:   "A playlist is already being generated. Please wait and try again.",
@@ -117,9 +116,9 @@ func CreateRoomGeneration(
 			if errors.As(err, &playlistItemLimitError) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: playlistItemLimitError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_generation_song_limit",
 							Message: fmt.Sprintf(
@@ -140,9 +139,9 @@ func CreateRoomGeneration(
 			if errors.As(err, &dailyLimitError) {
 				handleError(
 					w,
-					client.ErrorCodeWrapper{
+					internalerror.ErrorCodeWrapper{
 						Err: dailyLimitError,
-						ResponseBody: client.ErrorCodeResponseBody{
+						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "room_generation_daily_limit",
 							Message:   "This room has reached its daily playlist generation limit.",

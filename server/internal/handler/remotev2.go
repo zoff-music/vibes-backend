@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -630,7 +631,7 @@ func UpdateRemoteControlV2(
 		} else {
 			remote, err = db.UpdateOwnedRemoteControlV2(ctx, remoteID, session.UserID, request)
 		}
-		var unchanged vibe.ErrRemoteUnchanged
+		var unchanged internalerror.ErrRemoteUnchanged
 		if errors.As(err, &unchanged) {
 			w.WriteHeader(http.StatusNoContent)
 			return

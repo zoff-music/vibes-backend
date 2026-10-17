@@ -182,7 +182,7 @@ func (c *Client) searchVideos(
 		Payload: &params,
 	})
 	if err != nil {
-		var statusCodeError client.HTTPStatusCodeError
+		var statusCodeError internalerror.HTTPStatusCodeError
 		isStatusError := errors.As(err, &statusCodeError)
 		var quotaExceeded bool
 

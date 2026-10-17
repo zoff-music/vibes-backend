@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"fmt"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"log"
 	"net/http"
 	"strings"
@@ -11,7 +12,6 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -54,9 +54,9 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 		}
 
 		if !request.Validate() {
-			handleError(w, client.ErrorCodeWrapper{
+			handleError(w, internalerror.ErrorCodeWrapper{
 				Err: fmt.Errorf("error validating chat message"),
-				ResponseBody: client.ErrorCodeResponseBody{
+				ResponseBody: internalerror.ErrorCodeResponseBody{
 					Namespace: "vibes-backend",
 					Error:     "chat_message_invalid",
 					Message:   fmt.Sprintf("Use between 1 and %d characters for your message.", vibe.MessageMaxLength),
