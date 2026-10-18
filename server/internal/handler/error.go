@@ -1,15 +1,18 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-	"github.com/zoff-music/vibes-backend/internalerror"
 	"log"
 	"net/http"
 	"strconv"
 
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
+
+const statusClientClosedRequest = 499
 
 func handleError(
 	w http.ResponseWriter,
@@ -17,6 +20,11 @@ func handleError(
 	statusCode int,
 	shouldLog bool,
 ) {
+	if errors.Is(err, context.Canceled) {
+		w.WriteHeader(statusClientClosedRequest)
+		return
+	}
+
 	if shouldLog {
 		log.Println(strconv.Quote(err.Error()))
 	}
