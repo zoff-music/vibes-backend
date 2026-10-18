@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -38,6 +40,15 @@ func GetStatsV2(
 		}
 
 		cachedStats, err := cache.GetCachedStatsV2(ctx, roomType)
+		if errors.Is(err, context.Canceled) {
+			handleError(
+				w,
+				fmt.Errorf("error getting cached stats in GetStatsV2: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
 		if err != nil {
 			log.Printf("error getting cached stats: %v", err)
 			cachedStats = &vibe.CachedStatsV2{}
@@ -57,7 +68,7 @@ func GetStatsV2(
 			}
 
 			err = cache.CacheStatsV2(ctx, roomType, *stats)
-			if err != nil {
+			if err != nil && !errors.Is(err, context.Canceled) {
 				log.Printf("error caching stats: %v", err)
 			}
 		}
