@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -1612,20 +1611,10 @@ func (c *Client) clearVotesPlaylistItem(ctx context.Context, roomID, playlistIte
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	log.Printf("[DEBUG-VOTES] Clearing votes for playlistItem %s in room %s", playlistItemID, roomID)
-
-	result, err := c.ClearVotesPlaylistItemStatement.ExecContext(cctx, roomID, playlistItemID)
+	_, err := c.ClearVotesPlaylistItemStatement.ExecContext(cctx, roomID, playlistItemID)
 	if err != nil {
-		log.Printf("[DEBUG-VOTES] Error clearing votes for playlistItem %s in room %s: %v", playlistItemID, roomID, err)
 		return fmt.Errorf("error clearing votes for playlistItem: %w", err)
 	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		log.Printf("[DEBUG-VOTES] Error getting rows affected for playlistItem %s in room %s: %v", playlistItemID, roomID, err)
-		return nil
-	}
-	log.Printf("[DEBUG-VOTES] Cleared %d votes for playlistItem %s in room %s", rowsAffected, playlistItemID, roomID)
 
 	return nil
 }
@@ -1653,20 +1642,10 @@ func (c *Client) updatePlaylistItemAddedAt(ctx context.Context, roomID, playlist
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	log.Printf("[DEBUG-VOTES] Updating added_at timestamp for playlistItem %s in room %s", playlistItemID, roomID)
-
-	result, err := c.UpdatePlaylistItemAddedAtStatement.ExecContext(cctx, roomID, playlistItemID)
+	_, err := c.UpdatePlaylistItemAddedAtStatement.ExecContext(cctx, roomID, playlistItemID)
 	if err != nil {
-		log.Printf("[DEBUG-VOTES] Error updating added_at for playlistItem %s in room %s: %v", playlistItemID, roomID, err)
 		return fmt.Errorf("error updating playlistItem added_at: %w", err)
 	}
-
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		log.Printf("[DEBUG-VOTES] Error getting rows affected for playlistItem %s in room %s: %v", playlistItemID, roomID, err)
-		return nil
-	}
-	log.Printf("[DEBUG-VOTES] Updated added_at for %d playlistItem(s) %s in room %s", rowsAffected, playlistItemID, roomID)
 
 	return nil
 }

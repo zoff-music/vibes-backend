@@ -152,7 +152,7 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 // Messages streams retained chat without registering a playback listener.
 // @Summary Subscribe to room messages and activity
 // @Description Returns an SSE stream. `message` and `settings_activity` events carry a RoomMessage as their JSON data payload; `event_cursor` carries {"id":"1700000000000-0"}. Frames contain an id, event, and data line separated from the next frame by a blank line.
-// @Description Reconnect with Last-Event-ID or lastEventId to resume retained messages. Comment-only connected and heartbeat frames have no JSON payload.
+// @Description Reconnect with Last-Event-ID or lastEventId to resume retained messages. The connected event carries {"time":1700000000000}, including when retained history is empty. Heartbeat comments have no JSON payload.
 // @Tags messages
 // @Produce text/event-stream
 // @Param Last-Event-ID header string false "Last received stream cursor"
@@ -246,7 +246,18 @@ func Messages(db vibe.RoomV2Fetcher, events vibe.ReplaySubscriber) http.HandlerF
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("X-Accel-Buffering", "no")
-		_, err = fmt.Fprint(w, ": connected\n\n")
+		connectionData, err := json.Marshal(vibe.RoomEventConnection{Time: time.Now().UnixMilli()})
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling message connection: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		_, err = fmt.Fprintf(w, "event: connected\ndata: %s\n\n", connectionData)
 		if err != nil {
 			return
 		}

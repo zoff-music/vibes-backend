@@ -122,6 +122,7 @@ func (s *Server) setupRoutes() {
 		apiV2.HandleFunc("/admin/events", handler.AdminEventsV2(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEventsV2")
 	}
 
+	s.addTracingAndMetrics(apiV1, apiV2, apiV3)
 	s.addSessionMiddleware(apiV1, apiV2, apiV3)
 	s.addRateLimitMiddleware(apiV1, apiV2, apiV3)
 	s.addPermissionMiddleware(apiV1, apiV2, apiV3)
@@ -129,7 +130,6 @@ func (s *Server) setupRoutes() {
 	if s.Config.AdminPasswordPepper != "" {
 		s.addAdminMiddleware(apiV1, apiV2, apiV3)
 	}
-	s.addTracingAndMetrics(apiV1, apiV2, apiV3)
 	s.addCORSMiddleware(s.Router)
 }
 
