@@ -4,6 +4,7 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -41,7 +42,9 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 				return
 			}
 
-			log.Printf("AdminMiddleware: missing user session")
+			if routeName != "AdminSession" {
+				log.Printf("AdminMiddleware: unauthorized route=%s reason=missing_user_session", strconv.Quote(routeName))
+			}
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}
@@ -53,7 +56,9 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 				return
 			}
 
-			log.Printf("AdminMiddleware: missing admin cookie")
+			if routeName != "AdminSession" {
+				log.Printf("AdminMiddleware: unauthorized route=%s reason=missing_admin_cookie", strconv.Quote(routeName))
+			}
 			http.Error(w, "unauthorized", http.StatusUnauthorized)
 			return
 		}

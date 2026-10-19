@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -35,19 +34,6 @@ func AdminRoomsV2(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		hasAdminCookie := false
-		for _, cookie := range r.Cookies() {
-			if cookie.Name == helper.AdminAuthCookieName {
-				hasAdminCookie = true
-				break
-			}
-		}
-		if !hasAdminCookie {
-			log.Printf("AdminRoomsV2: request missing admin_session cookie")
-		}
-		if hasAdminCookie {
-			log.Printf("AdminRoomsV2: request has admin_session cookie")
-		}
 
 		query := strings.TrimSpace(r.URL.Query().Get("q"))
 		if len(query) > adminRoomQueryMaximumLength {
