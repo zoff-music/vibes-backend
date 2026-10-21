@@ -40,9 +40,16 @@ func (c *Client) GetProviderPlaylist(
 	}
 
 	videoIDs := make([]string, 0)
+	seenVideoIDs := make(map[string]bool)
+	seenPageTokens := make(map[string]bool)
 	nextPageToken := ""
 	truncated := false
 	for {
+		if seenPageTokens[nextPageToken] || len(seenPageTokens) >= playlistItemLimit/youtubePlaylistPageSize {
+			truncated = true
+			break
+		}
+		seenPageTokens[nextPageToken] = true
 		params := url.Values{}
 		params.Set("part", "contentDetails")
 		params.Set("playlistId", id)
@@ -74,7 +81,7 @@ func (c *Client) GetProviderPlaylist(
 		}
 
 		for _, item := range page.Items {
-			if item.ContentDetails.VideoID == "" {
+			if item.ContentDetails.VideoID == "" || seenVideoIDs[item.ContentDetails.VideoID] {
 				continue
 			}
 			if len(videoIDs) == playlistItemLimit {
@@ -82,6 +89,7 @@ func (c *Client) GetProviderPlaylist(
 				break
 			}
 			videoIDs = append(videoIDs, item.ContentDetails.VideoID)
+			seenVideoIDs[item.ContentDetails.VideoID] = true
 		}
 		if truncated || page.NextPageToken == "" {
 			break
