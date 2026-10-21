@@ -163,9 +163,6 @@ func (c *Client) SubscribeFrom(
 	topicName string,
 	afterID string,
 ) (*vibe.SubscriptionContainer, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "SubscribeFrom")
-	defer span.End()
-
 	if c.events == nil {
 		return nil, fmt.Errorf("error subscribing to room events: replay is not initialized")
 	}
@@ -182,9 +179,6 @@ func (c *Client) Subscribe(
 	ctx context.Context,
 	topicName string,
 ) (*vibe.SubscriptionContainer, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "Subscribe")
-	defer span.End()
-
 	if c.events == nil {
 		return nil, fmt.Errorf("error subscribing to events: streams are not initialized")
 	}
