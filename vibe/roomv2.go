@@ -61,10 +61,6 @@ type RoomAdminSessionV2Deleter interface {
 
 type RoomType string
 
-const RoomTypeMusic RoomType = "MUSIC"
-
-const RoomTypeWatch RoomType = "WATCH"
-
 func (r RoomType) IsValid() bool {
 	return r == RoomTypeMusic || r == RoomTypeWatch
 }
@@ -213,3 +209,7 @@ type GeneratedRoomV2Creator interface {
 	RoomGenerationAvailabilityChecker
 	CreateRoomV2(ctx context.Context, room *RoomV2, reservationToken string) (*RoomV2, error)
 }
+
+const RoomTypeMusic RoomType = "MUSIC"
+
+const RoomTypeWatch RoomType = "WATCH"

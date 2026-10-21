@@ -42,8 +42,6 @@ func (p ProviderItem) AllowedInRoom(roomType RoomType) bool {
 	return roomType == RoomTypeWatch || p.CategoryID == YouTubeMusicCategoryID
 }
 
-const YouTubeMusicCategoryID = "10"
-
 type ProviderItemFetcher interface {
 	GetProviderItem(ctx context.Context, id string) (*ProviderItem, error)
 }
@@ -130,3 +128,5 @@ type CachedProviderItemRoomEventNotifier interface {
 	CachedProviderItemFetcher
 	RoomEventV3Notifier
 }
+
+const YouTubeMusicCategoryID = "10"

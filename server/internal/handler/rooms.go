@@ -45,16 +45,21 @@ func ReserveRoomName(db vibe.RoomNameReserver) http.HandlerFunc {
 		}
 
 		if !req.Validate() {
-			handleError(w, internalerror.ErrorCodeWrapper{
-				Err: fmt.Errorf("error validating room name reservation"),
-				ResponseBody: internalerror.ErrorCodeResponseBody{
-					Namespace: "vibes-backend",
-					Error:     "room_name_invalid",
-					Message:   fmt.Sprintf("Use between 1 and %d characters for the room name.", vibe.RoomNameMaxLength),
-					Propagate: true,
+			handleError(
+				w,
+				internalerror.ErrorCodeWrapper{
+					Err: fmt.Errorf("error validating room name reservation"),
+					ResponseBody: internalerror.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "room_name_invalid",
+						Message:   fmt.Sprintf("Use between 1 and %d characters for the room name.", vibe.RoomNameMaxLength),
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
 				},
-				StatusCode: http.StatusBadRequest,
-			}, http.StatusBadRequest, false)
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 

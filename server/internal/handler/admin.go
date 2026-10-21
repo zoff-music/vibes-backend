@@ -336,18 +336,6 @@ func AdminSearchUsage(
 	}
 }
 
-const adminSessionDuration = 24 * time.Hour
-
-const adminRoomPageSize = 10
-
-const adminRoomMaximumPageSize = 50
-
-const adminRoomQueryMaximumLength = 100
-
-const adminRoomOrderAscending = "asc"
-
-const adminRoomOrderDescending = "desc"
-
 // AdminUsers handles GET /api/v1/admin/users
 //
 //	@Summary	List admin users
@@ -708,3 +696,15 @@ func (h *ReviewAdminRooms) Handle(ctx context.Context, _ []byte) error {
 
 	return nil
 }
+
+const adminSessionDuration = 24 * time.Hour
+
+const adminRoomPageSize = 10
+
+const adminRoomMaximumPageSize = 50
+
+const adminRoomQueryMaximumLength = 100
+
+const adminRoomOrderAscending = "asc"
+
+const adminRoomOrderDescending = "desc"

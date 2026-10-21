@@ -22,7 +22,8 @@ func (m *TraceMiddleware) Middleware(next http.Handler) http.Handler {
 	middleware := otelhttp.NewMiddleware(
 		"http.server",
 		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
-			return routeName(r)
+			name := routeName(r)
+			return name
 		}),
 	)
 

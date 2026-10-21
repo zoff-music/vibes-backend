@@ -7,8 +7,6 @@ import (
 	"unicode/utf8"
 )
 
-const RoomNameMaxLength = 100
-
 // RoomNameReservation is a temporarily reserved room name.
 type RoomNameReservation struct {
 	Name      string    `json:"name"`
@@ -78,6 +76,8 @@ type RoomNameReservationDeleter interface {
 type RoomExistenceChecker interface {
 	RoomExists(ctx context.Context, roomID string) (bool, error)
 }
+
+const RoomNameMaxLength = 100
 
 // RoomModeServer is the mode where the server controls playback
 const RoomModeServer = "server"

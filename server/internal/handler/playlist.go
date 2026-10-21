@@ -12,8 +12,6 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-const playlistImportItemLimit = 5000
-
 type MetaRefresh struct {
 	DB           vibe.PlaylistItemMetadataRefreshStorage
 	Events       vibe.RoomEventV3Notifier
@@ -247,10 +245,6 @@ func (h *ExpirePlaylistItemMetadata) Handle(ctx context.Context, _ []byte) error
 	return nil
 }
 
-const metadataRefreshInterval = 21 * 24 * time.Hour
-const metadataRefreshRetry = 5 * time.Minute
-const metadataQuotaRetry = 24 * time.Hour
-
 type ImportPlaylistItem struct {
 	DB     vibe.PlaylistImportProcessor
 	Events vibe.RoomBatchEventV3Notifier
@@ -346,8 +340,6 @@ func (h *ImportPlaylistItem) Handle(ctx context.Context, _ []byte) error {
 	return nil
 }
 
-const playlistImportRetryInterval = 5 * time.Minute
-
 type CleanupPlaylistImportItems struct {
 	DB vibe.AbandonedPlaylistImportItemDeleter
 }
@@ -360,3 +352,13 @@ func (h *CleanupPlaylistImportItems) Handle(ctx context.Context, _ []byte) error
 
 	return nil
 }
+
+const playlistImportItemLimit = 5000
+
+const metadataRefreshInterval = 21 * 24 * time.Hour
+
+const metadataRefreshRetry = 5 * time.Minute
+
+const metadataQuotaRetry = 24 * time.Hour
+
+const playlistImportRetryInterval = 5 * time.Minute

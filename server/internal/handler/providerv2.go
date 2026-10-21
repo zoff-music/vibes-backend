@@ -46,16 +46,21 @@ func GetYouTubeItemV2(
 		if err != nil {
 			var madeForKidsError internalerror.ErrMadeForKids
 			if errors.As(err, &madeForKidsError) {
-				handleError(w, internalerror.ErrorCodeWrapper{
-					Err: fmt.Errorf("error getting youtube item: %w", err),
-					ResponseBody: internalerror.ErrorCodeResponseBody{
-						Namespace: "vibes-backend",
-						Error:     "youtube_made_for_kids_not_supported",
-						Message:   "This video is marked as made for kids on YouTube and cannot be added to Zoff. Try another version of the song.",
-						Propagate: true,
+				handleError(
+					w,
+					internalerror.ErrorCodeWrapper{
+						Err: fmt.Errorf("error getting youtube item: %w", err),
+						ResponseBody: internalerror.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "youtube_made_for_kids_not_supported",
+							Message:   "This video is marked as made for kids on YouTube and cannot be added to Zoff. Try another version of the song.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusBadRequest,
 					},
-					StatusCode: http.StatusBadRequest,
-				}, http.StatusBadRequest, false)
+					http.StatusBadRequest,
+					false,
+				)
 				return
 			}
 

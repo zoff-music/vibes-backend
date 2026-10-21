@@ -9,28 +9,6 @@ import (
 	"unicode/utf8"
 )
 
-const MessageEvent = "message"
-
-const SettingsActivityEvent = "settings_activity"
-
-const MessageMaxLength = 500
-
-const MessageKindChat = "chat"
-
-const MessageKindAdded = "added"
-
-const MessageKindVoted = "voted"
-
-const MessageKindDeleted = "deleted"
-
-const MessageKindSkipped = "skipped"
-
-const MessageKindSkipVoted = "skipvoted"
-
-const MessageKindRenamed = "renamed"
-
-const MessageKindSettings = "settings"
-
 type RoomMessage struct {
 	ID      string `json:"id"`
 	UserID  string `json:"userId"`
@@ -110,3 +88,25 @@ func (v AdminMessageUsage) MarshalJSON() ([]byte, error) {
 type AdminMessageUsageLister interface {
 	ListAdminMessageUsage(ctx context.Context, roomID string) (*AdminMessageUsage, error)
 }
+
+const MessageEvent = "message"
+
+const SettingsActivityEvent = "settings_activity"
+
+const MessageMaxLength = 500
+
+const MessageKindChat = "chat"
+
+const MessageKindAdded = "added"
+
+const MessageKindVoted = "voted"
+
+const MessageKindDeleted = "deleted"
+
+const MessageKindSkipped = "skipped"
+
+const MessageKindSkipVoted = "skipvoted"
+
+const MessageKindRenamed = "renamed"
+
+const MessageKindSettings = "settings"

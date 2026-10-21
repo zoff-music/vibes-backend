@@ -924,8 +924,6 @@ func (c *Client) UpdateRoomV2(ctx context.Context, room *vibe.RoomV2) (*vibe.Roo
 	return updatedRoom, nil
 }
 
-const postgresUniqueViolation = "23505"
-
 func (c *Client) prepareReserveRoomNameStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH inserted_pool_q AS (
@@ -1448,3 +1446,5 @@ func (r *publicRoomResultRow) scanRows(rows *sql.Rows) error {
 
 	return nil
 }
+
+const postgresUniqueViolation = "23505"

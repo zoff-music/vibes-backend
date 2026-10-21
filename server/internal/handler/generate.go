@@ -184,9 +184,6 @@ func CreateRoomGeneration(
 	}
 }
 
-const roomGenerationBusyRetryAfterSeconds = "60"
-const generatedPlaylistPromptMaxLength = 300
-
 type GenerateRoomPlaylist struct {
 	AI       vibe.PlaylistGenerator
 	Cache    vibe.GeneratedPlaylistCacheNotifier
@@ -456,3 +453,7 @@ func (h *CleanupRoomGenerations) Handle(ctx context.Context, _ []byte) error {
 
 	return nil
 }
+
+const roomGenerationBusyRetryAfterSeconds = "60"
+
+const generatedPlaylistPromptMaxLength = 300

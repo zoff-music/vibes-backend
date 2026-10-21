@@ -52,10 +52,6 @@ type AdminAuthResult struct {
 	IsFirstTimeSetup bool
 }
 
-const minimumSessionNameLength = 1
-
-const SessionNameMaxLength = 30
-
 type SessionPayload struct {
 	UserID string `json:"user_id"`
 	IsNew  bool   `json:"-"`
@@ -69,3 +65,7 @@ type SessionPayload struct {
 	RemoteRoomID string `json:"remote_room_id,omitempty"`
 	EventOrigin  string `json:"-"`
 }
+
+const minimumSessionNameLength = 1
+
+const SessionNameMaxLength = 30
