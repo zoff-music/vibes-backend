@@ -14,6 +14,176 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
+func (c *Client) prepareGetNextRoomNameReviewStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH candidate_q AS (
+			SELECT a.id
+			FROM room_reviews a
+			WHERE (
+				a.started_at IS NULL
+				OR a.started_at < (CLOCK_TIMESTAMP() AT TIME ZONE 'UTC') - INTERVAL '30 MINUTES'
+			)
+			AND EXISTS (
+				SELECT 1
+				FROM rooms b
+				WHERE b.checked_at IS NULL
+			)
+			FOR UPDATE OF a SKIP LOCKED
+		),
+		claimed_q AS (
+			UPDATE room_reviews a
+			SET started_at = CLOCK_TIMESTAMP() AT TIME ZONE 'UTC'
+			FROM candidate_q b
+			WHERE a.id = b.id
+			RETURNING a.started_at
+		)
+		SELECT
+			a.started_at,
+			b.id,
+			b.name
+		FROM claimed_q a
+		CROSS JOIN rooms b
+		WHERE b.checked_at IS NULL
+		ORDER BY b.created_at, b.id
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetNextRoomNameReviewStatement: %w", err)
+	}
+
+	c.GetNextRoomNameReviewStatement = stmt
+
+	return nil
+}
+
+func (c *Client) GetNextRoomNameReview(ctx context.Context) (*vibe.RoomNameReview, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetNextRoomNameReview")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := c.GetNextRoomNameReviewStatement.QueryContext(cctx)
+	if err != nil {
+		return nil, fmt.Errorf("error querying room name review: %w", err)
+	}
+	defer rows.Close()
+
+	review := &vibe.RoomNameReview{}
+	for rows.Next() {
+		var row roomNameReviewRow
+		err = row.scanRows(rows)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning room name review: %w", err)
+		}
+
+		room, err := row.toRoomNameDecision()
+		if err != nil {
+			return nil, fmt.Errorf("error mapping room name review: %w", err)
+		}
+
+		review.StartedAt = row.StartedAt.Time
+		review.Rooms = append(review.Rooms, *room)
+	}
+
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error iterating room name review: %w", err)
+	}
+
+	return review, nil
+}
+
+type roomNameReviewRow struct {
+	StartedAt sql.NullTime
+	ID        sql.NullString
+	Name      sql.NullString
+}
+
+func (r *roomNameReviewRow) scanRows(rows *sql.Rows) error {
+	err := rows.Scan(
+		&r.StartedAt,
+		&r.ID,
+		&r.Name,
+	)
+	if err != nil {
+		return fmt.Errorf("error scanning room name review row: %w", err)
+	}
+
+	return nil
+}
+
+func (r *roomNameReviewRow) toRoomNameDecision() (*vibe.RoomNameDecision, error) {
+	return &vibe.RoomNameDecision{
+		ID:   r.ID.String,
+		Name: r.Name.String,
+	}, nil
+}
+
+func (c *Client) prepareCompleteRoomNameReviewStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH updated_q AS (
+			UPDATE rooms a
+			SET flagged = a.id = ANY($3::TEXT[]),
+				flagged_at = CASE
+					WHEN a.id = ANY($3::TEXT[]) THEN COALESCE(a.flagged_at, CLOCK_TIMESTAMP() AT TIME ZONE 'UTC')
+					ELSE NULL
+				END,
+				checked_at = CLOCK_TIMESTAMP() AT TIME ZONE 'UTC'
+			WHERE a.id = ANY($2::TEXT[])
+			AND a.checked_at IS NULL
+			AND EXISTS (
+				SELECT 1
+				FROM room_reviews b
+				WHERE b.started_at = $1
+			)
+			RETURNING
+				a.id,
+				a.flagged
+		)
+		UPDATE room_settings a
+		SET is_public = FALSE
+		FROM updated_q b
+		WHERE a.room_id = b.id
+		AND b.flagged
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing CompleteRoomNameReviewStatement: %w", err)
+	}
+
+	c.CompleteRoomNameReviewStatement = stmt
+
+	return nil
+}
+
+func (c *Client) CompleteRoomNameReview(ctx context.Context, review *vibe.RoomNameReview) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "CompleteRoomNameReview")
+	defer span.End()
+
+	ids := make([]string, 0, len(review.Rooms))
+	flaggedIDs := make([]string, 0, len(review.Rooms))
+	for _, room := range review.Rooms {
+		ids = append(ids, room.ID)
+		if room.Flagged {
+			flaggedIDs = append(flaggedIDs, room.ID)
+		}
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := c.CompleteRoomNameReviewStatement.ExecContext(
+		cctx,
+		review.StartedAt,
+		ids,
+		flaggedIDs,
+	)
+	if err != nil {
+		return fmt.Errorf("error completing room name review: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH active_users_q AS (
@@ -39,7 +209,10 @@ func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 				a.id,
 				a.name,
 				a.room_type,
-				COALESCE(d.is_public, FALSE) AS is_public,
+				a.flagged,
+				a.flagged_at,
+				a.checked_at,
+				(COALESCE(d.is_public, FALSE) AND NOT a.flagged) AS is_public,
 				COALESCE(b.user_count, 0) AS user_count,
 				COALESCE(c.playlist_item_count, 0) AS playlist_item_count,
 				COALESCE(c.active_sources, '') AS active_sources,
@@ -48,8 +221,8 @@ func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 			LEFT JOIN active_users_q b ON b.room_id = a.id
 			LEFT JOIN playlist_item_counts_q c ON c.room_id = a.id
 			LEFT JOIN room_settings d ON d.room_id = a.id
-			WHERE $3 = ''
-			OR a.name ILIKE '%' || $3 || '%'
+			WHERE ($3 = '' OR a.name ILIKE '%' || $3 || '%')
+			AND (NOT $8::BOOLEAN OR a.flagged)
 		),
 		numbered_q AS (
 			SELECT
@@ -79,6 +252,9 @@ func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 			a.playlist_item_count,
 			a.active_sources,
 			a.has_admin_password,
+			a.flagged,
+			a.flagged_at,
+			a.checked_at,
 			a.total_count
 		FROM numbered_q a
 		WHERE a.row_number >= $6
@@ -130,6 +306,7 @@ func (c *Client) SearchAdminRoomsV2(
 		search.Descending,
 		search.From+1,
 		search.To+1,
+		search.Flagged,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error searching admin rooms: %w", err)
@@ -175,6 +352,9 @@ func (c *Client) SearchAdminRoomsV2(
 }
 
 type adminRoomRow struct {
+	Flagged           sql.NullBool
+	FlaggedAt         sql.NullTime
+	CheckedAt         sql.NullTime
 	ID                sql.NullString
 	Name              sql.NullString
 	RoomType          sql.NullString
@@ -196,6 +376,9 @@ func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
 		&r.PlaylistItemCount,
 		&r.ActiveSources,
 		&r.HasAdminPassword,
+		&r.Flagged,
+		&r.FlaggedAt,
+		&r.CheckedAt,
 		&r.TotalCount,
 	)
 	if err != nil {
@@ -206,12 +389,25 @@ func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
 }
 
 func (r *adminRoomRow) toSummary() (*vibe.AdminRoomSummaryV2, error) {
+	var flaggedAt *time.Time
+	if r.FlaggedAt.Valid {
+		flaggedAt = &r.FlaggedAt.Time
+	}
+
+	var checkedAt *time.Time
+	if r.CheckedAt.Valid {
+		checkedAt = &r.CheckedAt.Time
+	}
+
 	sources := []string{}
 	if r.ActiveSources.Valid && r.ActiveSources.String != "" {
 		sources = strings.Split(r.ActiveSources.String, ",")
 	}
 
 	return &vibe.AdminRoomSummaryV2{
+		Flagged:           r.Flagged.Bool,
+		FlaggedAt:         flaggedAt,
+		CheckedAt:         checkedAt,
 		ID:                r.ID.String,
 		Name:              r.Name.String,
 		RoomType:          vibe.RoomType(r.RoomType.String),
@@ -227,17 +423,27 @@ func (c *Client) prepareUpdateAdminRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH updated_room_q AS (
 			UPDATE rooms a
-			SET name = COALESCE($2::text, a.name),
+			SET name = COALESCE($2::TEXT, a.name),
+			flagged = COALESCE($4::BOOLEAN, a.flagged),
+			flagged_at = CASE
+				WHEN $4::BOOLEAN THEN COALESCE(a.flagged_at, CLOCK_TIMESTAMP() AT TIME ZONE 'UTC')
+				WHEN $4::BOOLEAN = FALSE THEN NULL
+				ELSE a.flagged_at
+			END,
+			checked_at = CASE
+				WHEN $4::BOOLEAN IS NOT NULL THEN CLOCK_TIMESTAMP() AT TIME ZONE 'UTC'
+				ELSE a.checked_at
+			END,
 			admin_password_hash = CASE
-				WHEN $3::boolean THEN NULL
+				WHEN $3::BOOLEAN THEN NULL
 				ELSE a.admin_password_hash
 			END
 			WHERE a.id = $1
-			RETURNING a.id
+			RETURNING a.id, a.flagged
 		)
 		UPDATE room_settings a
 		SET is_public = CASE
-			WHEN $3::boolean THEN FALSE
+			WHEN $3::BOOLEAN OR b.flagged THEN FALSE
 			ELSE a.is_public
 		END
 		FROM updated_room_q b
@@ -273,6 +479,7 @@ func (c *Client) UpdateAdminRoom(ctx context.Context, roomID string, request vib
 		roomID,
 		name,
 		clearAdminPassword,
+		request.Flagged,
 	)
 	if err != nil {
 		return false, fmt.Errorf("error updating admin room: %w", err)

@@ -680,6 +680,82 @@ func AdminDeleteUser(deleter vibe.AdminUserDeleter) http.HandlerFunc {
 	}
 }
 
+type ReviewRoomNames struct {
+	DB     vibe.RoomNameReviewClaimerUpdater
+	AI     vibe.RoomNameReviewer
+	Events vibe.RoomEventV3Notifier
+}
+
+func (h *ReviewRoomNames) Handle(ctx context.Context, _ []byte) error {
+	review, err := h.DB.GetNextRoomNameReview(ctx)
+	if err != nil {
+		return fmt.Errorf("error claiming room name review: %w", err)
+	}
+	if review.IsEmpty() {
+		return nil
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+	defer cancel()
+
+	for start := 0; start < len(review.Rooms); start += vibe.RoomNameReviewBatchSize {
+		end := min(start+vibe.RoomNameReviewBatchSize, len(review.Rooms))
+		rooms := review.Rooms[start:end]
+
+		verdict, err := h.AI.ReviewRoomNames(cctx, rooms)
+		if err != nil {
+			return fmt.Errorf("error reviewing room names: %w", err)
+		}
+
+		err = verdict.Validate(rooms)
+		if err != nil {
+			return fmt.Errorf("error validating room name review: %w", err)
+		}
+
+		flagged := make(map[string]bool, len(verdict.FlaggedIDs))
+		for _, id := range verdict.FlaggedIDs {
+			flagged[id] = true
+		}
+
+		for i := range rooms {
+			rooms[i].Flagged = flagged[rooms[i].ID]
+		}
+
+		err = h.DB.CompleteRoomNameReview(cctx, &vibe.RoomNameReview{
+			StartedAt: review.StartedAt,
+			Rooms:     rooms,
+		})
+		if err != nil {
+			return fmt.Errorf("error completing room name review: %w", err)
+		}
+
+		for _, decision := range rooms {
+			room, err := h.DB.GetRoomV2(cctx, decision.ID, "")
+			if err != nil {
+				return fmt.Errorf("error fetching reviewed room: %w", err)
+			}
+			if room.IsEmpty() {
+				continue
+			}
+
+			body, err := json.Marshal(room)
+			if err != nil {
+				return fmt.Errorf("error encoding reviewed room: %w", err)
+			}
+
+			err = h.Events.NotifyRoomUpdateV3(cctx, room.ID, vibe.RoomEventV3{
+				Type:    vibe.SettingsUpdate,
+				Payload: body,
+			})
+			if err != nil {
+				return fmt.Errorf("error notifying reviewed room: %w", err)
+			}
+		}
+	}
+
+	return nil
+}
+
 // ReviewAdminRooms handles scheduled admin room updates.
 type ReviewAdminRooms struct {
 	DB     vibe.AdminRoomV2Lister

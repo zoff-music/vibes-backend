@@ -119,10 +119,12 @@ type Client struct {
 	GetStatsV2Statement                *sql.Stmt
 
 	// Additional room statements
-	GetActiveSourcesStatement   *sql.Stmt
-	SearchAdminRoomsV2Statement *sql.Stmt
-	UpdateAdminRoomStatement    *sql.Stmt
-	DeleteAdminRoomStatement    *sql.Stmt
+	GetActiveSourcesStatement       *sql.Stmt
+	SearchAdminRoomsV2Statement     *sql.Stmt
+	GetNextRoomNameReviewStatement  *sql.Stmt
+	CompleteRoomNameReviewStatement *sql.Stmt
+	UpdateAdminRoomStatement        *sql.Stmt
+	DeleteAdminRoomStatement        *sql.Stmt
 
 	// Admin user statements
 	GetAdminUserStatement            *sql.Stmt
@@ -206,6 +208,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareProcessNextAbandonedHostStmt,
 		c.prepareGetActiveSourcesStmt,
 		c.prepareSearchAdminRoomsV2Stmt,
+		c.prepareGetNextRoomNameReviewStmt,
+		c.prepareCompleteRoomNameReviewStmt,
 		c.prepareUpdateAdminRoomStmt,
 		c.prepareDeleteAdminRoomStmt,
 		// Admin user statements
@@ -391,6 +395,8 @@ func (c *Client) Close() error {
 		c.GetStatsV2Statement,
 		c.GetActiveSourcesStatement,
 		c.SearchAdminRoomsV2Statement,
+		c.GetNextRoomNameReviewStatement,
+		c.CompleteRoomNameReviewStatement,
 		c.UpdateAdminRoomStatement,
 		c.DeleteAdminRoomStatement,
 		c.GetAdminUserStatement,

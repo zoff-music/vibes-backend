@@ -4,17 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 type AdminRoomSummaryV2 struct {
-	ID                string   `json:"id"`
-	Name              string   `json:"name"`
-	RoomType          RoomType `json:"roomType"`
-	IsPublic          bool     `json:"isPublic"`
-	UserCount         int      `json:"userCount"`
-	PlaylistItemCount int      `json:"playlistItemCount"`
-	ActiveSources     []string `json:"activeSources"`
-	HasAdminPassword  bool     `json:"hasAdminPassword"`
+	Flagged           bool       `json:"flagged"`
+	FlaggedAt         *time.Time `json:"flaggedAt,omitempty"`
+	CheckedAt         *time.Time `json:"checkedAt,omitempty"`
+	ID                string     `json:"id"`
+	Name              string     `json:"name"`
+	RoomType          RoomType   `json:"roomType"`
+	IsPublic          bool       `json:"isPublic"`
+	UserCount         int        `json:"userCount"`
+	PlaylistItemCount int        `json:"playlistItemCount"`
+	ActiveSources     []string   `json:"activeSources"`
+	HasAdminPassword  bool       `json:"hasAdminPassword"`
 }
 
 // MarshalJSON preserves empty collections in the public JSON contract.
@@ -66,6 +70,7 @@ const AdminRoomSortListenersV2 AdminRoomSortV2 = "listeners"
 const AdminRoomSortPlaylistItems AdminRoomSortV2 = "playlistItems"
 
 type AdminRoomSearchV2 struct {
+	Flagged    bool
 	Query      string
 	SortBy     AdminRoomSortV2
 	Descending bool
@@ -84,6 +89,12 @@ type AdminRoomV2Searcher interface {
 type AdminRoomV2UpdaterLister interface {
 	AdminRoomV2Lister
 	AdminRoomUpdater
+	RoomV2Fetcher
+}
+
+type AdminRoomEventNotifier interface {
+	AdminEventV2Notifier
+	RoomEventV3Notifier
 }
 
 type AdminRoomV2DeleterLister interface {
