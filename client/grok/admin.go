@@ -12,10 +12,9 @@ import (
 )
 
 type reviewRequest struct {
-	Model       string        `json:"model"`
-	Messages    []chatMessage `json:"messages"`
-	Temperature float64       `json:"temperature"`
-	MaxTokens   int           `json:"max_tokens"`
+	Model           string        `json:"model"`
+	Messages        []chatMessage `json:"messages"`
+	ReasoningEffort string        `json:"reasoning_effort"`
 }
 
 func (c *Client) ReviewRoomNames(ctx context.Context, rooms []vibe.RoomNameDecision) (*vibe.RoomNameReviewResult, error) {
@@ -40,8 +39,7 @@ func (c *Client) ReviewRoomNames(ctx context.Context, rooms []vibe.RoomNameDecis
 			{Role: "system", Content: vibe.RoomNameReviewInstruction},
 			{Role: "user", Content: string(names)},
 		},
-		Temperature: 0,
-		MaxTokens:   8000,
+		ReasoningEffort: "high",
 	})
 	if err != nil {
 		return nil, fmt.Errorf("error encoding review request: %w", err)
