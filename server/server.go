@@ -20,7 +20,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/client/database"
 	"github.com/zoff-music/vibes-backend/client/gemini"
-	"github.com/zoff-music/vibes-backend/client/grok"
+	"github.com/zoff-music/vibes-backend/client/jev"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
 	"github.com/zoff-music/vibes-backend/client/youtube"
@@ -29,7 +29,6 @@ import (
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/server/internal/event"
 	"github.com/zoff-music/vibes-backend/server/internal/middleware"
-	"github.com/zoff-music/vibes-backend/vibe"
 )
 
 // Server holds the HTTP server, router, config and all clients.
@@ -41,7 +40,8 @@ type Server struct {
 	Redis          *redisclient.Client
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
-	AI             vibe.PlaylistGeneratorReviewer
+	Gemini         *gemini.Client
+	JEV            *jev.Client
 	Router         *mux.Router
 	InternalRouter *mux.Router
 }
@@ -78,10 +78,10 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("error initializing soundcloud client: %w", err)
 	}
 
-	var grokClient grok.Client
-	err = grokClient.Init(ctx, config)
+	var jevClient jev.Client
+	err = jevClient.Init(ctx, config)
 	if err != nil {
-		return fmt.Errorf("error initializing grok client: %w", err)
+		return fmt.Errorf("error initializing JEV client: %w", err)
 	}
 
 	var geminiClient gemini.Client
@@ -90,25 +90,13 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("error initializing gemini client: %w", err)
 	}
 
-	aiModel, err := vibe.ParseAIModel(config.AIModel)
-	if err != nil {
-		return fmt.Errorf("error parsing configured AI model: %w", err)
-	}
-
-	var ai vibe.PlaylistGeneratorReviewer
-	switch aiModel.Provider {
-	case vibe.AIProviderGrok:
-		ai = &grokClient
-	case vibe.AIProviderGemini:
-		ai = &geminiClient
-	}
-
 	s.Config = config
 	s.DB = &dbClient
 	s.Redis = &redisClient
 	s.YouTube = &youtubeClient
 	s.SoundCloud = &soundcloudClient
-	s.AI = ai
+	s.Gemini = &geminiClient
+	s.JEV = &jevClient
 	s.Router = mux.NewRouter()
 	s.Router.Use(middleware.RequestBodyMiddleware{MaxBytes: config.RequestBodyMaxBytes}.Middleware)
 	s.InternalRouter = mux.NewRouter()
@@ -223,7 +211,8 @@ func (s *Server) subscribeAndListen(ctx context.Context, running *sync.WaitGroup
 		s.Redis,
 		s.SoundCloud,
 		s.YouTube,
-		s.AI,
+		s.Gemini,
+		s.JEV,
 		s.Config.EnabledProviders(),
 	) {
 		running.Add(1)

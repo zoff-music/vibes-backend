@@ -27,20 +27,16 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	span, _ := tracing.StartSpanFromContext(ctx, "Init")
 	defer span.End()
 
-	aiModel, err := vibe.ParseAIModel(cfg.AIModel)
-	if err != nil {
-		return fmt.Errorf("error parsing configured AI model in Init: %w", err)
-	}
-	if aiModel.Provider != vibe.AIProviderGemini {
-		c.Enabled = false
-		return nil
+	c.Endpoint = strings.TrimRight(cfg.GeminiEndpoint, "/")
+	c.Model = strings.TrimSpace(cfg.PlaylistGenerationModel)
+	if c.Model == "" || strings.Contains(c.Model, ":") {
+		return fmt.Errorf("error validating playlist generation model in Init: an unprefixed model name is required")
 	}
 
-	c.Endpoint = strings.TrimRight(cfg.GeminiEndpoint, "/")
-	c.Model = aiModel.Name
 	c.apiKey = cfg.GeminiAPIKey
 	c.itemCount = cfg.GeneratedPlaylistItemCount
 	c.systemInstruction = vibe.GeneratedPlaylistSystemInstruction(c.itemCount)
+
 	if c.Endpoint == "" {
 		return fmt.Errorf("error gemini endpoint is required")
 	}
