@@ -26,7 +26,7 @@ func GetAppEvents(
 	events := AppEvents{
 		{
 			Name: "ReviewRoomNames",
-			Rate: 30 * time.Minute,
+			Rate: 30 * time.Second,
 			Handler: &handler.ReviewRoomNames{
 				DB: db,
 				AI: ai,
