@@ -74,10 +74,17 @@ func (c *Client) ResolveProviderPlaylist(
 	}
 
 	playlistItems := make([]vibe.ProviderItem, 0)
+	seenTrackIDs := make(map[int]bool)
+	seenPages := make(map[string]bool)
 	truncated := false
 	nextURL := fmt.Sprintf("%s/playlists/%s/tracks", c.Endpoint, url.PathEscape(resolved.URN))
 	firstPage := true
 	for nextURL != "" {
+		if seenPages[nextURL] || len(seenPages) >= playlistItemLimit/soundCloudPlaylistPageSize {
+			truncated = true
+			break
+		}
+		seenPages[nextURL] = true
 		requestData := client.HTTPRequestData{
 			Method: http.MethodGet,
 			URL:    nextURL,
@@ -112,7 +119,7 @@ func (c *Client) ResolveProviderPlaylist(
 			)
 		}
 		for _, item := range page.Collection {
-			if item.ID == 0 || item.Title == "" || item.PermalinkURL == "" {
+			if item.ID == 0 || item.Title == "" || item.PermalinkURL == "" || seenTrackIDs[item.ID] {
 				continue
 			}
 			if len(playlistItems) == playlistItemLimit {
@@ -125,6 +132,7 @@ func (c *Client) ResolveProviderPlaylist(
 			}
 
 			playlistItems = append(playlistItems, *providerItem)
+			seenTrackIDs[item.ID] = true
 		}
 		if truncated {
 			break

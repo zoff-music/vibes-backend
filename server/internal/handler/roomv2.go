@@ -2533,7 +2533,13 @@ func AddPlaylistV2(
 		}
 
 		playlistItems := make([]vibe.PlaylistItem, 0, len(req.PlaylistItems))
+		seenItems := make(map[vibe.CachedProviderItemKey]bool)
 		for _, requestedItem := range req.PlaylistItems {
+			key := vibe.CachedProviderItemKey{Provider: requestedItem.SourceType, ID: requestedItem.SourceID}
+			if seenItems[key] {
+				continue
+			}
+			seenItems[key] = true
 
 			providerURL, err := requestedItem.CanonicalProviderURL()
 			if err != nil {
@@ -2547,7 +2553,6 @@ func AddPlaylistV2(
 			}
 
 			playbackRestriction := ""
-			key := vibe.CachedProviderItemKey{Provider: requestedItem.SourceType, ID: requestedItem.SourceID}
 			cachedItem := cachedItemsByKey[key]
 			if requestedItem.SourceType == vibe.SourceTypeYouTube && cachedItem.IsEmpty() {
 				handleError(
