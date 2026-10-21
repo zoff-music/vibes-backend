@@ -29,6 +29,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	c.Endpoint = strings.TrimRight(cfg.JEVEndpoint, "/")
 	c.Model = strings.TrimSpace(cfg.ModerationModel)
 	c.apiKey = cfg.JEVAPIKey
+
 	if c.Endpoint == "" {
 		return fmt.Errorf("error JEV endpoint is required")
 	}
@@ -38,7 +39,10 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	if c.apiKey == "" {
 		return fmt.Errorf("error JEV API key is required")
 	}
-	if math.IsNaN(cfg.JEVModerationThreshold) || math.IsInf(cfg.JEVModerationThreshold, 0) || cfg.JEVModerationThreshold <= 0 || cfg.JEVModerationThreshold > 100 {
+
+	if math.IsNaN(cfg.JEVModerationThreshold) ||
+		math.IsInf(cfg.JEVModerationThreshold, 0) ||
+		cfg.JEVModerationThreshold <= 0 || cfg.JEVModerationThreshold > 100 {
 		return fmt.Errorf("error validating JEV moderation threshold in Init: percentage must be greater than zero and at most 100")
 	}
 

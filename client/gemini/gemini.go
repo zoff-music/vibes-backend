@@ -36,6 +36,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	c.apiKey = cfg.GeminiAPIKey
 	c.itemCount = cfg.GeneratedPlaylistItemCount
 	c.systemInstruction = vibe.GeneratedPlaylistSystemInstruction(c.itemCount)
+
 	if c.Endpoint == "" {
 		return fmt.Errorf("error gemini endpoint is required")
 	}
