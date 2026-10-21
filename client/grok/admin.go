@@ -25,8 +25,8 @@ func (c *Client) ReviewRoomNames(ctx context.Context, rooms []vibe.RoomNameDecis
 	if !c.Enabled {
 		return nil, fmt.Errorf("error reviewing room names: grok is not configured")
 	}
-	if len(rooms) == 0 || len(rooms) > vibe.RoomNameReviewBatchSize {
-		return nil, fmt.Errorf("error reviewing room names: invalid batch size")
+	if len(rooms) == 0 {
+		return nil, fmt.Errorf("error reviewing room names: no rooms supplied")
 	}
 
 	names, err := json.Marshal(rooms)
