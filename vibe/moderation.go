@@ -17,6 +17,10 @@ type RoomNameDecision struct {
 	Flagged bool   `json:"flagged"`
 }
 
+type RoomNameReviewResult struct {
+	Rooms []RoomNameDecision
+}
+
 type RoomNameVerdict struct {
 	FlaggedIDs []string `json:"flaggedIds"`
 }
@@ -43,7 +47,7 @@ func (v *RoomNameVerdict) Validate(rooms []RoomNameDecision) error {
 }
 
 type RoomNameReviewer interface {
-	ReviewRoomNames(context.Context, []RoomNameDecision) error
+	ReviewRoomNames(context.Context, []RoomNameDecision) (*RoomNameReviewResult, error)
 }
 
 type PlaylistGeneratorReviewer interface {

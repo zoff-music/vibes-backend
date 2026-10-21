@@ -691,12 +691,15 @@ func (h *ReviewRoomNames) Handle(ctx context.Context, _ []byte) error {
 		return fmt.Errorf("error claiming room name review: %w", err)
 	}
 
-	err = h.AI.ReviewRoomNames(ctx, review.Rooms)
+	result, err := h.AI.ReviewRoomNames(ctx, review.Rooms)
 	if err != nil {
 		return fmt.Errorf("error reviewing room names: %w", err)
 	}
 
-	err = h.DB.CompleteRoomNameReview(ctx, review)
+	err = h.DB.CompleteRoomNameReview(ctx, &vibe.RoomNameReview{
+		StartedAt: review.StartedAt,
+		Rooms:     result.Rooms,
+	})
 	if err != nil {
 		return fmt.Errorf("error completing room name review: %w", err)
 	}
