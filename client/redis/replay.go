@@ -437,9 +437,6 @@ func (s *streamSubscription) read(
 	ctx context.Context,
 	cursor string,
 ) ([]streamMessage, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ReadReplayStream")
-	defer span.End()
-
 	connection, err := s.pool.GetContext(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("error getting redis connection in read: %w", err)
