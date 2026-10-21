@@ -21,7 +21,7 @@ func (c *Client) prepareGetNextRoomNameReviewStmt() error {
 			FROM room_reviews a
 			WHERE (
 				a.started_at IS NULL
-				OR a.started_at < (CLOCK_TIMESTAMP() AT TIME ZONE 'UTC') - INTERVAL '30 MINUTES'
+				OR a.started_at < NOW() - INTERVAL '30 MINUTES'
 			)
 			AND EXISTS (
 				SELECT 1
@@ -32,7 +32,7 @@ func (c *Client) prepareGetNextRoomNameReviewStmt() error {
 		),
 		claimed_q AS (
 			UPDATE room_reviews a
-			SET started_at = CLOCK_TIMESTAMP() AT TIME ZONE 'UTC'
+			SET started_at = NOW()
 			FROM candidate_q b
 			WHERE a.id = b.id
 			RETURNING a.started_at
@@ -125,10 +125,10 @@ func (c *Client) prepareCompleteRoomNameReviewStmt() error {
 			UPDATE rooms a
 			SET flagged = a.id = ANY($3::TEXT[]),
 				flagged_at = CASE
-					WHEN a.id = ANY($3::TEXT[]) THEN COALESCE(a.flagged_at, CLOCK_TIMESTAMP() AT TIME ZONE 'UTC')
+					WHEN a.id = ANY($3::TEXT[]) THEN COALESCE(a.flagged_at, NOW())
 					ELSE NULL
 				END,
-				checked_at = CLOCK_TIMESTAMP() AT TIME ZONE 'UTC'
+				checked_at = NOW()
 			WHERE a.id = ANY($2::TEXT[])
 			AND a.checked_at IS NULL
 			AND EXISTS (
@@ -426,12 +426,12 @@ func (c *Client) prepareUpdateAdminRoomStmt() error {
 			SET name = COALESCE($2::TEXT, a.name),
 			flagged = COALESCE($4::BOOLEAN, a.flagged),
 			flagged_at = CASE
-				WHEN $4::BOOLEAN THEN COALESCE(a.flagged_at, CLOCK_TIMESTAMP() AT TIME ZONE 'UTC')
+				WHEN $4::BOOLEAN THEN COALESCE(a.flagged_at, NOW())
 				WHEN $4::BOOLEAN = FALSE THEN NULL
 				ELSE a.flagged_at
 			END,
 			checked_at = CASE
-				WHEN $4::BOOLEAN IS NOT NULL THEN CLOCK_TIMESTAMP() AT TIME ZONE 'UTC'
+				WHEN $4::BOOLEAN IS NOT NULL THEN NOW()
 				ELSE a.checked_at
 			END,
 			admin_password_hash = CASE
