@@ -11,12 +11,6 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-type reviewRequest struct {
-	Model           string        `json:"model"`
-	Messages        []chatMessage `json:"messages"`
-	ReasoningEffort string        `json:"reasoning_effort"`
-}
-
 func (c *Client) ReviewRoomNames(ctx context.Context, rooms []vibe.RoomNameDecision) (*vibe.RoomNameReviewResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ReviewRoomNames")
 	defer span.End()
@@ -95,4 +89,10 @@ func (c *Client) ReviewRoomNames(ctx context.Context, rooms []vibe.RoomNameDecis
 	}
 
 	return result, nil
+}
+
+type reviewRequest struct {
+	Model           string        `json:"model"`
+	Messages        []chatMessage `json:"messages"`
+	ReasoningEffort string        `json:"reasoning_effort"`
 }
