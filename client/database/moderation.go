@@ -18,7 +18,7 @@ func (c *Client) prepareGetNextRoomNameReviewStmt() error {
 			FROM room_reviews a
 			WHERE (
 				a.started_at IS NULL
-				OR a.started_at < NOW() - INTERVAL '5 MINUTES'
+				OR a.started_at < NOW() - INTERVAL '1 MINUTE'
 			)
 			AND EXISTS (
 				SELECT 1
