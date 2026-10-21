@@ -79,6 +79,7 @@ func (r RoomType) AllowsSource(source string) bool {
 
 // RoomV2 is the typed room and playlist-item API contract.
 type RoomV2 struct {
+	Flagged                                bool           `json:"flagged"`
 	ID                                     string         `json:"id"`
 	Name                                   string         `json:"name"`
 	Mode                                   string         `json:"mode"`

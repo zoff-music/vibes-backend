@@ -736,6 +736,16 @@ func UpdateRoomSettingsV2(
 			return
 		}
 
+		if room.Settings.Public && room.Flagged {
+			handleError(
+				w,
+				fmt.Errorf("error flagged rooms cannot be made public"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
 		if room.Settings.Public && !room.HasPassword {
 			handleError(
 				w,

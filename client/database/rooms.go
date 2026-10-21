@@ -151,7 +151,7 @@ func (c *Client) prepareGetRoomV2Stmt() error {
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
 			b.only_admin_add_playlist_items,
-			b.is_public,
+			(b.is_public AND NOT a.flagged),
 			b.playlist_import,
 			EXISTS (
 				SELECT 1
@@ -173,7 +173,8 @@ func (c *Client) prepareGetRoomV2Stmt() error {
 				WHERE f.room_id = a.id
 				ORDER BY f.created_at DESC
 				LIMIT 1
-			) AS generation_error
+			) AS generation_error,
+			a.flagged
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
@@ -286,7 +287,7 @@ func (c *Client) prepareGetRoomByNameV2Stmt() error {
 			COALESCE(c.is_admin, FALSE) as is_requester_admin,
 			b.enabled_sources,
 			b.only_admin_add_playlist_items,
-			b.is_public,
+			(b.is_public AND NOT a.flagged),
 			b.playlist_import,
 			EXISTS (
 				SELECT 1
@@ -308,7 +309,8 @@ func (c *Client) prepareGetRoomByNameV2Stmt() error {
 				WHERE f.room_id = a.id
 				ORDER BY f.created_at DESC
 				LIMIT 1
-			) AS generation_error
+			) AS generation_error,
+			a.flagged
 		FROM rooms a
 		JOIN room_settings b
 		ON b.room_id = a.id
@@ -438,6 +440,7 @@ func (r *roomExistsRow) scan(row *sql.Row) error {
 }
 
 type roomRow struct {
+	Flagged                   sql.NullBool
 	ID                        sql.NullString
 	Name                      sql.NullString
 	Mode                      sql.NullString
@@ -484,6 +487,7 @@ func (r *roomRow) scanRow(row *sql.Row) error {
 		&r.IsGenerating,
 		&r.GenerationCount,
 		&r.GenerationError,
+		&r.Flagged,
 	)
 	if err != nil {
 		return fmt.Errorf("error scanning room row: %w", err)
@@ -512,6 +516,7 @@ func (r *roomRow) toRoomV2(enabledProviders []string) (*vibe.RoomV2, error) {
 	}
 
 	return &vibe.RoomV2{
+		Flagged:              r.Flagged.Bool,
 		ID:                   r.ID.String,
 		Name:                 r.Name.String,
 		Mode:                 r.Mode.String,
@@ -831,7 +836,7 @@ func (c *Client) prepareUpdateRoomV2Stmt() error {
 			host_id = $10,
 			admin_password_hash = $11
 			WHERE id = $2
-			RETURNING id, room_type
+			RETURNING id, room_type, flagged
 		)
 		UPDATE room_settings
 		SET skip_allowed = $3,
@@ -846,7 +851,7 @@ func (c *Client) prepareUpdateRoomV2Stmt() error {
 			ELSE $12
 		END,
 		only_admin_add_playlist_items = $13,
-		is_public = $14,
+		is_public = $14 AND NOT a.flagged,
 		playlist_import = $15
 		FROM updated_room_q a
 		WHERE room_settings.room_id = a.id
@@ -1272,6 +1277,7 @@ func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
 			FROM rooms a
 			JOIN room_settings b ON b.room_id = a.id
 			WHERE b.is_public
+			AND NOT a.flagged
 			AND a.room_type = $7
 			AND a.admin_password_hash IS NOT NULL
 			AND a.admin_password_hash != ''

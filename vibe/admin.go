@@ -10,6 +10,7 @@ import (
 )
 
 type AdminUpdateRoomRequest struct {
+	Flagged            *bool   `json:"flagged,omitempty"`
 	Name               *string `json:"name,omitempty"`
 	ClearAdminPassword *bool   `json:"clearAdminPassword,omitempty"`
 }

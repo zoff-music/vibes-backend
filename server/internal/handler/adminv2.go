@@ -116,7 +116,10 @@ func AdminRoomsV2(
 			return
 		}
 
+		flagged := r.URL.Query().Get("flagged") == "true"
+
 		result, err := db.SearchAdminRoomsV2(ctx, vibe.AdminRoomSearchV2{
+			Flagged:    flagged,
 			Query:      query,
 			SortBy:     sortBy,
 			Descending: order == adminRoomOrderDescending,
@@ -166,7 +169,7 @@ func AdminRoomsV2(
 //	@Router		/api/v2/admin/rooms/{id} [patch]
 func AdminUpdateRoomV2(
 	db vibe.AdminRoomV2UpdaterLister,
-	notifier vibe.AdminEventV2Notifier,
+	notifier vibe.AdminRoomEventNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -227,6 +230,36 @@ func AdminUpdateRoomV2(
 				false,
 			)
 			return
+		}
+
+		room, err := db.GetRoomV2(ctx, roomID, "")
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching updated room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		roomBody, err := json.Marshal(room)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error encoding updated room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		err = notifier.NotifyRoomUpdateV3(ctx, roomID, vibe.RoomEventV3{
+			Type:    vibe.SettingsUpdate,
+			Payload: roomBody,
+		})
+		if err != nil {
+			log.Printf("error notifying updated room: %v", err)
 		}
 
 		rooms, err := db.ListAdminRoomsV2(ctx)

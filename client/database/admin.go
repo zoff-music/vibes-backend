@@ -39,7 +39,10 @@ func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 				a.id,
 				a.name,
 				a.room_type,
-				COALESCE(d.is_public, FALSE) AS is_public,
+				a.flagged,
+				a.flagged_at,
+				a.checked_at,
+				(COALESCE(d.is_public, FALSE) AND NOT a.flagged) AS is_public,
 				COALESCE(b.user_count, 0) AS user_count,
 				COALESCE(c.playlist_item_count, 0) AS playlist_item_count,
 				COALESCE(c.active_sources, '') AS active_sources,
@@ -48,8 +51,8 @@ func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 			LEFT JOIN active_users_q b ON b.room_id = a.id
 			LEFT JOIN playlist_item_counts_q c ON c.room_id = a.id
 			LEFT JOIN room_settings d ON d.room_id = a.id
-			WHERE $3 = ''
-			OR a.name ILIKE '%' || $3 || '%'
+			WHERE ($3 = '' OR a.name ILIKE '%' || $3 || '%')
+			AND (NOT $8::BOOLEAN OR a.flagged)
 		),
 		numbered_q AS (
 			SELECT
@@ -79,6 +82,9 @@ func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 			a.playlist_item_count,
 			a.active_sources,
 			a.has_admin_password,
+			a.flagged,
+			a.flagged_at,
+			a.checked_at,
 			a.total_count
 		FROM numbered_q a
 		WHERE a.row_number >= $6
@@ -130,6 +136,7 @@ func (c *Client) SearchAdminRoomsV2(
 		search.Descending,
 		search.From+1,
 		search.To+1,
+		search.Flagged,
 	)
 	if err != nil {
 		return nil, fmt.Errorf("error searching admin rooms: %w", err)
@@ -175,6 +182,9 @@ func (c *Client) SearchAdminRoomsV2(
 }
 
 type adminRoomRow struct {
+	Flagged           sql.NullBool
+	FlaggedAt         sql.NullTime
+	CheckedAt         sql.NullTime
 	ID                sql.NullString
 	Name              sql.NullString
 	RoomType          sql.NullString
@@ -196,6 +206,9 @@ func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
 		&r.PlaylistItemCount,
 		&r.ActiveSources,
 		&r.HasAdminPassword,
+		&r.Flagged,
+		&r.FlaggedAt,
+		&r.CheckedAt,
 		&r.TotalCount,
 	)
 	if err != nil {
@@ -206,12 +219,25 @@ func (r *adminRoomRow) scanRows(rows *sql.Rows) error {
 }
 
 func (r *adminRoomRow) toSummary() (*vibe.AdminRoomSummaryV2, error) {
+	var flaggedAt *time.Time
+	if r.FlaggedAt.Valid {
+		flaggedAt = &r.FlaggedAt.Time
+	}
+
+	var checkedAt *time.Time
+	if r.CheckedAt.Valid {
+		checkedAt = &r.CheckedAt.Time
+	}
+
 	sources := []string{}
 	if r.ActiveSources.Valid && r.ActiveSources.String != "" {
 		sources = strings.Split(r.ActiveSources.String, ",")
 	}
 
 	return &vibe.AdminRoomSummaryV2{
+		Flagged:           r.Flagged.Bool,
+		FlaggedAt:         flaggedAt,
+		CheckedAt:         checkedAt,
 		ID:                r.ID.String,
 		Name:              r.Name.String,
 		RoomType:          vibe.RoomType(r.RoomType.String),
@@ -227,17 +253,27 @@ func (c *Client) prepareUpdateAdminRoomStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH updated_room_q AS (
 			UPDATE rooms a
-			SET name = COALESCE($2::text, a.name),
+			SET name = COALESCE($2::TEXT, a.name),
+			flagged = COALESCE($4::BOOLEAN, a.flagged),
+			flagged_at = CASE
+				WHEN $4::BOOLEAN THEN COALESCE(a.flagged_at, NOW())
+				WHEN $4::BOOLEAN = FALSE THEN NULL
+				ELSE a.flagged_at
+			END,
+			checked_at = CASE
+				WHEN $4::BOOLEAN IS NOT NULL THEN NOW()
+				ELSE a.checked_at
+			END,
 			admin_password_hash = CASE
-				WHEN $3::boolean THEN NULL
+				WHEN $3::BOOLEAN THEN NULL
 				ELSE a.admin_password_hash
 			END
 			WHERE a.id = $1
-			RETURNING a.id
+			RETURNING a.id, a.flagged
 		)
 		UPDATE room_settings a
 		SET is_public = CASE
-			WHEN $3::boolean THEN FALSE
+			WHEN $3::BOOLEAN OR b.flagged THEN FALSE
 			ELSE a.is_public
 		END
 		FROM updated_room_q b
@@ -273,6 +309,7 @@ func (c *Client) UpdateAdminRoom(ctx context.Context, roomID string, request vib
 		roomID,
 		name,
 		clearAdminPassword,
+		request.Flagged,
 	)
 	if err != nil {
 		return false, fmt.Errorf("error updating admin room: %w", err)

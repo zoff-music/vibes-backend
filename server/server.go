@@ -41,7 +41,7 @@ type Server struct {
 	Redis          *redisclient.Client
 	YouTube        *youtube.Client
 	SoundCloud     *soundcloud.Client
-	AI             vibe.PlaylistGenerator
+	AI             vibe.PlaylistGeneratorReviewer
 	Router         *mux.Router
 	InternalRouter *mux.Router
 }
@@ -95,7 +95,7 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("error parsing configured AI model: %w", err)
 	}
 
-	var ai vibe.PlaylistGenerator
+	var ai vibe.PlaylistGeneratorReviewer
 	switch aiModel.Provider {
 	case vibe.AIProviderGrok:
 		ai = &grokClient

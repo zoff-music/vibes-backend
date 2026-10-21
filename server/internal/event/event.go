@@ -20,10 +20,18 @@ func GetAppEvents(
 	redisClient *redisclient.Client,
 	soundcloudClient *soundcloud.Client,
 	youtubeClient *youtube.Client,
-	ai vibe.PlaylistGenerator,
+	ai vibe.PlaylistGeneratorReviewer,
 	enabledProviders []string,
 ) AppEvents {
 	events := AppEvents{
+		{
+			Name: "ReviewRoomNames",
+			Rate: 30 * time.Minute,
+			Handler: &handler.ReviewRoomNames{
+				DB: db,
+				AI: ai,
+			},
+		},
 		{
 			Name: "ExpirePlaylistItemMetadata",
 			Rate: time.Minute,
