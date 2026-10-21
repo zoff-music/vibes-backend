@@ -23,8 +23,8 @@ func (c *Client) prepareCreatePlaylistImportItemsStmt() error {
 			a.value->>'sourceType', a.value->>'sourceId', a.value->>'providerUrl',
 			COALESCE(a.value->>'playbackRestriction', ''), a.value->>'title',
 			COALESCE(a.value->>'publisher', ''), a.value->>'thumbnailUrl',
-			(a.value->>'duration')::integer
-		FROM jsonb_array_elements($2::jsonb) WITH ORDINALITY AS a(value, ordinality)
+			(a.value->>'duration')::INTEGER
+		FROM JSONB_ARRAY_ELEMENTS($2::JSONB) WITH ORDINALITY AS a(value, ordinality)
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing CreatePlaylistImportItemsStatement: %w", err)
@@ -81,7 +81,7 @@ func (c *Client) CreatePlaylistImport(ctx context.Context, importID string, room
 		return fmt.Errorf("error creating playlist import: playlist has no items")
 	}
 
-	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	result, err := c.CreatePlaylistImportStatement.ExecContext(cctx, importID, roomID, userID, count)
@@ -237,7 +237,7 @@ func (c *Client) ProcessNextPlaylistImport(
 	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextPlaylistImport")
 	defer span.End()
 
-	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	row := c.ProcessNextPlaylistImportStatement.QueryRowContext(
@@ -400,7 +400,7 @@ func (c *Client) CompletePlaylistImportItem(
 	span, ctx := tracing.StartSpanFromContext(ctx, "CompletePlaylistImportItem")
 	defer span.End()
 
-	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	r := c.CompletePlaylistImportItemStatement.QueryRowContext(
@@ -457,7 +457,7 @@ func (c *Client) DeletePlaylistImport(ctx context.Context, importID string) erro
 	span, ctx := tracing.StartSpanFromContext(ctx, "DeletePlaylistImport")
 	defer span.End()
 
-	cctx, cancel := context.WithTimeout(ctx, playlistImportDatabaseTimeout)
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
 	_, err := c.DeletePlaylistImportStatement.ExecContext(cctx, importID)
@@ -480,11 +480,6 @@ func (c *Client) StartPlaylistPlayback(ctx context.Context, roomID string) (*vib
 
 	return state, nil
 }
-
-const playlistImportMaxAttempts = 5
-
-// Imports can contain large batches, so retain their longer database deadline.
-const playlistImportDatabaseTimeout = 15 * time.Second
 
 func (c *Client) prepareUpdatePlaylistItemPlaybackRestrictionStmt() error {
 	stmt, err := c.DB.Prepare(`
@@ -1650,8 +1645,14 @@ func (c *Client) updatePlaylistItemAddedAt(ctx context.Context, roomID, playlist
 	return nil
 }
 
+const playlistImportMaxAttempts = 5
+
 const votePlaylistItemAlreadyVoted = "already_voted"
+
 const votePlaylistItemCreated = "created"
+
 const votePlaylistItemNotFound = "playlistItem_not_found"
+
 const addPlaylistItemResultRoomNotFound = "room_not_found"
+
 const addPlaylistItemResultProviderDisabled = "provider_disabled"

@@ -155,10 +155,6 @@ type AddPlaylistItemResult struct {
 	Outcome      string       `json:"outcome"`
 }
 
-const AddPlaylistItemOutcomeAdded = "added"
-const AddPlaylistItemOutcomeDuplicateVoted = "duplicate_voted"
-const AddPlaylistItemOutcomeDuplicateAlreadyVoted = "duplicate_already_voted"
-
 func (r AddPlaylistItemRequest) CanonicalProviderURL() (string, error) {
 	if r.SourceType == SourceTypeYouTube {
 		providerURL := fmt.Sprintf("https://www.youtube.com/watch?v=%s", r.SourceID)
@@ -288,6 +284,12 @@ func ResolveSoundCloudTrackURL(value string) (string, error) {
 	url := providerURL.String()
 	return url, nil
 }
+
+const AddPlaylistItemOutcomeAdded = "added"
+
+const AddPlaylistItemOutcomeDuplicateVoted = "duplicate_voted"
+
+const AddPlaylistItemOutcomeDuplicateAlreadyVoted = "duplicate_already_voted"
 
 const PlaybackRestrictionAge = "age"
 

@@ -141,12 +141,6 @@ func (client *HTTPClient) request(ctx context.Context, reqData HTTPRequestData) 
 	return resp, nil
 }
 
-const applicationName = "vibes-backend"
-
-const maxLoggedValueBytes = 4096
-
-const redactedValue = "[REDACTED]"
-
 // redactBodyForLog returns a redacted representation of a request body suitable for logs/traces.
 // It tries to parse JSON and form bodies and redact common secret/token fields; otherwise it
 // returns a size-only placeholder.
@@ -338,3 +332,9 @@ func isSensitiveLogKey(key string) bool {
 
 	return sensitive
 }
+
+const applicationName = "vibes-backend"
+
+const maxLoggedValueBytes = 4096
+
+const redactedValue = "[REDACTED]"

@@ -51,11 +51,6 @@ type SkipVoteUpdateV2 struct {
 	RequiredVotes  int    `json:"requiredVotes"`
 }
 
-const PlaylistItemAdded = "playlist_item_added"
-const PlaylistItemRemoved = "playlist_item_removed"
-const PlaylistItemUpdated = "playlist_item_updated"
-const PlaylistItemsSnapshot = "playlist_items_snapshot"
-
 type RoomEventV3 struct {
 	Version int                 `json:"version"`
 	ID      string              `json:"id,omitempty"`
@@ -82,8 +77,6 @@ func (v RoomEventV3) MarshalJSON() ([]byte, error) {
 
 	return body, nil
 }
-
-const PlaylistItemsUpdate = "playlist_items_update"
 
 func ParseRoomEvent(data []byte) (*RoomEventV3, error) {
 	var event RoomEventV3
@@ -133,3 +126,13 @@ type RoomRemoteEventV3Notifier interface {
 	RoomEventV3Notifier
 	RemoteEventNotifierV2
 }
+
+const PlaylistItemAdded = "playlist_item_added"
+
+const PlaylistItemRemoved = "playlist_item_removed"
+
+const PlaylistItemUpdated = "playlist_item_updated"
+
+const PlaylistItemsSnapshot = "playlist_items_snapshot"
+
+const PlaylistItemsUpdate = "playlist_items_update"

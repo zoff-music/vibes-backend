@@ -65,10 +65,6 @@ func (v AdminRoomResultV2) MarshalJSON() ([]byte, error) {
 
 type AdminRoomSortV2 string
 
-const AdminRoomSortListenersV2 AdminRoomSortV2 = "listeners"
-
-const AdminRoomSortPlaylistItems AdminRoomSortV2 = "playlistItems"
-
 type AdminRoomSearchV2 struct {
 	Flagged    bool
 	Query      string
@@ -146,3 +142,7 @@ func ParseAdminEvent(data []byte) (*AdminEventV2, error) {
 type AdminEventV2Notifier interface {
 	NotifyAdminUpdateV2(ctx context.Context, event AdminEventV2) error
 }
+
+const AdminRoomSortListenersV2 AdminRoomSortV2 = "listeners"
+
+const AdminRoomSortPlaylistItems AdminRoomSortV2 = "playlistItems"

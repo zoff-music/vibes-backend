@@ -122,9 +122,6 @@ func (c *Client) RefreshToken(ctx context.Context, refreshToken string) (*vibe.T
 	return &res, nil
 }
 
-// #nosec G101 -- this is SoundCloud's public OAuth endpoint, not a credential.
-const soundCloudTokenURL = "https://secure.soundcloud.com/oauth/token"
-
 // EnsureToken checks if the current token is valid and refreshes it if necessary
 func (c *Client) EnsureToken(ctx context.Context) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "EnsureToken")
@@ -198,3 +195,6 @@ func (c *Client) GetClientCredentialsToken(ctx context.Context) (*vibe.TokenResp
 
 	return &res, nil
 }
+
+// #nosec G101 -- this is SoundCloud's public OAuth endpoint, not a credential.
+const soundCloudTokenURL = "https://secure.soundcloud.com/oauth/token"

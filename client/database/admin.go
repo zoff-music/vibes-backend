@@ -384,8 +384,6 @@ func (c *Client) DeleteAdminRoom(ctx context.Context, roomID string) (bool, erro
 	return rowsAffected > 0, nil
 }
 
-const adminRoomsMaximumRow = 2147483647
-
 func (c *Client) prepareGetAdminUserStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT
@@ -783,8 +781,6 @@ func (c *Client) DeleteAdminUser(
 	return affected > 0, nil
 }
 
-const adminUsernameConstraint = "admin_users_username_key"
-
 func (c *Client) prepareListAdminRoomSearchUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH windows_q (period, starts_at) AS (
@@ -1038,3 +1034,7 @@ func (r *adminSearchUsageRow) toAdminSearchUsagePoint() (*vibe.AdminSearchUsageP
 		Live:      int(r.Live.Int64),
 	}, nil
 }
+
+const adminRoomsMaximumRow = 2147483647
+
+const adminUsernameConstraint = "admin_users_username_key"

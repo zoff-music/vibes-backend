@@ -54,16 +54,21 @@ func CreateMessages(db vibe.MessageAuthorFetcherUsageCreator, events vibe.RoomEv
 		}
 
 		if !request.Validate() {
-			handleError(w, internalerror.ErrorCodeWrapper{
-				Err: fmt.Errorf("error validating chat message"),
-				ResponseBody: internalerror.ErrorCodeResponseBody{
-					Namespace: "vibes-backend",
-					Error:     "chat_message_invalid",
-					Message:   fmt.Sprintf("Use between 1 and %d characters for your message.", vibe.MessageMaxLength),
-					Propagate: true,
+			handleError(
+				w,
+				internalerror.ErrorCodeWrapper{
+					Err: fmt.Errorf("error validating chat message"),
+					ResponseBody: internalerror.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "chat_message_invalid",
+						Message:   fmt.Sprintf("Use between 1 and %d characters for your message.", vibe.MessageMaxLength),
+						Propagate: true,
+					},
+					StatusCode: http.StatusBadRequest,
 				},
-				StatusCode: http.StatusBadRequest,
-			}, http.StatusBadRequest, false)
+				http.StatusBadRequest,
+				false,
+			)
 			return
 		}
 

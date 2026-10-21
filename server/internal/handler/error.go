@@ -12,8 +12,6 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-const statusClientClosedRequest = 499
-
 func handleError(
 	w http.ResponseWriter,
 	err error,
@@ -63,3 +61,5 @@ func handleError(
 	w.WriteHeader(publicError.StatusCode)
 	_, _ = w.Write(body)
 }
+
+const statusClientClosedRequest = 499
