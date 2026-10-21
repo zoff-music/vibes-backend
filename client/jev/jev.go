@@ -49,7 +49,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	c.threshold = cfg.JEVModerationThreshold / 100
 	c.HTTPClient = client.HTTPClient{
 		Client: &http.Client{
-			Timeout:   2 * time.Minute,
+			Timeout:   45 * time.Second,
 			Transport: client.InstrumentedTransport(),
 		},
 	}
