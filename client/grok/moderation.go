@@ -11,7 +11,7 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) ReviewRoomNames(ctx context.Context, rooms []vibe.RoomNameDecision) (*vibe.RoomNameReviewResult, error) {
+func (c *Client) ReviewRoomNames(ctx context.Context, rooms []vibe.RoomNameDecision) ([]vibe.RoomNameDecision, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ReviewRoomNames")
 	defer span.End()
 
@@ -77,11 +77,9 @@ func (c *Client) ReviewRoomNames(ctx context.Context, rooms []vibe.RoomNameDecis
 		flagged[id] = true
 	}
 
-	result := &vibe.RoomNameReviewResult{
-		Rooms: make([]vibe.RoomNameDecision, len(rooms)),
-	}
+	result := make([]vibe.RoomNameDecision, len(rooms))
 	for i, room := range rooms {
-		result.Rooms[i] = vibe.RoomNameDecision{
+		result[i] = vibe.RoomNameDecision{
 			ID:      room.ID,
 			Name:    room.Name,
 			Flagged: flagged[room.ID],

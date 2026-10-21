@@ -25,7 +25,7 @@ func (h *ReviewRoomNames) Handle(ctx context.Context, _ []byte) error {
 
 	err = h.DB.CompleteRoomNameReview(ctx, &vibe.RoomNameReview{
 		StartedAt: review.StartedAt,
-		Rooms:     result.Rooms,
+		Rooms:     result,
 	})
 	if err != nil {
 		return fmt.Errorf("error completing room name review: %w", err)
