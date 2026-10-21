@@ -7,6 +7,8 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/client/database"
+	"github.com/zoff-music/vibes-backend/client/gemini"
+	"github.com/zoff-music/vibes-backend/client/jev"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
 	"github.com/zoff-music/vibes-backend/client/youtube"
@@ -20,7 +22,8 @@ func GetAppEvents(
 	redisClient *redisclient.Client,
 	soundcloudClient *soundcloud.Client,
 	youtubeClient *youtube.Client,
-	ai vibe.PlaylistGeneratorReviewer,
+	geminiClient *gemini.Client,
+	jevClient *jev.Client,
 	enabledProviders []string,
 ) AppEvents {
 	events := AppEvents{
@@ -29,7 +32,7 @@ func GetAppEvents(
 			Rate: 30 * time.Second,
 			Handler: &handler.ReviewRoomNames{
 				DB: db,
-				AI: ai,
+				AI: jevClient,
 			},
 		},
 		{
@@ -52,7 +55,7 @@ func GetAppEvents(
 			Name: "GenerateRoomPlaylist",
 			Rate: 5 * time.Second,
 			Handler: &handler.GenerateRoomPlaylist{
-				AI:       ai,
+				AI:       geminiClient,
 				Cache:    redisClient,
 				DB:       db,
 				Searcher: youtubeClient,

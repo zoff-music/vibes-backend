@@ -48,57 +48,6 @@ type generatedPlaylistPrompt struct {
 	ExistingPlaylistItems []generatedPlaylistPromptItem `json:"existingPlaylistItems,omitempty"`
 }
 
-type AIModel struct {
-	Provider string
-	Name     string
-}
-
-func ParseAIModel(value string) (*AIModel, error) {
-	parts := strings.SplitN(value, ":", 2)
-	if len(parts) != 2 {
-		name := strings.TrimSpace(value)
-		lowerName := strings.ToLower(name)
-		if strings.HasPrefix(lowerName, "grok-") {
-			model := AIModel{
-				Provider: AIProviderGrok,
-				Name:     name,
-			}
-			return &model, nil
-		}
-		if strings.HasPrefix(lowerName, "gemini-") {
-			model := AIModel{
-				Provider: AIProviderGemini,
-				Name:     name,
-			}
-			return &model, nil
-		}
-		return nil, fmt.Errorf(
-			"error parsing AI model %q: expected PROVIDER:model",
-			value,
-		)
-	}
-
-	provider := strings.ToUpper(strings.TrimSpace(parts[0]))
-	name := strings.TrimSpace(parts[1])
-	if name == "" {
-		return nil, fmt.Errorf("error parsing AI model %q: model is required", value)
-	}
-
-	if provider != AIProviderGrok && provider != AIProviderGemini {
-		return nil, fmt.Errorf(
-			"error parsing AI model %q: provider must be GROK or GEMINI",
-			value,
-		)
-	}
-
-	model := AIModel{
-		Provider: provider,
-		Name:     name,
-	}
-
-	return &model, nil
-}
-
 type GeneratedPlaylistSearchResult struct {
 	Playlist       GeneratedPlaylist
 	CachedSearches []CachedProviderSearch
@@ -248,10 +197,6 @@ The request may include JSON with listenerRequest, currentlyPlaying and existing
 Prefer relevant videos whose exact YouTube IDs you confidently know. Never invent videos, creators, titles or IDs. If an ID is uncertain, omit youtubeId and give the real canonical title and publishing channel. Prioritize the requested topic over popularity or filling the queue. Sequence videos intentionally for a coherent viewing session.
 Exclude live streams, upcoming streams and videos made for kids. Prefer uploads available in official embedded players. Do not claim availability, age or country restrictions have been verified: the application checks provider metadata separately. Do not call tools or claim external verification.
 Return only a valid JSON array containing 1 to {itemCount} objects. Use exactly title (video title), publisher (publishing channel or creator), and optional youtubeId (the exact 11-character ID, not a URL). Escape strings correctly. No Markdown, prose, citations, duplicates or extra fields. Return fewer items when strong matches are limited.`
-
-const AIProviderGrok = "GROK"
-
-const AIProviderGemini = "GEMINI"
 
 const RoomGenerationRetention = 24 * time.Hour
 

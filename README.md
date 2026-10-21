@@ -26,7 +26,7 @@ playlist imports, generation, playback, and remote control.
   updates instead of repeatedly sending the full playlist.
 - Paired remote controls, room-scoped Cast tokens, and shared contracts for web,
   mobile, television, Cast, and embed clients.
-- Prompt-based playlist generation with configurable Grok or Gemini providers,
+- Prompt-based playlist generation with Gemini and room-name moderation with JEV,
   provider metadata refresh, and bounded background retries.
 - Protected global administration, usage counters, rate limiting, metrics, and
   OpenTelemetry tracing.
@@ -54,8 +54,8 @@ export DATABASE_URL='postgres://user:password@localhost:5432/vibes?sslmode=disab
 export REDIS_URL='redis://localhost:6379/0'
 export COOKIE_SECRET='replace-with-a-long-random-local-secret'
 export YOUTUBE_API_KEY='your-youtube-api-key'
-# Set the key for the configured AI provider when running playlist generation.
-export GROK_API_KEY='your-grok-api-key'
+# Supply provider credentials securely through your runtime environment.
+# GEMINI_API_KEY is required for generation; JEV_API_KEY for moderation.
 
 make dev
 ```
@@ -76,8 +76,10 @@ rules.
 | `REQUEST_BODY_MAX_BYTES` | API request body limit, including chunked bodies; defaults to 1 MiB |
 | `YOUTUBE_API_KEY` | Enables YouTube; OAuth client settings are separate |
 | `SOUNDCLOUD_CLIENT_ID`, `SOUNDCLOUD_CLIENT_SECRET` | SoundCloud provider credentials |
-| `AI_MODEL` | `PROVIDER:model` selection; default is defined in config |
-| `GROK_API_KEY`, `GEMINI_API_KEY` | Credential for the selected generation provider |
+| `PLAYLIST_GENERATION_MODEL` | Unprefixed Gemini model name; default `gemini-3.8-flash` |
+| `MODERATION_MODEL` | Unprefixed JEV model name; default `jev-latest` |
+| `GEMINI_API_KEY`, `JEV_API_KEY` | Credentials for generation and moderation respectively |
+| `JEV_MODERATION_THRESHOLD` | Moderation probability threshold as a percentage; default `90`, valid range greater than 0 through 100 |
 | `RATE_LIMIT_ENABLED` | Enables general route-policy rate limiting; defaults to false. Admin sign-in is always rate-limited, including internal requests |
 | `ROOM_EVENT_REPLAY_MAX_EVENTS`, `ROOM_EVENT_REPLAY_MAX_AGE` | Replay bounds; defaults 100 events and 15m. Older cursors receive a fresh snapshot. |
 | `CORS_ALLOWED_ORIGINS` | Allowed browser origins |
@@ -122,7 +124,7 @@ use a temporary Docker configuration that is removed after publishing or failure
 | `client/database` | Atomic prepared PostgreSQL operations, row scanning, and domain mapping |
 | `client/redis` | Replay streams, caches, pairing state, and rate-limit storage |
 | `client/youtube`, `client/soundcloud` | Music-provider APIs |
-| `client/grok`, `client/gemini` | Playlist-generation APIs |
+| `client/gemini`, `client/jev` | Playlist generation and room-name moderation APIs |
 | `vibe` | Domain types, payloads, validation, and narrow capability interfaces |
 | `config`, `monitoring` | Configuration, tracing, and metrics |
 

@@ -25,7 +25,7 @@ sections explain how those boundaries support live rooms and background work.
 | Redis | Retained event streams for replay, rate limiting, provider-search caching, and short-lived statistics |
 | Vibes migrator | Applies PostgreSQL schema changes |
 | Media providers | YouTube for MUSIC and WATCH; SoundCloud for MUSIC only |
-| Playlist-generation providers | xAI Grok and Google Gemini produce candidate playlists from natural-language prompts |
+| Generation and moderation providers | Google Gemini produces candidate playlists; JEV reviews room names using probability-based decisions |
 | Google Cast | Sender SDK, receiver runtime, and media-message transport between Cast-capable clients and the receiver |
 
 ## Frontend architecture

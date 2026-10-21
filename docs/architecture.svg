@@ -162,7 +162,7 @@
 
   <rect class="node external" x="970" y="325" width="370" height="90" rx="9"/>
   <text class="title" x="1155" y="356">Playlist-generation providers</text>
-  <text class="detail" x="1155" y="382">Grok · Gemini · MUSIC / WATCH prompts</text>
+  <text class="detail" x="1155" y="382">Gemini generation · JEV moderation</text>
 
   <rect class="node external" x="970" y="505" width="370" height="90" rx="9"/>
   <text class="title" x="1155" y="536">Google Cast platform</text>

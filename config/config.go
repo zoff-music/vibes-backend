@@ -50,16 +50,18 @@ type Config struct {
 	SoundCloudRedirectURI  string `envconfig:"SOUNDCLOUD_REDIRECT_URI" default:"https://localhost/api/v1/callbacks/soundcloud"`
 
 	// AI configuration
-	AIModel                                string `envconfig:"AI_MODEL" default:"GROK:grok-4.3"`
+	PlaylistGenerationModel                string `envconfig:"PLAYLIST_GENERATION_MODEL" default:"gemini-3.8-flash"`
+	ModerationModel                        string `envconfig:"MODERATION_MODEL" default:"jev-latest"`
 	GeneratedPlaylistItemCount             int    `envconfig:"GENERATED_PLAYLIST_ITEM_COUNT" default:"80"`
 	GeneratedPlaylistSelectedItemCount     int    `envconfig:"GENERATED_PLAYLIST_SELECTED_ITEM_COUNT" default:"30"`
 	RoomGenerationMaxAttempts              int    `envconfig:"ROOM_GENERATION_MAX_ATTEMPTS" default:"5"`
 	RoomGenerationMaxDailyCount            int    `envconfig:"ROOM_GENERATION_MAX_DAILY_COUNT" default:"2"`
 	RoomGenerationMaxExistingPlaylistItems int    `envconfig:"ROOM_GENERATION_MAX_EXISTING_PLAYLIST_ITEMS" default:"59"`
 
-	// Grok configuration
-	GrokAPIKey   string `envconfig:"GROK_API_KEY" default:""`
-	GrokEndpoint string `envconfig:"GROK_ENDPOINT" default:"https://api.x.ai/v1"`
+	// JEV configuration
+	JEVAPIKey              string  `envconfig:"JEV_API_KEY" default:""`
+	JEVEndpoint            string  `envconfig:"JEV_ENDPOINT" default:"https://api.typesafe.ai/v1"`
+	JEVModerationThreshold float64 `envconfig:"JEV_MODERATION_THRESHOLD" default:"90"`
 
 	// Gemini configuration
 	GeminiAPIKey   string `envconfig:"GEMINI_API_KEY" default:""`
