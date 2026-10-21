@@ -90,6 +90,12 @@ func (c *Client) GetNextRoomNameReview(ctx context.Context) (*vibe.RoomNameRevie
 		return nil, fmt.Errorf("error iterating room name review: %w", err)
 	}
 
+	if len(review.Rooms) == 0 {
+		return nil, internalerror.ErrExpected{
+			Err: fmt.Errorf("no rooms requiring review"),
+		}
+	}
+
 	return review, nil
 }
 

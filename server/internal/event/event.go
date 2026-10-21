@@ -28,9 +28,8 @@ func GetAppEvents(
 			Name: "ReviewRoomNames",
 			Rate: 30 * time.Minute,
 			Handler: &handler.ReviewRoomNames{
-				DB:     db,
-				AI:     ai,
-				Events: redisClient,
+				DB: db,
+				AI: ai,
 			},
 		},
 		{

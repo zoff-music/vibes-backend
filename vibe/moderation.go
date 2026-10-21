@@ -11,10 +11,6 @@ type RoomNameReview struct {
 	Rooms     []RoomNameDecision
 }
 
-func (r *RoomNameReview) IsEmpty() bool {
-	return len(r.Rooms) == 0
-}
-
 type RoomNameDecision struct {
 	ID      string `json:"id"`
 	Name    string `json:"name"`
@@ -47,7 +43,7 @@ func (v *RoomNameVerdict) Validate(rooms []RoomNameDecision) error {
 }
 
 type RoomNameReviewer interface {
-	ReviewRoomNames(context.Context, []RoomNameDecision) (*RoomNameVerdict, error)
+	ReviewRoomNames(context.Context, []RoomNameDecision) error
 }
 
 type PlaylistGeneratorReviewer interface {
@@ -56,7 +52,6 @@ type PlaylistGeneratorReviewer interface {
 }
 
 type RoomNameReviewClaimerUpdater interface {
-	RoomV2Fetcher
 	GetNextRoomNameReview(context.Context) (*RoomNameReview, error)
 	CompleteRoomNameReview(context.Context, *RoomNameReview) error
 }

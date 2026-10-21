@@ -681,9 +681,8 @@ func AdminDeleteUser(deleter vibe.AdminUserDeleter) http.HandlerFunc {
 }
 
 type ReviewRoomNames struct {
-	DB     vibe.RoomNameReviewClaimerUpdater
-	AI     vibe.RoomNameReviewer
-	Events vibe.RoomEventV3Notifier
+	DB vibe.RoomNameReviewClaimerUpdater
+	AI vibe.RoomNameReviewer
 }
 
 func (h *ReviewRoomNames) Handle(ctx context.Context, _ []byte) error {
@@ -691,58 +690,15 @@ func (h *ReviewRoomNames) Handle(ctx context.Context, _ []byte) error {
 	if err != nil {
 		return fmt.Errorf("error claiming room name review: %w", err)
 	}
-	if review.IsEmpty() {
-		return nil
-	}
 
-	cctx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
-
-	verdict, err := h.AI.ReviewRoomNames(cctx, review.Rooms)
+	err = h.AI.ReviewRoomNames(ctx, review.Rooms)
 	if err != nil {
 		return fmt.Errorf("error reviewing room names: %w", err)
 	}
 
-	err = verdict.Validate(review.Rooms)
-	if err != nil {
-		return fmt.Errorf("error validating room name review: %w", err)
-	}
-
-	flagged := make(map[string]bool, len(verdict.FlaggedIDs))
-	for _, id := range verdict.FlaggedIDs {
-		flagged[id] = true
-	}
-
-	for i := range review.Rooms {
-		review.Rooms[i].Flagged = flagged[review.Rooms[i].ID]
-	}
-
-	err = h.DB.CompleteRoomNameReview(cctx, review)
+	err = h.DB.CompleteRoomNameReview(ctx, review)
 	if err != nil {
 		return fmt.Errorf("error completing room name review: %w", err)
-	}
-
-	for _, decision := range review.Rooms {
-		room, err := h.DB.GetRoomV2(cctx, decision.ID, "")
-		if err != nil {
-			return fmt.Errorf("error fetching reviewed room: %w", err)
-		}
-		if room.IsEmpty() {
-			continue
-		}
-
-		body, err := json.Marshal(room)
-		if err != nil {
-			return fmt.Errorf("error encoding reviewed room: %w", err)
-		}
-
-		err = h.Events.NotifyRoomUpdateV3(cctx, room.ID, vibe.RoomEventV3{
-			Type:    vibe.SettingsUpdate,
-			Payload: body,
-		})
-		if err != nil {
-			return fmt.Errorf("error notifying reviewed room: %w", err)
-		}
 	}
 
 	return nil

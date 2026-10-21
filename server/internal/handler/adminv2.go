@@ -116,8 +116,10 @@ func AdminRoomsV2(
 			return
 		}
 
+		flagged := r.URL.Query().Get("flagged") == "true"
+
 		result, err := db.SearchAdminRoomsV2(ctx, vibe.AdminRoomSearchV2{
-			Flagged:    r.URL.Query().Get("flagged") == "true",
+			Flagged:    flagged,
 			Query:      query,
 			SortBy:     sortBy,
 			Descending: order == adminRoomOrderDescending,
