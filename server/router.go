@@ -51,12 +51,8 @@ func (s *Server) setupRoutes() {
 	apiV1.HandleFunc("/sessions", handler.UpdateSessionProfile(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("UpdateSessionProfile")
 
 	// Playlist item routes.
-	apiV2.HandleFunc("/rooms/{id}/playlist-items", handler.GetPlaylistItems(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetPlaylistItems")
-	apiV2.HandleFunc("/rooms/{id}/playlist-items", handler.AddPlaylistItem(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddPlaylistItem")
 	apiV3.HandleFunc("/rooms/{id}/items", handler.AddItemV3(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddItemV3")
-	apiV2.HandleFunc("/rooms/{id}/playlist-items/{playlistItemId}", handler.RemovePlaylistItem(s.DB, s.Redis)).Methods(http.MethodDelete, http.MethodOptions).Name("RemovePlaylistItem")
 	apiV3.HandleFunc("/rooms/{id}/items/{itemId}", handler.RemoveItemV3(s.DB, s.Redis)).Methods(http.MethodDelete, http.MethodOptions).Name("RemoveItemV3")
-	apiV2.HandleFunc("/rooms/{id}/playlist-items/{playlistItemId}", handler.VotePlaylistItem(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("VotePlaylistItem")
 	apiV3.HandleFunc("/rooms/{id}/items/{itemId}", handler.VoteItemV3(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("VoteItemV3")
 	apiV2.HandleFunc("/rooms/{id}/playlists", handler.AddPlaylistV2(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("AddPlaylistV2")
 
@@ -164,14 +160,10 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"UpdatePlaybackStateV2":       {Bucket: "UpdatePlaybackState", Rate: time.Minute, Limit: 240},
 			"ReportPlaybackFailureV2":     {Bucket: "ReportPlaybackFailure", Rate: time.Minute, Limit: 30},
 			"CreateSessionV2":             {Bucket: "CreateSession", Rate: time.Minute, Limit: 30},
-			"GetPlaylistItems":            {Bucket: "GetSongs", Rate: time.Minute, Limit: 120},
 			"GetItemsV3":                  {Bucket: "GetSongs", Rate: time.Minute, Limit: 120},
-			"AddPlaylistItem":             {Bucket: "AddSong", Rate: time.Minute, Limit: 60},
 			"AddItemV3":                   {Bucket: "AddSong", Rate: time.Minute, Limit: 60},
 			"AddPlaylistV2":               {Bucket: "AddPlaylist", Rate: time.Minute, Limit: 6},
-			"RemovePlaylistItem":          {Bucket: "RemoveSong", Rate: time.Minute, Limit: 60},
 			"RemoveItemV3":                {Bucket: "RemoveSong", Rate: time.Minute, Limit: 60},
-			"VotePlaylistItem":            {Bucket: "VoteSong", Rate: time.Minute, Limit: 120},
 			"VoteItemV3":                  {Bucket: "VoteSong", Rate: time.Minute, Limit: 120},
 			"CreateMessages":              {Rate: time.Second, Limit: 1},
 			"Messages":                    {Rate: time.Minute, Limit: 30},
@@ -264,7 +256,6 @@ func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 			"GetPlaybackStateV2":      true,
 			"GetRoomV2":               true,
 			"GetProviders":            true,
-			"GetPlaylistItems":        true,
 			"GetItemsV3":              true,
 		},
 		RemoteRouteNames: map[string]bool{
@@ -273,11 +264,8 @@ func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 			"SkipPlaylistItem":            true,
 			"GetPlaybackStateV2":          true,
 			"UpdatePlaybackStateV2":       true,
-			"AddPlaylistItem":             true,
 			"AddItemV3":                   true,
-			"RemovePlaylistItem":          true,
 			"RemoveItemV3":                true,
-			"VotePlaylistItem":            true,
 			"VoteItemV3":                  true,
 			"GetRoomV2":                   true,
 			"UpdateRoomSettingsV2":        true,
@@ -285,7 +273,6 @@ func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 			"UpdateRemoteControlV2":       true,
 			"RemoteEventsV2":              true,
 			"CreateSessionV2":             true,
-			"GetPlaylistItems":            true,
 			"GetItemsV3":                  true,
 			"SearchYouTubeV2":             true,
 			"SearchSoundCloudV2":          true,
@@ -302,18 +289,14 @@ func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 			"SkipPlaylistItem":      true,
 			"GetPlaybackStateV2":    true,
 			"UpdatePlaybackStateV2": true,
-			"AddPlaylistItem":       true,
 			"AddItemV3":             true,
-			"RemovePlaylistItem":    true,
 			"RemoveItemV3":          true,
-			"VotePlaylistItem":      true,
 			"VoteItemV3":            true,
 			"GetRoomV2":             true,
 			"UpdateRoomSettingsV2":  true,
 			"SearchYouTubeV2":       true,
 			"SearchSoundCloudV2":    true,
 			"CreateSessionV2":       true,
-			"GetPlaylistItems":      true,
 			"GetItemsV3":            true,
 		},
 		Secret:                     s.Config.CookieSecret,
@@ -375,11 +358,8 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 			"CreateSessionV2":      true,
 			"UpdateSessionProfile": true,
 			"UpdateRoomSettingsV2": true,
-			"AddPlaylistItem":      true,
 			"AddItemV3":            true,
-			"RemovePlaylistItem":   true,
 			"RemoveItemV3":         true,
-			"VotePlaylistItem":     true,
 			"VoteItemV3":           true,
 			"SkipPlaylistItem":     true,
 		},
