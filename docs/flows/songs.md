@@ -4,7 +4,7 @@
 
 The frontend submits normalized metadata returned by an enabled provider. The
 backend validates the room type and source before inserting the item. MUSIC
-uses song wording in the UI; WATCH uses video wording. Both use the same v2
+uses song wording in the UI; WATCH uses video wording. Both use the same v3
 playlist-item endpoints and v3 events.
 
 Manual additions receive the adding listener's vote. Their queue position is
@@ -23,7 +23,7 @@ sequenceDiagram
     participant Events as Room event stream
 
     Listener->>Platform: Select Add song or Add video
-    Platform->>API: POST /api/v2/rooms/{id}/playlist-items
+    Platform->>API: POST /api/v3/rooms/{id}/items
     API->>DB: Load room and permissions
     DB-->>API: Room settings
     API->>API: Validate session, room type, source and cached metadata
@@ -54,7 +54,7 @@ sequenceDiagram
     participant Events as Room event stream
 
     Admin->>Platform: Remove item
-    Platform->>API: DELETE /api/v2/rooms/{id}/playlist-items/{playlistItemId}
+    Platform->>API: DELETE /api/v3/rooms/{id}/items/{itemId}
     API->>DB: Load room and administrator status
     DB-->>API: Room permissions
 
@@ -83,7 +83,7 @@ sequenceDiagram
     participant Events as Room event stream
 
     Listener->>Platform: Vote for item
-    Platform->>API: POST /api/v2/rooms/{id}/playlist-items/{playlistItemId}
+    Platform->>API: POST /api/v3/rooms/{id}/items/{itemId}
     API->>DB: Record vote for session and playlist item
 
     alt Session already voted

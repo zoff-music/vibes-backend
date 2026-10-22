@@ -31,7 +31,7 @@ Development: http://localhost:8080
 Production: https://zoff.me
 ```
 
-Each endpoint below includes its API version. Current clients use v2
+Each endpoint below includes its API version. Current clients use v3
 playlist-item REST contracts and the v3 room stream. Shared session, chat,
 OAuth, provider, and administration operations retain their supported v1 routes.
 Deprecated room, provider, remote, and admin contracts have been removed. See
@@ -43,8 +43,8 @@ Deprecated room, provider, remote, and admin contracts have been removed. See
 | --- | --- |
 | `POST /api/v2/rooms` | Create an immutable `roomType`: `MUSIC` (default) or `WATCH` |
 | `GET /api/v2/rooms/{id}` | Room type, settings, host identity and room state |
-| `/api/v2/rooms/{id}/playlist-items` | Queue reads and additions using `playlistItem`, `publisher` and item identifiers |
-| `/api/v2/rooms/{id}/playlist-items/{playlistItemId}` | Voting and removal |
+| `/api/v3/rooms/{id}/items` | Queue reads and additions using `playlistItem`, `publisher` and item identifiers |
+| `/api/v3/rooms/{id}/items/{itemId}` | Voting and removal |
 | `GET /api/v2/rooms/{id}/search/{provider}` | Room-type-aware search for an enabled provider |
 | `/api/v2/rooms/{id}/states` | Playlist-item playback state and controls |
 | `POST /api/v2/rooms/{id}/failures` | Report provider playback restrictions |
@@ -206,12 +206,16 @@ available.
 ### Queue Management
 
 #### Get Playlist Items
-`GET /api/v2/rooms/{id}/playlist-items`
+`GET /api/v3/rooms/{id}/items`
+
+Returns an `ItemResultV3` envelope with `data`, `total`, `count`, and requested
+and returned bounds. Supply both `from` and `to` for an inclusive, one-based
+page of at most 100 items, or omit both to request the full list.
 
 ---
 
 #### Add Playlist Item to Queue
-`POST /api/v2/rooms/{id}/playlist-items`
+`POST /api/v3/rooms/{id}/items`
 
 **Request Body:**
 ```json
@@ -224,12 +228,12 @@ available.
 ---
 
 #### Remove Playlist Item from Queue
-`DELETE /api/v2/rooms/{id}/playlist-items/{playlistItemId}`
+`DELETE /api/v3/rooms/{id}/items/{itemId}`
 
 ---
 
 #### Vote for Playlist Item
-`POST /api/v2/rooms/{id}/playlist-items/{playlistItemId}`
+`POST /api/v3/rooms/{id}/items/{itemId}`
 
 ---
 

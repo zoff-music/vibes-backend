@@ -109,11 +109,6 @@ type CachedProviderItemsCreator interface {
 	CacheProviderItems(ctx context.Context, source string, items []ProviderItem) error
 }
 
-type CachedProviderItemFetcherCreator interface {
-	CachedProviderItemFetcher
-	CachedProviderItemsCreator
-}
-
 type CachedProviderSearchItemFetcherCreator interface {
 	CachedProviderSearchFetcherCreator
 	CachedProviderItemsCreator
