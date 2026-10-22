@@ -146,6 +146,7 @@ func GetYouTubeItemV2(
 //	@Router		/api/v2/soundcloud/items/{id} [get]
 func GetSoundCloudItemV2(
 	ms vibe.ProviderItemFetcher,
+	cache vibe.CachedProviderItemsCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -167,6 +168,17 @@ func GetSoundCloudItemV2(
 			handleError(
 				w,
 				fmt.Errorf("error failed to get item: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		err = cache.CacheProviderItems(ctx, vibe.SourceTypeSoundCloud, []vibe.ProviderItem{*item})
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error caching verified soundcloud metadata: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -202,6 +214,7 @@ func GetSoundCloudItemV2(
 //	@Router		/api/v2/soundcloud/items [get]
 func ResolveSoundCloudItemV2(
 	resolver vibe.ProviderItemResolver,
+	cache vibe.CachedProviderItemsCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -229,6 +242,17 @@ func ResolveSoundCloudItemV2(
 					"error resolving soundcloud item in ResolveSoundCloudItemV2 handler: %w",
 					err,
 				),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		err = cache.CacheProviderItems(ctx, vibe.SourceTypeSoundCloud, []vibe.ProviderItem{*item})
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error caching verified soundcloud metadata: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)
@@ -356,6 +380,7 @@ func GetYouTubePlaylistV2(
 //	@Router		/api/v2/soundcloud/playlists [get]
 func ResolveSoundCloudPlaylistV2(
 	resolver vibe.ProviderPlaylistResolver,
+	cache vibe.CachedProviderItemsCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -394,6 +419,17 @@ func ResolveSoundCloudPlaylistV2(
 			handleError(
 				w,
 				fmt.Errorf("error resolving soundcloud playlist: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		err = cache.CacheProviderItems(ctx, vibe.SourceTypeSoundCloud, playlist.Items)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error caching verified soundcloud metadata: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

@@ -184,6 +184,41 @@ func (c *Client) ClearRoomAdmin(ctx context.Context, roomID string, userID strin
 	return nil
 }
 
+func (c *Client) prepareClaimRoomPasswordStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE rooms
+		SET admin_password_hash = $2
+		WHERE id = $1 AND COALESCE(admin_password_hash, '') = ''
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing ClaimRoomPasswordStatement: %w", err)
+	}
+
+	c.ClaimRoomPasswordStatement = stmt
+
+	return nil
+}
+
+func (c *Client) ClaimRoomPassword(ctx context.Context, roomID, hash string) (bool, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ClaimRoomPassword")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	result, err := c.ClaimRoomPasswordStatement.ExecContext(cctx, roomID, hash)
+	if err != nil {
+		return false, fmt.Errorf("error claiming room password: %w", err)
+	}
+
+	count, err := result.RowsAffected()
+	if err != nil {
+		return false, fmt.Errorf("error counting claimed room password: %w", err)
+	}
+
+	return count == 1, nil
+}
+
 // AuthenticateAdmin handles password verification and admin elevation.
 func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (*vibe.AdminAuthResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "AuthenticateAdmin")
@@ -206,11 +241,16 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 		if err != nil {
 			return nil, fmt.Errorf("error hashing password: %w", err)
 		}
-		room.AdminPasswordHash = string(hash)
-		_, err = c.UpdateRoomV2(ctx, room)
+		claimed, err := c.ClaimRoomPassword(ctx, roomID, string(hash))
 		if err != nil {
-			return nil, fmt.Errorf("error updating room password: %w", err)
+			return nil, fmt.Errorf("error claiming room password: %w", err)
 		}
+
+		if !claimed {
+			return &vibe.AdminAuthResult{}, nil
+		}
+
+		room.AdminPasswordHash = string(hash)
 	}
 
 	err = bcrypt.CompareHashAndPassword([]byte(room.AdminPasswordHash), []byte(password))

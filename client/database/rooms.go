@@ -833,8 +833,7 @@ func (c *Client) prepareUpdateRoomV2Stmt() error {
 			UPDATE rooms
 			SET name = $1,
 			mode = $9,
-			host_id = $10,
-			admin_password_hash = $11
+			host_id = $10
 			WHERE id = $2
 			RETURNING id, room_type, flagged
 		)
@@ -847,12 +846,12 @@ func (c *Client) prepareUpdateRoomV2Stmt() error {
 		allow_duplicates = $8,
 		enabled_sources = CASE
 			WHEN a.room_type = 'WATCH' THEN
-				CASE WHEN 'youtube' = ANY(string_to_array($12, ',')) THEN 'youtube' ELSE '' END
-			ELSE $12
+				CASE WHEN 'youtube' = ANY(string_to_array($11, ',')) THEN 'youtube' ELSE '' END
+			ELSE $11
 		END,
-		only_admin_add_playlist_items = $13,
-		is_public = $14 AND NOT a.flagged,
-		playlist_import = $15
+		only_admin_add_playlist_items = $12,
+		is_public = $13 AND NOT a.flagged,
+		playlist_import = $14
 		FROM updated_room_q a
 		WHERE room_settings.room_id = a.id
 	`)
@@ -906,7 +905,6 @@ func (c *Client) UpdateRoomV2(ctx context.Context, room *vibe.RoomV2) (*vibe.Roo
 		room.Settings.AllowDuplicates,
 		room.Mode,
 		room.HostID,
-		room.AdminPasswordHash,
 		strings.Join(enabledSources, ","),
 		room.Settings.OnlyAdminAddPlaylistItems,
 		room.Settings.Public,

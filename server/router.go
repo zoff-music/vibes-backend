@@ -67,9 +67,9 @@ func (s *Server) setupRoutes() {
 	apiV2.HandleFunc("/youtube/playlists/{id}", handler.GetYouTubePlaylistV2(s.YouTube, s.Redis, vibe.SourceTypeYouTube)).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubePlaylistV2")
 
 	// SoundCloud routes
-	apiV2.HandleFunc("/soundcloud/items", handler.ResolveSoundCloudItemV2(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudItemV2")
-	apiV2.HandleFunc("/soundcloud/items/{id}", handler.GetSoundCloudItemV2(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudItemV2")
-	apiV2.HandleFunc("/soundcloud/playlists", handler.ResolveSoundCloudPlaylistV2(s.SoundCloud)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudPlaylistV2")
+	apiV2.HandleFunc("/soundcloud/items", handler.ResolveSoundCloudItemV2(s.SoundCloud, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudItemV2")
+	apiV2.HandleFunc("/soundcloud/items/{id}", handler.GetSoundCloudItemV2(s.SoundCloud, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudItemV2")
+	apiV2.HandleFunc("/soundcloud/playlists", handler.ResolveSoundCloudPlaylistV2(s.SoundCloud, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveSoundCloudPlaylistV2")
 
 	apiV1.HandleFunc("/tokens/soundcloud", handler.GetToken(s.DB, s.SoundCloud, "soundcloud")).Methods(http.MethodGet, http.MethodOptions).Name("GetSoundCloudToken")
 	apiV1.HandleFunc("/tokens/youtube", handler.GetToken(s.DB, s.YouTube, "youtube")).Methods(http.MethodGet, http.MethodOptions).Name("GetYouTubeToken")
