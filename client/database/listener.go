@@ -14,11 +14,11 @@ func (c *Client) prepareCreateListenerUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH deleted_q AS (
 			DELETE FROM listener_usage
-			WHERE created_at < NOW() - INTERVAL '32 days'
+			WHERE created_at < NOW() - INTERVAL '32 DAYS'
 			RETURNING created_at
 		), deleted_rooms_q AS (
 			DELETE FROM room_listener_usage
-			WHERE created_at < NOW() - INTERVAL '32 days'
+			WHERE created_at < NOW() - INTERVAL '32 DAYS'
 			RETURNING room_id
 		),
 		room_listener_counts_q AS (
@@ -32,7 +32,7 @@ func (c *Client) prepareCreateListenerUsageStmt() error {
 					WHERE is_cast_receiver
 				) AS active_cast_receivers
 			FROM room_users
-			WHERE last_seen_at > NOW() - INTERVAL '15 seconds'
+			WHERE last_seen_at > NOW() - INTERVAL '15 SECONDS'
 			GROUP BY room_id
 		),
 		listener_usage_q AS (

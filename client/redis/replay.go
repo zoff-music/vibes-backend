@@ -254,7 +254,8 @@ func (r *eventStreams) append(ctx context.Context, topicName string, data []byte
 }
 
 func replayCutoffID(now time.Time, maxAge time.Duration) string {
-	return fmt.Sprintf("%d-0", now.Add(-maxAge).UnixMilli())
+	result := fmt.Sprintf("%d-0", now.Add(-maxAge).UnixMilli())
+	return result
 }
 
 func (r *eventStreams) prepare(
@@ -687,15 +688,18 @@ func waitForReplayRetry(ctx context.Context) bool {
 }
 
 func replayKey(topicName string) string {
-	return fmt.Sprintf("%s:events:%s", redisPrefix, topicName)
+	result := fmt.Sprintf("%s:events:%s", redisPrefix, topicName)
+	return result
 }
 
 func roomTopicName(roomID string) string {
-	return fmt.Sprintf("room:%s", roomID)
+	result := fmt.Sprintf("room:%s", roomID)
+	return result
 }
 
 func remoteTopicName(remoteID string) string {
-	return fmt.Sprintf("remote:%s", remoteID)
+	result := fmt.Sprintf("remote:%s", remoteID)
+	return result
 }
 
 const adminTopicName = "admin"

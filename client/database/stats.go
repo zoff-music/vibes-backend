@@ -25,7 +25,7 @@ func (c *Client) prepareGetStatsV2Stmt() error {
 					WHERE is_cast_receiver
 				) AS active_cast_receivers
 			FROM room_users
-			WHERE last_seen_at > NOW() - INTERVAL '15 seconds'
+			WHERE last_seen_at > NOW() - INTERVAL '15 SECONDS'
 				AND room_id IN (SELECT id FROM selected_rooms_q)
 			GROUP BY room_id
 		)

@@ -89,7 +89,9 @@ func (c *Client) GetNextRoomNameReview(ctx context.Context) (*vibe.RoomNameRevie
 
 	if len(review.Rooms) == 0 {
 		return nil, internalerror.ErrExpected{
-			Err: fmt.Errorf("no rooms requiring review"),
+			Err: internalerror.ErrNonRecoverable{
+				Err: fmt.Errorf("error claiming room name review: no rooms requiring review"),
+			},
 		}
 	}
 

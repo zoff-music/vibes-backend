@@ -8,7 +8,8 @@ type ErrCastTokenInvalid struct {
 }
 
 func (e ErrCastTokenInvalid) Error() string {
-	return fmt.Sprintf("error cast token invalid: %v", e.Err)
+	result := fmt.Sprintf("error cast token invalid: %v", e.Err)
+	return result
 }
 
 func (e ErrCastTokenInvalid) Unwrap() error {
@@ -21,7 +22,8 @@ type ErrCastTokenExpired struct {
 }
 
 func (e ErrCastTokenExpired) Error() string {
-	return fmt.Sprintf("error cast token expired: %v", e.Err)
+	result := fmt.Sprintf("error cast token expired: %v", e.Err)
+	return result
 }
 
 func (e ErrCastTokenExpired) Unwrap() error {

@@ -11,7 +11,8 @@ type ErrNonRecoverable struct {
 }
 
 func (e ErrNonRecoverable) Error() string {
-	return fmt.Sprintf("error non-recoverable: %v", e.Err)
+	result := fmt.Sprintf("error non-recoverable: %v", e.Err)
+	return result
 }
 
 func (e ErrNonRecoverable) Unwrap() error {
@@ -25,7 +26,8 @@ type ErrExpected struct {
 }
 
 func (e ErrExpected) Error() string {
-	return fmt.Sprintf("expected error: %v", e.Err)
+	result := fmt.Sprintf("expected error: %v", e.Err)
+	return result
 }
 
 func (e ErrExpected) Unwrap() error {

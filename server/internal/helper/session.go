@@ -7,9 +7,9 @@ import (
 )
 
 // GetSessionFromContext extracts the session payload from the context
-func GetSessionFromContext(ctx context.Context) (vibe.SessionPayload, bool) {
+func GetSessionFromContext(ctx context.Context) (*vibe.SessionPayload, bool) {
 	session, ok := ctx.Value(SessionKey).(vibe.SessionPayload)
-	return session, ok
+	return &session, ok
 }
 
 func GetAdminUserFromContext(ctx context.Context) (*vibe.AdminUser, bool) {

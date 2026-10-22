@@ -8,7 +8,8 @@ type ErrAlreadyVoted struct {
 }
 
 func (e ErrAlreadyVoted) Error() string {
-	return fmt.Sprintf("error already voted: %v", e.Err)
+	result := fmt.Sprintf("error already voted: %v", e.Err)
+	return result
 }
 
 func (e ErrAlreadyVoted) Unwrap() error {
@@ -21,7 +22,8 @@ type ErrDuplicatePlaylistItem struct {
 }
 
 func (e ErrDuplicatePlaylistItem) Error() string {
-	return fmt.Sprintf("error duplicate song: %v", e.Err)
+	result := fmt.Sprintf("error duplicate song: %v", e.Err)
+	return result
 }
 
 func (e ErrDuplicatePlaylistItem) Unwrap() error {
@@ -34,7 +36,8 @@ type ErrHostModeSkipOnly struct {
 }
 
 func (e ErrHostModeSkipOnly) Error() string {
-	return fmt.Sprintf("error host mode skip only: %v", e.Err)
+	result := fmt.Sprintf("error host mode skip only: %v", e.Err)
+	return result
 }
 
 func (e ErrHostModeSkipOnly) Unwrap() error {
@@ -47,7 +50,8 @@ type ErrSkipDisabled struct {
 }
 
 func (e ErrSkipDisabled) Error() string {
-	return fmt.Sprintf("error skip disabled: %v", e.Err)
+	result := fmt.Sprintf("error skip disabled: %v", e.Err)
+	return result
 }
 
 func (e ErrSkipDisabled) Unwrap() error {

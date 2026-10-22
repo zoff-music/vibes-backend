@@ -8,7 +8,8 @@ type ErrRoomNameUnavailable struct {
 }
 
 func (e ErrRoomNameUnavailable) Error() string {
-	return fmt.Sprintf("error room name unavailable: %v", e.Err)
+	result := fmt.Sprintf("error room name unavailable: %v", e.Err)
+	return result
 }
 
 func (e ErrRoomNameUnavailable) Unwrap() error {
@@ -21,7 +22,8 @@ type ErrRoomGenerationBusy struct {
 }
 
 func (e ErrRoomGenerationBusy) Error() string {
-	return fmt.Sprintf("error room generation busy: %v", e.Err)
+	result := fmt.Sprintf("error room generation busy: %v", e.Err)
+	return result
 }
 
 func (e ErrRoomGenerationBusy) Unwrap() error {
@@ -34,7 +36,8 @@ type ErrRoomGenerationPlaylistItemLimit struct {
 }
 
 func (e ErrRoomGenerationPlaylistItemLimit) Error() string {
-	return fmt.Sprintf("error room generation song limit exceeded: %v", e.Err)
+	result := fmt.Sprintf("error room generation song limit exceeded: %v", e.Err)
+	return result
 }
 
 func (e ErrRoomGenerationPlaylistItemLimit) Unwrap() error {
@@ -47,7 +50,8 @@ type ErrRoomGenerationDailyLimit struct {
 }
 
 func (e ErrRoomGenerationDailyLimit) Error() string {
-	return fmt.Sprintf("error room generation daily limit exceeded: %v", e.Err)
+	result := fmt.Sprintf("error room generation daily limit exceeded: %v", e.Err)
+	return result
 }
 
 func (e ErrRoomGenerationDailyLimit) Unwrap() error {

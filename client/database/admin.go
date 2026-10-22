@@ -790,8 +790,8 @@ func (c *Client) prepareListAdminRoomSearchUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH windows_q (period, starts_at) AS (
 			VALUES
-				('hour', DATE_TRUNC('hour', NOW(), 'UTC') - INTERVAL '23 hours'),
-				('day', DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 days')
+				('hour', DATE_TRUNC('hour', NOW(), 'UTC') - INTERVAL '23 HOURS'),
+				('day', DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 DAYS')
 		)
 		SELECT
 			a.period,
@@ -910,7 +910,7 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 				) AS live_count
 			FROM search_usage
 			WHERE created_at >=
-				DATE_TRUNC('hour', NOW(), 'UTC') - INTERVAL '23 hours'
+				DATE_TRUNC('hour', NOW(), 'UTC') - INTERVAL '23 HOURS'
 			GROUP BY DATE_TRUNC('hour', created_at, 'UTC'), provider
 
 			UNION ALL
@@ -931,7 +931,7 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 				) AS live_count
 			FROM search_usage
 			WHERE created_at >=
-				DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 days'
+				DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 DAYS'
 			GROUP BY DATE_TRUNC('day', created_at, 'UTC'), provider
 		)
 		SELECT

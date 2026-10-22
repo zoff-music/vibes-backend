@@ -274,7 +274,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackV2Stmt() error {
 				SELECT COUNT(*)
 				FROM room_users e
 				WHERE e.room_id = a.room_id
-				AND e.last_seen_at > NOW() - INTERVAL '15 seconds'
+				AND e.last_seen_at > NOW() - INTERVAL '15 SECONDS'
 				AND (
 					COALESCE(e.is_active_listener, FALSE)
 					OR COALESCE(e.is_cast_receiver, FALSE)

@@ -13,11 +13,11 @@ func (c *Client) prepareCreateSearchUsagesStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH deleted_q AS (
 			DELETE FROM search_usage
-			WHERE created_at < NOW() - INTERVAL '32 days'
+			WHERE created_at < NOW() - INTERVAL '32 DAYS'
 			RETURNING id
 		), deleted_rooms_q AS (
 			DELETE FROM room_search_usage
-			WHERE created_at < NOW() - INTERVAL '32 days'
+			WHERE created_at < NOW() - INTERVAL '32 DAYS'
 			RETURNING room_id
 		), recorded_q AS (
 			INSERT INTO search_usage (

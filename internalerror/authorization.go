@@ -8,7 +8,8 @@ type ErrAccessTokenNotFound struct {
 }
 
 func (e ErrAccessTokenNotFound) Error() string {
-	return fmt.Sprintf("error access token not found: %v", e.Err)
+	result := fmt.Sprintf("error access token not found: %v", e.Err)
+	return result
 }
 
 func (e ErrAccessTokenNotFound) Unwrap() error {

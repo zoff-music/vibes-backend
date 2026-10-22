@@ -23,7 +23,8 @@ type ErrorCodeWrapper struct {
 }
 
 func (e ErrorCodeWrapper) Error() string {
-	return fmt.Sprintf("error propagatable: %v", e.Err)
+	result := fmt.Sprintf("error propagatable: %v", e.Err)
+	return result
 }
 
 func (e ErrorCodeWrapper) Unwrap() error {
