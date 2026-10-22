@@ -159,7 +159,8 @@ func redactBodyForLog(headers map[string]string, body []byte) string {
 
 	mediaType, _, err := mime.ParseMediaType(contentType)
 	if err != nil {
-		return fmt.Sprintf("[body omitted: %d bytes]", len(body))
+		result := fmt.Sprintf("[body omitted: %d bytes]", len(body))
+		return result
 	}
 	mediaType = strings.ToLower(mediaType)
 
@@ -171,27 +172,33 @@ func redactBodyForLog(headers map[string]string, body []byte) string {
 	if mediaType == "application/x-www-form-urlencoded" {
 		values, err := url.ParseQuery(string(body))
 		if err != nil {
-			return fmt.Sprintf("[unparseable form body: %d bytes]", len(body))
+			result := fmt.Sprintf("[unparseable form body: %d bytes]", len(body))
+			return result
 		}
 		redacted := redactValuesForLog(values)
 		return redacted
 	}
 
-	return fmt.Sprintf("[body omitted: %d bytes]", len(body))
+	result := fmt.Sprintf("[body omitted: %d bytes]", len(body))
+
+	return result
 }
 
 func redactJSONForLog(body []byte) string {
 	value := jsontext.Value(body)
 	if !value.IsValid() || (value.Kind() != '{' && value.Kind() != '[') {
-		return fmt.Sprintf("[unparseable json body: %d bytes]", len(body))
+		result := fmt.Sprintf("[unparseable json body: %d bytes]", len(body))
+		return result
 	}
 
 	redacted, err := redactJSONValue(value)
 	if err != nil {
-		return fmt.Sprintf("[unparseable json body: %d bytes]", len(body))
+		result := fmt.Sprintf("[unparseable json body: %d bytes]", len(body))
+		return result
 	}
 	if len(redacted) > maxLoggedValueBytes {
-		return fmt.Sprintf("[redacted json body omitted: %d bytes]", len(body))
+		result := fmt.Sprintf("[redacted json body omitted: %d bytes]", len(body))
+		return result
 	}
 
 	return string(redacted)
@@ -200,14 +207,19 @@ func redactJSONForLog(body []byte) string {
 func redactJSONValue(value jsontext.Value) (jsontext.Value, error) {
 	switch value.Kind() {
 	case '{':
+		redactedBody, err := json.Marshal(redactedValue)
+		if err != nil {
+			return nil, fmt.Errorf("error marshaling replacement for log redaction: %w", err)
+		}
+
 		object := map[string]jsontext.Value{}
-		err := json.Unmarshal(value, &object)
+		err = json.Unmarshal(value, &object)
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshaling JSON object for log redaction: %w", err)
 		}
 		for key, item := range object {
 			if isSensitiveLogKey(key) {
-				object[key] = jsontext.Value(`"[REDACTED]"`)
+				object[key] = jsontext.Value(redactedBody)
 				continue
 			}
 			redacted, err := redactJSONValue(item)
@@ -259,7 +271,8 @@ func redactValuesForLog(values url.Values) string {
 
 	encoded := redacted.Encode()
 	if len(encoded) > maxLoggedValueBytes {
-		return fmt.Sprintf("query_omitted=%d_bytes", len(encoded))
+		result := fmt.Sprintf("query_omitted=%d_bytes", len(encoded))
+		return result
 	}
 	return encoded
 }

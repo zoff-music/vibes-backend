@@ -8,7 +8,8 @@ type ErrMissingAdminPassword struct {
 }
 
 func (e ErrMissingAdminPassword) Error() string {
-	return fmt.Sprintf("error missing admin password: %v", e.Err)
+	result := fmt.Sprintf("error missing admin password: %v", e.Err)
+	return result
 }
 
 func (e ErrMissingAdminPassword) Unwrap() error {
@@ -21,7 +22,8 @@ type ErrAdminUsernameUnavailable struct {
 }
 
 func (e ErrAdminUsernameUnavailable) Error() string {
-	return fmt.Sprintf("error admin username unavailable: %v", e.Err)
+	result := fmt.Sprintf("error admin username unavailable: %v", e.Err)
+	return result
 }
 
 func (e ErrAdminUsernameUnavailable) Unwrap() error {

@@ -94,7 +94,8 @@ func (c *Client) Close() error {
 }
 
 func (c *Client) getKeyWithPrefix(key string) string {
-	return fmt.Sprintf("%s:%s", c.Prefix, key)
+	result := fmt.Sprintf("%s:%s", c.Prefix, key)
+	return result
 }
 
 const redisPrefix = "vibes"

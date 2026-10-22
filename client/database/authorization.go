@@ -416,7 +416,7 @@ func (c *Client) prepareClaimAndGetExpiredTokenForRefreshStmt() error {
 			WHERE provider = $1
 			AND expires_at <= CURRENT_TIMESTAMP
 			AND refresh_expires_at > CURRENT_TIMESTAMP
-			AND (last_checked IS NULL OR last_checked <= NOW() - INTERVAL '2 minutes')
+			AND (last_checked IS NULL OR last_checked <= NOW() - INTERVAL '2 MINUTES')
 			ORDER BY last_checked ASC
 			LIMIT 1
 			FOR UPDATE SKIP LOCKED

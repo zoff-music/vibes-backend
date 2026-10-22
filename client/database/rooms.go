@@ -25,13 +25,13 @@ func (c *Client) prepareProcessNextAbandonedHostStmt() error {
 			AND (
 				(a.host_id IS NOT NULL AND a.host_id != '' AND (
 					b.last_seen_at IS NULL
-					OR b.last_seen_at < NOW() - INTERVAL '15 seconds'
+					OR b.last_seen_at < NOW() - INTERVAL '15 SECONDS'
 					OR NOT b.is_active_listener
 				))
 				OR ((a.host_id IS NULL OR a.host_id = '') AND EXISTS (
 					SELECT 1 FROM room_users c
 					WHERE c.room_id = a.id
-					AND c.last_seen_at >= NOW() - INTERVAL '15 seconds'
+					AND c.last_seen_at >= NOW() - INTERVAL '15 SECONDS'
 					AND c.is_active_listener
 					AND NOT c.is_cast_receiver
 				))
@@ -43,7 +43,7 @@ func (c *Client) prepareProcessNextAbandonedHostStmt() error {
 			SELECT a.room_id, a.id
 			FROM room_users a
 			JOIN abandoned_room_q b ON b.id = a.room_id
-			WHERE a.last_seen_at >= NOW() - INTERVAL '15 seconds'
+			WHERE a.last_seen_at >= NOW() - INTERVAL '15 SECONDS'
 			AND a.is_active_listener
 			AND NOT a.is_cast_receiver
 			ORDER BY a.joined_at ASC
@@ -165,7 +165,7 @@ func (c *Client) prepareGetRoomV2Stmt() error {
 				SELECT COUNT(*)
 				FROM room_generations e
 				WHERE e.room_id = a.id
-				AND e.created_at >= NOW() - INTERVAL '24 hours'
+				AND e.created_at >= NOW() - INTERVAL '24 HOURS'
 			) AS generation_count,
 			(
 				SELECT f.failure_reason
@@ -301,7 +301,7 @@ func (c *Client) prepareGetRoomByNameV2Stmt() error {
 				SELECT COUNT(*)
 				FROM room_generations e
 				WHERE e.room_id = a.id
-				AND e.created_at >= NOW() - INTERVAL '24 hours'
+				AND e.created_at >= NOW() - INTERVAL '24 HOURS'
 			) AS generation_count,
 			(
 				SELECT f.failure_reason
@@ -975,7 +975,7 @@ func (c *Client) prepareReserveRoomNameStmt() error {
 			SELECT
 				a.name,
 				$2,
-				(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') + ($3 * INTERVAL '1 second')
+				(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') + ($3 * INTERVAL '1 SECOND')
 			FROM candidate_q a
 			CROSS JOIN (
 				SELECT COUNT(*) AS deleted_count
@@ -1122,7 +1122,7 @@ func (c *Client) prepareReserveSuggestedRoomNameStmt() error {
 			SELECT
 				a.name,
 				$1,
-				(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') + ($2 * INTERVAL '1 second')
+				(CURRENT_TIMESTAMP AT TIME ZONE 'UTC') + ($2 * INTERVAL '1 SECOND')
 			FROM candidate_q a
 			CROSS JOIN (
 				SELECT COUNT(*) AS deleted_count

@@ -105,11 +105,11 @@ func (c *Client) prepareDeleteAbandonedPlaylistImportItemsStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH expired_imports_q AS (
 			DELETE FROM playlist_imports
-			WHERE created_at < NOW() - INTERVAL '1 day'
+			WHERE created_at < NOW() - INTERVAL '1 DAY'
 			RETURNING id
 		)
 		DELETE FROM playlist_import_items a
-		WHERE a.created_at < NOW() - INTERVAL '1 day'
+		WHERE a.created_at < NOW() - INTERVAL '1 DAY'
 		OR a.import_id IN (SELECT id FROM expired_imports_q)
 	`)
 	if err != nil {
@@ -156,7 +156,7 @@ func (c *Client) prepareProcessNextPlaylistImportStmt() error {
 			UPDATE playlist_imports a
 			SET
 				attempts = a.attempts + 1,
-				updated_at = NOW() + ($2 * INTERVAL '1 millisecond')
+				updated_at = NOW() + ($2 * INTERVAL '1 MILLISECOND')
 			FROM claimed_import_q b
 			WHERE a.id = b.id
 			AND a.attempts < $1
@@ -533,7 +533,7 @@ func (c *Client) prepareExpirePlaylistItemMetadataStmt() error {
 				SELECT 1 FROM playlist_items b
 				WHERE b.room_id = a.id
 				AND b.source_type = 'youtube'
-				AND b.metadata_updated_at <= NOW() - INTERVAL '25 days'
+				AND b.metadata_updated_at <= NOW() - INTERVAL '25 DAYS'
 			)
 			ORDER BY a.id
 			LIMIT 1
@@ -543,7 +543,7 @@ func (c *Client) prepareExpirePlaylistItemMetadataStmt() error {
 			FROM playlist_items a
 			JOIN room_q b ON b.id = a.room_id
 			WHERE a.source_type = 'youtube'
-			AND a.metadata_updated_at <= NOW() - INTERVAL '25 days'
+			AND a.metadata_updated_at <= NOW() - INTERVAL '25 DAYS'
 			FOR UPDATE OF a
 		), deleted_votes_q AS (
 			DELETE FROM playlist_item_votes a USING expired_q b

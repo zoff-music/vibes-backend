@@ -45,9 +45,9 @@ func (c *Client) prepareListAdminMessageUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH windows_q (period, starts_at) AS (
 			VALUES
-				('hour', DATE_TRUNC('hour', NOW(), 'UTC') - INTERVAL '23 hours'),
-				('day', DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 days'),
-				('month', DATE_TRUNC('month', NOW(), 'UTC') - INTERVAL '11 months')
+				('hour', DATE_TRUNC('hour', NOW(), 'UTC') - INTERVAL '23 HOURS'),
+				('day', DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 DAYS'),
+				('month', DATE_TRUNC('month', NOW(), 'UTC') - INTERVAL '11 MONTHS')
 		)
 		SELECT a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), SUM(b.message_count), b.room_id, c.room_type::text
 		FROM windows_q a

@@ -39,7 +39,8 @@ func PublicDocumentation(document string) ([]byte, error) {
 				return nil, fmt.Errorf("error decoding documentation operation: %w", err)
 			}
 
-			if tags, ok := operation["tags"]; ok {
+			tags, ok := operation["tags"]
+			if ok {
 				var names []string
 				err = json.Unmarshal(tags, &names)
 				if err != nil {
@@ -57,7 +58,8 @@ func PublicDocumentation(document string) ([]byte, error) {
 
 		hasOperation := false
 		for _, method := range []string{"get", "put", "post", "delete", "options", "head", "patch"} {
-			if _, ok := operations[method]; ok {
+			_, ok := operations[method]
+			if ok {
 				hasOperation = true
 			}
 		}
@@ -76,7 +78,8 @@ func PublicDocumentation(document string) ([]byte, error) {
 	delete(spec, "tags")
 
 	var definitions map[string]jsontext.Value
-	if raw, ok := spec["definitions"]; ok {
+	raw, ok := spec["definitions"]
+	if ok {
 		err = json.Unmarshal(raw, &definitions)
 		if err != nil {
 			return nil, fmt.Errorf("error decoding documentation definitions: %w", err)
@@ -105,7 +108,8 @@ func PublicDocumentation(document string) ([]byte, error) {
 
 		name := strings.TrimPrefix(reference, "#/definitions/")
 		name = strings.ReplaceAll(strings.ReplaceAll(name, "~1", "/"), "~0", "~")
-		if _, ok := reachable[name]; ok {
+		_, ok := reachable[name]
+		if ok {
 			continue
 		}
 

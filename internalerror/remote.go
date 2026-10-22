@@ -8,7 +8,8 @@ type ErrRemoteUnchanged struct {
 }
 
 func (e ErrRemoteUnchanged) Error() string {
-	return fmt.Sprintf("error remote state unchanged: %v", e.Err)
+	result := fmt.Sprintf("error remote state unchanged: %v", e.Err)
+	return result
 }
 
 func (e ErrRemoteUnchanged) Unwrap() error {

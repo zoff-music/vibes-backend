@@ -11,7 +11,8 @@ type ErrProviderQuotaExceeded struct {
 }
 
 func (e ErrProviderQuotaExceeded) Error() string {
-	return fmt.Sprintf("error %s provider quota exceeded: %v", e.Provider, e.Err)
+	result := fmt.Sprintf("error %s provider quota exceeded: %v", e.Provider, e.Err)
+	return result
 }
 
 func (e ErrProviderQuotaExceeded) Unwrap() error {
@@ -24,7 +25,8 @@ type ErrProviderPlaylistInvalid struct {
 }
 
 func (e ErrProviderPlaylistInvalid) Error() string {
-	return e.Err.Error()
+	result := e.Err.Error()
+	return result
 }
 
 func (e ErrProviderPlaylistInvalid) Unwrap() error {
@@ -37,7 +39,8 @@ type ErrProviderItemNotFound struct {
 }
 
 func (e ErrProviderItemNotFound) Error() string {
-	return fmt.Sprintf("error music track not found: %v", e.Err)
+	result := fmt.Sprintf("error music track not found: %v", e.Err)
+	return result
 }
 
 func (e ErrProviderItemNotFound) Unwrap() error {
@@ -50,7 +53,8 @@ type ErrMadeForKids struct {
 }
 
 func (e ErrMadeForKids) Error() string {
-	return fmt.Sprintf("error made-for-kids video: %v", e.Err)
+	result := fmt.Sprintf("error made-for-kids video: %v", e.Err)
+	return result
 }
 
 func (e ErrMadeForKids) Unwrap() error {
@@ -63,7 +67,8 @@ type ErrLiveVideo struct {
 }
 
 func (e ErrLiveVideo) Error() string {
-	return fmt.Sprintf("error live video: %v", e.Err)
+	result := fmt.Sprintf("error live video: %v", e.Err)
+	return result
 }
 
 func (e ErrLiveVideo) Unwrap() error {

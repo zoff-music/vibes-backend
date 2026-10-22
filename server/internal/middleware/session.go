@@ -296,7 +296,9 @@ func (m *SessionMiddleware) unsign(value string) (string, bool) {
 	mac.Write([]byte(payload))
 	expected := base64.StdEncoding.EncodeToString(mac.Sum(nil))
 
-	return payload, hmac.Equal([]byte(signature), []byte(expected))
+	valid := hmac.Equal([]byte(signature), []byte(expected))
+
+	return payload, valid
 }
 
 const sessionCookieName = "session"

@@ -87,7 +87,7 @@ func (c *Client) prepareCreateRoomGenerationStmt() error {
 					SELECT COUNT(*)
 					FROM room_generations c
 					WHERE c.room_id = a.id
-					AND c.created_at >= NOW() - INTERVAL '24 hours'
+					AND c.created_at >= NOW() - INTERVAL '24 HOURS'
 				) AS generation_count
 			FROM rooms a
 			WHERE a.id = $1
@@ -225,7 +225,7 @@ func (c *Client) prepareProcessNextRoomGenerationStmt() error {
 			AND (
 				a.attempt >= $1
 				OR a.attempt = 0
-				OR a.updated_at <= NOW() - INTERVAL '5 minutes'
+				OR a.updated_at <= NOW() - INTERVAL '5 MINUTES'
 			)
 			ORDER BY a.updated_at ASC, a.created_at ASC
 			LIMIT 1

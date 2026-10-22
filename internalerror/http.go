@@ -14,5 +14,6 @@ type HTTPStatusCodeError struct {
 
 // Error return an error string.
 func (e HTTPStatusCodeError) Error() string {
-	return fmt.Sprintf("error response from %s, got status: %d. Message: %s", e.URL, e.StatusCode, e.Message)
+	result := fmt.Sprintf("error response from %s, got status: %d. Message: %s", e.URL, e.StatusCode, e.Message)
+	return result
 }
