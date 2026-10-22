@@ -270,6 +270,11 @@ func (c *Client) prepareUpdateAdminRoomStmt() error {
 			END
 			WHERE a.id = $1
 			RETURNING a.id, a.flagged
+		), revoked_admins_q AS (
+			UPDATE room_users a
+			SET is_admin = FALSE, admin_password_hash = NULL
+			FROM updated_room_q b
+			WHERE a.room_id = b.id AND $3::BOOLEAN
 		)
 		UPDATE room_settings a
 		SET is_public = CASE

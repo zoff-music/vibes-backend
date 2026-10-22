@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
@@ -16,9 +15,12 @@ import (
 // prepareGetUserStmt prepares the GetUserStatement.
 func (c *Client) prepareGetUserStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT id, room_id, is_admin, joined_at, last_seen_at
-		FROM room_users
-		WHERE room_id = $1 AND id = $2
+		SELECT a.id, a.room_id,
+			COALESCE(a.is_admin AND a.admin_password_hash = b.admin_password_hash AND b.admin_password_hash != '', FALSE),
+			a.joined_at, a.last_seen_at
+		FROM room_users a
+		JOIN rooms b ON b.id = a.room_id
+		WHERE a.room_id = $1 AND a.id = $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetUserStatement: %w", err)
@@ -90,73 +92,52 @@ func (r *userRow) toUser() (*vibe.User, error) {
 	}, nil
 }
 
-// prepareCreateUserStmt prepares the CreateUserStatement.
-func (c *Client) prepareCreateUserStmt() error {
+func (c *Client) prepareGrantRoomAdminStmt() error {
 	stmt, err := c.DB.Prepare(`
-		INSERT INTO room_users (id, room_id, is_admin, is_active_listener, joined_at, last_seen_at)
-		SELECT $1, a.id, $3, $4, $5, $6
+		INSERT INTO room_users (id, room_id, is_admin, admin_password_hash, is_active_listener, joined_at, last_seen_at)
+		SELECT $2, a.id, TRUE, $3, FALSE, NOW(), NOW()
 		FROM rooms a
-		WHERE a.id = $2
-		FOR KEY SHARE OF a
+		WHERE a.id = $1 AND a.admin_password_hash = $3 AND $3 != ''
+		FOR UPDATE OF a
 		ON CONFLICT(id, room_id) DO UPDATE SET
 		is_admin = EXCLUDED.is_admin,
+		admin_password_hash = EXCLUDED.admin_password_hash,
 		last_seen_at = EXCLUDED.last_seen_at
-		RETURNING id
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing CreateUserStatement: %w", err)
+		return fmt.Errorf("error preparing GrantRoomAdminStatement: %w", err)
 	}
 
-	c.CreateUserStatement = stmt
+	c.GrantRoomAdminStatement = stmt
 
 	return nil
 }
 
-// CreateUser creates or updates a user session in a room.
-func (c *Client) CreateUser(ctx context.Context, user *vibe.User) (*vibe.User, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "CreateUser")
+// GrantRoomAdmin binds access to the password that was actually verified.
+func (c *Client) GrantRoomAdmin(ctx context.Context, roomID, userID, hash string) (bool, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GrantRoomAdmin")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.CreateUserStatement.QueryRowContext(cctx,
-		user.ID,
-		user.RoomID,
-		user.IsAdmin,
-		false,
-		user.JoinedAt,
-		user.LastSeenAt,
-	)
-
-	var row createdUserRow
-	err := row.scan(r)
+	result, err := c.GrantRoomAdminStatement.ExecContext(cctx, roomID, userID, hash)
 	if err != nil {
-		return nil, fmt.Errorf("error creating user: %w", err)
+		return false, fmt.Errorf("error granting room admin: %w", err)
 	}
 
-	user.ID = row.ID.String
-
-	return user, nil
-}
-
-type createdUserRow struct {
-	ID sql.NullString
-}
-
-func (c *createdUserRow) scan(row *sql.Row) error {
-	err := row.Scan(&c.ID)
+	count, err := result.RowsAffected()
 	if err != nil {
-		return fmt.Errorf("error scanning created user row: %w", err)
+		return false, fmt.Errorf("error counting room admin grants: %w", err)
 	}
 
-	return nil
+	return count == 1, nil
 }
 
 func (c *Client) prepareClearRoomAdminStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE room_users
-		SET is_admin = FALSE, last_seen_at = $3
+		SET is_admin = FALSE, admin_password_hash = NULL, last_seen_at = $3
 		WHERE room_id = $1 AND id = $2
 	`)
 	if err != nil {
@@ -261,31 +242,13 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 		}, nil
 	}
 
-	log.Printf("AuthenticateAdmin: successfully verified password for userID=%s", userID)
-	user, err := c.GetUser(ctx, roomID, userID)
+	granted, err := c.GrantRoomAdmin(ctx, roomID, userID, room.AdminPasswordHash)
 	if err != nil {
-		return nil, fmt.Errorf("error getting user in authenticate admin: %w", err)
-	}
-
-	if user.IsEmpty() {
-		user = &vibe.User{
-			ID:       userID,
-			RoomID:   roomID,
-			JoinedAt: time.Now(),
-		}
-	}
-
-	user.IsAdmin = true
-	user.LastSeenAt = time.Now()
-
-	log.Printf("AuthenticateAdmin: elevating userID=%s in roomID=%s", userID, roomID)
-	_, err = c.CreateUser(ctx, user)
-	if err != nil {
-		return nil, fmt.Errorf("error creating user in authenticate admin: %w", err)
+		return nil, fmt.Errorf("error granting room admin in authenticate admin: %w", err)
 	}
 
 	return &vibe.AdminAuthResult{
-		IsAdmin:          true,
+		IsAdmin:          granted,
 		IsFirstTimeSetup: isFirstTimeSetup,
 	}, nil
 }

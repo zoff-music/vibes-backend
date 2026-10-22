@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -397,10 +398,21 @@ func AdminDeleteRoomV2(
 //	@Router		/api/v2/admin/events [get]
 func AdminEventsV2(
 	subscriber vibe.Subscriber,
-	db vibe.AdminRoomV2Lister,
+	db vibe.AdminRoomV2ListerUserFetcher,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
+
+		admin, ok := helper.GetAdminUserFromContext(ctx)
+		if !ok {
+			handleError(
+				w,
+				fmt.Errorf("error missing admin session"),
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
 
 		// Set SSE headers
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -435,6 +447,11 @@ func AdminEventsV2(
 
 		rooms, err := db.ListAdminRoomsV2(ctx)
 		if err == nil {
+			currentAdmin, err := db.GetAdminUser(ctx, admin.ID)
+			if err != nil || currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion || ctx.Err() != nil {
+				return
+			}
+
 			payload, err := json.Marshal(rooms)
 			if err == nil {
 				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.AdminRoomsUpdate, payload)
@@ -448,25 +465,39 @@ func AdminEventsV2(
 		messages := container.Subscription.Listen()
 
 		for {
+			var data []byte
+			var open bool
+			heartbeat := false
+
 			select {
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				fmt.Fprintf(w, ": heartbeat\n\n")
-				flusher.Flush()
-			case data, ok := <-messages:
-				if !ok {
+				heartbeat = true
+			case data, open = <-messages:
+				if !open {
 					return
 				}
-
-				event, err := vibe.ParseAdminEvent(data)
-				if err != nil {
-					continue
-				}
-
-				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, event.Payload)
-				flusher.Flush()
 			}
+
+			currentAdmin, err := db.GetAdminUser(ctx, admin.ID)
+			if err != nil || currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion || ctx.Err() != nil {
+				return
+			}
+
+			if heartbeat {
+				fmt.Fprintf(w, ": heartbeat\n\n")
+				flusher.Flush()
+				continue
+			}
+
+			event, err := vibe.ParseAdminEvent(data)
+			if err != nil {
+				continue
+			}
+
+			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, event.Payload)
+			flusher.Flush()
 		}
 	}
 }

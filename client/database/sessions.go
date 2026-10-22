@@ -175,7 +175,7 @@ func (c *Client) UpdateSessionProfile(
 
 func (c *Client) prepareGetSessionRoomsStmt() error {
 	stmt, err := c.DB.Prepare(`
-		SELECT a.room_id, COALESCE(a.is_admin, FALSE),
+		SELECT a.room_id, COALESCE(a.is_admin AND a.admin_password_hash = b.admin_password_hash AND b.admin_password_hash != '', FALSE),
 			COALESCE(b.mode = 'host' AND b.host_id = a.id, FALSE)
 		FROM room_users a
 		JOIN rooms b ON b.id = a.room_id

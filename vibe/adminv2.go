@@ -78,6 +78,11 @@ type AdminRoomV2Lister interface {
 	ListAdminRoomsV2(ctx context.Context) ([]AdminRoomSummaryV2, error)
 }
 
+type AdminRoomV2ListerUserFetcher interface {
+	AdminRoomV2Lister
+	AdminUserFetcher
+}
+
 type AdminRoomV2Searcher interface {
 	SearchAdminRoomsV2(ctx context.Context, search AdminRoomSearchV2) (*AdminRoomResultV2, error)
 }
