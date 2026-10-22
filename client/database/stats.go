@@ -13,7 +13,7 @@ import (
 func (c *Client) prepareGetStatsV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH selected_rooms_q AS (
-			SELECT id FROM rooms
+			SELECT id, admin_password_hash FROM rooms
 			WHERE $1::text = '' OR room_type::text = $1
 		), room_listener_counts_q AS (
 			SELECT
@@ -39,7 +39,19 @@ func (c *Client) prepareGetStatsV2Stmt() error {
 			0
 		) AS total_listeners,
 		(SELECT COUNT(*) FROM playlist_items WHERE room_id IN (SELECT id FROM selected_rooms_q)) AS total_playlist_items,
-		(SELECT COUNT(*) FROM selected_rooms_q) AS total_rooms
+		(
+			SELECT COUNT(*)
+			FROM selected_rooms_q a
+			WHERE EXISTS (
+				SELECT 1 FROM playlist_items b WHERE b.room_id = a.id
+			) OR (
+				COALESCE(a.admin_password_hash, '') != ''
+				AND EXISTS (
+					SELECT 1 FROM room_settings c
+					WHERE c.room_id = a.id AND c.remove_on_play
+				)
+			)
+		) AS total_rooms
 		FROM room_listener_counts_q
 	`)
 	if err != nil {
