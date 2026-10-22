@@ -33,7 +33,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		}
 
 		routeName := mux.CurrentRoute(r).GetName()
-		if !m.RequiredRoutes[routeName] && (!m.Enabled || r.Header.Get(rateLimitRequestOriginHeader) != rateLimitExternalRequestOrigin) {
+		if !m.RequiredRoutes[routeName] && !m.Enabled {
 			next.ServeHTTP(w, r)
 			return
 		}
@@ -212,6 +212,4 @@ func hashRateLimitIdentity(parts ...string) string {
 const rateLimitIPMultiplier = 10
 const rateLimitDefaultRate = time.Minute
 const rateLimitDefaultLimit = 60
-const rateLimitRequestOriginHeader = "X-Vibes-Request-Origin"
-const rateLimitExternalRequestOrigin = "external"
 const rateLimitGlobalIdentity = "ZOFF:GLOBAL"

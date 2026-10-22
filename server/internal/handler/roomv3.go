@@ -208,15 +208,20 @@ func AddItemV3(
 			log.Printf("error getting cached provider track metadata: %v", err)
 		}
 
-		if req.SourceType == vibe.SourceTypeYouTube && (err != nil || cachedItem.IsEmpty()) {
+		if err != nil || cachedItem.IsEmpty() {
+			verificationError := "soundcloud_track_verification_required"
+			if req.SourceType == vibe.SourceTypeYouTube {
+				verificationError = "youtube_track_verification_required"
+			}
+
 			handleError(
 				w,
 				internalerror.ErrorCodeWrapper{
-					Err: fmt.Errorf("error adding youtube track: verified metadata is unavailable"),
+					Err: fmt.Errorf("error adding track: verified metadata is unavailable"),
 					ResponseBody: internalerror.ErrorCodeResponseBody{
 						Namespace: "vibes-backend",
-						Error:     "youtube_track_verification_required",
-						Message:   "This video's availability needs to be checked again. Search for it or paste its YouTube link again before adding it.",
+						Error:     verificationError,
+						Message:   "This track's availability needs to be checked again. Search for it or paste its link again before adding it.",
 						Propagate: true,
 					},
 					StatusCode: http.StatusBadRequest,
@@ -267,12 +272,11 @@ func AddItemV3(
 			}
 
 			playbackRestriction = cachedItem.PlaybackRestriction
-			if req.SourceType == vibe.SourceTypeYouTube {
-				req.Title = cachedItem.Title
-				publisher = cachedItem.Publisher
-				req.Thumbnail = cachedItem.ThumbnailURL
-				req.Duration = cachedItem.DurationSeconds
-			}
+			req.Title = cachedItem.Title
+			publisher = cachedItem.Publisher
+			req.Thumbnail = cachedItem.ThumbnailURL
+			req.Duration = cachedItem.DurationSeconds
+			providerURL = cachedItem.ProviderURL
 		}
 
 		playlistItem := &vibe.PlaylistItem{

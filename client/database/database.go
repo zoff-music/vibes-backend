@@ -76,9 +76,10 @@ type Client struct {
 	StartPlaybackIfIdleV2Statement        *sql.Stmt
 
 	// User statements
-	GetUserStatement        *sql.Stmt
-	CreateUserStatement     *sql.Stmt
-	ClearRoomAdminStatement *sql.Stmt
+	GetUserStatement           *sql.Stmt
+	ClaimRoomPasswordStatement *sql.Stmt
+	CreateUserStatement        *sql.Stmt
+	ClearRoomAdminStatement    *sql.Stmt
 
 	// Session statements
 	GetSessionRoomsStatement           *sql.Stmt
@@ -266,6 +267,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareStartPlaybackIfIdleV2Stmt,
 		// User statements
 		c.prepareGetUserStmt,
+		c.prepareClaimRoomPasswordStmt,
 		c.prepareCreateUserStmt,
 		c.prepareClearRoomAdminStmt,
 		// Session statements
@@ -367,6 +369,7 @@ func (c *Client) Close() error {
 		c.ProcessNextExpiredPlaybackV2Statement,
 		c.StartPlaybackIfIdleV2Statement,
 		c.GetUserStatement,
+		c.ClaimRoomPasswordStatement,
 		c.CreateUserStatement,
 		c.ClearRoomAdminStatement,
 		c.GetSessionRoomsStatement,

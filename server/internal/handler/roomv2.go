@@ -1673,14 +1673,19 @@ func AddPlaylistV2(
 
 			playbackRestriction := ""
 			cachedItem := cachedItemsByKey[key]
-			if requestedItem.SourceType == vibe.SourceTypeYouTube && cachedItem.IsEmpty() {
+			if cachedItem.IsEmpty() {
+				verificationError := "soundcloud_track_verification_required"
+				if requestedItem.SourceType == vibe.SourceTypeYouTube {
+					verificationError = "youtube_track_verification_required"
+				}
+
 				handleError(
 					w,
 					internalerror.ErrorCodeWrapper{
-						Err: fmt.Errorf("error importing youtube playlist: verified metadata is unavailable"),
+						Err: fmt.Errorf("error importing playlist: verified metadata is unavailable"),
 						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
-							Error:     "youtube_track_verification_required",
+							Error:     verificationError,
 							Message:   "This playlist's availability needs to be checked again. Paste its link again before importing it.",
 							Propagate: true,
 						},
@@ -1719,12 +1724,11 @@ func AddPlaylistV2(
 					return
 				}
 				playbackRestriction = cachedItem.PlaybackRestriction
-				if requestedItem.SourceType == vibe.SourceTypeYouTube {
-					requestedItem.Title = cachedItem.Title
-					requestedItem.Publisher = cachedItem.Publisher
-					requestedItem.Thumbnail = cachedItem.ThumbnailURL
-					requestedItem.Duration = cachedItem.DurationSeconds
-				}
+				requestedItem.Title = cachedItem.Title
+				requestedItem.Publisher = cachedItem.Publisher
+				requestedItem.Thumbnail = cachedItem.ThumbnailURL
+				requestedItem.Duration = cachedItem.DurationSeconds
+				providerURL = cachedItem.ProviderURL
 			}
 
 			playlistItems = append(playlistItems, vibe.PlaylistItem{
