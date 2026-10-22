@@ -122,7 +122,10 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx = context.WithValue(ctx, helper.AdminUserKey, admin)
+		cctx, cancel := context.WithDeadline(ctx, issuedAt.Add(adminSessionDuration))
+		defer cancel()
+
+		ctx = context.WithValue(cctx, helper.AdminUserKey, admin)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

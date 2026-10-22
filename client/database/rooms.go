@@ -148,7 +148,7 @@ func (c *Client) prepareGetRoomV2Stmt() error {
 			b.max_continuous_adds,
 			b.remove_on_play,
 			b.allow_duplicates,
-			COALESCE(c.is_admin, FALSE) as is_requester_admin,
+			COALESCE(c.is_admin AND c.admin_password_hash = a.admin_password_hash AND a.admin_password_hash != '', FALSE) as is_requester_admin,
 			b.enabled_sources,
 			b.only_admin_add_playlist_items,
 			(b.is_public AND NOT a.flagged),
@@ -284,7 +284,7 @@ func (c *Client) prepareGetRoomByNameV2Stmt() error {
 			b.max_continuous_adds,
 			b.remove_on_play,
 			b.allow_duplicates,
-			COALESCE(c.is_admin, FALSE) as is_requester_admin,
+			COALESCE(c.is_admin AND c.admin_password_hash = a.admin_password_hash AND a.admin_password_hash != '', FALSE) as is_requester_admin,
 			b.enabled_sources,
 			b.only_admin_add_playlist_items,
 			(b.is_public AND NOT a.flagged),
@@ -688,8 +688,8 @@ func (c *Client) prepareCreateRoomV2Stmt() error {
 			SELECT id, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16 FROM created_room_q
 		),
 		created_admin_q AS (
-			INSERT INTO room_users (id, room_id, is_admin, is_active_listener, joined_at, last_seen_at)
-			SELECT $4, id, TRUE, FALSE, $6, $6
+			INSERT INTO room_users (id, room_id, is_admin, admin_password_hash, is_active_listener, joined_at, last_seen_at)
+			SELECT $4, id, TRUE, $5, FALSE, $6, $6
 			FROM created_room_q
 			WHERE $4 != '' AND $5 != ''
 		),

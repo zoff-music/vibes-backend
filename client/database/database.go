@@ -78,7 +78,7 @@ type Client struct {
 	// User statements
 	GetUserStatement           *sql.Stmt
 	ClaimRoomPasswordStatement *sql.Stmt
-	CreateUserStatement        *sql.Stmt
+	GrantRoomAdminStatement    *sql.Stmt
 	ClearRoomAdminStatement    *sql.Stmt
 
 	// Session statements
@@ -268,7 +268,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		// User statements
 		c.prepareGetUserStmt,
 		c.prepareClaimRoomPasswordStmt,
-		c.prepareCreateUserStmt,
+		c.prepareGrantRoomAdminStmt,
 		c.prepareClearRoomAdminStmt,
 		// Session statements
 		c.prepareGetSessionRoomsStmt,
@@ -370,7 +370,7 @@ func (c *Client) Close() error {
 		c.StartPlaybackIfIdleV2Statement,
 		c.GetUserStatement,
 		c.ClaimRoomPasswordStatement,
-		c.CreateUserStatement,
+		c.GrantRoomAdminStatement,
 		c.ClearRoomAdminStatement,
 		c.GetSessionRoomsStatement,
 		c.GetOrCreateSessionProfileStatement,
