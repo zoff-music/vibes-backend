@@ -680,6 +680,9 @@ func (h *ReviewAdminRooms) Handle(ctx context.Context, _ []byte) error {
 	if err != nil {
 		return fmt.Errorf("error listing admin rooms: %w", err)
 	}
+	if review.IsEmpty() {
+		return nil
+	}
 
 	payload, err := json.Marshal(review.Rooms)
 	if err != nil {

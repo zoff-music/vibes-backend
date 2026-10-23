@@ -193,6 +193,10 @@ type AdminRoomReview struct {
 	Rooms []AdminRoomSummaryV2
 }
 
+func (r *AdminRoomReview) IsEmpty() bool {
+	return len(r.Rooms) == 0
+}
+
 type AdminRoomReviewFetcher interface {
 	GetNextAdminRoomReview(ctx context.Context) (*AdminRoomReview, error)
 }
