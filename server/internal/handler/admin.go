@@ -670,18 +670,18 @@ func AdminDeleteUser(deleter vibe.AdminUserDeleter) http.HandlerFunc {
 
 // ReviewAdminRooms handles scheduled admin room updates.
 type ReviewAdminRooms struct {
-	DB     vibe.AdminRoomV2Lister
+	DB     vibe.AdminRoomReviewFetcher
 	Events vibe.AdminEventV2Notifier
 }
 
 // Handle fetches admin rooms and broadcasts the update.
 func (h *ReviewAdminRooms) Handle(ctx context.Context, _ []byte) error {
-	rooms, err := h.DB.ListAdminRoomsV2(ctx)
+	review, err := h.DB.GetNextAdminRoomReview(ctx)
 	if err != nil {
 		return fmt.Errorf("error listing admin rooms: %w", err)
 	}
 
-	payload, err := json.Marshal(rooms)
+	payload, err := json.Marshal(review.Rooms)
 	if err != nil {
 		return fmt.Errorf("error marshaling admin rooms: %w", err)
 	}

@@ -14,6 +14,73 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
+func (c *Client) prepareGetNextAdminRoomReviewStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH candidate_q AS (
+			SELECT a.id
+			FROM admin_reviews a
+			WHERE a.updated_at IS NULL
+			OR a.updated_at <= NOW() - INTERVAL '15 SECONDS'
+			FOR UPDATE OF a SKIP LOCKED
+		)
+		UPDATE admin_reviews a
+		SET updated_at = NOW()
+		FROM candidate_q b
+		WHERE a.id = b.id
+		RETURNING a.updated_at
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetNextAdminRoomReviewStatement: %w", err)
+	}
+
+	c.GetNextAdminRoomReviewStatement = stmt
+
+	return nil
+}
+
+func (c *Client) GetNextAdminRoomReview(ctx context.Context) (*vibe.AdminRoomReview, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetNextAdminRoomReview")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	r := c.GetNextAdminRoomReviewStatement.QueryRowContext(cctx)
+
+	var row adminRoomReviewRow
+	err := row.scan(r)
+	if errors.Is(err, sql.ErrNoRows) {
+		return nil, internalerror.ErrExpected{
+			Err: internalerror.ErrNonRecoverable{
+				Err: fmt.Errorf("error claiming admin room review: no review due"),
+			},
+		}
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error claiming admin room review: %w", err)
+	}
+
+	rooms, err := c.ListAdminRoomsV2(cctx)
+	if err != nil {
+		return nil, fmt.Errorf("error listing rooms in GetNextAdminRoomReview: %w", err)
+	}
+
+	return &vibe.AdminRoomReview{Rooms: rooms}, nil
+}
+
+type adminRoomReviewRow struct {
+	UpdatedAt sql.NullTime
+}
+
+func (r *adminRoomReviewRow) scan(row *sql.Row) error {
+	err := row.Scan(&r.UpdatedAt)
+	if err != nil {
+		return fmt.Errorf("error scanning admin room review row: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH active_users_q AS (
