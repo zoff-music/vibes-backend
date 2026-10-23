@@ -116,6 +116,7 @@ type GeneratedPlaylistSearcher interface {
 }
 
 type GeneratedPlaylistCacheNotifier interface {
+	AdminRoomChangeNotifier
 	CachedProviderSearchFetcherCreator
 	ProviderQuotaResetFetcherCreator
 	RoomEventV3Notifier

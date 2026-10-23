@@ -287,6 +287,7 @@ func DeleteRoomAdminSessionV2(db vibe.RoomAdminSessionV2Deleter) http.HandlerFun
 //	@Router			/api/v2/rooms [post]
 func CreateRoomV2(
 	db vibe.RoomV2Creator,
+	notifier vibe.AdminRoomChangeNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -496,6 +497,11 @@ func CreateRoomV2(
 				true,
 			)
 			return
+		}
+
+		err = notifier.NotifyAdminRoomChange(context.WithoutCancel(ctx), created.ID)
+		if err != nil {
+			log.Printf("error notifying created admin room: %v", err)
 		}
 
 		body, err := json.Marshal(created)
@@ -2105,6 +2111,7 @@ func ReportPlaybackFailureV2(
 //	@Router		/api/v2/rooms/generation [post]
 func CreateGeneratedRoomV2(
 	db vibe.GeneratedRoomV2Creator,
+	notifier vibe.AdminRoomChangeNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -2316,6 +2323,11 @@ func CreateGeneratedRoomV2(
 				true,
 			)
 			return
+		}
+
+		err = notifier.NotifyAdminRoomChange(context.WithoutCancel(ctx), createdRoom.ID)
+		if err != nil {
+			log.Printf("error notifying generated admin room: %v", err)
 		}
 
 		err = db.CreateRoomGeneration(ctx, createdRoom.ID, request.Prompt)

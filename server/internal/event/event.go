@@ -31,8 +31,9 @@ func GetAppEvents(
 			Name: "ReviewRoomNames",
 			Rate: 30 * time.Second,
 			Handler: &handler.ReviewRoomNames{
-				DB: db,
-				AI: jevClient,
+				DB:     db,
+				AI:     jevClient,
+				Events: redisClient,
 			},
 		},
 		{
@@ -132,14 +133,6 @@ func GetAppEvents(
 			Rate: 10 * time.Second,
 			Handler: &handler.CleanupExpiredPendingOAuthStates{
 				DB: db,
-			},
-		},
-		{
-			Name: "ReviewAdminRooms",
-			Rate: 15 * time.Second,
-			Handler: &handler.ReviewAdminRooms{
-				DB:     db,
-				Events: redisClient,
 			},
 		},
 	}

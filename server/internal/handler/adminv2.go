@@ -312,7 +312,7 @@ func AdminUpdateRoomV2(
 //	@Router		/api/v2/admin/rooms/{id} [delete]
 func AdminDeleteRoomV2(
 	db vibe.AdminRoomV2DeleterLister,
-	notifier vibe.AdminEventV2Notifier,
+	notifier vibe.AdminEventChangeNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -337,6 +337,13 @@ func AdminDeleteRoomV2(
 				true,
 			)
 			return
+		}
+
+		if deleted {
+			err = notifier.NotifyAdminRoomChange(ctx, roomID)
+			if err != nil {
+				log.Printf("error notifying deleted admin room: %v", err)
+			}
 		}
 
 		if !deleted {

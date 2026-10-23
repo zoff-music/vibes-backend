@@ -84,6 +84,13 @@ func (c *Client) NotifyRoomUpdateV3(
 		return fmt.Errorf("error appending room event in NotifyRoomUpdate: %w", err)
 	}
 
+	if event.Type == vibe.SettingsUpdate || event.Type == vibe.UsersUpdate || event.Type == vibe.PlaylistItemsUpdate || event.Type == vibe.PlaylistItemAdded || event.Type == vibe.PlaylistItemRemoved {
+		err = c.NotifyAdminRoomChange(ctx, roomID)
+		if err != nil {
+			return fmt.Errorf("error notifying admin room change in NotifyRoomUpdateV3: %w", err)
+		}
+	}
+
 	return nil
 }
 
@@ -95,6 +102,7 @@ func (c *Client) NotifyRoomUpdatesV3(
 	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyRoomUpdatesV3")
 	defer span.End()
 
+	adminChanged := false
 	for _, event := range events {
 		event.Version = 3
 		data, err := json.Marshal(event)
@@ -110,6 +118,17 @@ func (c *Client) NotifyRoomUpdatesV3(
 		err = c.appendRoomEvent(ctx, topic, data)
 		if err != nil {
 			return fmt.Errorf("error notifying room event batch in NotifyRoomUpdatesV3: %w", err)
+		}
+
+		if event.Type == vibe.SettingsUpdate || event.Type == vibe.UsersUpdate || event.Type == vibe.PlaylistItemsUpdate || event.Type == vibe.PlaylistItemAdded || event.Type == vibe.PlaylistItemRemoved {
+			adminChanged = true
+		}
+	}
+
+	if adminChanged {
+		err := c.NotifyAdminRoomChange(ctx, roomID)
+		if err != nil {
+			return fmt.Errorf("error notifying admin room change in NotifyRoomUpdatesV3: %w", err)
 		}
 	}
 
@@ -388,6 +407,20 @@ func (s *streamSubscription) listen(ctx context.Context, cursor string) {
 				return
 			}
 			continue
+		}
+
+		// Admin deltas cannot safely skip a trimmed stream segment. Closing the
+		// subscription makes the consumer reconnect for a complete snapshot.
+		if s.key == replayKey(vibe.AdminRoomChangesTopic) && len(messages) > 0 && currentCursor != initialStreamID {
+			streams := &eventStreams{pool: s.pool}
+			replay, err := streams.prepare(ctx, vibe.AdminRoomChangesTopic, currentCursor)
+			if err != nil {
+				log.Printf("error checking admin stream continuity: %v", err)
+				return
+			}
+			if replay.RequiresSnapshot {
+				return
+			}
 		}
 
 		deliveries := messages

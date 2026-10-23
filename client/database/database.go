@@ -125,7 +125,7 @@ type Client struct {
 	// Additional room statements
 	GetActiveSourcesStatement       *sql.Stmt
 	SearchAdminRoomsV2Statement     *sql.Stmt
-	GetNextAdminRoomReviewStatement *sql.Stmt
+	GetAdminRoomSummaryStatement    *sql.Stmt
 	GetNextRoomNameReviewStatement  *sql.Stmt
 	CompleteRoomNameReviewStatement *sql.Stmt
 	UpdateAdminRoomStatement        *sql.Stmt
@@ -213,7 +213,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareProcessNextAbandonedHostStmt,
 		c.prepareGetActiveSourcesStmt,
 		c.prepareSearchAdminRoomsV2Stmt,
-		c.prepareGetNextAdminRoomReviewStmt,
+		c.prepareGetAdminRoomSummaryStmt,
 		c.prepareGetNextRoomNameReviewStmt,
 		c.prepareCompleteRoomNameReviewStmt,
 		c.prepareUpdateAdminRoomStmt,
@@ -409,7 +409,7 @@ func (c *Client) Close() error {
 		c.GetStatsV2Statement,
 		c.GetActiveSourcesStatement,
 		c.SearchAdminRoomsV2Statement,
-		c.GetNextAdminRoomReviewStatement,
+		c.GetAdminRoomSummaryStatement,
 		c.GetNextRoomNameReviewStatement,
 		c.CompleteRoomNameReviewStatement,
 		c.UpdateAdminRoomStatement,
