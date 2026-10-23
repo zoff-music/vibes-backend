@@ -434,6 +434,11 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 
 		room = *createdRoom
 		generation.RoomID = createdRoom.ID
+
+		err = h.Cache.NotifyAdminRoomChange(ctx, createdRoom.ID)
+		if err != nil {
+			log.Printf("error notifying generated admin room: %v", err)
+		}
 	}
 
 	queries := make([]string, 0, len(*playlist))

@@ -1,7 +1,6 @@
 package handler
 
 import (
-	"context"
 	"encoding/json"
 	jsonv2 "encoding/json/v2"
 	"errors"
@@ -666,38 +665,6 @@ func AdminDeleteUser(deleter vibe.AdminUserDeleter) http.HandlerFunc {
 
 		w.WriteHeader(http.StatusNoContent)
 	}
-}
-
-// ReviewAdminRooms handles scheduled admin room updates.
-type ReviewAdminRooms struct {
-	DB     vibe.AdminRoomReviewFetcher
-	Events vibe.AdminEventV2Notifier
-}
-
-// Handle fetches admin rooms and broadcasts the update.
-func (h *ReviewAdminRooms) Handle(ctx context.Context, _ []byte) error {
-	review, err := h.DB.GetNextAdminRoomReview(ctx)
-	if err != nil {
-		return fmt.Errorf("error listing admin rooms: %w", err)
-	}
-	if review.IsEmpty() {
-		return nil
-	}
-
-	payload, err := json.Marshal(review.Rooms)
-	if err != nil {
-		return fmt.Errorf("error marshaling admin rooms: %w", err)
-	}
-
-	err = h.Events.NotifyAdminUpdateV2(ctx, vibe.AdminEventV2{
-		Type:    vibe.AdminRoomsUpdate,
-		Payload: payload,
-	})
-	if err != nil {
-		return fmt.Errorf("error notifying admin rooms update: %w", err)
-	}
-
-	return nil
 }
 
 const adminSessionDuration = 24 * time.Hour

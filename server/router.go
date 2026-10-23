@@ -33,10 +33,10 @@ func (s *Server) setupRoutes() {
 	docs.PathPrefix("/").Handler(handler.Documentation(s.Config.DocumentationDirectory)).Methods(http.MethodGet)
 
 	// Room routes
-	apiV2.HandleFunc("/rooms", handler.CreateRoomV2(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomV2")
+	apiV2.HandleFunc("/rooms", handler.CreateRoomV2(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomV2")
 	apiV1.HandleFunc("/rooms/reservations", handler.ReserveRoomName(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("ReserveRoomName")
 	apiV1.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
-	apiV2.HandleFunc("/rooms/generation", handler.CreateGeneratedRoomV2(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoomV2")
+	apiV2.HandleFunc("/rooms/generation", handler.CreateGeneratedRoomV2(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoomV2")
 	apiV1.HandleFunc("/generations", handler.CreateGeneration(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneration")
 	apiV1.HandleFunc("/generations/{id}", handler.GetGeneration(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetGeneration")
 	apiV1.HandleFunc("/rooms/{id}/generations", handler.CreateRoomGeneration(s.DB, s.Config.RoomGenerationMaxExistingPlaylistItems)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomGeneration")
@@ -118,6 +118,7 @@ func (s *Server) setupRoutes() {
 		apiV2.HandleFunc("/admin/rooms/{id}", handler.AdminUpdateRoomV2(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateRoomV2")
 		apiV2.HandleFunc("/admin/rooms/{id}", handler.AdminDeleteRoomV2(s.DB, s.Redis)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteRoomV2")
 		apiV2.HandleFunc("/admin/events", handler.AdminEventsV2(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEventsV2")
+		apiV3.HandleFunc("/admin/events", handler.AdminEventsV3(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEventsV3")
 	}
 
 	s.addTracingAndMetrics(apiV1, apiV2, apiV3)
@@ -246,6 +247,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"AdminUpdateRoomV2":  {Bucket: "AdminUpdateRoom", Rate: time.Minute, Limit: 30},
 			"AdminDeleteRoomV2":  {Bucket: "AdminDeleteRoom", Rate: time.Minute, Limit: 30},
 			"AdminEventsV2":      {Bucket: "AdminEvents", Rate: time.Minute, Limit: 20},
+			"AdminEventsV3":      {Bucket: "AdminEvents", Rate: time.Minute, Limit: 20},
 		},
 	}
 
@@ -329,6 +331,7 @@ func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
 			"Messages":       true,
 			"RemoteEventsV2": true,
 			"AdminEventsV2":  true,
+			"AdminEventsV3":  true,
 		},
 	}
 	for _, r := range routers {
@@ -388,6 +391,7 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 			"AdminUpdateRoomV2":  true,
 			"AdminDeleteRoomV2":  true,
 			"AdminEventsV2":      true,
+			"AdminEventsV3":      true,
 		},
 	}
 

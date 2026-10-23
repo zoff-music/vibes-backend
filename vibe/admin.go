@@ -189,18 +189,6 @@ type CachedAdminSearchUsageFetcherCreator interface {
 	CachedAdminSearchUsageCreator
 }
 
-type AdminRoomReview struct {
-	Rooms []AdminRoomSummaryV2
-}
-
-func (r *AdminRoomReview) IsEmpty() bool {
-	return len(r.Rooms) == 0
-}
-
-type AdminRoomReviewFetcher interface {
-	GetNextAdminRoomReview(ctx context.Context) (*AdminRoomReview, error)
-}
-
 type AdminRoomUpdater interface {
 	UpdateAdminRoom(ctx context.Context, roomID string, request AdminUpdateRoomRequest) (bool, error)
 }

@@ -120,4 +120,41 @@ func (c *Client) adminSearchUsageCacheKey() string {
 	return key
 }
 
+func (c *Client) NotifyAdminRoomChange(ctx context.Context, roomID string) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyAdminRoomChange")
+	defer span.End()
+
+	data, err := json.Marshal(vibe.AdminRoomChange{ID: roomID})
+	if err != nil {
+		return fmt.Errorf("error marshaling admin room change: %w", err)
+	}
+
+	err = c.appendEvent(ctx, vibe.AdminRoomChangesTopic, data)
+	if err != nil {
+		return fmt.Errorf("error publishing admin room change: %w", err)
+	}
+
+	return nil
+}
+
+func (c *Client) NotifyAdminRoomDeparture(ctx context.Context, roomID string) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyAdminRoomDeparture")
+	defer span.End()
+
+	data, err := json.Marshal(vibe.AdminRoomChange{
+		ID:        roomID,
+		RecheckAt: time.Now().Add(16 * time.Second),
+	})
+	if err != nil {
+		return fmt.Errorf("error marshaling admin room departure: %w", err)
+	}
+
+	err = c.appendEvent(ctx, vibe.AdminRoomChangesTopic, data)
+	if err != nil {
+		return fmt.Errorf("error publishing admin room departure: %w", err)
+	}
+
+	return nil
+}
+
 const adminUsageCacheExpiration = 30 * time.Second

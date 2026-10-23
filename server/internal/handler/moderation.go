@@ -8,8 +8,9 @@ import (
 )
 
 type ReviewRoomNames struct {
-	DB vibe.RoomNameReviewClaimerUpdater
-	AI vibe.RoomNameReviewer
+	DB     vibe.RoomNameReviewClaimerUpdater
+	AI     vibe.RoomNameReviewer
+	Events vibe.AdminRoomChangeNotifier
 }
 
 func (h *ReviewRoomNames) Handle(ctx context.Context, _ []byte) error {
@@ -29,6 +30,13 @@ func (h *ReviewRoomNames) Handle(ctx context.Context, _ []byte) error {
 	})
 	if err != nil {
 		return fmt.Errorf("error completing room name review: %w", err)
+	}
+
+	for _, room := range result {
+		err = h.Events.NotifyAdminRoomChange(ctx, room.ID)
+		if err != nil {
+			return fmt.Errorf("error notifying moderated admin room: %w", err)
+		}
 	}
 
 	return nil

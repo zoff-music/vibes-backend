@@ -1053,8 +1053,6 @@ func RoomEventsV3(
 			}
 			lastUsersCount = count
 
-			// Admin room updates are handled by the app event job to avoid
-			// amplifying updates on every listener heartbeat/connect.
 		}
 
 		// Set SSE headers
@@ -1309,6 +1307,11 @@ func RoomEventsV3(
 			defer func() {
 				if participantRegistered {
 					notifyUsers(context.Background())
+
+					err := events.NotifyAdminRoomDeparture(context.Background(), roomID)
+					if err != nil {
+						log.Printf("error notifying admin room departure: %v", err)
+					}
 				}
 			}()
 		}
