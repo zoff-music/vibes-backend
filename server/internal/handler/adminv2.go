@@ -8,10 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -170,7 +168,7 @@ func AdminRoomsV2(
 //	@Router		/api/v2/admin/rooms/{id} [patch]
 func AdminUpdateRoomV2(
 	db vibe.AdminRoomV2UpdaterLister,
-	notifier vibe.AdminRoomEventNotifier,
+	notifier vibe.RoomEventV3Notifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -285,14 +283,6 @@ func AdminUpdateRoomV2(
 			return
 		}
 
-		err = notifier.NotifyAdminUpdateV2(ctx, vibe.AdminEventV2{
-			Type:    vibe.AdminRoomsUpdate,
-			Payload: body,
-		})
-		if err != nil {
-			log.Printf("error notifying admin rooms update: %v", err)
-		}
-
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(body)
@@ -302,7 +292,7 @@ func AdminUpdateRoomV2(
 // AdminDeleteRoomV2 handles DELETE /api/v2/admin/rooms/{id}
 //
 //	@Summary		Delete a room
-//	@Description	Deletes the identified room and publishes the refreshed room list to administrators.
+//	@Description	Deletes the identified room and notifies administrators of the change.
 //	@Tags		admin
 //	@Param		id	path		string	true	"Room ID"
 //	@Success	204
@@ -311,8 +301,8 @@ func AdminUpdateRoomV2(
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v2/admin/rooms/{id} [delete]
 func AdminDeleteRoomV2(
-	db vibe.AdminRoomV2DeleterLister,
-	notifier vibe.AdminEventChangeNotifier,
+	db vibe.AdminRoomDeleter,
+	notifier vibe.AdminRoomChangeNotifier,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -356,155 +346,6 @@ func AdminDeleteRoomV2(
 			return
 		}
 
-		rooms, err := db.ListAdminRoomsV2(ctx)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error fetching admin rooms: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
-		}
-
-		body, err := json.Marshal(rooms)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error marshaling admin rooms: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
-		}
-
-		err = notifier.NotifyAdminUpdateV2(ctx, vibe.AdminEventV2{
-			Type:    vibe.AdminRoomsUpdate,
-			Payload: body,
-		})
-		if err != nil {
-			log.Printf("error notifying admin rooms update: %v", err)
-		}
-
 		w.WriteHeader(http.StatusNoContent)
-	}
-}
-
-// AdminEventsV2 handles GET /api/v2/admin/events (SSE)
-//
-//	@Summary		Subscribe to room administration events
-//
-// @Description Frames contain an `event` name and a JSON `data` payload, followed by a blank line. `connected` carries {"time":1700000000000}; `admin_rooms_update` carries an array of AdminRoomSummaryV2 objects. Heartbeats are SSE comments.
-// @Description This is an ongoing text/event-stream response, not a single JSON document.
-//
-//	@Description	Streams the initial room list and subsequent room summary updates to authenticated administrators.
-//	@Tags		admin
-//	@Produce	text/event-stream
-//	@Success	200	{string}	string "SSE frames with event-specific JSON data; see the stream description"
-//	@Failure	500	{object}	vibe.ErrorResponse
-//	@Router		/api/v2/admin/events [get]
-func AdminEventsV2(
-	subscriber vibe.Subscriber,
-	db vibe.AdminRoomV2ListerUserFetcher,
-) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		ctx := r.Context()
-
-		admin, ok := helper.GetAdminUserFromContext(ctx)
-		if !ok {
-			handleError(
-				w,
-				fmt.Errorf("error missing admin session"),
-				http.StatusUnauthorized,
-				false,
-			)
-			return
-		}
-
-		// Set SSE headers
-		w.Header().Set("Content-Type", "text/event-stream")
-		w.Header().Set("Cache-Control", "no-cache")
-		w.Header().Set("Connection", "keep-alive")
-
-		container, err := subscriber.Subscribe(ctx, "admin")
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error subscribing to admin events: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
-		}
-		defer container.Subscription.Destroy()
-
-		flusher, ok := w.(http.Flusher)
-		if !ok {
-			handleError(
-				w,
-				fmt.Errorf("error streaming not supported"),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
-		}
-
-		fmt.Fprintf(w, "event: connected\ndata: {\"time\": %d}\n\n", time.Now().UnixMilli())
-		flusher.Flush()
-
-		rooms, err := db.ListAdminRoomsV2(ctx)
-		if err == nil {
-			currentAdmin, err := db.GetAdminUser(ctx, admin.ID)
-			if err != nil || currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion || ctx.Err() != nil {
-				return
-			}
-
-			payload, err := json.Marshal(rooms)
-			if err == nil {
-				fmt.Fprintf(w, "event: %s\ndata: %s\n\n", vibe.AdminRoomsUpdate, payload)
-				flusher.Flush()
-			}
-		}
-
-		ticker := time.NewTicker(5 * time.Second)
-		defer ticker.Stop()
-
-		messages := container.Subscription.Listen()
-
-		for {
-			var data []byte
-			var open bool
-			heartbeat := false
-
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				heartbeat = true
-			case data, open = <-messages:
-				if !open {
-					return
-				}
-			}
-
-			currentAdmin, err := db.GetAdminUser(ctx, admin.ID)
-			if err != nil || currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion || ctx.Err() != nil {
-				return
-			}
-
-			if heartbeat {
-				fmt.Fprintf(w, ": heartbeat\n\n")
-				flusher.Flush()
-				continue
-			}
-
-			event, err := vibe.ParseAdminEvent(data)
-			if err != nil {
-				continue
-			}
-
-			fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Type, event.Payload)
-			flusher.Flush()
-		}
 	}
 }
