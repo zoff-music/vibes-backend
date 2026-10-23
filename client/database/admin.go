@@ -22,12 +22,52 @@ func (c *Client) prepareGetNextAdminRoomReviewStmt() error {
 			WHERE a.updated_at IS NULL
 			OR a.updated_at <= NOW() - INTERVAL '15 SECONDS'
 			FOR UPDATE OF a SKIP LOCKED
+		),
+		claimed_q AS (
+			UPDATE admin_reviews a
+			SET updated_at = NOW()
+			FROM candidate_q b
+			WHERE a.id = b.id
+			RETURNING a.id
+		),
+		active_users_q AS (
+			SELECT a.room_id, COUNT(*) AS user_count
+			FROM room_users a
+			WHERE a.is_active_listener
+			AND a.last_seen_at >= NOW() - INTERVAL '15 SECONDS'
+			AND EXISTS (SELECT 1 FROM claimed_q)
+			GROUP BY a.room_id
+		),
+		playlist_item_counts_q AS (
+			SELECT
+				a.room_id,
+				COUNT(*) AS playlist_item_count,
+				STRING_AGG(DISTINCT a.source_type, ',') AS active_sources
+			FROM playlist_items a
+			WHERE a.source_type = ANY($1::TEXT[])
+			AND EXISTS (SELECT 1 FROM claimed_q)
+			GROUP BY a.room_id
 		)
-		UPDATE admin_reviews a
-		SET updated_at = NOW()
-		FROM candidate_q b
-		WHERE a.id = b.id
-		RETURNING a.updated_at
+		SELECT
+			a.id,
+			a.name,
+			a.room_type,
+			(COALESCE(d.is_public, FALSE) AND NOT a.flagged) AS is_public,
+			COALESCE(b.user_count, 0) AS user_count,
+			COALESCE(c.playlist_item_count, 0) AS playlist_item_count,
+			COALESCE(c.active_sources, '') AS active_sources,
+			(a.admin_password_hash IS NOT NULL AND a.admin_password_hash != '') AS has_admin_password,
+			a.flagged,
+			a.flagged_at,
+			a.checked_at,
+			COUNT(*) OVER() AS total_count
+		FROM rooms a
+		LEFT JOIN active_users_q b ON b.room_id = a.id
+		LEFT JOIN playlist_item_counts_q c ON c.room_id = a.id
+		LEFT JOIN room_settings d ON d.room_id = a.id
+		CROSS JOIN claimed_q e
+		ORDER BY user_count DESC, playlist_item_count DESC, a.name ASC, a.id ASC
+		LIMIT $2
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetNextAdminRoomReviewStatement: %w", err)
@@ -45,40 +85,34 @@ func (c *Client) GetNextAdminRoomReview(ctx context.Context) (*vibe.AdminRoomRev
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	r := c.GetNextAdminRoomReviewStatement.QueryRowContext(cctx)
-
-	var row adminRoomReviewRow
-	err := row.scan(r)
-	if errors.Is(err, sql.ErrNoRows) {
-		return nil, internalerror.ErrExpected{
-			Err: internalerror.ErrNonRecoverable{
-				Err: fmt.Errorf("error claiming admin room review: no review due"),
-			},
-		}
-	}
+	rows, err := c.GetNextAdminRoomReviewStatement.QueryContext(cctx, c.enabledProviders, adminRoomsMaximumRow+1)
 	if err != nil {
 		return nil, fmt.Errorf("error claiming admin room review: %w", err)
 	}
+	defer rows.Close()
 
-	rooms, err := c.ListAdminRoomsV2(cctx)
-	if err != nil {
-		return nil, fmt.Errorf("error listing rooms in GetNextAdminRoomReview: %w", err)
+	review := &vibe.AdminRoomReview{Rooms: []vibe.AdminRoomSummaryV2{}}
+	for rows.Next() {
+		var row adminRoomRow
+		err = row.scanRows(rows)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning admin room review: %w", err)
+		}
+
+		room, err := row.toSummary()
+		if err != nil {
+			return nil, fmt.Errorf("error mapping admin room review: %w", err)
+		}
+
+		review.Rooms = append(review.Rooms, *room)
 	}
 
-	return &vibe.AdminRoomReview{Rooms: rooms}, nil
-}
-
-type adminRoomReviewRow struct {
-	UpdatedAt sql.NullTime
-}
-
-func (r *adminRoomReviewRow) scan(row *sql.Row) error {
-	err := row.Scan(&r.UpdatedAt)
+	err = rows.Err()
 	if err != nil {
-		return fmt.Errorf("error scanning admin room review row: %w", err)
+		return nil, fmt.Errorf("error iterating admin room review: %w", err)
 	}
 
-	return nil
+	return review, nil
 }
 
 func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
