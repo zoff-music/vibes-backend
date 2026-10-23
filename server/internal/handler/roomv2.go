@@ -1105,11 +1105,16 @@ func UpdatePlaybackStateV2(
 
 		state, err = db.UpdatePlaybackV2(ctx, roomID, userID, req.Action, req.PositionMs)
 		if err != nil {
+			var permissionError internalerror.ErrorCodeWrapper
+			isHostDenial := errors.As(err, &permissionError) &&
+				permissionError.StatusCode == http.StatusForbidden &&
+				permissionError.ResponseBody.Error == "playback_host_required"
+
 			handleError(
 				w,
 				fmt.Errorf("error updating playback: %w", err),
 				http.StatusInternalServerError,
-				true,
+				!isHostDenial,
 			)
 			return
 		}
