@@ -189,6 +189,14 @@ type CachedAdminSearchUsageFetcherCreator interface {
 	CachedAdminSearchUsageCreator
 }
 
+type AdminRoomReview struct {
+	Rooms []AdminRoomSummaryV2
+}
+
+type AdminRoomReviewFetcher interface {
+	GetNextAdminRoomReview(ctx context.Context) (*AdminRoomReview, error)
+}
+
 type AdminRoomUpdater interface {
 	UpdateAdminRoom(ctx context.Context, roomID string, request AdminUpdateRoomRequest) (bool, error)
 }
