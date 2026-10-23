@@ -39,6 +39,9 @@ type Client struct {
 
 	// Room generation statements
 	HasActiveRoomGenerationStatement      *sql.Stmt
+	CreateGenerationStatement             *sql.Stmt
+	CreateGenerationRoomStatement         *sql.Stmt
+	GetGenerationStatement                *sql.Stmt
 	CreateRoomGenerationStatement         *sql.Stmt
 	ProcessNextRoomGenerationStatement    *sql.Stmt
 	CompleteRoomGenerationStatement       *sql.Stmt
@@ -233,6 +236,9 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareListAdminRoomListenerUsageStmt,
 		// Room generation statements
 		c.prepareHasActiveRoomGenerationStmt,
+		c.prepareCreateGenerationStmt,
+		c.prepareCreateGenerationRoomStmt,
+		c.prepareGetGenerationStmt,
 		c.prepareCreateRoomGenerationStmt,
 		c.prepareProcessNextRoomGenerationStmt,
 		c.prepareCompleteRoomGenerationStmt,
@@ -339,6 +345,9 @@ func (c *Client) Close() error {
 		c.UpdateRoomV2Statement,
 		c.ProcessNextAbandonedHostStatement,
 		c.HasActiveRoomGenerationStatement,
+		c.CreateGenerationStatement,
+		c.CreateGenerationRoomStatement,
+		c.GetGenerationStatement,
 		c.CreateRoomGenerationStatement,
 		c.ProcessNextRoomGenerationStatement,
 		c.CompleteRoomGenerationStatement,

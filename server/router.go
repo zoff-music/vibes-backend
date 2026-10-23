@@ -37,6 +37,8 @@ func (s *Server) setupRoutes() {
 	apiV1.HandleFunc("/rooms/reservations", handler.ReserveRoomName(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("ReserveRoomName")
 	apiV1.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
 	apiV2.HandleFunc("/rooms/generation", handler.CreateGeneratedRoomV2(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneratedRoomV2")
+	apiV1.HandleFunc("/generations", handler.CreateGeneration(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("CreateGeneration")
+	apiV1.HandleFunc("/generations/{id}", handler.GetGeneration(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetGeneration")
 	apiV1.HandleFunc("/rooms/{id}/generations", handler.CreateRoomGeneration(s.DB, s.Config.RoomGenerationMaxExistingPlaylistItems)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomGeneration")
 	apiV1.HandleFunc("/rooms/{id}", handler.RoomExists(s.DB)).Methods(http.MethodHead).Name("RoomExists")
 	apiV2.HandleFunc("/rooms/{id}", handler.GetRoomV2(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoomV2")
@@ -195,6 +197,15 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 				GlobalRate:  time.Minute,
 				GlobalLimit: 1,
 			},
+			"CreateGeneration": {
+				Bucket:      "RoomGeneration",
+				Rate:        10 * time.Minute,
+				Limit:       1,
+				IPLimit:     2,
+				GlobalRate:  time.Minute,
+				GlobalLimit: 1,
+			},
+			"GetGeneration": {Rate: time.Minute, Limit: 120},
 			"CreateRoomGeneration": {
 				Bucket:      "RoomGeneration",
 				Rate:        10 * time.Minute,
