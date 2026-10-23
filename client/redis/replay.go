@@ -22,23 +22,6 @@ type eventStreams struct {
 	maxAge    time.Duration
 }
 
-func (c *Client) NotifyAdminUpdateV2(ctx context.Context, event vibe.AdminEventV2) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "NotifyAdminUpdateV2")
-	defer span.End()
-
-	data, err := json.Marshal(vibe.AdminEventRecord{Version: 2, Event: event})
-	if err != nil {
-		return fmt.Errorf("error marshaling admin event in NotifyAdminUpdate: %w", err)
-	}
-
-	err = c.appendEvent(ctx, adminTopicName, data)
-	if err != nil {
-		return fmt.Errorf("error appending admin event in NotifyAdminUpdate: %w", err)
-	}
-
-	return nil
-}
-
 func (c *Client) NotifyRemoteUpdateV2(
 	ctx context.Context,
 	remoteID string,
@@ -735,7 +718,6 @@ func remoteTopicName(remoteID string) string {
 	return result
 }
 
-const adminTopicName = "admin"
 const replayEventField = "event"
 const initialStreamID = "0-0"
 const replayBlockMilliseconds = 3000

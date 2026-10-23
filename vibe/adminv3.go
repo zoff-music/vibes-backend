@@ -27,11 +27,6 @@ type AdminRoomSummaryListerUserFetcher interface {
 	AdminRoomSummaryFetcher
 }
 
-type AdminEventChangeNotifier interface {
-	AdminEventV2Notifier
-	AdminRoomChangeNotifier
-}
-
 func (r *AdminRoomSummaryV2) IsEmpty() bool {
 	return r.ID == ""
 }

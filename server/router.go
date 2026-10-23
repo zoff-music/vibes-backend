@@ -117,7 +117,6 @@ func (s *Server) setupRoutes() {
 		apiV1.HandleFunc("/admin/listeners/usage", handler.AdminListenerUsage(s.DB, s.Redis)).Methods(http.MethodGet, http.MethodOptions).Name("AdminListenerUsage")
 		apiV2.HandleFunc("/admin/rooms/{id}", handler.AdminUpdateRoomV2(s.DB, s.Redis)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateRoomV2")
 		apiV2.HandleFunc("/admin/rooms/{id}", handler.AdminDeleteRoomV2(s.DB, s.Redis)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminDeleteRoomV2")
-		apiV2.HandleFunc("/admin/events", handler.AdminEventsV2(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEventsV2")
 		apiV3.HandleFunc("/admin/events", handler.AdminEventsV3(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminEventsV3")
 	}
 
@@ -246,7 +245,6 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"AdminListenerUsage": {Rate: time.Minute, Limit: 120},
 			"AdminUpdateRoomV2":  {Bucket: "AdminUpdateRoom", Rate: time.Minute, Limit: 30},
 			"AdminDeleteRoomV2":  {Bucket: "AdminDeleteRoom", Rate: time.Minute, Limit: 30},
-			"AdminEventsV2":      {Bucket: "AdminEvents", Rate: time.Minute, Limit: 20},
 			"AdminEventsV3":      {Bucket: "AdminEvents", Rate: time.Minute, Limit: 20},
 		},
 	}
@@ -330,7 +328,6 @@ func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
 			"RoomEventsV3":   true,
 			"Messages":       true,
 			"RemoteEventsV2": true,
-			"AdminEventsV2":  true,
 			"AdminEventsV3":  true,
 		},
 	}
@@ -390,7 +387,6 @@ func (s *Server) addAdminMiddleware(routers ...*mux.Router) {
 			"AdminListenerUsage": true,
 			"AdminUpdateRoomV2":  true,
 			"AdminDeleteRoomV2":  true,
-			"AdminEventsV2":      true,
 			"AdminEventsV3":      true,
 		},
 	}
