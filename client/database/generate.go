@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgconn"
@@ -12,6 +13,259 @@ import (
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
+
+func (c *Client) prepareCreateGenerationStmt() error {
+	stmt, err := c.DB.Prepare(`
+		INSERT INTO room_generations (owner_id, room_type, prompt, created_at, updated_at)
+		VALUES ($1, $2, $3, NOW(), NOW())
+		RETURNING id::TEXT, ''::TEXT, 'generating'::TEXT, ''::TEXT
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing CreateGenerationStatement: %w", err)
+	}
+
+	c.CreateGenerationStatement = stmt
+
+	return nil
+}
+
+func (c *Client) CreateGeneration(ctx context.Context, ownerID string, request vibe.GeneratedRoomRequestV2) (*vibe.GenerationStatus, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "CreateGeneration")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	r := c.CreateGenerationStatement.QueryRowContext(cctx, ownerID, request.RoomType, request.Prompt)
+	var row generationStatusRow
+	err := row.scan(r)
+	if err != nil {
+		var postgresError *pgconn.PgError
+		if errors.As(err, &postgresError) && postgresError.ConstraintName == roomGenerationSingleActiveConstraint {
+			return nil, internalerror.ErrRoomGenerationBusy{
+				Err: fmt.Errorf("error creating generation: %w", err),
+			}
+		}
+
+		return nil, fmt.Errorf("error scanning created generation: %w", err)
+	}
+
+	status, err := row.toGenerationStatus()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping created generation: %w", err)
+	}
+
+	return status, nil
+}
+
+func (c *Client) prepareGetGenerationStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT a.id::TEXT,
+			COALESCE(a.room_id, ''),
+			CASE
+				WHEN a.failed_at IS NOT NULL THEN 'failed'
+				WHEN a.completed_at IS NOT NULL THEN 'completed'
+				ELSE 'generating'
+			END,
+			COALESCE(a.failure_reason, '')
+		FROM room_generations a
+		WHERE a.id = $1 AND a.owner_id = $2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetGenerationStatement: %w", err)
+	}
+
+	c.GetGenerationStatement = stmt
+
+	return nil
+}
+
+func (c *Client) GetGeneration(ctx context.Context, id int64, ownerID string) (*vibe.GenerationStatus, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetGeneration")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	r := c.GetGenerationStatement.QueryRowContext(cctx, id, ownerID)
+	var row generationStatusRow
+	err := row.scan(r)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return &vibe.GenerationStatus{}, nil
+		}
+
+		return nil, fmt.Errorf("error scanning generation: %w", err)
+	}
+
+	status, err := row.toGenerationStatus()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping generation status: %w", err)
+	}
+
+	return status, nil
+}
+
+type generationStatusRow struct {
+	ID     string
+	RoomID string
+	Status string
+	Error  string
+}
+
+func (r *generationStatusRow) scan(row *sql.Row) error {
+	err := row.Scan(&r.ID, &r.RoomID, &r.Status, &r.Error)
+	if err != nil {
+		return fmt.Errorf("error scanning generation status: %w", err)
+	}
+
+	return nil
+}
+
+func (r *generationStatusRow) toGenerationStatus() (*vibe.GenerationStatus, error) {
+	return &vibe.GenerationStatus{
+		ID:     r.ID,
+		RoomID: r.RoomID,
+		Status: r.Status,
+		Error:  vibe.PublicGenerationError(r.Error),
+	}, nil
+}
+
+func (c *Client) prepareCreateGenerationRoomStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH locked_generation_q AS (
+			SELECT a.id, a.owner_id, a.room_type, a.room_id
+			FROM room_generations a
+			WHERE a.id = $1 AND a.attempt = $2
+			AND a.completed_at IS NULL AND a.failed_at IS NULL
+			FOR UPDATE OF a
+		),
+		created_room_q AS (
+			INSERT INTO rooms (id, name, mode, host_id, admin_password_hash, created_at, room_type)
+			SELECT $3, $3, 'server', a.owner_id, '', NOW(), a.room_type
+			FROM locked_generation_q a
+			WHERE a.room_id IS NULL
+			AND NOT EXISTS (
+				SELECT 1 FROM room_name_pool b
+				WHERE b.name = $3 AND b.consumed_at IS NOT NULL
+			)
+			AND NOT EXISTS (
+				SELECT 1 FROM room_name_reservations c
+				WHERE c.name = $3 AND c.expires_at > NOW()
+				AND NOT (c.token::TEXT = $4 AND c.owner_id = a.owner_id)
+			)
+			ON CONFLICT (id) DO NOTHING
+			RETURNING id
+		),
+		created_settings_q AS (
+			INSERT INTO room_settings (
+				room_id, skip_allowed, democratic_skip, skip_vote_threshold,
+				max_continuous_adds, remove_on_play, allow_duplicates,
+				enabled_sources, only_admin_add_playlist_items, is_public, playlist_import
+			)
+			SELECT a.id, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14
+			FROM created_room_q a
+		),
+		consumed_name_q AS (
+			INSERT INTO room_name_pool (name, generated, consumed_at)
+			SELECT a.id, FALSE, NOW() FROM created_room_q a
+			ON CONFLICT (name) DO UPDATE SET consumed_at = EXCLUDED.consumed_at
+		),
+		deleted_reservation_q AS (
+			DELETE FROM room_name_reservations a
+			USING created_room_q b
+			WHERE a.name = b.id AND a.token::TEXT = $4
+		),
+		updated_generation_q AS (
+			UPDATE room_generations a
+			SET room_id = b.id, updated_at = NOW()
+			FROM created_room_q b
+			WHERE a.id = $1
+			RETURNING a.room_id
+		)
+		SELECT room_id FROM updated_generation_q
+		UNION ALL
+		SELECT room_id FROM locked_generation_q WHERE room_id IS NOT NULL
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing CreateGenerationRoomStatement: %w", err)
+	}
+
+	c.CreateGenerationRoomStatement = stmt
+
+	return nil
+}
+
+func (c *Client) CreateGenerationRoom(ctx context.Context, generation *vibe.RoomGeneration, names []string) (*vibe.RoomV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "CreateGenerationRoom")
+	defer span.End()
+
+	settings, err := vibe.DefaultRoomSettingsV2()
+	if err != nil {
+		return nil, fmt.Errorf("error getting generated room settings: %w", err)
+	}
+	if generation.RoomType == vibe.RoomTypeWatch {
+		settings.EnabledSources = []string{vibe.SourceTypeYouTube}
+	}
+
+	candidates := vibe.GeneratedRoomNames(names)
+	// One final attempt uses the existing random-name reservation mechanism.
+	candidates = append(candidates, "")
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	for _, name := range candidates {
+		token := ""
+		if name == "" {
+			reservation, err := c.ReserveSuggestedRoomName(ctx, generation.OwnerID)
+			if err != nil {
+				return nil, fmt.Errorf("error reserving fallback generation name: %w", err)
+			}
+
+			name = reservation.Name
+			token = reservation.Token
+		}
+
+		r := c.CreateGenerationRoomStatement.QueryRowContext(cctx,
+			generation.ID, generation.Attempt, name, token,
+			settings.SkipAllowed, settings.DemocraticSkip, settings.SkipVoteThreshold,
+			settings.MaxContinuousAdds, settings.RemoveOnPlay, settings.AllowDuplicates,
+			strings.Join(settings.EnabledSources, ","), settings.OnlyAdminAddPlaylistItems,
+			settings.Public, settings.PlaylistImport,
+		)
+		var row generationRoomRow
+		err = row.scan(r)
+		if errors.Is(err, sql.ErrNoRows) {
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("error creating generation room: %w", err)
+		}
+
+		room, err := c.GetRoomV2(ctx, row.RoomID, generation.OwnerID)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching created generation room: %w", err)
+		}
+
+		return room, nil
+	}
+
+	return nil, fmt.Errorf("error creating generation room: no available name or generation claim")
+}
+
+type generationRoomRow struct {
+	RoomID string
+}
+
+func (r *generationRoomRow) scan(row *sql.Row) error {
+	err := row.Scan(&r.RoomID)
+	if err != nil {
+		return fmt.Errorf("error scanning generation room: %w", err)
+	}
+
+	return nil
+}
 
 func (c *Client) prepareHasActiveRoomGenerationStmt() error {
 	stmt, err := c.DB.Prepare(`
@@ -239,6 +493,9 @@ func (c *Client) prepareProcessNextRoomGenerationStmt() error {
 			WHERE a.id = b.id
 			AND b.attempt < $1
 			RETURNING
+				a.id,
+				a.owner_id,
+				a.room_type,
 				a.room_id,
 				a.prompt,
 				a.attempt,
@@ -253,15 +510,18 @@ func (c *Client) prepareProcessNextRoomGenerationStmt() error {
 			WHERE a.id = b.id
 			AND b.attempt >= $1
 			RETURNING
+				a.id,
+				a.owner_id,
+				a.room_type,
 				a.room_id,
 				a.prompt,
 				a.attempt,
 				TRUE AS exhausted
 		)
-		SELECT room_id, prompt, attempt, exhausted
+		SELECT id, owner_id, room_type, room_id, prompt, attempt, exhausted
 		FROM claimed_generation_q
 		UNION ALL
-		SELECT room_id, prompt, attempt, exhausted
+		SELECT id, owner_id, room_type, room_id, prompt, attempt, exhausted
 		FROM failed_generation_q
 	`)
 	if err != nil {
@@ -315,7 +575,7 @@ func (c *Client) ProcessNextRoomGeneration(
 		return nil, fmt.Errorf("error mapping generation: %w", err)
 	}
 
-	if generation.Exhausted {
+	if generation.Exhausted || generation.RoomID == "" {
 		return generation, nil
 	}
 
@@ -349,6 +609,9 @@ func (c *Client) ProcessNextRoomGeneration(
 	}
 
 	generationWithContext := &vibe.RoomGeneration{
+		ID:            generation.ID,
+		OwnerID:       generation.OwnerID,
+		RoomType:      generation.RoomType,
 		Room:          *room,
 		PlaybackState: *playbackState,
 		PlaylistItems: playlistItems,
@@ -362,6 +625,9 @@ func (c *Client) ProcessNextRoomGeneration(
 }
 
 type roomGenerationRow struct {
+	ID        int64
+	OwnerID   sql.NullString
+	RoomType  string
 	RoomID    sql.NullString
 	Prompt    sql.NullString
 	Attempt   sql.NullInt64
@@ -370,6 +636,9 @@ type roomGenerationRow struct {
 
 func (r *roomGenerationRow) scan(row *sql.Row) error {
 	err := row.Scan(
+		&r.ID,
+		&r.OwnerID,
+		&r.RoomType,
 		&r.RoomID,
 		&r.Prompt,
 		&r.Attempt,
@@ -384,6 +653,9 @@ func (r *roomGenerationRow) scan(row *sql.Row) error {
 
 func (r *roomGenerationRow) toRoomGeneration() (*vibe.RoomGeneration, error) {
 	return &vibe.RoomGeneration{
+		ID:        r.ID,
+		OwnerID:   r.OwnerID.String,
+		RoomType:  vibe.RoomType(r.RoomType),
 		RoomID:    r.RoomID.String,
 		Prompt:    r.Prompt.String,
 		Attempt:   int(r.Attempt.Int64),

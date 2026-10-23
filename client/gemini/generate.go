@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
@@ -37,7 +38,7 @@ type chatCompletionResponse struct {
 	Choices []chatCompletionChoice `json:"choices"`
 }
 
-func (c *Client) GeneratePlaylist(ctx context.Context, prompt string, roomType vibe.RoomType) (*vibe.GeneratedPlaylist, error) {
+func (c *Client) GeneratePlaylist(ctx context.Context, prompt string, roomType vibe.RoomType) (*vibe.PlaylistGeneration, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GeneratePlaylist")
 	defer span.End()
 
@@ -116,22 +117,47 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string, roomType v
 		)
 	}
 
-	var playlist vibe.GeneratedPlaylist
-	err = json.Unmarshal([]byte(response.Choices[0].Message.Content), &playlist)
+	content := strings.TrimSpace(response.Choices[0].Message.Content)
+	if strings.HasPrefix(content, "```json\n") && strings.HasSuffix(content, "```") {
+		content = strings.TrimSpace(strings.TrimSuffix(strings.TrimPrefix(content, "```json\n"), "```"))
+	}
+
+	var decoded playlistResponse
+	var result vibe.PlaylistGeneration
+	if strings.HasPrefix(content, "[") {
+		// Accept the previous response shape without discarding usable tracks.
+		err = json.Unmarshal([]byte(content), &result.Items)
+	} else {
+		err = json.Unmarshal([]byte(content), &decoded)
+		result.Items = decoded.Items
+	}
 	if err != nil {
 		return nil, fmt.Errorf(
 			"error unmarshaling generated playlist in GeneratePlaylist: %w",
 			err,
 		)
 	}
-	if len(playlist) == 0 {
+	if len(result.Items) == 0 {
 		return nil, fmt.Errorf(
 			"error validating generated playlist in GeneratePlaylist: playlist has no tracks",
 		)
 	}
-	if len(playlist) > c.itemCount {
-		playlist = playlist[:c.itemCount]
+	if len(result.Items) > c.itemCount {
+		result.Items = result.Items[:c.itemCount]
 	}
 
-	return &playlist, nil
+	if len(decoded.Names) > 0 {
+		var names []string
+		err = json.Unmarshal(decoded.Names, &names)
+		if err == nil {
+			result.Names = names
+		}
+	}
+
+	return &result, nil
+}
+
+type playlistResponse struct {
+	Items vibe.GeneratedPlaylist `json:"items"`
+	Names json.RawMessage        `json:"names"`
 }

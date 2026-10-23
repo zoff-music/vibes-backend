@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -15,8 +16,188 @@ import (
 	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/internalerror"
+	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
+
+// CreateGeneration queues a new room without exposing a temporary room name.
+//
+// @Summary Generate a named room and playlist
+// @Tags generations
+// @Accept json
+// @Produce json
+// @Param request body vibe.GeneratedRoomRequestV2 true "Playlist prompt"
+// @Success 202 {object} vibe.GenerationStatus
+// @Failure 400 {object} vibe.ErrorResponse
+// @Failure 401 {object} vibe.ErrorResponse
+// @Failure 429 {object} vibe.ErrorResponse
+// @Failure 500 {object} vibe.ErrorResponse
+// @Router /api/v1/generations [post]
+func CreateGeneration(creator vibe.GenerationCreator) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		session, ok := helper.GetSessionFromContext(ctx)
+		if !ok || session.UserID == "" {
+			handleError(
+				w,
+				fmt.Errorf("error creating generation: missing session"),
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+
+		var request vibe.GeneratedRoomRequestV2
+		err := json.NewDecoder(r.Body).Decode(&request)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding generation request: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		request.Prompt = strings.TrimSpace(request.Prompt)
+		if request.RoomType == "" {
+			request.RoomType = vibe.RoomTypeMusic
+		}
+		if request.Prompt == "" || utf8.RuneCountInString(request.Prompt) > generatedPlaylistPromptMaxLength || !request.RoomType.IsValid() {
+			handleError(
+				w,
+				fmt.Errorf("error validating generation: prompt must contain 1–300 characters and roomType must be MUSIC or WATCH"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		status, err := creator.CreateGeneration(ctx, session.UserID, request)
+		if err != nil {
+			var busyError internalerror.ErrRoomGenerationBusy
+			if errors.As(err, &busyError) {
+				w.Header().Set("Retry-After", roomGenerationBusyRetryAfterSeconds)
+				handleError(
+					w,
+					internalerror.ErrorCodeWrapper{
+						Err: busyError,
+						ResponseBody: internalerror.ErrorCodeResponseBody{
+							Namespace: "vibes-backend",
+							Error:     "room_generation_busy",
+							Message:   "A playlist is already being generated. Please wait and try again.",
+							Propagate: true,
+						},
+						StatusCode: http.StatusTooManyRequests,
+					},
+					http.StatusTooManyRequests,
+					false,
+				)
+				return
+			}
+
+			handleError(
+				w,
+				fmt.Errorf("error creating generation: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		body, err := json.Marshal(status)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error encoding generation: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write(body)
+	}
+}
+
+// GetGeneration returns only a generation belonging to the current session.
+//
+// @Summary Get a room generation status
+// @Tags generations
+// @Produce json
+// @Param id path string true "Generation ID"
+// @Success 200 {object} vibe.GenerationStatus
+// @Failure 400 {object} vibe.ErrorResponse
+// @Failure 401 {object} vibe.ErrorResponse
+// @Failure 404 {object} vibe.ErrorResponse
+// @Failure 500 {object} vibe.ErrorResponse
+// @Router /api/v1/generations/{id} [get]
+func GetGeneration(fetcher vibe.GenerationFetcher) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		session, ok := helper.GetSessionFromContext(ctx)
+		if !ok || session.UserID == "" {
+			handleError(
+				w,
+				fmt.Errorf("error getting generation: missing session"),
+				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+
+		vars := mux.Vars(r)
+		id, err := strconv.ParseInt(vars["id"], 10, 64)
+		if err != nil || id <= 0 {
+			handleError(
+				w,
+				fmt.Errorf("error validating generation ID: expected a positive integer"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		status, err := fetcher.GetGeneration(ctx, id, session.UserID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error getting generation: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+		if status.IsEmpty() {
+			handleError(
+				w,
+				fmt.Errorf("error getting generation: not found"),
+				http.StatusNotFound,
+				false,
+			)
+			return
+		}
+
+		body, err := json.Marshal(status)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error encoding generation: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		w.Header().Set("Cache-Control", "no-store")
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}
+}
 
 // CreateRoomGeneration handles POST /api/v1/rooms/{id}/generations.
 //
@@ -198,6 +379,10 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 	}
 
 	if generation.Exhausted {
+		if generation.RoomID == "" {
+			return nil
+		}
+
 		update := vibe.RoomGenerationUpdate{
 			Status: vibe.RoomGenerationFailed,
 			Error:  vibe.RoomGenerationFailure,
@@ -220,6 +405,9 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 	}
 
 	room := generation.Room
+	if generation.RoomID == "" {
+		room.RoomType = generation.RoomType
+	}
 	playbackState := generation.PlaybackState
 	currentPlaylistItem := playbackState.CurrentPlaylistItem
 
@@ -232,9 +420,20 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 		return fmt.Errorf("error generating playlist prompt in Handle: %w", err)
 	}
 
-	playlist, err := h.AI.GeneratePlaylist(ctx, prompt, room.RoomType)
+	generated, err := h.AI.GeneratePlaylist(ctx, prompt, room.RoomType)
 	if err != nil {
 		return fmt.Errorf("error generating playlist in Handle: %w", err)
+	}
+
+	playlist := &generated.Items
+	if generation.RoomID == "" {
+		createdRoom, err := h.DB.CreateGenerationRoom(ctx, generation, generated.Names)
+		if err != nil {
+			return fmt.Errorf("error creating named generation room in Handle: %w", err)
+		}
+
+		room = *createdRoom
+		generation.RoomID = createdRoom.ID
 	}
 
 	queries := make([]string, 0, len(*playlist))
