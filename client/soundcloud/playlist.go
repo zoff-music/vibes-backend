@@ -118,21 +118,31 @@ func (c *Client) ResolveProviderPlaylist(
 				err,
 			)
 		}
+		trackIDs := make([]int, 0, len(page.Collection))
 		for _, item := range page.Collection {
 			if item.ID == 0 || item.Title == "" || item.PermalinkURL == "" || seenTrackIDs[item.ID] {
 				continue
 			}
-			if len(playlistItems) == playlistItemLimit {
+			if len(playlistItems)+len(trackIDs) == playlistItemLimit {
 				truncated = true
 				break
 			}
-			providerItem, err := item.toProviderItem()
+			trackIDs = append(trackIDs, item.ID)
+			seenTrackIDs[item.ID] = true
+		}
+
+		tracks, err := c.getTracks(ctx, trackIDs)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching soundcloud playlist metadata in ResolveProviderPlaylist: %w", err)
+		}
+
+		for _, track := range tracks {
+			providerItem, err := track.toProviderItem()
 			if err != nil {
 				return nil, fmt.Errorf("error converting soundcloud playlist item: %w", err)
 			}
 
 			playlistItems = append(playlistItems, *providerItem)
-			seenTrackIDs[item.ID] = true
 		}
 		if truncated {
 			break
