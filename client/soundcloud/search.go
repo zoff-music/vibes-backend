@@ -37,7 +37,7 @@ func (c *Client) SearchProviderItems(ctx context.Context, query string, roomType
 	params := url.Values{}
 	params.Set("q", query)
 	params.Set("limit", "25")
-	params.Set("access", "playable,preview")
+	params.Set("access", "playable")
 
 	reqData := client.HTTPRequestData{
 		Method:  http.MethodGet,
@@ -68,6 +68,10 @@ func (c *Client) SearchProviderItems(ctx context.Context, query string, roomType
 
 	tracks := make([]vibe.ProviderItem, 0, len(results))
 	for _, res := range results {
+		if res.Access != "playable" || res.EmbeddableBy != "all" {
+			continue
+		}
+
 		track, err := res.toProviderItem()
 		if err != nil {
 			return nil, fmt.Errorf("error converting soundcloud track in SearchProviderItems: %w", err)
@@ -80,6 +84,8 @@ func (c *Client) SearchProviderItems(ctx context.Context, query string, roomType
 }
 
 type trackResponse struct {
+	Access       string  `json:"access"`
+	EmbeddableBy string  `json:"embeddable_by"`
 	ID           int     `json:"id"`
 	Title        string  `json:"title"`
 	User         *user   `json:"user"`
@@ -95,6 +101,11 @@ type user struct {
 }
 
 func (r trackResponse) toProviderItem() (*vibe.ProviderItem, error) {
+	playbackRestriction := ""
+	if r.Access != "playable" || r.EmbeddableBy != "all" {
+		playbackRestriction = vibe.PlaybackRestrictionEmbedding
+	}
+
 	username := "Unknown"
 	if r.User != nil {
 		username = r.User.Username
@@ -106,13 +117,14 @@ func (r trackResponse) toProviderItem() (*vibe.ProviderItem, error) {
 	}
 
 	return &vibe.ProviderItem{
-		ID:              fmt.Sprintf("%d", r.ID),
-		Source:          vibe.SourceTypeSoundCloud,
-		ProviderURL:     r.PermalinkURL,
-		Title:           r.Title,
-		Publisher:       username,
-		ThumbnailURL:    artworkURL,
-		Duration:        fmt.Sprintf("PT%dM%dS", (r.Duration/1000)/60, (r.Duration/1000)%60),
-		DurationSeconds: r.Duration / 1000,
+		PlaybackRestriction: playbackRestriction,
+		ID:                  fmt.Sprintf("%d", r.ID),
+		Source:              vibe.SourceTypeSoundCloud,
+		ProviderURL:         r.PermalinkURL,
+		Title:               r.Title,
+		Publisher:           username,
+		ThumbnailURL:        artworkURL,
+		Duration:            fmt.Sprintf("PT%dM%dS", (r.Duration/1000)/60, (r.Duration/1000)%60),
+		DurationSeconds:     r.Duration / 1000,
 	}, nil
 }

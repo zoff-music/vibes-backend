@@ -95,7 +95,7 @@ func (c *Client) ResolveProviderPlaylist(
 		}
 		if firstPage {
 			pageParams := url.Values{}
-			pageParams.Set("access", "playable,preview")
+			pageParams.Set("access", "playable")
 			pageParams.Set("limit", fmt.Sprintf("%d", soundCloudPlaylistPageSize))
 			pageParams.Set("linked_partitioning", "true")
 			requestData.Payload = &pageParams
@@ -137,6 +137,10 @@ func (c *Client) ResolveProviderPlaylist(
 		}
 
 		for _, track := range tracks {
+			if track.Access != "playable" || track.EmbeddableBy != "all" {
+				continue
+			}
+
 			providerItem, err := track.toProviderItem()
 			if err != nil {
 				return nil, fmt.Errorf("error converting soundcloud playlist item: %w", err)
