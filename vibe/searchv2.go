@@ -31,6 +31,10 @@ func (p ProviderItem) AllowedInRoom(roomType RoomType) bool {
 		return false
 	}
 
+	if p.Source == SourceTypeSoundCloud && p.PlaybackRestriction != "" {
+		return false
+	}
+
 	if p.Source != SourceTypeYouTube {
 		return true
 	}

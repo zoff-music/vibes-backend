@@ -306,7 +306,7 @@ func (c *Client) providerSearchCacheKey(source string, query string, roomType vi
 	hash := sha256.Sum256([]byte(normalizedQuery))
 	version := "v4"
 	if source == vibe.SourceTypeSoundCloud {
-		version = "v5"
+		version = "v6"
 	}
 
 	key := c.getKeyWithPrefix(
@@ -320,7 +320,7 @@ func (c *Client) providerItemCacheKey(source string, sourceID string) string {
 	hash := sha256.Sum256([]byte(sourceID))
 	version := "v4"
 	if source == vibe.SourceTypeSoundCloud {
-		version = "v5"
+		version = "v6"
 	}
 
 	key := c.getKeyWithPrefix(

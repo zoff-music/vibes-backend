@@ -234,6 +234,11 @@ func AddItemV3(
 
 		if err == nil && !cachedItem.IsEmpty() {
 			if !cachedItem.AllowedInRoom(room.RoomType) {
+				message := "This item cannot be played in this room. Music rooms accept music videos; all videos must allow embedded playback and must not be live."
+				if req.SourceType == vibe.SourceTypeSoundCloud {
+					message = "SoundCloud does not offer full embedded playback for this track. Preview-only and restricted tracks cannot be added. Try another version."
+				}
+
 				handleError(
 					w,
 					internalerror.ErrorCodeWrapper{
@@ -241,7 +246,7 @@ func AddItemV3(
 						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Namespace: "vibes-backend",
 							Error:     "playlist_item_not_allowed",
-							Message:   "This item cannot be played in this room. Music rooms accept music videos; all videos must allow embedded playback and must not be live.",
+							Message:   message,
 							Propagate: true,
 						},
 						StatusCode: http.StatusBadRequest,
