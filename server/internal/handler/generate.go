@@ -476,6 +476,10 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 		room.RoomType,
 	)
 
+	if err == nil && len(searchResult.Unresolved) > 0 && time.Now().Before(searchQuotaReset) {
+		log.Printf("event=search_quota_blocked provider=youtube purpose=generation upstream_attempted=false reset_at=%s", searchQuotaReset.UTC().Format(time.RFC3339))
+	}
+
 	if err == nil && len(searchResult.Unresolved) > 0 && !time.Now().Before(searchQuotaReset) {
 		freshResolutions := searchResult.CachedSearches
 		resolvedSearches := append(cachedSearches, searchResult.CachedSearches...)
@@ -525,6 +529,8 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 				return fmt.Errorf("error reserving generated search: %w", reserveErr)
 			}
 			if !allowance.Allowed {
+				log.Printf("event=search_allowance_denied provider=youtube purpose=generation reason=budget_or_burst_guard upstream_attempted=false daily_reset_at=%s", allowance.ResetAt.UTC().Format(time.RFC3339))
+
 				break
 			}
 			items, searchErr := h.Searcher.SearchProviderItems(ctx, query, room.RoomType)
@@ -534,6 +540,8 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 			}
 			var quotaError internalerror.ErrProviderQuotaExceeded
 			if errors.As(searchErr, &quotaError) {
+				log.Printf("event=search_quota_exhausted provider=youtube purpose=generation upstream_attempted=true reset_at=%s", quotaError.ResetAt.UTC().Format(time.RFC3339))
+
 				outcome = "quota"
 				searchQuotaReset = quotaError.ResetAt
 				cacheErr = h.Cache.CacheProviderQuotaReset(ctx, vibe.SourceTypeYouTube, vibe.ProviderQuotaOperationSearch, quotaError.ResetAt)

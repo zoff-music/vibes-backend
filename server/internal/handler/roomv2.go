@@ -2560,6 +2560,8 @@ func SearchYouTubeV2(
 					var quotaReset time.Time
 					quotaReset, err = cache.GetProviderQuotaReset(ctx, vibe.SourceTypeYouTube, vibe.ProviderQuotaOperationSearch)
 					if err == nil && time.Now().Before(quotaReset) {
+						log.Printf("event=search_quota_blocked provider=youtube purpose=interactive upstream_attempted=false reset_at=%s", quotaReset.UTC().Format(time.RFC3339))
+
 						err = internalerror.ErrProviderQuotaExceeded{
 							Err:      fmt.Errorf("error checking youtube search quota: exhausted"),
 							Provider: vibe.SourceTypeYouTube,
@@ -2574,6 +2576,8 @@ func SearchYouTubeV2(
 						var allowance *vibe.SearchAllowance
 						allowance, err = db.ReserveSearch(ctx, attempt)
 						if err == nil && !allowance.Allowed {
+							log.Printf("event=search_allowance_denied provider=youtube purpose=interactive reason=budget_or_burst_guard upstream_attempted=false daily_reset_at=%s", allowance.ResetAt.UTC().Format(time.RFC3339))
+
 							w.Header().Set("Retry-After", "2")
 							err = fmt.Errorf("error reserving youtube search: search allowance unavailable; try a cached search or retry later")
 						}
@@ -2585,6 +2589,8 @@ func SearchYouTubeV2(
 							}
 							var quotaError internalerror.ErrProviderQuotaExceeded
 							if errors.As(err, &quotaError) {
+								log.Printf("event=search_quota_exhausted provider=youtube purpose=interactive upstream_attempted=true reset_at=%s", quotaError.ResetAt.UTC().Format(time.RFC3339))
+
 								outcome = "quota"
 								cacheErr := cache.CacheProviderQuotaReset(ctx, vibe.SourceTypeYouTube, vibe.ProviderQuotaOperationSearch, quotaError.ResetAt)
 								if cacheErr != nil {
@@ -2649,6 +2655,8 @@ func SearchYouTubeV2(
 			}
 			cachedSearches = retained
 			cacheHit = true
+			log.Printf("event=search_retained_fallback provider=youtube purpose=interactive")
+
 			w.Header().Del("Retry-After")
 			w.Header().Set("X-Search-Cache", "stale")
 		}
