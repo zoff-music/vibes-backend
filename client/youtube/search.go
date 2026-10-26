@@ -149,9 +149,6 @@ func (c *Client) SearchProviderItems(ctx context.Context, query string, roomType
 			LikeCount:           likeCount,
 			PlaybackRestriction: videoItem.playbackRestriction(),
 		})
-		if len(tracks) == youtubeSearchDisplayCount {
-			break
-		}
 	}
 
 	return tracks, nil
@@ -301,5 +298,4 @@ type thumbnail struct {
 
 const youtubeProvider = "youtube"
 const youtubeQuotaLocation = "America/Los_Angeles"
-const youtubeSearchDisplayCount = 15
-const youtubeSearchResultCount = 25
+const youtubeSearchResultCount = 50

@@ -2422,7 +2422,7 @@ func CreateGeneratedRoomV2(
 func SearchYouTubeV2(
 	ms vibe.ProviderItemsSearcher,
 	cache vibe.ProviderSearchCache,
-	db vibe.RoomSearchUsageCreator,
+	db vibe.RoomSearchClaimCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -2439,11 +2439,11 @@ func SearchYouTubeV2(
 			return
 		}
 
-		if utf8.RuneCountInString(query) < minimumSearchQueryLength {
+		if utf8.RuneCountInString(query) < minimumSearchQueryLength || utf8.RuneCountInString(query) > 200 {
 			handleError(
 				w,
 				fmt.Errorf(
-					"error validating query in SearchYouTubeV2 handler: parameter 'q' must contain at least %d characters",
+					"error validating query in SearchYouTubeV2 handler: parameter 'q' must contain between %d and 200 characters",
 					minimumSearchQueryLength,
 				),
 				http.StatusBadRequest,
@@ -2492,125 +2492,177 @@ func SearchYouTubeV2(
 			return
 		}
 
-		cachedSearches, err := cache.GetCachedProviderSearches(
-			ctx,
-			vibe.SourceTypeYouTube,
-			[]string{query},
-			room.RoomType,
-		)
+		cachedSearches, err := cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, []string{query}, room.RoomType)
 		if err != nil {
-			log.Printf("error getting cached youtube search: %v", err)
-			cachedSearches = []vibe.CachedProviderSearch{}
-		}
-
-		items := make([]vibe.ProviderItem, 0)
-		cacheHit := len(cachedSearches) > 0
-		if cacheHit {
-			cachedItems := cachedSearches[0].GetProviderItems()
-			for _, item := range cachedItems {
-				if vibe.IsLiveVideo(item.Source, item.DurationSeconds) ||
-					item.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding {
-					continue
-				}
-				items = append(items, item)
-			}
-		}
-		usage := vibe.GenerateSearchUsage(
-			vibe.SourceTypeYouTube,
-			query,
-			cacheHit,
-		)
-		usage.RoomID = roomID
-
-		err = db.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
-		if err != nil {
-			log.Printf("error creating youtube search usage: %v", err)
-		}
-		if !cacheHit {
-			var quotaReset time.Time
-			quotaReset, err = cache.GetProviderQuotaReset(
-				ctx,
-				vibe.SourceTypeYouTube,
-				vibe.ProviderQuotaOperationSearch,
+			handleError(
+				w,
+				fmt.Errorf("error reading youtube search cache: %w", err),
+				http.StatusServiceUnavailable,
+				true,
 			)
-			quotaCheckSucceeded := err == nil
-			if !quotaCheckSucceeded {
-				log.Printf("error getting cached youtube quota reset: %v", err)
-			}
-			quotaExceeded := time.Now().Before(quotaReset)
-			if quotaCheckSucceeded && quotaExceeded {
-				err = internalerror.ErrProviderQuotaExceeded{
-					Err: fmt.Errorf(
-						"error checking youtube search quota in SearchYouTubeV2 handler: cached until %s",
-						quotaReset.Format(time.RFC3339),
-					),
-					Provider: vibe.SourceTypeYouTube,
-					ResetAt:  quotaReset,
-				}
-			}
-			if !quotaCheckSucceeded || !quotaExceeded {
-				items, err = ms.SearchProviderItems(ctx, query, room.RoomType)
-			}
+			return
 		}
-		if err != nil {
-			var quotaError internalerror.ErrProviderQuotaExceeded
-			if errors.As(err, &quotaError) {
-				err = cache.CacheProviderQuotaReset(
-					ctx,
-					vibe.SourceTypeYouTube,
-					vibe.ProviderQuotaOperationSearch,
-					quotaError.ResetAt,
-				)
-				if err != nil {
-					log.Printf("error caching youtube quota reset: %v", err)
-				}
 
-				w.Header().Set("Retry-After", quotaError.ResetAt.UTC().Format(http.TimeFormat))
-
+		cacheHit := len(cachedSearches) > 0
+		items := make([]vibe.ProviderItem, 0)
+		usage := vibe.GenerateSearchUsage(vibe.SourceTypeYouTube, query, cacheHit)
+		usage.RoomID = roomID
+		if !cacheHit {
+			claimKey := "youtube:" + string(room.RoomType) + ":" + usage.QueryHash
+			token := uuid.NewString()
+			claim, claimErr := db.ClaimSearch(ctx, claimKey, token)
+			if claimErr != nil {
 				handleError(
 					w,
-					internalerror.ErrorCodeWrapper{
-						Err: quotaError,
-						ResponseBody: internalerror.ErrorCodeResponseBody{
-							Namespace: "vibes-backend",
-							Error:     "youtube_search_quota_exhausted",
-							Message:   vibe.RoomGenerationYouTubeQuotaFailure,
-							Propagate: true,
+					fmt.Errorf("error claiming youtube search: %w", claimErr),
+					http.StatusServiceUnavailable,
+					true,
+				)
+				return
+			}
+
+			// Waiters consume the owner's cached response, never a second upstream request.
+			if claim.IsEmpty() {
+				ticker := time.NewTicker(200 * time.Millisecond)
+				defer ticker.Stop()
+				deadline := time.NewTimer(12 * time.Second)
+				defer deadline.Stop()
+				waiting := true
+				for waiting && !cacheHit {
+					select {
+					case <-ctx.Done():
+						return
+					case <-deadline.C:
+						waiting = false
+					case <-ticker.C:
+						cachedSearches, err = cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, []string{query}, room.RoomType)
+						if err != nil {
+							waiting = false
+						}
+						cacheHit = len(cachedSearches) > 0
+					}
+				}
+				if !cacheHit && err == nil {
+					err = fmt.Errorf("error waiting for youtube search: please retry shortly")
+				}
+			} else {
+				// The preceding owner may have populated the cache while this claim was acquired.
+				defer func() {
+					releaseErr := db.ReleaseSearch(ctx, *claim)
+					if releaseErr != nil {
+						log.Printf("error releasing youtube search claim: %v", releaseErr)
+					}
+				}()
+
+				cachedSearches, err = cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, []string{query}, room.RoomType)
+				cacheHit = len(cachedSearches) > 0
+				if err == nil && !cacheHit {
+					var quotaReset time.Time
+					quotaReset, err = cache.GetProviderQuotaReset(ctx, vibe.SourceTypeYouTube, vibe.ProviderQuotaOperationSearch)
+					if err == nil && time.Now().Before(quotaReset) {
+						err = internalerror.ErrProviderQuotaExceeded{
+							Err:      fmt.Errorf("error checking youtube search quota: exhausted"),
+							Provider: vibe.SourceTypeYouTube,
+							ResetAt:  quotaReset,
+						}
+					}
+					if err == nil {
+						attempt := vibe.SearchAttempt{
+							ID: token, QueryHash: usage.QueryHash, RoomID: roomID,
+							UserID: session.UserID, Purpose: vibe.SearchPurposeInteractive,
+						}
+						var allowance *vibe.SearchAllowance
+						allowance, err = db.ReserveSearch(ctx, attempt)
+						if err == nil && !allowance.Allowed {
+							w.Header().Set("Retry-After", "2")
+							err = fmt.Errorf("error reserving youtube search: search allowance unavailable; try a cached search or retry later")
+						}
+						if err == nil {
+							items, err = ms.SearchProviderItems(ctx, query, room.RoomType)
+							outcome := "success"
+							if err != nil {
+								outcome = "failure"
+							}
+							var quotaError internalerror.ErrProviderQuotaExceeded
+							if errors.As(err, &quotaError) {
+								outcome = "quota"
+								cacheErr := cache.CacheProviderQuotaReset(ctx, vibe.SourceTypeYouTube, vibe.ProviderQuotaOperationSearch, quotaError.ResetAt)
+								if cacheErr != nil {
+									log.Printf("error caching youtube quota reset: %v", cacheErr)
+								}
+								w.Header().Set("Retry-After", quotaError.ResetAt.UTC().Format(http.TimeFormat))
+							}
+							recordErr := db.UpdateSearchAttempt(ctx, token, outcome)
+							if recordErr != nil {
+								log.Printf("error recording youtube search outcome: %v", recordErr)
+							}
+							recordErr = db.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
+							if recordErr != nil {
+								log.Printf("error creating youtube search usage: %v", recordErr)
+							}
+							if err == nil {
+								search := vibe.CachedProviderSearch{Query: query, Items: items, FetchedAt: time.Now().UTC()}
+								cacheErr := cache.CacheProviderSearches(ctx, vibe.SourceTypeYouTube, []vibe.CachedProviderSearch{search}, room.RoomType)
+								if cacheErr != nil {
+									log.Printf("error caching youtube search: %v", cacheErr)
+								}
+								cacheErr = cache.CacheProviderItems(ctx, vibe.SourceTypeYouTube, items)
+								if cacheErr != nil {
+									log.Printf("error caching fresh youtube metadata: %v", cacheErr)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		if err != nil {
+			searchErr := err
+			retained, retainedErr := cache.GetRetainedProviderSearches(ctx, vibe.SourceTypeYouTube, []string{query}, room.RoomType)
+			if retainedErr != nil || len(retained) == 0 {
+				var quotaError internalerror.ErrProviderQuotaExceeded
+				if errors.As(searchErr, &quotaError) {
+					handleError(
+						w,
+						internalerror.ErrorCodeWrapper{
+							Err: quotaError,
+							ResponseBody: internalerror.ErrorCodeResponseBody{
+								Namespace: "vibes-backend",
+								Error:     "youtube_search_quota_exhausted",
+								Message:   vibe.RoomGenerationYouTubeQuotaFailure,
+								Propagate: true,
+							},
+							StatusCode: http.StatusServiceUnavailable,
 						},
-						StatusCode: http.StatusServiceUnavailable,
-					},
+						http.StatusServiceUnavailable,
+						false,
+					)
+					return
+				}
+				handleError(
+					w,
+					fmt.Errorf("error searching youtube: %w", searchErr),
 					http.StatusServiceUnavailable,
 					false,
 				)
 				return
 			}
-
-			handleError(
-				w,
-				fmt.Errorf("error searching music in SearchYouTubeV2 handler: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
+			cachedSearches = retained
+			cacheHit = true
+			w.Header().Del("Retry-After")
+			w.Header().Set("X-Search-Cache", "stale")
 		}
-		if !cacheHit {
-			search := vibe.CachedProviderSearch{Query: query, Items: items}
-			err = cache.CacheProviderSearches(
-				ctx,
-				vibe.SourceTypeYouTube,
-				[]vibe.CachedProviderSearch{
-					search,
-				},
-				room.RoomType,
-			)
-			if err != nil {
-				log.Printf("error caching youtube search: %v", err)
+		if cacheHit {
+			for _, item := range cachedSearches[0].GetProviderItems() {
+				if item.AllowedInRoom(room.RoomType) {
+					items = append(items, item)
+				}
 			}
-		}
-
-		err = cache.CacheProviderItems(ctx, vibe.SourceTypeYouTube, items)
-		if err != nil {
-			log.Printf("error caching youtube item metadata: %v", err)
+			usage.Cached = true
+			err = db.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
+			if err != nil {
+				log.Printf("error recording cached youtube search usage: %v", err)
+			}
 		}
 
 		if items == nil {

@@ -450,11 +450,15 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 		queries = append(queries, playlistItem.Publisher+" "+playlistItem.Title)
 	}
 
-	cachedSearches, err := h.Cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, queries, room.RoomType)
+	cachedSearches, err := h.Cache.GetCachedProviderResolutions(ctx, vibe.SourceTypeYouTube, queries, room.RoomType)
 	if err != nil {
-		log.Printf("error getting cached youtube searches for room generation: %v", err)
-		cachedSearches = []vibe.CachedProviderSearch{}
+		return fmt.Errorf("error reading youtube resolution cache for generation: %w", err)
 	}
+	fullSearches, err := h.Cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, queries, room.RoomType)
+	if err != nil {
+		return fmt.Errorf("error reading youtube search cache for generation: %w", err)
+	}
+	cachedSearches = append(cachedSearches, fullSearches...)
 
 	searchQuotaReset, err := h.Cache.GetProviderQuotaReset(
 		ctx,
@@ -462,17 +466,112 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 		vibe.ProviderQuotaOperationSearch,
 	)
 	if err != nil {
-		log.Printf("error getting cached youtube quota reset for room generation: %v", err)
-		searchQuotaReset = time.Time{}
+		return fmt.Errorf("error reading youtube quota guard for generation: %w", err)
 	}
 
 	searchResult, err := h.Searcher.SearchGeneratedPlaylist(
 		ctx,
 		*playlist,
 		cachedSearches,
-		searchQuotaReset,
 		room.RoomType,
 	)
+
+	if err == nil && len(searchResult.Unresolved) > 0 && !time.Now().Before(searchQuotaReset) {
+		freshResolutions := searchResult.CachedSearches
+		resolvedSearches := append(cachedSearches, searchResult.CachedSearches...)
+		for _, candidate := range searchResult.Unresolved {
+			query := candidate.Publisher + " " + candidate.Title
+			usage := vibe.GenerateSearchUsage(vibe.SourceTypeYouTube, query, false)
+			usage.RoomID = room.ID
+			token := uuid.NewString()
+			claimKey := "youtube:" + string(room.RoomType) + ":" + usage.QueryHash
+			claim, claimErr := h.DB.ClaimSearch(ctx, claimKey, token)
+			if claimErr != nil {
+				return fmt.Errorf("error claiming generated search: %w", claimErr)
+			}
+			if claim.IsEmpty() {
+				continue
+			}
+			defer func() {
+				releaseErr := h.DB.ReleaseSearch(ctx, *claim)
+				if releaseErr != nil {
+					log.Printf("error releasing generated search claim: %v", releaseErr)
+				}
+			}()
+
+			existing, cacheErr := h.Cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, []string{query}, room.RoomType)
+			if cacheErr != nil {
+				return fmt.Errorf("error checking generated search cache: %w", cacheErr)
+			}
+			if len(existing) > 0 {
+				resolvedSearches = append(resolvedSearches, existing...)
+				continue
+			}
+
+			// Space generation fallbacks so interactive searches can share the burst budget.
+			timer := time.NewTimer(time.Second)
+			select {
+			case <-ctx.Done():
+				timer.Stop()
+				return fmt.Errorf("error waiting for generated search: %w", ctx.Err())
+			case <-timer.C:
+			}
+			attempt := vibe.SearchAttempt{
+				ID: token, QueryHash: usage.QueryHash, RoomID: room.ID,
+				UserID: room.HostID, Purpose: vibe.SearchPurposeGeneration,
+			}
+			allowance, reserveErr := h.DB.ReserveSearch(ctx, attempt)
+			if reserveErr != nil {
+				return fmt.Errorf("error reserving generated search: %w", reserveErr)
+			}
+			if !allowance.Allowed {
+				break
+			}
+			items, searchErr := h.Searcher.SearchProviderItems(ctx, query, room.RoomType)
+			outcome := "success"
+			if searchErr != nil {
+				outcome = "failure"
+			}
+			var quotaError internalerror.ErrProviderQuotaExceeded
+			if errors.As(searchErr, &quotaError) {
+				outcome = "quota"
+				searchQuotaReset = quotaError.ResetAt
+				cacheErr = h.Cache.CacheProviderQuotaReset(ctx, vibe.SourceTypeYouTube, vibe.ProviderQuotaOperationSearch, quotaError.ResetAt)
+				if cacheErr != nil {
+					log.Printf("error caching generation quota reset: %v", cacheErr)
+				}
+			}
+			recordErr := h.DB.UpdateSearchAttempt(ctx, token, outcome)
+			if recordErr != nil {
+				log.Printf("error recording generated search outcome: %v", recordErr)
+			}
+			recordErr = h.DB.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
+			if recordErr != nil {
+				log.Printf("error recording generated search usage: %v", recordErr)
+			}
+			if searchErr != nil {
+				break
+			}
+			search := vibe.CachedProviderSearch{Query: query, Items: items, FetchedAt: time.Now().UTC()}
+			resolvedSearches = append(resolvedSearches, search)
+			cacheErr = h.Cache.CacheProviderSearches(ctx, vibe.SourceTypeYouTube, []vibe.CachedProviderSearch{search}, room.RoomType)
+			if cacheErr != nil {
+				log.Printf("error caching generated fallback search: %v", cacheErr)
+			}
+		}
+		searchResult, err = h.Searcher.SearchGeneratedPlaylist(ctx, *playlist, resolvedSearches, room.RoomType)
+		if err == nil {
+			searchResult.CachedSearches = append(searchResult.CachedSearches, freshResolutions...)
+		}
+	}
+	if err == nil && len(searchResult.Playlist) == 0 {
+		err = fmt.Errorf("error resolving generated playlist: no playable matches within search allowance")
+		if time.Now().Before(searchQuotaReset) {
+			err = internalerror.ErrProviderQuotaExceeded{
+				Err: err, Provider: vibe.SourceTypeYouTube, ResetAt: searchQuotaReset,
+			}
+		}
+	}
 	if err != nil {
 		var quotaError internalerror.ErrProviderQuotaExceeded
 		if errors.As(err, &quotaError) {
