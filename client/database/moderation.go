@@ -42,6 +42,7 @@ func (c *Client) prepareGetNextRoomNameReviewStmt() error {
 		CROSS JOIN rooms b
 		WHERE b.checked_at IS NULL
 		ORDER BY b.created_at, b.id
+		LIMIT 100
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetNextRoomNameReviewStatement: %w", err)
