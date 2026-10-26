@@ -485,7 +485,11 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 		resolvedSearches := append(cachedSearches, searchResult.CachedSearches...)
 		for _, candidate := range searchResult.Unresolved {
 			query := candidate.Publisher + " " + candidate.Title
-			usage := vibe.GenerateSearchUsage(vibe.SourceTypeYouTube, query, false)
+			usage, usageErr := vibe.GenerateSearchUsage(vibe.SourceTypeYouTube, query, false)
+			if usageErr != nil {
+				return fmt.Errorf("error generating search usage in GenerateRoomPlaylist: %w", usageErr)
+			}
+
 			usage.RoomID = room.ID
 			token := uuid.NewString()
 			claimKey := "youtube:" + string(room.RoomType) + ":" + usage.QueryHash
@@ -553,7 +557,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 			if recordErr != nil {
 				log.Printf("error recording generated search outcome: %v", recordErr)
 			}
-			recordErr = h.DB.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
+			recordErr = h.DB.CreateSearchUsages(ctx, []vibe.SearchUsage{*usage})
 			if recordErr != nil {
 				log.Printf("error recording generated search usage: %v", recordErr)
 			}

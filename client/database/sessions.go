@@ -29,7 +29,7 @@ func (c *Client) prepareGetOrCreateSessionProfileStmt() error {
 		target_q AS MATERIALIZED (
 			SELECT
 				MOD(
-					hashtextextended($1, 0) & 9223372036854775807,
+					HASHTEXTEXTENDED($1, 0) & 9223372036854775807,
 					max_id
 				) + 1 AS id
 			FROM generated_range_q

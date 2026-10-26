@@ -567,7 +567,7 @@ func (c *Client) prepareGetActiveSourcesStmt() error {
 		SELECT DISTINCT source_type
 		FROM playlist_items
 		WHERE room_id = $1
-		AND source_type = ANY($2::text[])
+		AND source_type = ANY($2::TEXT[])
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GetActiveSourcesStatement: %w", err)
@@ -846,7 +846,7 @@ func (c *Client) prepareUpdateRoomV2Stmt() error {
 		allow_duplicates = $8,
 		enabled_sources = CASE
 			WHEN a.room_type = 'WATCH' THEN
-				CASE WHEN 'youtube' = ANY(string_to_array($11, ',')) THEN 'youtube' ELSE '' END
+				CASE WHEN 'youtube' = ANY(STRING_TO_ARRAY($11, ',')) THEN 'youtube' ELSE '' END
 			ELSE $11
 		END,
 		only_admin_add_playlist_items = $12,
@@ -983,7 +983,7 @@ func (c *Client) prepareReserveRoomNameStmt() error {
 			) b
 			ON CONFLICT (name) DO UPDATE
 			SET
-				token = gen_random_uuid(),
+				token = GEN_RANDOM_UUID(),
 				owner_id = EXCLUDED.owner_id,
 				created_at = CURRENT_TIMESTAMP AT TIME ZONE 'UTC',
 				expires_at = EXCLUDED.expires_at
@@ -1130,7 +1130,7 @@ func (c *Client) prepareReserveSuggestedRoomNameStmt() error {
 			) b
 			ON CONFLICT (name) DO UPDATE
 			SET
-				token = gen_random_uuid(),
+				token = GEN_RANDOM_UUID(),
 				owner_id = EXCLUDED.owner_id,
 				created_at = CURRENT_TIMESTAMP AT TIME ZONE 'UTC',
 				expires_at = EXCLUDED.expires_at
@@ -1282,7 +1282,7 @@ func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
 				SELECT 1
 				FROM playlist_items c
 				WHERE c.room_id = a.id
-				AND c.source_type = ANY($4::text[])
+				AND c.source_type = ANY($4::TEXT[])
 			)
 		),
 		participants_q AS (
@@ -1322,7 +1322,7 @@ func (c *Client) prepareSearchPublicRoomsV3Stmt() error {
 					SELECT COUNT(*)
 					FROM playlist_items b
 					WHERE b.room_id = a.id
-					AND b.source_type = ANY($4::text[])
+					AND b.source_type = ANY($4::TEXT[])
 				) AS playlist_item_count
 			FROM filtered_q a
 			ORDER BY a.listener_count DESC, playlist_item_count DESC, a.id DESC

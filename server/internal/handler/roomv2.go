@@ -2505,7 +2505,17 @@ func SearchYouTubeV2(
 
 		cacheHit := len(cachedSearches) > 0
 		items := make([]vibe.ProviderItem, 0)
-		usage := vibe.GenerateSearchUsage(vibe.SourceTypeYouTube, query, cacheHit)
+		usage, err := vibe.GenerateSearchUsage(vibe.SourceTypeYouTube, query, cacheHit)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error generating youtube search usage: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
 		usage.RoomID = roomID
 		if !cacheHit {
 			claimKey := "youtube:" + string(room.RoomType) + ":" + usage.QueryHash
@@ -2602,7 +2612,7 @@ func SearchYouTubeV2(
 							if recordErr != nil {
 								log.Printf("error recording youtube search outcome: %v", recordErr)
 							}
-							recordErr = db.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
+							recordErr = db.CreateSearchUsages(ctx, []vibe.SearchUsage{*usage})
 							if recordErr != nil {
 								log.Printf("error creating youtube search usage: %v", recordErr)
 							}
@@ -2667,7 +2677,7 @@ func SearchYouTubeV2(
 				}
 			}
 			usage.Cached = true
-			err = db.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
+			err = db.CreateSearchUsages(ctx, []vibe.SearchUsage{*usage})
 			if err != nil {
 				log.Printf("error recording cached youtube search usage: %v", err)
 			}
@@ -2794,14 +2804,24 @@ func SearchSoundCloudV2(
 		if cacheHit {
 			items = cachedSearches[0].GetProviderItems()
 		}
-		usage := vibe.GenerateSearchUsage(
+		usage, err := vibe.GenerateSearchUsage(
 			vibe.SourceTypeSoundCloud,
 			query,
 			cacheHit,
 		)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error generating soundcloud search usage: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
 		usage.RoomID = roomID
 
-		err = db.CreateSearchUsages(ctx, []vibe.SearchUsage{usage})
+		err = db.CreateSearchUsages(ctx, []vibe.SearchUsage{*usage})
 		if err != nil {
 			log.Printf("error creating soundcloud search usage: %v", err)
 		}

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/zoff-music/vibes-backend/internalerror"
 	"html"
 	"net"
 	"net/http"
@@ -14,6 +13,7 @@ import (
 	"time"
 
 	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )

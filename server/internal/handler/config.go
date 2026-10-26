@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 
 	"github.com/zoff-music/vibes-backend/config"
@@ -23,7 +24,7 @@ func GetProviders(cfg *config.Config) http.HandlerFunc {
 		if err != nil {
 			handleError(
 				w,
-				err,
+				fmt.Errorf("error marshaling providers in GetProviders: %w", err),
 				http.StatusInternalServerError,
 				true,
 			)

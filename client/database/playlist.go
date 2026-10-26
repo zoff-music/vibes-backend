@@ -602,7 +602,10 @@ func (c *Client) ExpirePlaylistItemMetadata(ctx context.Context) (*vibe.Playlist
 		return nil, fmt.Errorf("error scanning expired metadata in ExpirePlaylistItemMetadata: %w", err)
 	}
 
-	expiry := expiryRow.toPlaylistItemMetadataExpiry()
+	expiry, err := expiryRow.toPlaylistItemMetadataExpiry()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping metadata expiry in ExpirePlaylistItemMetadata: %w", err)
+	}
 
 	return expiry, nil
 }
@@ -620,8 +623,8 @@ func (r *playlistItemMetadataExpiryRow) scan(row *sql.Row) error {
 	return nil
 }
 
-func (r *playlistItemMetadataExpiryRow) toPlaylistItemMetadataExpiry() *vibe.PlaylistItemMetadataExpiry {
-	return &vibe.PlaylistItemMetadataExpiry{RoomID: r.RoomID}
+func (r *playlistItemMetadataExpiryRow) toPlaylistItemMetadataExpiry() (*vibe.PlaylistItemMetadataExpiry, error) {
+	return &vibe.PlaylistItemMetadataExpiry{RoomID: r.RoomID}, nil
 }
 
 func (c *Client) prepareClaimPlaylistItemMetadataRefreshStmt() error {
@@ -636,7 +639,7 @@ func (c *Client) prepareClaimPlaylistItemMetadataRefreshStmt() error {
 			FOR UPDATE OF a SKIP LOCKED
 		)
 		UPDATE playlist_items a
-		SET metadata_refresh_after = NOW() + make_interval(secs => $2)
+		SET metadata_refresh_after = NOW() + MAKE_INTERVAL(secs => $2)
 		FROM stale_playlist_item_q b
 		WHERE a.id = b.id
 		RETURNING a.id, a.room_id, a.source_id
@@ -731,7 +734,7 @@ func (c *Client) prepareRefreshPlaylistItemMetadataStmt() error {
 			provider_url = $6,
 			playback_restriction = $7,
 			metadata_updated_at = NOW(),
-			metadata_refresh_after = NOW() + make_interval(secs => $8)
+			metadata_refresh_after = NOW() + MAKE_INTERVAL(secs => $8)
 		WHERE id = $1
 	`)
 	if err != nil {
@@ -776,7 +779,7 @@ func (c *Client) RefreshPlaylistItemMetadata(
 func (c *Client) prepareDeferPlaylistItemMetadataRefreshStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE playlist_items
-		SET metadata_refresh_after = NOW() + make_interval(secs => $2)
+		SET metadata_refresh_after = NOW() + MAKE_INTERVAL(secs => $2)
 		WHERE id = $1
 	`)
 	if err != nil {
@@ -840,7 +843,7 @@ func (c *Client) prepareGetPlaylistItemsStmt() error {
 		ON a.id = b.playlist_item_id
 		AND a.room_id = b.room_id
 		WHERE a.room_id = $1
-		AND a.source_type = ANY($2::text[])
+		AND a.source_type = ANY($2::TEXT[])
 		AND NOT (a.source_type = 'youtube' AND a.duration <= 0)
 		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 		ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
@@ -1008,7 +1011,7 @@ func (c *Client) prepareGetPlaylistItemStmt() error {
 		AND a.room_id = b.room_id
 		WHERE a.room_id = $1
 		AND a.id = $2
-		AND a.source_type = ANY($3::text[])
+		AND a.source_type = ANY($3::TEXT[])
 		AND NOT (a.source_type = 'youtube' AND a.duration <= 0)
 		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 	`)
@@ -1063,7 +1066,7 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 			FROM rooms a
 			LEFT JOIN room_settings b ON b.room_id = a.id
 			WHERE a.id = $1
-			AND $2 = ANY($12::text[])
+			AND $2 = ANY($12::TEXT[])
 			AND (a.room_type = 'MUSIC' OR $2 = 'youtube')
 			FOR KEY SHARE OF a
 		),
@@ -1083,7 +1086,7 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 		target_q AS MATERIALIZED (
 			SELECT
 				MOD(
-					hashtextextended($8, 0) & 9223372036854775807,
+					HASHTEXTEXTENDED($8, 0) & 9223372036854775807,
 					max_id
 				) + 1 AS id
 			FROM generated_range_q
@@ -1276,7 +1279,7 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 		UNION ALL
 		SELECT
 			CASE
-				WHEN $2 = ANY($12::text[]) THEN 'room_not_found'
+				WHEN $2 = ANY($12::TEXT[]) THEN 'room_not_found'
 				ELSE 'provider_disabled'
 			END AS result,
 			NULL::TEXT AS id,

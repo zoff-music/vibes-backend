@@ -14,7 +14,7 @@ func (c *Client) prepareGetStatsV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH selected_rooms_q AS (
 			SELECT id, admin_password_hash FROM rooms
-			WHERE $1::text = '' OR room_type::text = $1
+			WHERE $1::TEXT = '' OR room_type::TEXT = $1
 		), room_listener_counts_q AS (
 			SELECT
 				room_id,

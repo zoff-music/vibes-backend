@@ -160,6 +160,8 @@ func (c *Client) PrepareReplay(
 	return replay, nil
 }
 
+// SubscribeFrom keeps the caller's context untraced because it owns a replay
+// subscription that may poll for longer than five minutes.
 func (c *Client) SubscribeFrom(
 	ctx context.Context,
 	topicName string,
@@ -177,6 +179,8 @@ func (c *Client) SubscribeFrom(
 	return &vibe.SubscriptionContainer{Subscription: subscription}, nil
 }
 
+// Subscribe keeps the caller's context untraced because the subscription can
+// outlive five minutes; a span must not cover the connection's lifetime.
 func (c *Client) Subscribe(
 	ctx context.Context,
 	topicName string,
@@ -313,6 +317,8 @@ func (r *eventStreams) prepare(
 	}, nil
 }
 
+// subscribe passes the original context to the long-running reader. Starting
+// a span here would attach a finished setup span to the subscription lifetime.
 func (r *eventStreams) subscribe(
 	ctx context.Context,
 	topicName string,
@@ -370,6 +376,8 @@ func (s *streamSubscription) Listen() chan []byte {
 	return s.messages
 }
 
+// listen intentionally has no span: this polling loop lasts until the client
+// disconnects and can run for much longer than five minutes.
 func (s *streamSubscription) listen(ctx context.Context, cursor string) {
 	defer close(s.done)
 	defer close(s.messages)
