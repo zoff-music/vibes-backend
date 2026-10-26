@@ -9,17 +9,16 @@ import (
 
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/internalerror"
-	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
+// ResolveProviderPlaylist deliberately has no aggregate span: fetching every
+// playlist page and its metadata can take more than five minutes. Individual
+// HTTP requests and metadata batches retain their bounded spans.
 func (c *Client) ResolveProviderPlaylist(
 	ctx context.Context,
 	providerURL string,
 ) (*vibe.ProviderPlaylist, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ResolveProviderPlaylist")
-	defer span.End()
-
 	if !c.Enabled {
 		return nil, fmt.Errorf(
 			"error validating soundcloud client in ResolveProviderPlaylist: client is not enabled",

@@ -50,7 +50,7 @@ func (c *Client) prepareCreateListenerUsageStmt() error {
 			FROM room_listener_counts_q
 		), recorded_q AS (
 			INSERT INTO listener_usage (listener_count, created_at)
-			SELECT listener_count, DATE_TRUNC('minute', NOW())
+			SELECT listener_count, DATE_TRUNC('MINUTE', NOW())
 			FROM listener_usage_q
 			WHERE listener_count > 0
 			ON CONFLICT (created_at) DO NOTHING
@@ -108,27 +108,27 @@ func (c *Client) prepareListAdminListenerUsageStmt() error {
 			FROM (
 				VALUES
 					(
-						'hour'::text,
-						DATE_TRUNC('hour', NOW(), 'UTC'),
-						'minute'::text,
+						'hour'::TEXT,
+						DATE_TRUNC('HOUR', NOW(), 'UTC'),
+						'minute'::TEXT,
 						1
 					),
 					(
-						'day'::text,
-						DATE_TRUNC('day', NOW(), 'UTC'),
-						'hour'::text,
+						'day'::TEXT,
+						DATE_TRUNC('DAY', NOW(), 'UTC'),
+						'hour'::TEXT,
 						2
 					),
 					(
-						'week'::text,
-						DATE_TRUNC('week', NOW(), 'UTC'),
-						'day'::text,
+						'week'::TEXT,
+						DATE_TRUNC('WEEK', NOW(), 'UTC'),
+						'day'::TEXT,
 						3
 					),
 					(
-						'month'::text,
-						DATE_TRUNC('month', NOW(), 'UTC'),
-						'day'::text,
+						'month'::TEXT,
+						DATE_TRUNC('MONTH', NOW(), 'UTC'),
+						'day'::TEXT,
 						4
 					)
 			) AS a(
@@ -242,10 +242,10 @@ func (c *Client) prepareListAdminRoomListenerUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH windows_q (period, starts_at, granularity) AS (
 			VALUES
-				('hour', DATE_TRUNC('hour', NOW(), 'UTC'), 'minute'),
-				('day', DATE_TRUNC('day', NOW(), 'UTC'), 'hour'),
-				('week', DATE_TRUNC('week', NOW(), 'UTC'), 'day'),
-				('month', DATE_TRUNC('month', NOW(), 'UTC'), 'day')
+				('hour', DATE_TRUNC('HOUR', NOW(), 'UTC'), 'minute'),
+				('day', DATE_TRUNC('DAY', NOW(), 'UTC'), 'hour'),
+				('week', DATE_TRUNC('WEEK', NOW(), 'UTC'), 'day'),
+				('month', DATE_TRUNC('MONTH', NOW(), 'UTC'), 'day')
 		), peaks_q AS (
 			SELECT DISTINCT ON (a.period, DATE_TRUNC(a.granularity, b.created_at, 'UTC'))
 				a.period,

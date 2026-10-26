@@ -13,7 +13,7 @@ import (
 func (c *Client) prepareCreateMessageUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
 		INSERT INTO chat_usage (room_id, created_at, message_count)
-		VALUES ($1, DATE_TRUNC('hour', $2::timestamptz, 'UTC'), 1)
+		VALUES ($1, DATE_TRUNC('HOUR', $2::TIMESTAMPTZ, 'UTC'), 1)
 		ON CONFLICT (room_id, created_at)
 		DO UPDATE SET message_count = chat_usage.message_count + 1
 	`)
@@ -45,24 +45,24 @@ func (c *Client) prepareListAdminMessageUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH windows_q (period, starts_at) AS (
 			VALUES
-				('hour', DATE_TRUNC('hour', NOW(), 'UTC') - INTERVAL '23 HOURS'),
-				('day', DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 DAYS'),
-				('month', DATE_TRUNC('month', NOW(), 'UTC') - INTERVAL '11 MONTHS')
+				('hour', DATE_TRUNC('HOUR', NOW(), 'UTC') - INTERVAL '23 HOURS'),
+				('day', DATE_TRUNC('DAY', NOW(), 'UTC') - INTERVAL '29 DAYS'),
+				('month', DATE_TRUNC('MONTH', NOW(), 'UTC') - INTERVAL '11 MONTHS')
 		)
-		SELECT a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), SUM(b.message_count), b.room_id, c.room_type::text
+		SELECT a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), SUM(b.message_count), b.room_id, c.room_type::TEXT
 		FROM windows_q a
 		JOIN chat_usage b ON b.created_at >= a.starts_at
 		LEFT JOIN rooms c ON c.id = b.room_id
 		WHERE ($1 = '' OR b.room_id = $1)
 		GROUP BY a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), b.room_id, c.room_type
 		UNION ALL
-		SELECT a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), SUM(b.message_count), NULL::text, NULL::text
+		SELECT a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), SUM(b.message_count), NULL::TEXT, NULL::TEXT
 		FROM windows_q a
 		JOIN chat_usage b ON b.created_at >= a.starts_at
 		WHERE ($1 = '' OR b.room_id = $1)
 		GROUP BY a.period, DATE_TRUNC(a.period, b.created_at, 'UTC')
 		UNION ALL
-		SELECT 'total', NULL::timestamptz, COALESCE(SUM(message_count), 0), '', NULL::text
+		SELECT 'total', NULL::TIMESTAMPTZ, COALESCE(SUM(message_count), 0), '', NULL::TEXT
 		FROM chat_usage WHERE ($1 = '' OR room_id = $1)
 		ORDER BY 1, 2
 	`)

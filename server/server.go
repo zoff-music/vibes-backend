@@ -123,6 +123,8 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 // It also makes sure that the server gracefully shuts down on exit.
 // Returns an error if an error occurs.
 func (s *Server) Serve(ctx context.Context, errc chan<- error) {
+	// No span covers this process-lifetime method, which can run beyond five
+	// minutes. Requests and bounded background work are traced individually.
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -206,6 +208,8 @@ func (s *Server) serveHTTP(errc chan<- error) {
 }
 
 func (s *Server) subscribeAndListen(ctx context.Context, running *sync.WaitGroup) {
+	// Preserve the original context for process-lifetime listeners rather than
+	// attaching a setup span that ends while their polling loops are still active.
 	for _, e := range event.GetAppEvents(
 		s.DB,
 		s.Redis,

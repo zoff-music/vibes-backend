@@ -30,13 +30,13 @@ func (c *Client) prepareGetItemsV3Stmt() error {
 					a.added_by_nickname
 				) AS added_by_nickname,
 				a.added_at,
-				COUNT(b.user_id)::int AS vote_count,
+				COUNT(b.user_id)::INT AS vote_count,
 				MAX(b.created_at) AS last_vote_at
 			FROM playlist_items a
 			LEFT JOIN playlist_item_votes b
 				ON a.id = b.playlist_item_id AND a.room_id = b.room_id
 			WHERE a.room_id = $1
-				AND a.source_type = ANY($2::text[])
+				AND a.source_type = ANY($2::TEXT[])
 				AND NOT (a.source_type = 'youtube' AND a.duration <= 0)
 				AND ($5 = '' OR a.source_type = $5)
 				AND (NOT $6 OR a.id IS DISTINCT FROM (
@@ -64,10 +64,10 @@ func (c *Client) prepareGetItemsV3Stmt() error {
 				a.last_vote_at,
 				ROW_NUMBER() OVER (
 					ORDER BY a.vote_count DESC, a.last_vote_at ASC, a.added_at ASC, a.id ASC
-				)::int AS row_number
+				)::INT AS row_number
 			FROM items_q a
 		), totals_q AS (
-			SELECT COUNT(*)::int AS total FROM items_q a
+			SELECT COUNT(*)::INT AS total FROM items_q a
 		)
 		SELECT
 			b.id,

@@ -104,7 +104,7 @@ func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 				COUNT(*) AS playlist_item_count,
 				STRING_AGG(DISTINCT a.source_type, ',') AS active_sources
 			FROM playlist_items a
-			WHERE a.source_type = ANY($2::text[])
+			WHERE a.source_type = ANY($2::TEXT[])
 			GROUP BY a.room_id
 		),
 		data_q AS (
@@ -885,8 +885,8 @@ func (c *Client) prepareListAdminRoomSearchUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH windows_q (period, starts_at) AS (
 			VALUES
-				('hour', DATE_TRUNC('hour', NOW(), 'UTC') - INTERVAL '23 HOURS'),
-				('day', DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 DAYS')
+				('hour', DATE_TRUNC('HOUR', NOW(), 'UTC') - INTERVAL '23 HOURS'),
+				('day', DATE_TRUNC('DAY', NOW(), 'UTC') - INTERVAL '29 DAYS')
 		)
 		SELECT
 			a.period,
@@ -990,8 +990,8 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH usage_q AS (
 			SELECT
-				'hour'::text AS aggregation_window,
-				DATE_TRUNC('hour', created_at, 'UTC') AS bucket,
+				'hour'::TEXT AS aggregation_window,
+				DATE_TRUNC('HOUR', created_at, 'UTC') AS bucket,
 				provider,
 				SUM(search_count) AS total,
 				COUNT(DISTINCT query_hash) AS unique_count,
@@ -1005,14 +1005,14 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 				) AS live_count
 			FROM search_usage
 			WHERE created_at >=
-				DATE_TRUNC('hour', NOW(), 'UTC') - INTERVAL '23 HOURS'
-			GROUP BY DATE_TRUNC('hour', created_at, 'UTC'), provider
+				DATE_TRUNC('HOUR', NOW(), 'UTC') - INTERVAL '23 HOURS'
+			GROUP BY DATE_TRUNC('HOUR', created_at, 'UTC'), provider
 
 			UNION ALL
 
 			SELECT
-				'day'::text AS aggregation_window,
-				DATE_TRUNC('day', created_at, 'UTC') AS bucket,
+				'day'::TEXT AS aggregation_window,
+				DATE_TRUNC('DAY', created_at, 'UTC') AS bucket,
 				provider,
 				SUM(search_count) AS total,
 				COUNT(DISTINCT query_hash) AS unique_count,
@@ -1026,8 +1026,8 @@ func (c *Client) prepareListAdminSearchUsageStmt() error {
 				) AS live_count
 			FROM search_usage
 			WHERE created_at >=
-				DATE_TRUNC('day', NOW(), 'UTC') - INTERVAL '29 DAYS'
-			GROUP BY DATE_TRUNC('day', created_at, 'UTC'), provider
+				DATE_TRUNC('DAY', NOW(), 'UTC') - INTERVAL '29 DAYS'
+			GROUP BY DATE_TRUNC('DAY', created_at, 'UTC'), provider
 		)
 		SELECT
 			aggregation_window,

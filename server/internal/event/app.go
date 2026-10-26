@@ -24,6 +24,8 @@ type AppEvent struct {
 }
 
 // SubscribeAndListen subscribes to an AppEvent.
+// The process-lifetime loop is not traced; each bounded handler invocation
+// receives its own span below instead of one lasting more than five minutes.
 func (e *AppEvent) SubscribeAndListen(ctx context.Context) {
 	timer := time.NewTimer(e.Rate)
 	defer timer.Stop()

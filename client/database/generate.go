@@ -335,7 +335,7 @@ func (c *Client) prepareCreateRoomGenerationStmt() error {
 					SELECT COUNT(*)
 					FROM playlist_items b
 					WHERE b.room_id = a.id
-					AND b.source_type = ANY($5::text[])
+					AND b.source_type = ANY($5::TEXT[])
 				) AS playlist_item_count,
 				(
 					SELECT COUNT(*)
@@ -802,58 +802,15 @@ func (c *Client) AddGeneratedPlaylistItem(
 	span, ctx := tracing.StartSpanFromContext(ctx, "AddGeneratedPlaylistItem")
 	defer span.End()
 
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
-	defer cancel()
-
-	row := c.AddPlaylistItemStatement.QueryRowContext(
-		cctx,
-		playlistItem.RoomID,
-		playlistItem.SourceType,
-		playlistItem.SourceID,
-		playlistItem.Title,
-		playlistItem.Publisher,
-		playlistItem.ThumbnailURL,
-		playlistItem.Duration,
-		playlistItem.AddedBySessionID,
-		playlistItem.AddedBy,
-		playlistItem.ID,
-		false,
-		c.enabledProviders,
-		playlistItem.ProviderURL,
-		playlistItem.PlaybackRestriction,
-	)
-
-	var rowData addPlaylistItemRow
-	err := rowData.scan(row)
+	result, err := c.addPlaylistItem(ctx, playlistItem, false)
 	if err != nil {
-		return nil, fmt.Errorf(
-			"error scanning generated playlistItem in AddGeneratedPlaylistItem: %w",
-			err,
-		)
+		return nil, fmt.Errorf("error adding generated playlist item in AddGeneratedPlaylistItem: %w", err)
 	}
-
-	if rowData.Result.String == addPlaylistItemResultRoomNotFound {
-		return nil, fmt.Errorf(
-			"error adding generated playlistItem in AddGeneratedPlaylistItem: room %s not found",
-			playlistItem.RoomID,
-		)
-	}
-	if rowData.Result.String == addPlaylistItemResultProviderDisabled {
-		return nil, fmt.Errorf(
-			"error adding generated playlistItem in AddGeneratedPlaylistItem: provider %s is disabled",
-			playlistItem.SourceType,
-		)
-	}
-	if rowData.Result.String != vibe.AddPlaylistItemOutcomeAdded {
+	if result.Outcome != vibe.AddPlaylistItemOutcomeAdded {
 		return &vibe.PlaylistItem{}, nil
 	}
 
-	generatedPlaylistItem, err := rowData.toPlaylistItem()
-	if err != nil {
-		return nil, fmt.Errorf("error mapping generatedPlaylistItem: %w", err)
-	}
-
-	return generatedPlaylistItem, nil
+	return &result.PlaylistItem, nil
 }
 
 const createRoomGenerationCreated = "created"

@@ -92,14 +92,12 @@ func (c *Client) SearchGeneratedPlaylist(
 		query := candidate.Publisher + " " + candidate.Title
 		cachedSearch, cached := cachedSearchesByQuery[query]
 		if cached {
-			searchUsages = append(
-				searchUsages,
-				vibe.GenerateSearchUsage(
-					vibe.SourceTypeYouTube,
-					query,
-					true,
-				),
-			)
+			usage, err := vibe.GenerateSearchUsage(vibe.SourceTypeYouTube, query, true)
+			if err != nil {
+				return nil, fmt.Errorf("error generating cached search usage in SearchGeneratedPlaylist: %w", err)
+			}
+
+			searchUsages = append(searchUsages, *usage)
 			for _, cachedItem := range cachedSearch.Items {
 				if !cachedItem.AllowedInRoom(roomType) {
 					continue

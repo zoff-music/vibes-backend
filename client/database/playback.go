@@ -344,7 +344,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackV2Stmt() error {
 			AND a.room_id = c.room_id
 			AND a.id IS DISTINCT FROM b.current_playlist_item_id
 			WHERE NOT (b.remove_on_play AND a.id = b.current_playlist_item_id)
-			AND a.source_type = ANY($1::text[])
+			AND a.source_type = ANY($1::TEXT[])
 			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, b.current_playlist_item_id, b.remove_on_play
 			ORDER BY vote_count DESC, MAX(c.created_at) ASC, added_at ASC
 			LIMIT 1
@@ -396,8 +396,9 @@ func (c *Client) prepareProcessNextExpiredPlaybackV2Stmt() error {
 	return nil
 }
 
-func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.PlaybackAdvanceV2, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "processNextExpiredPlayback")
+// ProcessNextExpiredPlaybackV2 checks for an expired playlistItem, skips it, and returns the new state.
+func (c *Client) ProcessNextExpiredPlaybackV2(ctx context.Context) (*vibe.PlaybackAdvanceV2, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextExpiredPlaybackV2")
 	defer span.End()
 
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
@@ -431,19 +432,6 @@ func (c *Client) processNextExpiredPlayback(ctx context.Context) (*vibe.Playback
 		Playback:               state,
 		PreviousPlaylistItemID: row.PreviousPlaylistItemID.String,
 	}, nil
-}
-
-// ProcessNextExpiredPlaybackV2 checks for an expired playlistItem, skips it, and returns the new state.
-func (c *Client) ProcessNextExpiredPlaybackV2(ctx context.Context) (*vibe.PlaybackAdvanceV2, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "ProcessNextExpiredPlaybackV2")
-	defer span.End()
-
-	advance, err := c.processNextExpiredPlayback(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error processing next expired playback: %w", err)
-	}
-
-	return advance, nil
 }
 
 // prepareUpsertPlaybackStateV2Stmt prepares the UpsertPlaybackStateV2Statement.
@@ -581,7 +569,7 @@ func (c *Client) prepareSkipPlaylistItemStmt() error {
 			AND a.id IS DISTINCT FROM b.current_playlist_item_id
 			WHERE NOT (b.remove_on_play AND a.id = b.current_playlist_item_id)
 			AND ($3 = '' OR a.id != $3)
-			AND a.source_type = ANY($2::text[])
+			AND a.source_type = ANY($2::TEXT[])
 			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, b.current_playlist_item_id, b.remove_on_play
 			ORDER BY vote_count DESC, MAX(c.created_at) ASC, added_at ASC
 			LIMIT 1
@@ -760,7 +748,7 @@ func (c *Client) prepareStartPlaybackIfIdleV2Stmt() error {
 					FROM playlist_items c
 					WHERE c.room_id = b.room_id
 					AND c.id = b.current_playlist_item_id
-					AND c.source_type = ANY($2::text[])
+					AND c.source_type = ANY($2::TEXT[])
 				)
 			)
 			FOR UPDATE OF a SKIP LOCKED
@@ -789,7 +777,7 @@ func (c *Client) prepareStartPlaybackIfIdleV2Stmt() error {
 			LEFT JOIN playlist_item_votes c
 			ON a.id = c.playlist_item_id
 			AND a.room_id = c.room_id
-			WHERE a.source_type = ANY($2::text[])
+			WHERE a.source_type = ANY($2::TEXT[])
 			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
 			ORDER BY vote_count DESC, MAX(c.created_at) ASC, a.added_at ASC
 			LIMIT 1
@@ -808,7 +796,7 @@ func (c *Client) prepareStartPlaybackIfIdleV2Stmt() error {
 				SELECT 1 FROM playlist_items a
 				WHERE a.room_id = playback_state.room_id
 				AND a.id = playback_state.current_playlist_item_id
-				AND a.source_type = ANY($2::text[])
+				AND a.source_type = ANY($2::TEXT[])
 			)
 			RETURNING room_id, current_playlist_item_id, is_playing, position_ms, updated_at
 		)

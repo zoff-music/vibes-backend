@@ -25,15 +25,15 @@ func GenerateSearchUsage(
 	provider string,
 	query string,
 	cached bool,
-) SearchUsage {
+) (*SearchUsage, error) {
 	normalizedQuery := NormalizeSearch(query)
 	hash := sha256.Sum256([]byte(normalizedQuery))
 
-	return SearchUsage{
+	return &SearchUsage{
 		Provider:  provider,
 		QueryHash: hex.EncodeToString(hash[:]),
 		Cached:    cached,
-	}
+	}, nil
 }
 
 func NormalizeSearch(query string) string {

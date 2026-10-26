@@ -29,7 +29,7 @@ func (c *Client) prepareCreateSearchUsagesStmt() error {
 				search_count,
 				created_at
 			)
-			VALUES ($1, $2, $3, 1, DATE_TRUNC('hour', NOW(), 'UTC'))
+			VALUES ($1, $2, $3, 1, DATE_TRUNC('HOUR', NOW(), 'UTC'))
 			ON CONFLICT (provider, query_hash, cached, created_at)
 			DO UPDATE SET
 				search_count = search_usage.search_count + EXCLUDED.search_count
