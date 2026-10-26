@@ -128,37 +128,11 @@ func (c *SearchClaim) IsEmpty() bool {
 	return c.Token == ""
 }
 
-type SearchAttempt struct {
-	ID        string
-	QueryHash string
-	RoomID    string
-	UserID    string
-	Purpose   string
-}
-
-type SearchAllowance struct {
-	Allowed bool
-	ResetAt time.Time
-}
-
 type SearchClaimCreator interface {
 	ClaimSearch(ctx context.Context, key string, token string) (*SearchClaim, error)
 	ReleaseSearch(ctx context.Context, claim SearchClaim) error
 }
 
-type SearchAttemptCreatorUpdater interface {
-	ReserveSearch(ctx context.Context, attempt SearchAttempt) (*SearchAllowance, error)
-	UpdateSearchAttempt(ctx context.Context, id string, outcome string) error
-}
-
-type RoomSearchClaimCreator interface {
-	RoomSearchUsageCreator
-	SearchClaimCreator
-	SearchAttemptCreatorUpdater
-}
-
 const SourceTypeYouTube = "youtube"
 const SourceTypeSoundCloud = "soundcloud"
 const ProviderQuotaOperationSearch = "search"
-const SearchPurposeInteractive = "interactive"
-const SearchPurposeGeneration = "generation"
