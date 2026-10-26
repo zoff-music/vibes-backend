@@ -1160,6 +1160,38 @@ func RoomEventsV3(
 		}
 		flusher.Flush()
 
+		participantRegistered := false
+
+		// Register signed sessions before reading the initial listener snapshot.
+		// New cookie-less connections must survive one heartbeat before they
+		// become listeners so short probes cannot manufacture participant rows.
+		if userID != "" && !isRemoteController {
+			if !isNewSession {
+				err = state.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
+				if err != nil && ctx.Err() != nil {
+					return
+				}
+				if err != nil {
+					log.Printf("failed to update participant on connect: %v", err)
+				}
+				if err == nil {
+					participantRegistered = true
+					notifyUsers(ctx)
+				}
+			}
+
+			defer func() {
+				if participantRegistered {
+					notifyUsers(context.Background())
+
+					err := events.NotifyAdminRoomDeparture(context.Background(), roomID)
+					if err != nil {
+						log.Printf("error notifying admin room departure: %v", err)
+					}
+				}
+			}()
+		}
+
 		if replay.RequiresSnapshot {
 			room, err := state.GetRoomV2(ctx, roomID, userID)
 			if err != nil {
@@ -1287,38 +1319,6 @@ func RoomEventsV3(
 				}
 			}
 			flusher.Flush()
-		}
-
-		participantRegistered := false
-
-		// Reconnects reuse the participant row from the signed session cookie.
-		// New cookie-less connections must survive one heartbeat before they
-		// become listeners so short probes cannot manufacture participant rows.
-		if userID != "" && !isRemoteController {
-			if !isNewSession {
-				err = state.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
-				if err != nil && ctx.Err() != nil {
-					return
-				}
-				if err != nil {
-					log.Printf("failed to update participant on connect: %v", err)
-				}
-				if err == nil {
-					participantRegistered = true
-					notifyUsers(ctx)
-				}
-			}
-
-			defer func() {
-				if participantRegistered {
-					notifyUsers(context.Background())
-
-					err := events.NotifyAdminRoomDeparture(context.Background(), roomID)
-					if err != nil {
-						log.Printf("error notifying admin room departure: %v", err)
-					}
-				}
-			}()
 		}
 
 		presenceTicker := time.NewTicker(5 * time.Second)
