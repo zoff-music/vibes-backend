@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"time"
 )
 
 // ProviderItem describes a provider result before it becomes a room entry.
@@ -64,8 +65,10 @@ type RoomSearchUsageCreator interface {
 }
 
 type CachedProviderSearch struct {
-	Query string         `json:"query"`
-	Items []ProviderItem `json:"items"`
+	Query      string         `json:"query"`
+	FetchedAt  time.Time      `json:"fetchedAt"`
+	Resolution bool           `json:"resolution,omitempty"`
+	Items      []ProviderItem `json:"items"`
 }
 
 // MarshalJSON preserves empty collections in the public JSON contract.
@@ -119,6 +122,7 @@ type CachedProviderSearchItemFetcherCreator interface {
 }
 
 type ProviderSearchCache interface {
+	GetRetainedProviderSearches(ctx context.Context, source string, queries []string, roomType RoomType) ([]CachedProviderSearch, error)
 	CachedProviderSearchItemFetcherCreator
 	ProviderQuotaResetFetcherCreator
 }

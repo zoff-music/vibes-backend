@@ -23,6 +23,42 @@ func (c *Client) GetCachedProviderSearches(
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedProviderSearches")
 	defer span.End()
 
+	searches, err := c.getProviderSearches(ctx, source, queries, roomType, false, false)
+	if err != nil {
+		return nil, fmt.Errorf("error reading provider searches: %w", err)
+	}
+
+	return searches, nil
+}
+
+func (c *Client) GetRetainedProviderSearches(ctx context.Context, source string, queries []string, roomType vibe.RoomType) ([]vibe.CachedProviderSearch, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetRetainedProviderSearches")
+	defer span.End()
+
+	searches, err := c.getProviderSearches(ctx, source, queries, roomType, false, true)
+	if err != nil {
+		return nil, fmt.Errorf("error reading retained provider searches: %w", err)
+	}
+
+	return searches, nil
+}
+
+func (c *Client) GetCachedProviderResolutions(ctx context.Context, source string, queries []string, roomType vibe.RoomType) ([]vibe.CachedProviderSearch, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedProviderResolutions")
+	defer span.End()
+
+	searches, err := c.getProviderSearches(ctx, source, queries, roomType, true, false)
+	if err != nil {
+		return nil, fmt.Errorf("error reading provider resolutions: %w", err)
+	}
+
+	return searches, nil
+}
+
+func (c *Client) getProviderSearches(ctx context.Context, source string, queries []string, roomType vibe.RoomType, resolution bool, retained bool) ([]vibe.CachedProviderSearch, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "getProviderSearches")
+	defer span.End()
+
 	searches := make([]vibe.CachedProviderSearch, 0, len(queries))
 	if c.Redis == nil || len(queries) == 0 {
 		return searches, nil
@@ -40,7 +76,7 @@ func (c *Client) GetCachedProviderSearches(
 	keys := make(redis.Args, 0, len(queries))
 	cachedQueries := make([]string, 0, len(queries))
 	for _, query := range queries {
-		key := c.providerSearchCacheKey(source, query, roomType)
+		key := c.providerSearchCacheKey(source, query, roomType, resolution)
 		if key == "" {
 			continue
 		}
@@ -71,6 +107,13 @@ func (c *Client) GetCachedProviderSearches(
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshaling cached search in GetCachedProviderSearches: %w", err)
 		}
+		if search.FetchedAt.IsZero() || time.Since(search.FetchedAt) > retainedSearchExpiration {
+			continue
+		}
+		if !retained && time.Since(search.FetchedAt) > searchCacheExpiration {
+			continue
+		}
+
 		search.Query = cachedQueries[index]
 		searches = append(searches, search)
 	}
@@ -102,8 +145,20 @@ func (c *Client) CacheProviderSearches(
 
 	commandCount := 0
 	for _, search := range searches {
-		key := c.providerSearchCacheKey(source, search.Query, roomType)
+		key := c.providerSearchCacheKey(source, search.Query, roomType, search.Resolution)
 		if key == "" {
+			continue
+		}
+
+		if search.FetchedAt.IsZero() {
+			search.FetchedAt = time.Now().UTC()
+		}
+		retention := retainedSearchExpiration
+		if len(search.Items) == 0 {
+			retention = emptySearchExpiration
+		}
+		remaining := time.Until(search.FetchedAt.Add(retention))
+		if remaining < time.Second {
 			continue
 		}
 
@@ -117,7 +172,7 @@ func (c *Client) CacheProviderSearches(
 			key,
 			body,
 			"EX",
-			int(searchCacheExpiration.Seconds()),
+			int(remaining.Seconds()),
 		)
 		if err != nil {
 			return fmt.Errorf("error queueing cached search in CacheProviderSearches: %w", err)
@@ -272,7 +327,7 @@ func (c *Client) CacheProviderItems(
 			c.providerItemCacheKey(source, item.ID),
 			body,
 			"EX",
-			int(searchCacheExpiration.Seconds()),
+			int(providerItemExpiration.Seconds()),
 		)
 		if err != nil {
 			return fmt.Errorf("error queueing cached provider item in CacheProviderItems: %w", err)
@@ -297,16 +352,19 @@ func (c *Client) CacheProviderItems(
 	return nil
 }
 
-func (c *Client) providerSearchCacheKey(source string, query string, roomType vibe.RoomType) string {
+func (c *Client) providerSearchCacheKey(source string, query string, roomType vibe.RoomType, resolution bool) string {
 	normalizedQuery := vibe.NormalizeSearch(query)
 	if source == "" || normalizedQuery == "" || !roomType.IsValid() {
 		return ""
 	}
 
 	hash := sha256.Sum256([]byte(normalizedQuery))
-	version := "v4"
+	version := "v5"
 	if source == vibe.SourceTypeSoundCloud {
-		version = "v6"
+		version = "v7"
+	}
+	if resolution {
+		version += ":resolution"
 	}
 
 	key := c.getKeyWithPrefix(
@@ -329,4 +387,7 @@ func (c *Client) providerItemCacheKey(source string, sourceID string) string {
 	return key
 }
 
-const searchCacheExpiration = 3 * 24 * time.Hour
+const searchCacheExpiration = 7 * 24 * time.Hour
+const retainedSearchExpiration = 14 * 24 * time.Hour
+const emptySearchExpiration = 15 * time.Minute
+const providerItemExpiration = 24 * time.Hour

@@ -43,6 +43,11 @@ type Config struct {
 	YouTubeClientSecret      string        `envconfig:"YOUTUBE_CLIENT_SECRET" default:""`
 	YouTubeRedirectURI       string        `envconfig:"YOUTUBE_REDIRECT_URI" default:"https://localhost/api/v1/callbacks/youtube"`
 
+	YouTubeSearchDailyLimit           int `envconfig:"YOUTUBE_SEARCH_DAILY_LIMIT" default:"400"`
+	YouTubeGenerationSearchDailyLimit int `envconfig:"YOUTUBE_GENERATION_SEARCH_DAILY_LIMIT" default:"80"`
+	YouTubeUserSearchDailyLimit       int `envconfig:"YOUTUBE_USER_SEARCH_DAILY_LIMIT" default:"40"`
+	YouTubeRoomSearchDailyLimit       int `envconfig:"YOUTUBE_ROOM_SEARCH_DAILY_LIMIT" default:"100"`
+
 	// SoundCloud configuration
 	SoundCloudEndpoint     string `envconfig:"SOUNDCLOUD_ENDPOINT" default:"https://api.soundcloud.com"`
 	SoundCloudClientID     string `envconfig:"SOUNDCLOUD_CLIENT_ID" default:""`

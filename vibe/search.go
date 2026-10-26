@@ -6,10 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 	"html"
-	"sort"
 	"strings"
 	"time"
-	"unicode"
 )
 
 func IsLiveVideo(source string, duration int) bool {
@@ -40,58 +38,9 @@ func GenerateSearchUsage(
 
 func NormalizeSearch(query string) string {
 	value := strings.ToLower(html.UnescapeString(query))
-	allTokens := make([]string, 0)
-	tokens := make([]string, 0)
-	var token strings.Builder
-	for _, character := range value {
-		if unicode.IsLetter(character) || unicode.IsNumber(character) {
-			token.WriteRune(character)
-			continue
-		}
-		if token.Len() == 0 {
-			continue
-		}
+	normalizedQuery := strings.Join(strings.Fields(value), " ")
 
-		word := token.String()
-		allTokens = append(allTokens, word)
-		if !isSearchNoise(word) {
-			tokens = append(tokens, word)
-		}
-		token.Reset()
-	}
-	if token.Len() > 0 {
-		word := token.String()
-		allTokens = append(allTokens, word)
-		if !isSearchNoise(word) {
-			tokens = append(tokens, word)
-		}
-	}
-	if len(tokens) == 0 {
-		tokens = allTokens
-	}
-
-	sort.Strings(tokens)
-	normalizedTokens := make([]string, 0, len(tokens))
-	for _, current := range tokens {
-		if len(normalizedTokens) > 0 &&
-			normalizedTokens[len(normalizedTokens)-1] == current {
-			continue
-		}
-		normalizedTokens = append(normalizedTokens, current)
-	}
-
-	normalizedQuery := strings.Join(normalizedTokens, " ")
 	return normalizedQuery
-}
-
-func isSearchNoise(value string) bool {
-	switch value {
-	case "4k", "a", "an", "and", "audio", "feat", "featuring", "ft", "hd",
-		"lyric", "lyrics", "music", "official", "the", "video", "visualizer":
-		return true
-	default:
-		return false
-	}
 }
 
 func (t GeneratedPlaylistItem) ToProviderItem() (*ProviderItem, error) {
@@ -170,6 +119,46 @@ type SearchUsageCreator interface {
 	CreateSearchUsages(ctx context.Context, usages []SearchUsage) error
 }
 
+type SearchClaim struct {
+	Key   string
+	Token string
+}
+
+func (c *SearchClaim) IsEmpty() bool {
+	return c.Token == ""
+}
+
+type SearchAttempt struct {
+	ID        string
+	QueryHash string
+	RoomID    string
+	UserID    string
+	Purpose   string
+}
+
+type SearchAllowance struct {
+	Allowed bool
+	ResetAt time.Time
+}
+
+type SearchClaimCreator interface {
+	ClaimSearch(ctx context.Context, key string, token string) (*SearchClaim, error)
+	ReleaseSearch(ctx context.Context, claim SearchClaim) error
+}
+
+type SearchAttemptCreatorUpdater interface {
+	ReserveSearch(ctx context.Context, attempt SearchAttempt) (*SearchAllowance, error)
+	UpdateSearchAttempt(ctx context.Context, id string, outcome string) error
+}
+
+type RoomSearchClaimCreator interface {
+	RoomSearchUsageCreator
+	SearchClaimCreator
+	SearchAttemptCreatorUpdater
+}
+
 const SourceTypeYouTube = "youtube"
 const SourceTypeSoundCloud = "soundcloud"
 const ProviderQuotaOperationSearch = "search"
+const SearchPurposeInteractive = "interactive"
+const SearchPurposeGeneration = "generation"

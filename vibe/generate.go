@@ -55,6 +55,7 @@ type generatedPlaylistPrompt struct {
 
 type GeneratedPlaylistSearchResult struct {
 	Playlist       GeneratedPlaylist
+	Unresolved     GeneratedPlaylist
 	CachedSearches []CachedProviderSearch
 	SearchUsages   []SearchUsage
 }
@@ -106,16 +107,17 @@ type PlaylistGenerator interface {
 }
 
 type GeneratedPlaylistSearcher interface {
+	ProviderItemsSearcher
 	SearchGeneratedPlaylist(
 		ctx context.Context,
 		playlist GeneratedPlaylist,
 		cachedSearches []CachedProviderSearch,
-		searchQuotaReset time.Time,
 		roomType RoomType,
 	) (*GeneratedPlaylistSearchResult, error)
 }
 
 type GeneratedPlaylistCacheNotifier interface {
+	GetCachedProviderResolutions(ctx context.Context, source string, queries []string, roomType RoomType) ([]CachedProviderSearch, error)
 	AdminRoomChangeNotifier
 	CachedProviderSearchFetcherCreator
 	ProviderQuotaResetFetcherCreator
@@ -151,6 +153,8 @@ type RoomGenerationCleaner interface {
 }
 
 type RoomGenerationWorker interface {
+	SearchClaimCreator
+	SearchAttemptCreatorUpdater
 	GenerationRoomCreator
 	RoomGenerationProcessor
 	RoomGenerationCompleter

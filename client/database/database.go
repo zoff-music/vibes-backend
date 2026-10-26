@@ -15,6 +15,15 @@ import (
 
 // Client holds the database client and prepared statements.
 type Client struct {
+	searchDailyLimit             int
+	generationSearchDailyLimit   int
+	userSearchDailyLimit         int
+	roomSearchDailyLimit         int
+	ClaimSearchStatement         *sql.Stmt
+	ReleaseSearchStatement       *sql.Stmt
+	ReserveSearchStatement       *sql.Stmt
+	UpdateSearchAttemptStatement *sql.Stmt
+
 	DB *sql.DB
 
 	maxNameLength                          int
@@ -179,6 +188,14 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.maxQueueLength = 200
 	}
 
+	c.searchDailyLimit = cfg.YouTubeSearchDailyLimit
+	c.generationSearchDailyLimit = cfg.YouTubeGenerationSearchDailyLimit
+	c.userSearchDailyLimit = cfg.YouTubeUserSearchDailyLimit
+	c.roomSearchDailyLimit = cfg.YouTubeRoomSearchDailyLimit
+	if c.searchDailyLimit <= 0 || c.generationSearchDailyLimit < 0 || c.userSearchDailyLimit <= 0 || c.roomSearchDailyLimit <= 0 {
+		return fmt.Errorf("error validating youtube search budgets: invalid limits")
+	}
+
 	c.enabledProviders = cfg.EnabledProviders()
 	c.roomNameReservationTTL = cfg.RoomNameReservationTTL
 	c.roomGenerationMaxAttempts = cfg.RoomGenerationMaxAttempts
@@ -227,6 +244,10 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareDeleteAdminUserStmt,
 		// Search usage statements
 		c.prepareCreateSearchUsagesStmt,
+		c.prepareClaimSearchStmt,
+		c.prepareReleaseSearchStmt,
+		c.prepareReserveSearchStmt,
+		c.prepareUpdateSearchAttemptStmt,
 		c.prepareListAdminSearchUsageStmt,
 		c.prepareListAdminRoomSearchUsageStmt,
 		// Message usage statements
@@ -421,6 +442,10 @@ func (c *Client) Close() error {
 		c.UpdateAdminUserPasswordStatement,
 		c.DeleteAdminUserStatement,
 		c.CreateSearchUsagesStatement,
+		c.ClaimSearchStatement,
+		c.ReleaseSearchStatement,
+		c.ReserveSearchStatement,
+		c.UpdateSearchAttemptStatement,
 		c.ListAdminSearchUsageStatement,
 		c.ListAdminRoomSearchUsageStatement,
 		c.CreateMessageUsageStatement,

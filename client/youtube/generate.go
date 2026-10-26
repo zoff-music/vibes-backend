@@ -4,7 +4,6 @@ import (
 	"cmp"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"html"
 	"net/http"
@@ -12,10 +11,8 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/zoff-music/vibes-backend/client"
-	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -24,7 +21,6 @@ func (c *Client) SearchGeneratedPlaylist(
 	ctx context.Context,
 	playlist vibe.GeneratedPlaylist,
 	cachedSearches []vibe.CachedProviderSearch,
-	searchQuotaReset time.Time,
 	roomType vibe.RoomType,
 ) (*vibe.GeneratedPlaylistSearchResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "SearchGeneratedPlaylist")
@@ -148,7 +144,8 @@ func (c *Client) SearchGeneratedPlaylist(
 		}
 
 		searchesToCache = append(searchesToCache, vibe.CachedProviderSearch{
-			Query: query,
+			Resolution: true,
+			Query:      query,
 			Items: []vibe.ProviderItem{
 				*providerItem,
 			},
@@ -160,121 +157,6 @@ func (c *Client) SearchGeneratedPlaylist(
 	remainingItemCount := c.generatedPlaylistSelectedCount - len(found)
 	if remainingItemCount > 0 && len(unresolvedCandidates) > remainingItemCount {
 		unresolvedCandidates = unresolvedCandidates[:remainingItemCount]
-	}
-
-	fallbackIDs := make([]string, 0, len(unresolvedCandidates))
-	fallbackSearches := make(
-		[]generatedFallbackSearch,
-		0,
-		len(unresolvedCandidates),
-	)
-	var fallbackSearchErr error
-	if time.Now().Before(searchQuotaReset) {
-		fallbackSearchErr = internalerror.ErrProviderQuotaExceeded{
-			Err: fmt.Errorf(
-				"error checking youtube search quota in SearchGeneratedPlaylist: cached until %s",
-				searchQuotaReset.Format(time.RFC3339),
-			),
-			Provider: youtubeProvider,
-			ResetAt:  searchQuotaReset,
-		}
-		unresolvedCandidates = unresolvedCandidates[:0]
-	}
-	for _, candidate := range unresolvedCandidates {
-		query := candidate.Publisher + " " + candidate.Title
-		searchUsages = append(
-			searchUsages,
-			vibe.GenerateSearchUsage(
-				vibe.SourceTypeYouTube,
-				query,
-				false,
-			),
-		)
-		var result *searchResponse
-		result, err = c.searchVideos(
-			ctx,
-			query,
-			generatedItemSearchResults,
-			roomType,
-		)
-		if err != nil {
-			var quotaError internalerror.ErrProviderQuotaExceeded
-			if errors.As(err, &quotaError) {
-				fallbackSearchErr = err
-				break
-			}
-			return nil, fmt.Errorf(
-				"error searching generated playlist item in SearchGeneratedPlaylist: %w",
-				err,
-			)
-		}
-		candidateIDs := make([]string, 0, len(result.Items))
-		for _, item := range result.Items {
-			if item.ID.VideoID != "" {
-				fallbackIDs = append(fallbackIDs, item.ID.VideoID)
-				candidateIDs = append(candidateIDs, item.ID.VideoID)
-			}
-		}
-		fallbackSearches = append(fallbackSearches, generatedFallbackSearch{
-			Query:      query,
-			YouTubeIDs: candidateIDs,
-		})
-	}
-
-	fallbackItemsByID, err := c.getGeneratedPlaylistItems(ctx, fallbackIDs, roomType)
-	if err != nil {
-		return nil, fmt.Errorf(
-			"error getting fallback generated playlist items in SearchGeneratedPlaylist: %w",
-			err,
-		)
-	}
-	for _, search := range fallbackSearches {
-		cachedItems := make(
-			[]vibe.ProviderItem,
-			0,
-			len(search.YouTubeIDs),
-		)
-		selected := false
-		for _, youtubeID := range search.YouTubeIDs {
-			playlistItem, ok := fallbackItemsByID[youtubeID]
-			if !ok {
-				continue
-			}
-
-			playlistItem.SearchQuery = search.Query
-			providerItem, err := playlistItem.ToProviderItem()
-			if err != nil {
-				return nil, fmt.Errorf("error converting fallback generated playlist item: %w", err)
-			}
-
-			cachedItems = append(
-				cachedItems,
-				*providerItem,
-			)
-			if selected || seen[playlistItem.YouTubeID] {
-				continue
-			}
-
-			seen[playlistItem.YouTubeID] = true
-			found = append(found, playlistItem)
-			selected = true
-		}
-		searchesToCache = append(searchesToCache, vibe.CachedProviderSearch{
-			Query: search.Query,
-			Items: cachedItems,
-		})
-	}
-
-	if len(found) == 0 {
-		if fallbackSearchErr != nil {
-			return nil, fmt.Errorf(
-				"error searching generated playlist in SearchGeneratedPlaylist: %w",
-				fallbackSearchErr,
-			)
-		}
-		return nil, fmt.Errorf(
-			"error finding generated playlist items in SearchGeneratedPlaylist: no playlist items found on youtube",
-		)
 	}
 
 	slices.SortStableFunc(found, func(a, b vibe.GeneratedPlaylistItem) int {
@@ -292,16 +174,12 @@ func (c *Client) SearchGeneratedPlaylist(
 
 	result := vibe.GeneratedPlaylistSearchResult{
 		Playlist:       found,
+		Unresolved:     unresolvedCandidates,
 		CachedSearches: searchesToCache,
 		SearchUsages:   searchUsages,
 	}
 
 	return &result, nil
-}
-
-type generatedFallbackSearch struct {
-	Query      string
-	YouTubeIDs []string
 }
 
 func (c *Client) getGeneratedPlaylistItems(
@@ -492,6 +370,5 @@ func youtubeDurationSeconds(value string) (int, error) {
 const youtubeMusicCategoryID = "10"
 const youtubeZeroDuration = "P0D"
 const generatedItemMaxDurationSeconds = 20 * 60
-const generatedItemSearchResults = 5
 const generatedPlaylistFallbackSearchLimit = 5
 const youtubeVideoBatchSize = 50
