@@ -2586,9 +2586,8 @@ func SearchYouTubeV2(
 						var allowance *vibe.SearchAllowance
 						allowance, err = db.ReserveSearch(ctx, attempt)
 						if err == nil && !allowance.Allowed {
-							log.Printf("event=search_allowance_denied provider=youtube purpose=interactive reason=budget_or_burst_guard upstream_attempted=false daily_reset_at=%s", allowance.ResetAt.UTC().Format(time.RFC3339))
+							log.Printf("event=search_allowance_denied provider=youtube purpose=interactive reason=budget_guard upstream_attempted=false daily_reset_at=%s", allowance.ResetAt.UTC().Format(time.RFC3339))
 
-							w.Header().Set("Retry-After", "2")
 							err = fmt.Errorf("error reserving youtube search: search allowance unavailable; try a cached search or retry later")
 						}
 						if err == nil {
