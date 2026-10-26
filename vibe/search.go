@@ -129,8 +129,13 @@ func (c *SearchClaim) IsEmpty() bool {
 }
 
 type SearchClaimCreator interface {
-	ClaimSearch(ctx context.Context, key string, token string) (*SearchClaim, error)
+	GetOrClaimProviderSearch(ctx context.Context, source string, query string, roomType RoomType) (*ProviderSearchResult, error)
 	ReleaseSearch(ctx context.Context, claim SearchClaim) error
+}
+
+type ProviderSearchResult struct {
+	Searches []CachedProviderSearch
+	Claim    SearchClaim
 }
 
 const SourceTypeYouTube = "youtube"

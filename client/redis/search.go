@@ -10,11 +10,69 @@ import (
 	"time"
 
 	"github.com/gomodule/redigo/redis"
+	"github.com/google/uuid"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func (c *Client) ClaimSearch(ctx context.Context, key string, token string) (*vibe.SearchClaim, error) {
+func (c *Client) GetOrClaimProviderSearch(ctx context.Context, source string, query string, roomType vibe.RoomType) (*vibe.ProviderSearchResult, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetOrClaimProviderSearch")
+	defer span.End()
+
+	normalized := vibe.NormalizeSearch(query)
+	if normalized == "" || !roomType.AllowsSource(source) {
+		return nil, fmt.Errorf("error getting provider search: invalid search")
+	}
+
+	hash := sha256.Sum256([]byte(normalized))
+	key := source + ":" + string(roomType) + ":" + hex.EncodeToString(hash[:])
+	token := uuid.NewString()
+	cctx, cancel := context.WithTimeout(ctx, 12*time.Second)
+	defer cancel()
+
+	ticker := time.NewTicker(200 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		searches, err := c.GetCachedProviderSearches(cctx, source, []string{query}, roomType)
+		if err != nil {
+			return nil, fmt.Errorf("error reading coordinated search cache: %w", err)
+		}
+		if len(searches) > 0 {
+			return &vibe.ProviderSearchResult{Searches: searches}, nil
+		}
+
+		claim, err := c.claimSearch(cctx, key, token)
+		if err != nil {
+			return nil, fmt.Errorf("error claiming provider search: %w", err)
+		}
+		if !claim.IsEmpty() {
+			// A previous owner may have filled the cache before this claim succeeded.
+			searches, err = c.GetCachedProviderSearches(cctx, source, []string{query}, roomType)
+			if err != nil || len(searches) > 0 {
+				releaseErr := c.ReleaseSearch(ctx, *claim)
+				if releaseErr != nil {
+					return nil, fmt.Errorf("error releasing completed search claim: %w", releaseErr)
+				}
+				if err != nil {
+					return nil, fmt.Errorf("error rechecking provider search cache: %w", err)
+				}
+
+				return &vibe.ProviderSearchResult{Searches: searches}, nil
+			}
+
+			return &vibe.ProviderSearchResult{Claim: *claim}, nil
+		}
+
+		select {
+		case <-cctx.Done():
+			return nil, fmt.Errorf("error waiting for provider search cache: %w", cctx.Err())
+		case <-ticker.C:
+		}
+	}
+}
+
+func (c *Client) claimSearch(ctx context.Context, key string, token string) (*vibe.SearchClaim, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "ClaimSearch")
 	defer span.End()
 
@@ -46,11 +104,16 @@ func (c *Client) ReleaseSearch(ctx context.Context, claim vibe.SearchClaim) erro
 	span, ctx := tracing.StartSpanFromContext(ctx, "ReleaseSearch")
 	defer span.End()
 
+	if claim.IsEmpty() {
+		return nil
+	}
+
 	if c.Redis == nil {
 		return fmt.Errorf("error releasing search: redis is unavailable")
 	}
 
-	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	// Cleanup must complete even when the request that owned the claim was cancelled.
+	cctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 	defer cancel()
 
 	connection, err := c.Redis.GetContext(cctx)
@@ -59,7 +122,7 @@ func (c *Client) ReleaseSearch(ctx context.Context, claim vibe.SearchClaim) erro
 	}
 	defer connection.Close()
 
-	_, err = redis.DoContext(connection, cctx, "EVAL", releaseSearchScript, 1, c.getKeyWithPrefix("search-claim:"+claim.Key), claim.Token)
+	_, err = redis.DoContext(connection, cctx, "DELEX", c.getKeyWithPrefix("search-claim:"+claim.Key), "IFEQ", claim.Token)
 	if err != nil {
 		return fmt.Errorf("error releasing provider search: %w", err)
 	}
@@ -444,10 +507,3 @@ const searchCacheExpiration = 7 * 24 * time.Hour
 const retainedSearchExpiration = 14 * 24 * time.Hour
 const emptySearchExpiration = 15 * time.Minute
 const providerItemExpiration = 24 * time.Hour
-
-const releaseSearchScript = `
-if redis.call('GET', KEYS[1]) == ARGV[1] then
-	return redis.call('DEL', KEYS[1])
-end
-return 0
-`
