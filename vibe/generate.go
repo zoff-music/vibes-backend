@@ -117,6 +117,7 @@ type GeneratedPlaylistSearcher interface {
 }
 
 type GeneratedPlaylistCacheNotifier interface {
+	SearchClaimCreator
 	GetCachedProviderResolutions(ctx context.Context, source string, queries []string, roomType RoomType) ([]CachedProviderSearch, error)
 	AdminRoomChangeNotifier
 	CachedProviderSearchFetcherCreator
@@ -153,8 +154,6 @@ type RoomGenerationCleaner interface {
 }
 
 type RoomGenerationWorker interface {
-	SearchClaimCreator
-	SearchAttemptCreatorUpdater
 	GenerationRoomCreator
 	RoomGenerationProcessor
 	RoomGenerationCompleter

@@ -14,6 +14,59 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
+func (c *Client) ClaimSearch(ctx context.Context, key string, token string) (*vibe.SearchClaim, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ClaimSearch")
+	defer span.End()
+
+	if c.Redis == nil {
+		return nil, fmt.Errorf("error claiming search: redis is unavailable")
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	connection, err := c.Redis.GetContext(cctx)
+	if err != nil {
+		return nil, fmt.Errorf("error getting redis connection in ClaimSearch: %w", err)
+	}
+	defer connection.Close()
+
+	_, err = redis.String(redis.DoContext(connection, cctx, "SET", c.getKeyWithPrefix("search-claim:"+key), token, "NX", "EX", 60))
+	if errors.Is(err, redis.ErrNil) {
+		return &vibe.SearchClaim{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error claiming provider search: %w", err)
+	}
+
+	return &vibe.SearchClaim{Key: key, Token: token}, nil
+}
+
+func (c *Client) ReleaseSearch(ctx context.Context, claim vibe.SearchClaim) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ReleaseSearch")
+	defer span.End()
+
+	if c.Redis == nil {
+		return fmt.Errorf("error releasing search: redis is unavailable")
+	}
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	connection, err := c.Redis.GetContext(cctx)
+	if err != nil {
+		return fmt.Errorf("error getting redis connection in ReleaseSearch: %w", err)
+	}
+	defer connection.Close()
+
+	_, err = redis.DoContext(connection, cctx, "EVAL", releaseSearchScript, 1, c.getKeyWithPrefix("search-claim:"+claim.Key), claim.Token)
+	if err != nil {
+		return fmt.Errorf("error releasing provider search: %w", err)
+	}
+
+	return nil
+}
+
 func (c *Client) GetCachedProviderSearches(
 	ctx context.Context,
 	source string,
@@ -391,3 +444,10 @@ const searchCacheExpiration = 7 * 24 * time.Hour
 const retainedSearchExpiration = 14 * 24 * time.Hour
 const emptySearchExpiration = 15 * time.Minute
 const providerItemExpiration = 24 * time.Hour
+
+const releaseSearchScript = `
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+	return redis.call('DEL', KEYS[1])
+end
+return 0
+`

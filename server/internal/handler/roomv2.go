@@ -2422,7 +2422,7 @@ func CreateGeneratedRoomV2(
 func SearchYouTubeV2(
 	ms vibe.ProviderItemsSearcher,
 	cache vibe.ProviderSearchCache,
-	db vibe.RoomSearchClaimCreator,
+	db vibe.RoomSearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
@@ -2520,7 +2520,7 @@ func SearchYouTubeV2(
 		if !cacheHit {
 			claimKey := "youtube:" + string(room.RoomType) + ":" + usage.QueryHash
 			token := uuid.NewString()
-			claim, claimErr := db.ClaimSearch(ctx, claimKey, token)
+			claim, claimErr := cache.ClaimSearch(ctx, claimKey, token)
 			if claimErr != nil {
 				handleError(
 					w,
@@ -2558,7 +2558,7 @@ func SearchYouTubeV2(
 			} else {
 				// The preceding owner may have populated the cache while this claim was acquired.
 				defer func() {
-					releaseErr := db.ReleaseSearch(ctx, *claim)
+					releaseErr := cache.ReleaseSearch(context.WithoutCancel(ctx), *claim)
 					if releaseErr != nil {
 						log.Printf("error releasing youtube search claim: %v", releaseErr)
 					}
@@ -2579,52 +2579,30 @@ func SearchYouTubeV2(
 						}
 					}
 					if err == nil {
-						attempt := vibe.SearchAttempt{
-							ID: token, QueryHash: usage.QueryHash, RoomID: roomID,
-							UserID: session.UserID, Purpose: vibe.SearchPurposeInteractive,
-						}
-						var allowance *vibe.SearchAllowance
-						allowance, err = db.ReserveSearch(ctx, attempt)
-						if err == nil && !allowance.Allowed {
-							log.Printf("event=search_allowance_denied provider=youtube purpose=interactive reason=budget_guard upstream_attempted=false daily_reset_at=%s", allowance.ResetAt.UTC().Format(time.RFC3339))
+						items, err = ms.SearchProviderItems(ctx, query, room.RoomType)
+						var quotaError internalerror.ErrProviderQuotaExceeded
+						if errors.As(err, &quotaError) {
+							log.Printf("event=search_quota_exhausted provider=youtube purpose=interactive upstream_attempted=true reset_at=%s", quotaError.ResetAt.UTC().Format(time.RFC3339))
 
-							err = fmt.Errorf("error reserving youtube search: search allowance unavailable; try a cached search or retry later")
+							cacheErr := cache.CacheProviderQuotaReset(ctx, vibe.SourceTypeYouTube, vibe.ProviderQuotaOperationSearch, quotaError.ResetAt)
+							if cacheErr != nil {
+								log.Printf("error caching youtube quota reset: %v", cacheErr)
+							}
+							w.Header().Set("Retry-After", quotaError.ResetAt.UTC().Format(http.TimeFormat))
+						}
+						recordErr := db.CreateSearchUsages(ctx, []vibe.SearchUsage{*usage})
+						if recordErr != nil {
+							log.Printf("error creating youtube search usage: %v", recordErr)
 						}
 						if err == nil {
-							items, err = ms.SearchProviderItems(ctx, query, room.RoomType)
-							outcome := "success"
-							if err != nil {
-								outcome = "failure"
+							search := vibe.CachedProviderSearch{Query: query, Items: items, FetchedAt: time.Now().UTC()}
+							cacheErr := cache.CacheProviderSearches(ctx, vibe.SourceTypeYouTube, []vibe.CachedProviderSearch{search}, room.RoomType)
+							if cacheErr != nil {
+								log.Printf("error caching youtube search: %v", cacheErr)
 							}
-							var quotaError internalerror.ErrProviderQuotaExceeded
-							if errors.As(err, &quotaError) {
-								log.Printf("event=search_quota_exhausted provider=youtube purpose=interactive upstream_attempted=true reset_at=%s", quotaError.ResetAt.UTC().Format(time.RFC3339))
-
-								outcome = "quota"
-								cacheErr := cache.CacheProviderQuotaReset(ctx, vibe.SourceTypeYouTube, vibe.ProviderQuotaOperationSearch, quotaError.ResetAt)
-								if cacheErr != nil {
-									log.Printf("error caching youtube quota reset: %v", cacheErr)
-								}
-								w.Header().Set("Retry-After", quotaError.ResetAt.UTC().Format(http.TimeFormat))
-							}
-							recordErr := db.UpdateSearchAttempt(ctx, token, outcome)
-							if recordErr != nil {
-								log.Printf("error recording youtube search outcome: %v", recordErr)
-							}
-							recordErr = db.CreateSearchUsages(ctx, []vibe.SearchUsage{*usage})
-							if recordErr != nil {
-								log.Printf("error creating youtube search usage: %v", recordErr)
-							}
-							if err == nil {
-								search := vibe.CachedProviderSearch{Query: query, Items: items, FetchedAt: time.Now().UTC()}
-								cacheErr := cache.CacheProviderSearches(ctx, vibe.SourceTypeYouTube, []vibe.CachedProviderSearch{search}, room.RoomType)
-								if cacheErr != nil {
-									log.Printf("error caching youtube search: %v", cacheErr)
-								}
-								cacheErr = cache.CacheProviderItems(ctx, vibe.SourceTypeYouTube, items)
-								if cacheErr != nil {
-									log.Printf("error caching fresh youtube metadata: %v", cacheErr)
-								}
+							cacheErr = cache.CacheProviderItems(ctx, vibe.SourceTypeYouTube, items)
+							if cacheErr != nil {
+								log.Printf("error caching fresh youtube metadata: %v", cacheErr)
 							}
 						}
 					}
@@ -2716,7 +2694,7 @@ func SearchYouTubeV2(
 //	@Router		/api/v2/rooms/{id}/search/soundcloud [get]
 func SearchSoundCloudV2(
 	ms vibe.ProviderItemsSearcher,
-	cache vibe.CachedProviderSearchItemFetcherCreator,
+	cache vibe.ProviderSearchClaimCache,
 	db vibe.RoomSearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -2794,8 +2772,13 @@ func SearchSoundCloudV2(
 			room.RoomType,
 		)
 		if err != nil {
-			log.Printf("error getting cached soundcloud search: %v", err)
-			cachedSearches = []vibe.CachedProviderSearch{}
+			handleError(
+				w,
+				fmt.Errorf("error reading soundcloud search cache: %w", err),
+				http.StatusServiceUnavailable,
+				true,
+			)
+			return
 		}
 
 		items := make([]vibe.ProviderItem, 0)
@@ -2819,39 +2802,82 @@ func SearchSoundCloudV2(
 		}
 
 		usage.RoomID = roomID
-
-		err = db.CreateSearchUsages(ctx, []vibe.SearchUsage{*usage})
-		if err != nil {
-			log.Printf("error creating soundcloud search usage: %v", err)
-		}
 		if !cacheHit {
-			items, err = ms.SearchProviderItems(ctx, query, room.RoomType)
+			claimKey := "soundcloud:" + string(room.RoomType) + ":" + usage.QueryHash
+			claim, claimErr := cache.ClaimSearch(ctx, claimKey, uuid.NewString())
+			if claimErr != nil {
+				handleError(
+					w,
+					fmt.Errorf("error claiming soundcloud search: %w", claimErr),
+					http.StatusServiceUnavailable,
+					true,
+				)
+				return
+			}
+
+			if claim.IsEmpty() {
+				ticker := time.NewTicker(200 * time.Millisecond)
+				defer ticker.Stop()
+				deadline := time.NewTimer(12 * time.Second)
+				defer deadline.Stop()
+
+				waiting := true
+				for waiting && !cacheHit {
+					select {
+					case <-ctx.Done():
+						return
+					case <-deadline.C:
+						waiting = false
+					case <-ticker.C:
+						cachedSearches, err = cache.GetCachedProviderSearches(ctx, vibe.SourceTypeSoundCloud, []string{query}, room.RoomType)
+						if err != nil {
+							waiting = false
+						}
+						cacheHit = len(cachedSearches) > 0
+					}
+				}
+				if !cacheHit && err == nil {
+					err = fmt.Errorf("error waiting for soundcloud search: please retry shortly")
+				}
+			} else {
+				defer func() {
+					releaseErr := cache.ReleaseSearch(context.WithoutCancel(ctx), *claim)
+					if releaseErr != nil {
+						log.Printf("error releasing soundcloud search claim: %v", releaseErr)
+					}
+				}()
+
+				cachedSearches, err = cache.GetCachedProviderSearches(ctx, vibe.SourceTypeSoundCloud, []string{query}, room.RoomType)
+				cacheHit = len(cachedSearches) > 0
+				if err == nil && !cacheHit {
+					items, err = ms.SearchProviderItems(ctx, query, room.RoomType)
+					if err == nil {
+						search := vibe.CachedProviderSearch{Query: query, Items: items, FetchedAt: time.Now().UTC()}
+						cacheErr := cache.CacheProviderSearches(ctx, vibe.SourceTypeSoundCloud, []vibe.CachedProviderSearch{search}, room.RoomType)
+						if cacheErr != nil {
+							log.Printf("error caching soundcloud search: %v", cacheErr)
+						}
+					}
+				}
+			}
 		}
 		if err != nil {
 			handleError(
 				w,
-				fmt.Errorf(
-					"error searching music in SearchSoundCloudV2 handler: %w",
-					err,
-				),
-				http.StatusInternalServerError,
+				fmt.Errorf("error searching soundcloud: %w", err),
+				http.StatusServiceUnavailable,
 				true,
 			)
 			return
 		}
-		if !cacheHit {
-			search := vibe.CachedProviderSearch{Query: query, Items: items}
-			err = cache.CacheProviderSearches(
-				ctx,
-				vibe.SourceTypeSoundCloud,
-				[]vibe.CachedProviderSearch{
-					search,
-				},
-				room.RoomType,
-			)
-			if err != nil {
-				log.Printf("error caching soundcloud search: %v", err)
-			}
+		if cacheHit {
+			items = cachedSearches[0].GetProviderItems()
+		}
+
+		usage.Cached = cacheHit
+		err = db.CreateSearchUsages(ctx, []vibe.SearchUsage{*usage})
+		if err != nil {
+			log.Printf("error creating soundcloud search usage: %v", err)
 		}
 
 		err = cache.CacheProviderItems(ctx, vibe.SourceTypeSoundCloud, items)

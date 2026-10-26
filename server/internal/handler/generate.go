@@ -493,15 +493,42 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 			usage.RoomID = room.ID
 			token := uuid.NewString()
 			claimKey := "youtube:" + string(room.RoomType) + ":" + usage.QueryHash
-			claim, claimErr := h.DB.ClaimSearch(ctx, claimKey, token)
+			claim, claimErr := h.Cache.ClaimSearch(ctx, claimKey, token)
 			if claimErr != nil {
 				return fmt.Errorf("error claiming generated search: %w", claimErr)
 			}
 			if claim.IsEmpty() {
+				ticker := time.NewTicker(200 * time.Millisecond)
+				deadline := time.NewTimer(12 * time.Second)
+				waiting := true
+				for waiting {
+					select {
+					case <-ctx.Done():
+						ticker.Stop()
+						deadline.Stop()
+						return fmt.Errorf("error waiting for generated search cache: %w", ctx.Err())
+					case <-deadline.C:
+						waiting = false
+					case <-ticker.C:
+						existing, cacheErr := h.Cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, []string{query}, room.RoomType)
+						if cacheErr != nil {
+							ticker.Stop()
+							deadline.Stop()
+							return fmt.Errorf("error waiting for generated search cache: %w", cacheErr)
+						}
+						if len(existing) > 0 {
+							resolvedSearches = append(resolvedSearches, existing...)
+							waiting = false
+						}
+					}
+				}
+				ticker.Stop()
+				deadline.Stop()
+
 				continue
 			}
 			defer func() {
-				releaseErr := h.DB.ReleaseSearch(ctx, *claim)
+				releaseErr := h.Cache.ReleaseSearch(context.WithoutCancel(ctx), *claim)
 				if releaseErr != nil {
 					log.Printf("error releasing generated search claim: %v", releaseErr)
 				}
@@ -516,40 +543,18 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 				continue
 			}
 
-			attempt := vibe.SearchAttempt{
-				ID: token, QueryHash: usage.QueryHash, RoomID: room.ID,
-				UserID: room.HostID, Purpose: vibe.SearchPurposeGeneration,
-			}
-			allowance, reserveErr := h.DB.ReserveSearch(ctx, attempt)
-			if reserveErr != nil {
-				return fmt.Errorf("error reserving generated search: %w", reserveErr)
-			}
-			if !allowance.Allowed {
-				log.Printf("event=search_allowance_denied provider=youtube purpose=generation reason=budget_guard upstream_attempted=false daily_reset_at=%s", allowance.ResetAt.UTC().Format(time.RFC3339))
-
-				break
-			}
 			items, searchErr := h.Searcher.SearchProviderItems(ctx, query, room.RoomType)
-			outcome := "success"
-			if searchErr != nil {
-				outcome = "failure"
-			}
 			var quotaError internalerror.ErrProviderQuotaExceeded
 			if errors.As(searchErr, &quotaError) {
 				log.Printf("event=search_quota_exhausted provider=youtube purpose=generation upstream_attempted=true reset_at=%s", quotaError.ResetAt.UTC().Format(time.RFC3339))
 
-				outcome = "quota"
 				searchQuotaReset = quotaError.ResetAt
 				cacheErr = h.Cache.CacheProviderQuotaReset(ctx, vibe.SourceTypeYouTube, vibe.ProviderQuotaOperationSearch, quotaError.ResetAt)
 				if cacheErr != nil {
 					log.Printf("error caching generation quota reset: %v", cacheErr)
 				}
 			}
-			recordErr := h.DB.UpdateSearchAttempt(ctx, token, outcome)
-			if recordErr != nil {
-				log.Printf("error recording generated search outcome: %v", recordErr)
-			}
-			recordErr = h.DB.CreateSearchUsages(ctx, []vibe.SearchUsage{*usage})
+			recordErr := h.DB.CreateSearchUsages(ctx, []vibe.SearchUsage{*usage})
 			if recordErr != nil {
 				log.Printf("error recording generated search usage: %v", recordErr)
 			}
