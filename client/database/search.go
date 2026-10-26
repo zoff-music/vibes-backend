@@ -178,7 +178,7 @@ func (c *Client) prepareReserveSearchStmt() error {
 		claim_q AS (
 			SELECT a.id
 			FROM search_budgets a
-			FOR UPDATE SKIP LOCKED
+			FOR UPDATE
 		),
 		budget_q AS (
 			UPDATE search_budgets a SET
@@ -190,7 +190,6 @@ func (c *Client) prepareReserveSearchStmt() error {
 			WHERE a.id = b.id
 			AND (a.quota_day != c.quota_day OR a.search_count < $6)
 			AND ($5 != 'generation' OR (CASE WHEN a.quota_day = c.quota_day THEN a.generation_count ELSE 0 END) < $7)
-			AND (a.started_at IS NULL OR a.started_at <= NOW() - INTERVAL '1 SECOND')
 			AND (SELECT COUNT(*) FROM search_attempts d WHERE d.user_id = $4 AND d.created_at >= c.day_start) < $8
 			AND (SELECT COUNT(*) FROM search_attempts e WHERE e.room_id = $3 AND e.created_at >= c.day_start) < $9
 			RETURNING a.id

@@ -516,14 +516,6 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 				continue
 			}
 
-			// Space generation fallbacks so interactive searches can share the burst budget.
-			timer := time.NewTimer(time.Second)
-			select {
-			case <-ctx.Done():
-				timer.Stop()
-				return fmt.Errorf("error waiting for generated search: %w", ctx.Err())
-			case <-timer.C:
-			}
 			attempt := vibe.SearchAttempt{
 				ID: token, QueryHash: usage.QueryHash, RoomID: room.ID,
 				UserID: room.HostID, Purpose: vibe.SearchPurposeGeneration,
@@ -533,7 +525,7 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 				return fmt.Errorf("error reserving generated search: %w", reserveErr)
 			}
 			if !allowance.Allowed {
-				log.Printf("event=search_allowance_denied provider=youtube purpose=generation reason=budget_or_burst_guard upstream_attempted=false daily_reset_at=%s", allowance.ResetAt.UTC().Format(time.RFC3339))
+				log.Printf("event=search_allowance_denied provider=youtube purpose=generation reason=budget_guard upstream_attempted=false daily_reset_at=%s", allowance.ResetAt.UTC().Format(time.RFC3339))
 
 				break
 			}
