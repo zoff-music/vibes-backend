@@ -491,57 +491,21 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 			}
 
 			usage.RoomID = room.ID
-			token := uuid.NewString()
-			claimKey := "youtube:" + string(room.RoomType) + ":" + usage.QueryHash
-			claim, claimErr := h.Cache.ClaimSearch(ctx, claimKey, token)
-			if claimErr != nil {
-				return fmt.Errorf("error claiming generated search: %w", claimErr)
+			result, cacheErr := h.Cache.GetOrClaimProviderSearch(ctx, vibe.SourceTypeYouTube, query, room.RoomType)
+			if cacheErr != nil {
+				return fmt.Errorf("error getting generated search cache: %w", cacheErr)
 			}
-			if claim.IsEmpty() {
-				ticker := time.NewTicker(200 * time.Millisecond)
-				deadline := time.NewTimer(12 * time.Second)
-				waiting := true
-				for waiting {
-					select {
-					case <-ctx.Done():
-						ticker.Stop()
-						deadline.Stop()
-						return fmt.Errorf("error waiting for generated search cache: %w", ctx.Err())
-					case <-deadline.C:
-						waiting = false
-					case <-ticker.C:
-						existing, cacheErr := h.Cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, []string{query}, room.RoomType)
-						if cacheErr != nil {
-							ticker.Stop()
-							deadline.Stop()
-							return fmt.Errorf("error waiting for generated search cache: %w", cacheErr)
-						}
-						if len(existing) > 0 {
-							resolvedSearches = append(resolvedSearches, existing...)
-							waiting = false
-						}
-					}
-				}
-				ticker.Stop()
-				deadline.Stop()
-
+			if len(result.Searches) > 0 {
+				resolvedSearches = append(resolvedSearches, result.Searches...)
 				continue
 			}
+
 			defer func() {
-				releaseErr := h.Cache.ReleaseSearch(context.WithoutCancel(ctx), *claim)
+				releaseErr := h.Cache.ReleaseSearch(ctx, result.Claim)
 				if releaseErr != nil {
 					log.Printf("error releasing generated search claim: %v", releaseErr)
 				}
 			}()
-
-			existing, cacheErr := h.Cache.GetCachedProviderSearches(ctx, vibe.SourceTypeYouTube, []string{query}, room.RoomType)
-			if cacheErr != nil {
-				return fmt.Errorf("error checking generated search cache: %w", cacheErr)
-			}
-			if len(existing) > 0 {
-				resolvedSearches = append(resolvedSearches, existing...)
-				continue
-			}
 
 			items, searchErr := h.Searcher.SearchProviderItems(ctx, query, room.RoomType)
 			var quotaError internalerror.ErrProviderQuotaExceeded
