@@ -117,11 +117,10 @@ type GeneratedPlaylistSearcher interface {
 }
 
 type GeneratedPlaylistCacheNotifier interface {
-	SearchClaimCreator
+	SearchClaimFetcherReleaser
 	GetCachedProviderResolutions(ctx context.Context, source string, queries []string, roomType RoomType) ([]CachedProviderSearch, error)
 	AdminRoomChangeNotifier
 	CachedProviderSearchFetcherCreator
-	ProviderQuotaResetFetcherCreator
 	RoomEventV3Notifier
 }
 
@@ -282,7 +281,7 @@ const RoomGenerationFailed = "failed"
 
 const RoomGenerationFailure = "Could not finish generating this playlist. You can try again."
 
-const RoomGenerationYouTubeQuotaFailure = "YouTube search has reached its daily limit. Try again after midnight Pacific time."
+const RoomGenerationYouTubeQuotaFailure = "YouTube search has reached its quota. Please try again later."
 
 const generatedPlaylistSystemInstruction = `
 You generate playlists from a listener's natural-language request.

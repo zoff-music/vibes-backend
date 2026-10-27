@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
@@ -160,6 +159,9 @@ func (c *Client) searchVideos(
 	maxResults int,
 	roomType vibe.RoomType,
 ) (*searchResponse, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "searchVideos")
+	defer span.End()
+
 	params := url.Values{}
 	params.Set("part", "snippet")
 	params.Set("q", query)
@@ -206,24 +208,12 @@ func (c *Client) searchVideos(
 		}
 
 		if quotaExceeded {
-			now := time.Now().In(c.searchQuotaZone)
-			reset := time.Date(
-				now.Year(),
-				now.Month(),
-				now.Day()+1,
-				0,
-				0,
-				0,
-				0,
-				c.searchQuotaZone,
-			)
 			return nil, internalerror.ErrProviderQuotaExceeded{
 				Err: fmt.Errorf(
 					"error requesting youtube search in searchVideos: %w",
 					err,
 				),
 				Provider: youtubeProvider,
-				ResetAt:  reset,
 			}
 		}
 
@@ -297,5 +287,4 @@ type thumbnail struct {
 }
 
 const youtubeProvider = "youtube"
-const youtubeQuotaLocation = "America/Los_Angeles"
 const youtubeSearchResultCount = 50

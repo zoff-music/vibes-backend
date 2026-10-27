@@ -1,13 +1,11 @@
 package internalerror
 
 import "fmt"
-import "time"
 
 // ErrProviderQuotaExceeded indicates that an external provider's quota is exhausted.
 type ErrProviderQuotaExceeded struct {
 	Err      error
 	Provider string
-	ResetAt  time.Time
 }
 
 func (e ErrProviderQuotaExceeded) Error() string {

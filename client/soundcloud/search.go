@@ -3,6 +3,7 @@ package soundcloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -10,6 +11,7 @@ import (
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 
 	"github.com/zoff-music/vibes-backend/client"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -51,6 +53,14 @@ func (c *Client) SearchProviderItems(ctx context.Context, query string, roomType
 
 	resp, err := c.HTTPClient.RequestBytes(ctx, reqData)
 	if err != nil {
+		var statusError internalerror.HTTPStatusCodeError
+		if errors.As(err, &statusError) && statusError.StatusCode == http.StatusTooManyRequests {
+			return nil, internalerror.ErrProviderQuotaExceeded{
+				Err:      fmt.Errorf("error requesting soundcloud search: %w", err),
+				Provider: vibe.SourceTypeSoundCloud,
+			}
+		}
+
 		return nil, fmt.Errorf(
 			"error requesting soundcloud tracks in SearchProviderItems: %w",
 			err,

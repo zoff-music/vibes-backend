@@ -121,15 +121,10 @@ type CachedProviderSearchItemFetcherCreator interface {
 	CachedProviderItemsCreator
 }
 
-type ProviderSearchCache interface {
-	GetRetainedProviderSearches(ctx context.Context, source string, queries []string, roomType RoomType) ([]CachedProviderSearch, error)
-	ProviderSearchClaimCache
-	ProviderQuotaResetFetcherCreator
-}
-
-type ProviderSearchClaimCache interface {
-	CachedProviderSearchItemFetcherCreator
-	SearchClaimCreator
+type ProviderSearchFetcherCreator interface {
+	CacheProviderSearches(ctx context.Context, source string, searches []CachedProviderSearch, roomType RoomType) error
+	CachedProviderItemsCreator
+	SearchClaimFetcherReleaser
 }
 
 type CachedProviderItemRoomEventNotifier interface {

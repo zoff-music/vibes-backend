@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"html"
 	"strings"
-	"time"
 )
 
 func IsLiveVideo(source string, duration int) bool {
@@ -93,28 +92,6 @@ func durationISO8601(seconds int) string {
 	return duration
 }
 
-type ProviderQuotaResetFetcher interface {
-	GetProviderQuotaReset(
-		ctx context.Context,
-		provider string,
-		operation string,
-	) (time.Time, error)
-}
-
-type ProviderQuotaResetCreator interface {
-	CacheProviderQuotaReset(
-		ctx context.Context,
-		provider string,
-		operation string,
-		resetAt time.Time,
-	) error
-}
-
-type ProviderQuotaResetFetcherCreator interface {
-	ProviderQuotaResetFetcher
-	ProviderQuotaResetCreator
-}
-
 type SearchUsageCreator interface {
 	CreateSearchUsages(ctx context.Context, usages []SearchUsage) error
 }
@@ -128,7 +105,7 @@ func (c *SearchClaim) IsEmpty() bool {
 	return c.Token == ""
 }
 
-type SearchClaimCreator interface {
+type SearchClaimFetcherReleaser interface {
 	GetOrClaimProviderSearch(ctx context.Context, source string, query string, roomType RoomType) (*ProviderSearchResult, error)
 	ReleaseSearch(ctx context.Context, claim SearchClaim) error
 }
@@ -140,4 +117,3 @@ type ProviderSearchResult struct {
 
 const SourceTypeYouTube = "youtube"
 const SourceTypeSoundCloud = "soundcloud"
-const ProviderQuotaOperationSearch = "search"
