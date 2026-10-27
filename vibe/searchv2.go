@@ -62,6 +62,7 @@ type ProviderItemResolver interface {
 type RoomSearchUsageCreator interface {
 	RoomV2Fetcher
 	SearchUsageCreator
+	WaitForActiveParticipant(ctx context.Context, roomID, userID string) (bool, error)
 }
 
 type CachedProviderSearch struct {

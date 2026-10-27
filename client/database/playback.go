@@ -895,12 +895,6 @@ func (c *Client) checkHostPermissions(ctx context.Context, roomID, userID string
 		return nil
 	}
 
-	// Register user as active participant
-	err := c.UpdateParticipant(ctx, roomID, userID, true, false, "")
-	if err != nil {
-		return fmt.Errorf("error updating participant in check host permission in %s for %s: %w", roomID, userID, err)
-	}
-
 	room, err := c.GetRoomV2(ctx, roomID, userID)
 	if err != nil {
 		return fmt.Errorf("error getting room in check host permission in %s for %s: %w", roomID, userID, err)

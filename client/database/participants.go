@@ -20,15 +20,15 @@ func (c *Client) prepareUpdateParticipantStmt() error {
 			is_cast_receiver,
 			cast_owner_id
 		)
-		SELECT a.id, $2, $3, $4, $5, $6
+		SELECT a.id, $2, NOW(), $3, $4, $5
 		FROM rooms a
 		WHERE a.id = $1
 		FOR KEY SHARE OF a
 		ON CONFLICT(id, room_id) DO UPDATE SET
-		last_seen_at = $3,
-		is_active_listener = $4,
-		is_cast_receiver = $5,
-		cast_owner_id = $6
+		last_seen_at = NOW(),
+		is_active_listener = $3,
+		is_cast_receiver = $4,
+		cast_owner_id = $5
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing UpdateParticipantStatement: %w", err)
@@ -56,7 +56,6 @@ func (c *Client) UpdateParticipant(
 		cctx,
 		roomID,
 		userID,
-		time.Now(),
 		isActiveListener,
 		isCastReceiver,
 		castOwnerID,
@@ -66,6 +65,76 @@ func (c *Client) UpdateParticipant(
 	}
 
 	return nil
+}
+
+func (c *Client) prepareHasActiveParticipantStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM room_users a
+			WHERE a.room_id = $1 AND a.id = $2
+				AND a.is_active_listener = TRUE
+				AND a.is_cast_receiver = FALSE
+				AND a.last_seen_at > NOW() - INTERVAL '30 SECONDS'
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing HasActiveParticipantStatement: %w", err)
+	}
+
+	c.HasActiveParticipantStatement = stmt
+
+	return nil
+}
+
+func (c *Client) HasActiveParticipant(ctx context.Context, roomID, userID string) (bool, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "HasActiveParticipant")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	var active bool
+	err := c.HasActiveParticipantStatement.QueryRowContext(cctx, roomID, userID).Scan(&active)
+	if err != nil {
+		return false, fmt.Errorf("error checking presence in HasActiveParticipant: %w", err)
+	}
+
+	return active, nil
+}
+
+// WaitForActiveParticipant lets room SSE registration catch up with an immediate
+// search or reconnect. Searches never register or refresh participant presence.
+func (c *Client) WaitForActiveParticipant(ctx context.Context, roomID, userID string) (bool, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "WaitForActiveParticipant")
+	defer span.End()
+
+	waitCtx, cancel := context.WithTimeout(ctx, participantSearchWait+time.Second)
+	defer cancel()
+
+	deadline := time.NewTimer(participantSearchWait)
+	defer deadline.Stop()
+
+	ticker := time.NewTicker(participantSearchInterval)
+	defer ticker.Stop()
+
+	for {
+		active, err := c.HasActiveParticipant(waitCtx, roomID, userID)
+		if err != nil {
+			return false, fmt.Errorf("error checking presence in WaitForActiveParticipant: %w", err)
+		}
+		if active {
+			return true, nil
+		}
+
+		select {
+		case <-waitCtx.Done():
+			return false, fmt.Errorf("error waiting for presence in WaitForActiveParticipant: %w", waitCtx.Err())
+		case <-deadline.C:
+			return false, nil
+		case <-ticker.C:
+		}
+	}
 }
 
 func (c *Client) prepareGetActiveParticipantsStmt() error {
@@ -344,3 +413,7 @@ func (r *inactiveParticipantCleanupRow) scan(row *sql.Row) error {
 
 	return nil
 }
+
+const participantSearchWait = 6 * time.Second
+
+const participantSearchInterval = 250 * time.Millisecond

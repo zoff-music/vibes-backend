@@ -18,6 +18,7 @@ import (
 // SearchYouTubeV2 handles GET /api/v2/rooms/{id}/search/youtube
 //
 //	@Summary	Search YouTube items
+//	@Description	Requires an active room connection. Searches wait briefly for room presence to register.
 //	@Tags		providers
 //	@Produce	json
 //	@Param		q	query		string	true	"Search query"
@@ -27,6 +28,7 @@ import (
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Failure	503	{object}	vibe.ErrorResponse
 //	@Router		/api/v2/rooms/{id}/search/youtube [get]
+//	@Failure	403	{object}	vibe.ErrorResponse
 func SearchYouTubeV2(
 	ms vibe.ProviderItemsSearcher,
 	cache vibe.ProviderSearchFetcherCreator,
@@ -95,6 +97,35 @@ func SearchYouTubeV2(
 				w,
 				fmt.Errorf("error searching room: provider is disabled"),
 				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		active, err := db.WaitForActiveParticipant(ctx, roomID, session.UserID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error checking search presence: %w", err),
+				http.StatusServiceUnavailable,
+				true,
+			)
+			return
+		}
+		if !active {
+			handleError(
+				w,
+				internalerror.ErrorCodeWrapper{
+					Err: fmt.Errorf("error searching room: active presence required"),
+					ResponseBody: internalerror.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "room_presence_required",
+						Message:   "You need an active connection to this room to search. Reconnect and try again.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusForbidden,
+				},
+				http.StatusForbidden,
 				false,
 			)
 			return
@@ -214,6 +245,7 @@ func SearchYouTubeV2(
 // SearchSoundCloudV2 handles GET /api/v2/rooms/{id}/search/soundcloud
 //
 //	@Summary	Search SoundCloud items
+//	@Description	Requires an active room connection. Searches wait briefly for room presence to register.
 //	@Tags		providers
 //	@Produce	json
 //	@Param		q	query		string	true	"Search query"
@@ -222,6 +254,7 @@ func SearchYouTubeV2(
 //	@Failure	400	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v2/rooms/{id}/search/soundcloud [get]
+//	@Failure	403	{object}	vibe.ErrorResponse
 func SearchSoundCloudV2(
 	ms vibe.ProviderItemsSearcher,
 	cache vibe.ProviderSearchFetcherCreator,
@@ -290,6 +323,35 @@ func SearchSoundCloudV2(
 				w,
 				fmt.Errorf("error searching room: provider is disabled"),
 				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+
+		active, err := db.WaitForActiveParticipant(ctx, roomID, session.UserID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error checking search presence: %w", err),
+				http.StatusServiceUnavailable,
+				true,
+			)
+			return
+		}
+		if !active {
+			handleError(
+				w,
+				internalerror.ErrorCodeWrapper{
+					Err: fmt.Errorf("error searching room: active presence required"),
+					ResponseBody: internalerror.ErrorCodeResponseBody{
+						Namespace: "vibes-backend",
+						Error:     "room_presence_required",
+						Message:   "You need an active connection to this room to search. Reconnect and try again.",
+						Propagate: true,
+					},
+					StatusCode: http.StatusForbidden,
+				},
+				http.StatusForbidden,
 				false,
 			)
 			return

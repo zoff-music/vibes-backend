@@ -101,8 +101,7 @@ func (c *Client) prepareGrantRoomAdminStmt() error {
 		FOR UPDATE OF a
 		ON CONFLICT(id, room_id) DO UPDATE SET
 		is_admin = EXCLUDED.is_admin,
-		admin_password_hash = EXCLUDED.admin_password_hash,
-		last_seen_at = EXCLUDED.last_seen_at
+		admin_password_hash = EXCLUDED.admin_password_hash
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing GrantRoomAdminStatement: %w", err)
@@ -137,7 +136,7 @@ func (c *Client) GrantRoomAdmin(ctx context.Context, roomID, userID, hash string
 func (c *Client) prepareClearRoomAdminStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE room_users
-		SET is_admin = FALSE, admin_password_hash = NULL, last_seen_at = $3
+		SET is_admin = FALSE, admin_password_hash = NULL
 		WHERE room_id = $1 AND id = $2
 	`)
 	if err != nil {
@@ -157,7 +156,7 @@ func (c *Client) ClearRoomAdmin(ctx context.Context, roomID string, userID strin
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 
-	_, err := c.ClearRoomAdminStatement.ExecContext(cctx, roomID, userID, time.Now())
+	_, err := c.ClearRoomAdminStatement.ExecContext(cctx, roomID, userID)
 	if err != nil {
 		return fmt.Errorf("error clearing room admin in ClearRoomAdmin: %w", err)
 	}
