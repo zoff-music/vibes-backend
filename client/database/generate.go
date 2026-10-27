@@ -798,7 +798,7 @@ func (c *Client) DeleteExpiredRoomGenerations(
 func (c *Client) AddGeneratedPlaylistItem(
 	ctx context.Context,
 	playlistItem *vibe.PlaylistItem,
-) (*vibe.PlaylistItem, error) {
+) (*vibe.GeneratedPlaylistItemResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "AddGeneratedPlaylistItem")
 	defer span.End()
 
@@ -807,10 +807,18 @@ func (c *Client) AddGeneratedPlaylistItem(
 		return nil, fmt.Errorf("error adding generated playlist item in AddGeneratedPlaylistItem: %w", err)
 	}
 	if result.Outcome != vibe.AddPlaylistItemOutcomeAdded {
-		return &vibe.PlaylistItem{}, nil
+		return &vibe.GeneratedPlaylistItemResult{}, nil
 	}
 
-	return &result.PlaylistItem, nil
+	playback, err := c.startPlaybackIfIdleV2(ctx, playlistItem.RoomID)
+	if err != nil {
+		return nil, fmt.Errorf("error starting generated playback in AddGeneratedPlaylistItem: %w", err)
+	}
+
+	return &vibe.GeneratedPlaylistItemResult{
+		PlaylistItem:  result.PlaylistItem,
+		PlaybackState: *playback,
+	}, nil
 }
 
 const createRoomGenerationCreated = "created"

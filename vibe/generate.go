@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type GeneratedPlaylistRequest struct {
@@ -33,6 +35,33 @@ type GeneratedPlaylistItem struct {
 
 func (g *GeneratedPlaylistItem) IsEmpty() bool {
 	return g.YouTubeID == ""
+}
+
+func (g GeneratedPlaylistItem) ToPlaylistItem(room RoomV2) (*PlaylistItem, error) {
+	return &PlaylistItem{
+		ID:                  uuid.NewString(),
+		RoomID:              room.ID,
+		SourceType:          SourceTypeYouTube,
+		SourceID:            g.YouTubeID,
+		ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", g.YouTubeID),
+		PlaybackRestriction: g.PlaybackRestriction,
+		Title:               g.Title,
+		Publisher:           g.Publisher,
+		ThumbnailURL:        g.ThumbnailURL,
+		Duration:            g.Duration,
+		AddedBySessionID:    room.HostID,
+		AddedAt:             time.Now(),
+	}, nil
+}
+
+type GeneratedPlaylistItemResult struct {
+	PlaylistItem  PlaylistItem
+	PlaybackState PlaybackStateV2
+}
+
+func (r *GeneratedPlaylistItemResult) IsEmpty() bool {
+	empty := r.PlaylistItem.IsEmpty()
+	return empty
 }
 
 type GeneratedPlaylist []GeneratedPlaylistItem
@@ -122,10 +151,11 @@ type GeneratedPlaylistCacheNotifier interface {
 	AdminRoomChangeNotifier
 	CachedProviderSearchFetcherCreator
 	RoomEventV3Notifier
+	RoomBatchEventV3Notifier
 }
 
 type GeneratedPlaylistItemAdder interface {
-	AddGeneratedPlaylistItem(ctx context.Context, item *PlaylistItem) (*PlaylistItem, error)
+	AddGeneratedPlaylistItem(ctx context.Context, item *PlaylistItem) (*GeneratedPlaylistItemResult, error)
 }
 
 type RoomGenerationCreator interface {
@@ -158,7 +188,6 @@ type RoomGenerationWorker interface {
 	RoomGenerationCompleter
 	RoomGenerationFailer
 	GeneratedPlaylistItemAdder
-	PlaybackV2Controller
 	SearchUsageCreator
 }
 

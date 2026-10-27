@@ -85,7 +85,14 @@ func AdminEventsV3(
 		}
 
 		currentAdmin, err := db.GetAdminUser(ctx, admin.ID)
-		if err != nil || currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion || ctx.Err() != nil {
+		if ctx.Err() != nil {
+			return
+		}
+		if err != nil {
+			log.Printf("error revalidating admin session in AdminEventsV3: %v", err)
+			return
+		}
+		if currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion {
 			return
 		}
 
@@ -162,7 +169,14 @@ func AdminEventsV3(
 			}
 
 			currentAdmin, err = db.GetAdminUser(ctx, admin.ID)
-			if err != nil || currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion || ctx.Err() != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			if err != nil {
+				log.Printf("error revalidating admin session in AdminEventsV3: %v", err)
+				return
+			}
+			if currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion {
 				return
 			}
 
@@ -198,7 +212,14 @@ func AdminEventsV3(
 			}
 
 			currentAdmin, err = db.GetAdminUser(ctx, admin.ID)
-			if err != nil || currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion || ctx.Err() != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			if err != nil {
+				log.Printf("error revalidating admin session in AdminEventsV3: %v", err)
+				return
+			}
+			if currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion {
 				return
 			}
 

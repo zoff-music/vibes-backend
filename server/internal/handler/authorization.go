@@ -5,14 +5,12 @@ import (
 	"crypto/rand"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -222,21 +220,20 @@ func GetToken(db vibe.AccessTokenUpserterGetter, oa vibe.TokenRefresher, provide
 
 		token, err := db.GetAccessToken(ctx, session.UserID, providerName)
 		if err != nil {
-			var notFoundErr internalerror.ErrAccessTokenNotFound
-			if errors.As(err, &notFoundErr) {
-				handleError(
-					w,
-					fmt.Errorf("error getting access token: %w", err),
-					http.StatusPreconditionFailed,
-					false,
-				)
-				return
-			}
-
 			handleError(
 				w,
 				fmt.Errorf("error getting access token: %w", err),
 				http.StatusForbidden,
+				false,
+			)
+			return
+		}
+
+		if token.IsEmpty() {
+			handleError(
+				w,
+				fmt.Errorf("error getting access token: access token not found"),
+				http.StatusPreconditionFailed,
 				false,
 			)
 			return

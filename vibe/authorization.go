@@ -41,6 +41,10 @@ type AccessToken struct {
 	RefreshExpiresAt time.Time `json:"-"`
 }
 
+func (a *AccessToken) IsEmpty() bool {
+	return a.UserID == ""
+}
+
 // PendingOAuthState represents a stored OAuth state waiting for provider callback validation.
 type PendingOAuthState struct {
 	UserID       string

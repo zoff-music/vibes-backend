@@ -164,9 +164,7 @@ func (c *Client) GetAccessToken(ctx context.Context, userID, provider string) (*
 	err := row.scan(r)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return nil, internalerror.ErrAccessTokenNotFound{
-				Err: fmt.Errorf("error access token not found for user %s and provider %s", userID, provider),
-			}
+			return &vibe.AccessToken{}, nil
 		}
 		return nil, fmt.Errorf("error in db: get access token: %w", err)
 	}
