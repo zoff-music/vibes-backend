@@ -115,6 +115,7 @@ type Client struct {
 
 	// Participant statements
 	UpdateParticipantStatement         *sql.Stmt
+	HasActiveParticipantStatement      *sql.Stmt
 	GetActiveParticipantsStatement     *sql.Stmt
 	GetActiveListenerCountsStatement   *sql.Stmt
 	SetRoomHostStatement               *sql.Stmt
@@ -301,6 +302,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareClaimAndGetExpiredTokenForRefreshStmt,
 		// Participant statements
 		c.prepareUpdateParticipantStmt,
+		c.prepareHasActiveParticipantStmt,
 		c.prepareGetActiveParticipantsStmt,
 		c.prepareGetActiveListenerCountsStmt,
 		c.prepareSetRoomHostStmt,
@@ -401,6 +403,7 @@ func (c *Client) Close() error {
 		c.DeleteExpiredPendingOAuthStatesStatement,
 		c.ClaimAndGetExpiredTokenForRefreshStatement,
 		c.UpdateParticipantStatement,
+		c.HasActiveParticipantStatement,
 		c.GetActiveParticipantsStatement,
 		c.GetActiveListenerCountsStatement,
 		c.SetRoomHostStatement,
