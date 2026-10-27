@@ -257,11 +257,13 @@ func (c *Client) fillRoomDetails(ctx context.Context, room vibe.RoomV2, userID s
 	filledRoom.RoomGenerationMaxExistingPlaylistItems = c.roomGenerationMaxExistingPlaylistItems
 
 	counts, err := c.GetActiveListenerCounts(ctx, filledRoom.ID, 15*time.Second)
-	if err == nil {
-		filledRoom.UserCount = counts.ActiveListeners
-		if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
-			filledRoom.UserCount = 1
-		}
+	if err != nil {
+		return nil, fmt.Errorf("error fetching listener counts in fillRoomDetails: %w", err)
+	}
+
+	filledRoom.UserCount = counts.ActiveListeners
+	if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
+		filledRoom.UserCount = 1
 	}
 
 	return filledRoom, nil

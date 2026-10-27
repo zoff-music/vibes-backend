@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-	_ "time/tzdata"
 
 	"github.com/zoff-music/vibes-backend/client"
 	"github.com/zoff-music/vibes-backend/config"
@@ -21,8 +20,6 @@ type Client struct {
 	generatedPlaylistSelectedCount int
 	Endpoint                       string
 	HTTPClient                     client.HTTPClient
-
-	searchQuotaZone *time.Location
 }
 
 // Init initializes the YouTube API client
@@ -42,11 +39,6 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 	c.clientSecret = cfg.YouTubeClientSecret
 	c.redirectURI = cfg.YouTubeRedirectURI
 	c.generatedPlaylistSelectedCount = cfg.GeneratedPlaylistSelectedItemCount
-	searchQuotaZone, err := time.LoadLocation(youtubeQuotaLocation)
-	if err != nil {
-		return fmt.Errorf("error loading youtube quota location: %w", err)
-	}
-	c.searchQuotaZone = searchQuotaZone
 	c.HTTPClient = client.HTTPClient{
 		Client: &http.Client{
 			Timeout:   5 * time.Second,

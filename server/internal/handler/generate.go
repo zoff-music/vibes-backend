@@ -460,27 +460,18 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 	}
 	cachedSearches = append(cachedSearches, fullSearches...)
 
-	searchQuotaReset, err := h.Cache.GetProviderQuotaReset(
-		ctx,
-		vibe.SourceTypeYouTube,
-		vibe.ProviderQuotaOperationSearch,
-	)
-	if err != nil {
-		return fmt.Errorf("error reading youtube quota guard for generation: %w", err)
-	}
-
 	searchResult, err := h.Searcher.SearchGeneratedPlaylist(
 		ctx,
 		*playlist,
 		cachedSearches,
 		room.RoomType,
 	)
-
-	if err == nil && len(searchResult.Unresolved) > 0 && time.Now().Before(searchQuotaReset) {
-		log.Printf("event=search_quota_blocked provider=youtube purpose=generation upstream_attempted=false reset_at=%s", searchQuotaReset.UTC().Format(time.RFC3339))
+	if err != nil {
+		return fmt.Errorf("error resolving generated playlist metadata: %w", err)
 	}
 
-	if err == nil && len(searchResult.Unresolved) > 0 && !time.Now().Before(searchQuotaReset) {
+	var providerErr error
+	if len(searchResult.Unresolved) > 0 {
 		freshResolutions := searchResult.CachedSearches
 		resolvedSearches := append(cachedSearches, searchResult.CachedSearches...)
 		for _, candidate := range searchResult.Unresolved {
@@ -508,22 +499,18 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 			}()
 
 			items, searchErr := h.Searcher.SearchProviderItems(ctx, query, room.RoomType)
-			var quotaError internalerror.ErrProviderQuotaExceeded
-			if errors.As(searchErr, &quotaError) {
-				log.Printf("event=search_quota_exhausted provider=youtube purpose=generation upstream_attempted=true reset_at=%s", quotaError.ResetAt.UTC().Format(time.RFC3339))
-
-				searchQuotaReset = quotaError.ResetAt
-				cacheErr = h.Cache.CacheProviderQuotaReset(ctx, vibe.SourceTypeYouTube, vibe.ProviderQuotaOperationSearch, quotaError.ResetAt)
-				if cacheErr != nil {
-					log.Printf("error caching generation quota reset: %v", cacheErr)
+			if searchErr != nil {
+				var quotaError internalerror.ErrProviderQuotaExceeded
+				if errors.As(searchErr, &quotaError) {
+					log.Printf("event=search_quota_exhausted provider=youtube purpose=generation")
 				}
+				providerErr = searchErr
+				break
 			}
+
 			recordErr := h.DB.CreateSearchUsages(ctx, []vibe.SearchUsage{*usage})
 			if recordErr != nil {
 				log.Printf("error recording generated search usage: %v", recordErr)
-			}
-			if searchErr != nil {
-				break
 			}
 			search := vibe.CachedProviderSearch{Query: query, Items: items, FetchedAt: time.Now().UTC()}
 			resolvedSearches = append(resolvedSearches, search)
@@ -533,33 +520,20 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 			}
 		}
 		searchResult, err = h.Searcher.SearchGeneratedPlaylist(ctx, *playlist, resolvedSearches, room.RoomType)
-		if err == nil {
-			searchResult.CachedSearches = append(searchResult.CachedSearches, freshResolutions...)
+		if err != nil {
+			return fmt.Errorf("error resolving generated playlist search results: %w", err)
 		}
+		searchResult.CachedSearches = append(searchResult.CachedSearches, freshResolutions...)
 	}
-	if err == nil && len(searchResult.Playlist) == 0 {
-		err = fmt.Errorf("error resolving generated playlist: no playable matches within search allowance")
-		if time.Now().Before(searchQuotaReset) {
-			err = internalerror.ErrProviderQuotaExceeded{
-				Err: err, Provider: vibe.SourceTypeYouTube, ResetAt: searchQuotaReset,
-			}
+	if len(searchResult.Playlist) == 0 {
+		err = fmt.Errorf("error resolving generated playlist: no playable matches")
+		if providerErr != nil {
+			err = fmt.Errorf("error resolving generated playlist: %w", providerErr)
 		}
 	}
 	if err != nil {
 		var quotaError internalerror.ErrProviderQuotaExceeded
 		if errors.As(err, &quotaError) {
-			err = h.Cache.CacheProviderQuotaReset(
-				ctx,
-				vibe.SourceTypeYouTube,
-				vibe.ProviderQuotaOperationSearch,
-				quotaError.ResetAt,
-			)
-			if err != nil {
-				log.Printf(
-					"error caching youtube quota reset for room generation: %v",
-					err,
-				)
-			}
 			err = h.DB.FailRoomGeneration(
 				ctx,
 				generation.RoomID,

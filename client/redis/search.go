@@ -139,21 +139,9 @@ func (c *Client) GetCachedProviderSearches(
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedProviderSearches")
 	defer span.End()
 
-	searches, err := c.getProviderSearches(ctx, source, queries, roomType, false, false)
+	searches, err := c.getProviderSearches(ctx, source, queries, roomType, false)
 	if err != nil {
 		return nil, fmt.Errorf("error reading provider searches: %w", err)
-	}
-
-	return searches, nil
-}
-
-func (c *Client) GetRetainedProviderSearches(ctx context.Context, source string, queries []string, roomType vibe.RoomType) ([]vibe.CachedProviderSearch, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "GetRetainedProviderSearches")
-	defer span.End()
-
-	searches, err := c.getProviderSearches(ctx, source, queries, roomType, false, true)
-	if err != nil {
-		return nil, fmt.Errorf("error reading retained provider searches: %w", err)
 	}
 
 	return searches, nil
@@ -163,7 +151,7 @@ func (c *Client) GetCachedProviderResolutions(ctx context.Context, source string
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetCachedProviderResolutions")
 	defer span.End()
 
-	searches, err := c.getProviderSearches(ctx, source, queries, roomType, true, false)
+	searches, err := c.getProviderSearches(ctx, source, queries, roomType, true)
 	if err != nil {
 		return nil, fmt.Errorf("error reading provider resolutions: %w", err)
 	}
@@ -171,7 +159,7 @@ func (c *Client) GetCachedProviderResolutions(ctx context.Context, source string
 	return searches, nil
 }
 
-func (c *Client) getProviderSearches(ctx context.Context, source string, queries []string, roomType vibe.RoomType, resolution bool, retained bool) ([]vibe.CachedProviderSearch, error) {
+func (c *Client) getProviderSearches(ctx context.Context, source string, queries []string, roomType vibe.RoomType, resolution bool) ([]vibe.CachedProviderSearch, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "getProviderSearches")
 	defer span.End()
 
@@ -223,10 +211,7 @@ func (c *Client) getProviderSearches(ctx context.Context, source string, queries
 		if err != nil {
 			return nil, fmt.Errorf("error unmarshaling cached search in GetCachedProviderSearches: %w", err)
 		}
-		if search.FetchedAt.IsZero() || time.Since(search.FetchedAt) > retainedSearchExpiration {
-			continue
-		}
-		if !retained && time.Since(search.FetchedAt) > searchCacheExpiration {
+		if search.FetchedAt.IsZero() || time.Since(search.FetchedAt) > searchCacheExpiration {
 			continue
 		}
 
@@ -269,7 +254,7 @@ func (c *Client) CacheProviderSearches(
 		if search.FetchedAt.IsZero() {
 			search.FetchedAt = time.Now().UTC()
 		}
-		retention := retainedSearchExpiration
+		retention := searchCacheExpiration
 		if len(search.Items) == 0 {
 			retention = emptySearchExpiration
 		}
@@ -504,6 +489,5 @@ func (c *Client) providerItemCacheKey(source string, sourceID string) string {
 }
 
 const searchCacheExpiration = 7 * 24 * time.Hour
-const retainedSearchExpiration = 14 * 24 * time.Hour
 const emptySearchExpiration = 15 * time.Minute
 const providerItemExpiration = 24 * time.Hour
