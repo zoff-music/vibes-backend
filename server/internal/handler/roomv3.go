@@ -1024,41 +1024,6 @@ func RoomEventsV3(
 		}
 
 		lastUsersCount := -1
-		notifyUsers := func(ctx context.Context) {
-			counts, err := state.GetActiveListenerCounts(ctx, roomID, 15*time.Second)
-			if err != nil && ctx.Err() != nil {
-				return
-			}
-			if err != nil {
-				log.Printf("failed to fetch active participants: %v", err)
-				return
-			}
-
-			count := counts.ActiveListeners
-			if counts.ActiveListeners == 0 && counts.ActiveCastReceivers > 0 {
-				count = 1
-			}
-			if count == lastUsersCount {
-				return
-			}
-
-			payload, err := json.Marshal(count)
-			if err != nil {
-				log.Printf("failed to marshal active participants count: %v", err)
-				return
-			}
-
-			err = events.NotifyRoomUpdateV3(context.WithoutCancel(ctx), roomID, vibe.RoomEventV3{
-				Type:    vibe.UsersUpdate,
-				Payload: payload,
-			})
-			if err != nil {
-				log.Printf("failed to notify room update: %v", err)
-				return
-			}
-			lastUsersCount = count
-
-		}
 
 		// Set SSE headers
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -1166,29 +1131,87 @@ func RoomEventsV3(
 		// New cookie-less connections must survive one heartbeat before they
 		// become listeners so short probes cannot manufacture participant rows.
 		if userID != "" && !isRemoteController {
-			if !isNewSession {
+			// Leave this best-effort notification block on failure; still send the snapshot.
+			switch {
+			case !isNewSession:
 				err = state.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
 				if err != nil && ctx.Err() != nil {
 					return
 				}
 				if err != nil {
-					log.Printf("failed to update participant on connect: %v", err)
+					log.Printf("error updating participant on connect: %v", err)
+					break
 				}
-				if err == nil {
-					participantRegistered = true
-					notifyUsers(ctx)
+				participantRegistered = true
+
+				counts, err := state.GetActiveListenerCounts(ctx, roomID, 15*time.Second)
+				if err != nil {
+					log.Printf("error fetching active listener count on connect: %v", err)
+					break
 				}
+
+				count := counts.ActiveListeners
+				if count == 0 && counts.ActiveCastReceivers > 0 {
+					count = 1
+				}
+
+				payload, err := json.Marshal(count)
+				if err != nil {
+					log.Printf("error marshaling active listener count on connect: %v", err)
+					break
+				}
+
+				err = events.NotifyRoomUpdateV3(context.WithoutCancel(ctx), roomID, vibe.RoomEventV3{
+					Type:    vibe.UsersUpdate,
+					Payload: payload,
+				})
+				if err != nil {
+					log.Printf("error notifying active listener count on connect: %v", err)
+					break
+				}
+				lastUsersCount = count
 			}
 
 			defer func() {
-				if participantRegistered {
-					notifyUsers(context.Background())
-
-					err := events.NotifyAdminRoomDeparture(context.Background(), roomID)
-					if err != nil {
-						log.Printf("error notifying admin room departure: %v", err)
-					}
+				if !participantRegistered {
+					return
 				}
+
+				departureCtx := context.WithoutCancel(ctx)
+				err := events.NotifyAdminRoomDeparture(departureCtx, roomID)
+				if err != nil {
+					log.Printf("error notifying admin room departure: %v", err)
+				}
+
+				counts, err := state.GetActiveListenerCounts(departureCtx, roomID, 15*time.Second)
+				if err != nil {
+					log.Printf("error fetching active listener count on disconnect: %v", err)
+					return
+				}
+
+				count := counts.ActiveListeners
+				if count == 0 && counts.ActiveCastReceivers > 0 {
+					count = 1
+				}
+				if count == lastUsersCount {
+					return
+				}
+
+				payload, err := json.Marshal(count)
+				if err != nil {
+					log.Printf("error marshaling active listener count on disconnect: %v", err)
+					return
+				}
+
+				err = events.NotifyRoomUpdateV3(context.WithoutCancel(departureCtx), roomID, vibe.RoomEventV3{
+					Type:    vibe.UsersUpdate,
+					Payload: payload,
+				})
+				if err != nil {
+					log.Printf("error notifying active listener count on disconnect: %v", err)
+					return
+				}
+				lastUsersCount = count
 			}()
 		}
 
@@ -1334,21 +1357,49 @@ func RoomEventsV3(
 				return
 			case <-presenceTicker.C:
 				// Update participant status independently from the wire keep-alive.
-				if userID != "" && !isRemoteController {
-					err = state.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
-					if err != nil && ctx.Err() != nil {
-						return
-					}
-					if err != nil {
-						log.Printf("failed to update participant on heartbeat: %v", err)
-					}
-					if err == nil {
-						if !participantRegistered {
-							participantRegistered = true
-						}
-						notifyUsers(ctx)
-					}
+				if userID == "" || isRemoteController {
+					continue
 				}
+
+				err = state.UpdateParticipant(ctx, roomID, userID, !isCastReceiver, isCastReceiver, castOwnerID)
+				if err != nil && ctx.Err() != nil {
+					return
+				}
+				if err != nil {
+					log.Printf("error updating participant on heartbeat: %v", err)
+					continue
+				}
+
+				participantRegistered = true
+				counts, err := state.GetActiveListenerCounts(ctx, roomID, 15*time.Second)
+				if err != nil {
+					log.Printf("error fetching active listener count on heartbeat: %v", err)
+					continue
+				}
+
+				count := counts.ActiveListeners
+				if count == 0 && counts.ActiveCastReceivers > 0 {
+					count = 1
+				}
+				if count == lastUsersCount {
+					continue
+				}
+
+				payload, err := json.Marshal(count)
+				if err != nil {
+					log.Printf("error marshaling active listener count on heartbeat: %v", err)
+					continue
+				}
+
+				err = events.NotifyRoomUpdateV3(context.WithoutCancel(ctx), roomID, vibe.RoomEventV3{
+					Type:    vibe.UsersUpdate,
+					Payload: payload,
+				})
+				if err != nil {
+					log.Printf("error notifying active listener count on heartbeat: %v", err)
+					continue
+				}
+				lastUsersCount = count
 			case <-keepAliveTicker.C:
 				_, err = fmt.Fprint(w, ": heartbeat\n\n")
 				if err != nil {

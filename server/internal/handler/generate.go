@@ -13,7 +13,6 @@ import (
 	"time"
 	"unicode/utf8"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
@@ -593,70 +592,43 @@ func (h *GenerateRoomPlaylist) Handle(ctx context.Context, _ []byte) error {
 	}
 	playlist = &searchResult.Playlist
 
-	shouldStartPlayback := playbackState.CurrentPlaylistItem == nil
 	for _, generatedItem := range *playlist {
-		playlistItem := &vibe.PlaylistItem{
-			ID:                  uuid.NewString(),
-			RoomID:              room.ID,
-			SourceType:          vibe.SourceTypeYouTube,
-			SourceID:            generatedItem.YouTubeID,
-			ProviderURL:         fmt.Sprintf("https://www.youtube.com/watch?v=%s", generatedItem.YouTubeID),
-			PlaybackRestriction: generatedItem.PlaybackRestriction,
-			Title:               generatedItem.Title,
-			Publisher:           generatedItem.Publisher,
-			ThumbnailURL:        generatedItem.ThumbnailURL,
-			Duration:            generatedItem.Duration,
-			AddedBySessionID:    room.HostID,
-			AddedAt:             time.Now(),
+		playlistItem, err := generatedItem.ToPlaylistItem(room)
+		if err != nil {
+			return fmt.Errorf("error mapping generated playlist item in Handle: %w", err)
 		}
 
-		addedPlaylistItem, err := h.DB.AddGeneratedPlaylistItem(ctx, playlistItem)
+		result, err := h.DB.AddGeneratedPlaylistItem(ctx, playlistItem)
 		if err != nil {
 			return fmt.Errorf("error adding generated playlist item in Handle: %w", err)
 		}
-		if addedPlaylistItem.IsEmpty() {
+		if result.IsEmpty() {
 			continue
 		}
 
-		playlistItemPayload, err := json.Marshal(addedPlaylistItem)
+		playlistItemPayload, err := json.Marshal(result.PlaylistItem)
 		if err != nil {
 			return fmt.Errorf("error marshaling generated playlist item in Handle: %w", err)
 		}
 
-		err = h.Cache.NotifyRoomUpdateV3(ctx, room.ID, vibe.RoomEventV3{
+		events := []vibe.RoomEventV3{{
 			Type:    vibe.PlaylistItemAdded,
 			Payload: playlistItemPayload,
-		})
-		if err != nil {
-			return fmt.Errorf("error notifying generated playlist item in Handle: %w", err)
-		}
-
-		if shouldStartPlayback {
-			playbackState := &vibe.PlaybackStateV2{
-				RoomID:              room.ID,
-				CurrentPlaylistItem: addedPlaylistItem,
-				IsPlaying:           true,
-				PositionMs:          0,
-				UpdatedAt:           time.Now(),
-				ServerTimeMs:        int(time.Now().UnixMilli()),
-			}
-			err = h.DB.UpsertPlaybackStateV2(ctx, playbackState)
-			if err != nil {
-				return fmt.Errorf("error starting generated room playback in Handle: %w", err)
-			}
-
-			playbackPayload, err := json.Marshal(playbackState)
+		}}
+		if !result.PlaybackState.IsEmpty() {
+			playbackPayload, err := json.Marshal(result.PlaybackState)
 			if err != nil {
 				return fmt.Errorf("error marshaling generated room playback in Handle: %w", err)
 			}
-			err = h.Cache.NotifyRoomUpdateV3(ctx, room.ID, vibe.RoomEventV3{
+			events = append(events, vibe.RoomEventV3{
 				Type:    vibe.PlaybackUpdate,
 				Payload: playbackPayload,
 			})
-			if err != nil {
-				return fmt.Errorf("error notifying generated room playback in Handle: %w", err)
-			}
-			shouldStartPlayback = false
+		}
+
+		err = h.Cache.NotifyRoomUpdatesV3(ctx, room.ID, events)
+		if err != nil {
+			return fmt.Errorf("error notifying generated playlist item in Handle: %w", err)
 		}
 	}
 

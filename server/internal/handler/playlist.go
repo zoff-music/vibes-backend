@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -14,7 +13,7 @@ import (
 
 type MetaRefresh struct {
 	DB           vibe.PlaylistItemMetadataRefreshStorage
-	Events       vibe.RoomEventV3Notifier
+	Events       vibe.RoomBatchEventV3Notifier
 	Provider     vibe.ProviderItemFetcher
 	ProviderName string
 }
@@ -98,19 +97,6 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 		}
 		compactEvent := &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemRemoved, Payload: compactPayload}
 
-		err = h.Events.NotifyRoomUpdateV3(ctx, refresh.RoomID, vibe.RoomEventV3{
-			Type:    vibe.PlaylistItemsUpdate,
-			Payload: payload,
-			Compact: compactEvent,
-		})
-		if err != nil {
-			log.Printf(
-				"failed to notify room after removing unavailable %s playlist item: %v",
-				h.ProviderName,
-				err,
-			)
-		}
-
 		playback, err := h.DB.GetPlaybackStateV2(ctx, refresh.RoomID)
 		if err != nil {
 			return fmt.Errorf("error fetching playback after metadata removal in MetaRefresh.Handle: %w", err)
@@ -121,9 +107,9 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 			return fmt.Errorf("error marshaling playback after metadata removal in MetaRefresh.Handle: %w", err)
 		}
 
-		err = h.Events.NotifyRoomUpdateV3(ctx, refresh.RoomID, vibe.RoomEventV3{
-			Type:    vibe.PlaybackUpdate,
-			Payload: playbackPayload,
+		err = h.Events.NotifyRoomUpdatesV3(ctx, refresh.RoomID, []vibe.RoomEventV3{
+			{Type: vibe.PlaylistItemsUpdate, Payload: payload, Compact: compactEvent},
+			{Type: vibe.PlaybackUpdate, Payload: playbackPayload},
 		})
 		if err != nil {
 			return fmt.Errorf("error notifying playback after metadata removal in MetaRefresh.Handle: %w", err)
@@ -146,6 +132,7 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 		return fmt.Errorf("error fetching refreshed queue in MetaRefresh.Handle: %w", err)
 	}
 
+	events := make([]vibe.RoomEventV3, 0, 2)
 	for position, playlistItem := range playlistItems {
 		if playlistItem.ID != refresh.PlaylistItemID {
 			continue
@@ -161,14 +148,11 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 			return fmt.Errorf("error marshaling refreshed playlist item in MetaRefresh.Handle: %w", err)
 		}
 
-		err = h.Events.NotifyRoomUpdateV3(ctx, refresh.RoomID, vibe.RoomEventV3{
+		events = append(events, vibe.RoomEventV3{
 			Type:    vibe.PlaylistItemsUpdate,
 			Payload: payload,
 			Compact: &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemUpdated, Payload: compactPayload},
 		})
-		if err != nil {
-			return fmt.Errorf("error notifying refreshed playlist item in MetaRefresh.Handle: %w", err)
-		}
 
 		break
 	}
@@ -184,13 +168,16 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 			return fmt.Errorf("error marshaling refreshed playback in MetaRefresh.Handle: %w", err)
 		}
 
-		err = h.Events.NotifyRoomUpdateV3(ctx, refresh.RoomID, vibe.RoomEventV3{
-			Type:    vibe.PlaybackUpdate,
-			Payload: payload,
-		})
-		if err != nil {
-			return fmt.Errorf("error notifying refreshed playback in MetaRefresh.Handle: %w", err)
-		}
+		events = append(events, vibe.RoomEventV3{Type: vibe.PlaybackUpdate, Payload: payload})
+	}
+
+	if len(events) == 0 {
+		return nil
+	}
+
+	err = h.Events.NotifyRoomUpdatesV3(ctx, refresh.RoomID, events)
+	if err != nil {
+		return fmt.Errorf("error notifying metadata refresh in MetaRefresh.Handle: %w", err)
 	}
 
 	return nil

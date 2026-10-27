@@ -44,6 +44,7 @@ type Server struct {
 	JEV            *jev.Client
 	Router         *mux.Router
 	InternalRouter *mux.Router
+	requests       middleware.DrainMiddleware
 }
 
 // Create sets up the HTTP server, router and all clients.
@@ -102,14 +103,14 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 	s.InternalRouter = mux.NewRouter()
 	s.HTTP = &http.Server{
 		Addr:              fmt.Sprintf(":%s", s.Config.Port),
-		Handler:           middleware.CompressionMiddleware(s.Router),
+		Handler:           s.requests.Middleware(middleware.CompressionMiddleware(s.Router)),
 		ReadHeaderTimeout: 2 * time.Second, // prevent slowloris attacks
 		ReadTimeout:       30 * time.Second,
 		IdleTimeout:       60 * time.Second,
 	}
 	s.InternalHTTP = &http.Server{
 		Addr:              fmt.Sprintf(":%s", s.Config.InternalPort),
-		Handler:           s.InternalRouter,
+		Handler:           s.requests.Middleware(s.InternalRouter),
 		ReadHeaderTimeout: 2 * time.Second,
 	}
 
@@ -178,6 +179,8 @@ func (s *Server) Serve(ctx context.Context, errc chan<- error) {
 	s.shutdownHTTP(shutdownCtx)
 	shutdownCancel()
 	running.Wait()
+	// Forced HTTP closure stops connections, not handler cleanup.
+	s.requests.Wait()
 	s.shutdown(context.Background())
 
 	errc <- serveErr
