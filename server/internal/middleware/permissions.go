@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"context"
+	"errors"
 	"log"
 	"net/http"
 
@@ -36,6 +38,10 @@ func (m *PermissionMiddleware) Middleware(next http.Handler) http.Handler {
 
 		room, err := m.DB.GetRoomV2(ctx, roomID, session.UserID)
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				w.WriteHeader(statusClientClosedRequest)
+				return
+			}
 			log.Printf("PermissionMiddleware: failed to fetch room: %v", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
@@ -61,6 +67,10 @@ func (m *PermissionMiddleware) Middleware(next http.Handler) http.Handler {
 		// Fetch the user
 		user, err := m.DB.GetUser(ctx, roomID, session.UserID)
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				w.WriteHeader(statusClientClosedRequest)
+				return
+			}
 			log.Printf("PermissionMiddleware: failed to fetch user: %v", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return

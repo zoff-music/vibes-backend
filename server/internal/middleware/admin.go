@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -101,6 +102,10 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 
 		admin, err := m.DB.GetAdminUser(ctx, payload.AdminID)
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				w.WriteHeader(statusClientClosedRequest)
+				return
+			}
 			log.Printf("AdminMiddleware: error getting admin user: %v", err)
 
 			if !required {

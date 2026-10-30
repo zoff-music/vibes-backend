@@ -1,10 +1,11 @@
 package middleware
 
 import (
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"github.com/zoff-music/vibes-backend/internalerror"
+	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -14,6 +15,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/zoff-music/vibes-backend/internalerror"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -83,6 +85,10 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 			}
 			globalResult, err := m.Checker.CheckRateLimit(r.Context(), globalRequest)
 			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					w.WriteHeader(statusClientClosedRequest)
+					return
+				}
 				log.Printf("RateLimitMiddleware: error checking global limit: %v", err)
 				http.Error(w, "internal server error", http.StatusInternalServerError)
 				return
@@ -130,6 +136,10 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		}
 		result, err := m.Checker.CheckRateLimit(r.Context(), request)
 		if err != nil {
+			if errors.Is(err, context.Canceled) {
+				w.WriteHeader(statusClientClosedRequest)
+				return
+			}
 			log.Printf("RateLimitMiddleware: error checking limit: %v", err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
