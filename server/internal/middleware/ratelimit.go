@@ -7,9 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"log"
-	"net"
 	"net/http"
-	"net/netip"
 	"strconv"
 	"strings"
 	"time"
@@ -117,7 +115,7 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 		}
 
 		session, hasSession := helper.GetSessionFromContext(r.Context())
-		clientIP := rateLimitClientIP(r)
+		clientIP := helper.ClientIP(r)
 		deviceIdentity := strings.Join(
 			[]string{clientIP, strings.TrimSpace(r.UserAgent())},
 			"\x00",
@@ -169,47 +167,6 @@ func (m *RateLimitMiddleware) Middleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r)
 	})
-}
-
-func rateLimitClientIP(r *http.Request) string {
-	forwardedFor := r.Header.Get("X-Forwarded-For")
-	forwardedAddresses := strings.Split(forwardedFor, ",")
-	for i := len(forwardedAddresses) - 1; i >= 0; i-- {
-		address := strings.TrimSpace(forwardedAddresses[i])
-		parsedAddress, err := netip.ParseAddr(address)
-		if err == nil {
-			clientIP := parsedAddress.Unmap().String()
-
-			return clientIP
-		}
-	}
-
-	realIP := strings.TrimSpace(r.Header.Get("X-Real-Ip"))
-	parsedRealIP, err := netip.ParseAddr(realIP)
-	if err == nil {
-		clientIP := parsedRealIP.Unmap().String()
-
-		return clientIP
-	}
-
-	host, _, err := net.SplitHostPort(r.RemoteAddr)
-	if err == nil {
-		parsedHost, err := netip.ParseAddr(host)
-		if err == nil {
-			clientIP := parsedHost.Unmap().String()
-
-			return clientIP
-		}
-	}
-
-	parsedRemoteAddress, err := netip.ParseAddr(r.RemoteAddr)
-	if err == nil {
-		clientIP := parsedRemoteAddress.Unmap().String()
-
-		return clientIP
-	}
-
-	return "unknown-ip"
 }
 
 func hashRateLimitIdentity(parts ...string) string {

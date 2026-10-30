@@ -21,6 +21,7 @@ import (
 	"github.com/zoff-music/vibes-backend/client/database"
 	"github.com/zoff-music/vibes-backend/client/gemini"
 	"github.com/zoff-music/vibes-backend/client/jev"
+	"github.com/zoff-music/vibes-backend/client/plausible"
 	redisclient "github.com/zoff-music/vibes-backend/client/redis"
 	"github.com/zoff-music/vibes-backend/client/soundcloud"
 	"github.com/zoff-music/vibes-backend/client/youtube"
@@ -42,6 +43,7 @@ type Server struct {
 	SoundCloud     *soundcloud.Client
 	Gemini         *gemini.Client
 	JEV            *jev.Client
+	Plausible      *plausible.Client
 	Router         *mux.Router
 	InternalRouter *mux.Router
 	requests       middleware.DrainMiddleware
@@ -91,6 +93,12 @@ func (s *Server) Create(ctx context.Context, config *config.Config) error {
 		return fmt.Errorf("error initializing gemini client: %w", err)
 	}
 
+	var plausibleClient plausible.Client
+	err = plausibleClient.Init(ctx, config)
+	if err != nil {
+		return fmt.Errorf("error initializing plausible client: %w", err)
+	}
+	s.Plausible = &plausibleClient
 	s.Config = config
 	s.DB = &dbClient
 	s.Redis = &redisClient
