@@ -6,6 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -110,6 +111,10 @@ func (m *SessionMiddleware) Middleware(next http.Handler) http.Handler {
 				controllerTokenHash,
 			)
 			if err != nil {
+				if errors.Is(err, context.Canceled) {
+					w.WriteHeader(statusClientClosedRequest)
+					return
+				}
 				log.Printf("SessionMiddleware: error authenticating remote control: %v", err)
 				http.Error(w, "unauthorized", http.StatusUnauthorized)
 				return
