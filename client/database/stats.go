@@ -15,6 +15,11 @@ func (c *Client) prepareGetStatsV2Stmt() error {
 		WITH selected_rooms_q AS (
 			SELECT id, admin_password_hash FROM rooms
 			WHERE $1::TEXT = '' OR room_type::TEXT = $1
+		), playlist_counts_q AS (
+			SELECT room_id, COUNT(*) AS item_count
+			FROM playlist_items
+			WHERE room_id IN (SELECT id FROM selected_rooms_q)
+			GROUP BY room_id
 		), room_listener_counts_q AS (
 			SELECT
 				room_id,
@@ -38,13 +43,12 @@ func (c *Client) prepareGetStatsV2Stmt() error {
 			),
 			0
 		) AS total_listeners,
-		(SELECT COUNT(*) FROM playlist_items WHERE room_id IN (SELECT id FROM selected_rooms_q)) AS total_playlist_items,
+		(SELECT COALESCE(SUM(item_count), 0) FROM playlist_counts_q) AS total_playlist_items,
 		(
 			SELECT COUNT(*)
 			FROM selected_rooms_q a
-			WHERE EXISTS (
-				SELECT 1 FROM playlist_items b WHERE b.room_id = a.id
-			) OR (
+			LEFT JOIN playlist_counts_q b ON b.room_id = a.id
+			WHERE b.item_count > 0 OR (
 				COALESCE(a.admin_password_hash, '') != ''
 				AND EXISTS (
 					SELECT 1 FROM room_settings c
