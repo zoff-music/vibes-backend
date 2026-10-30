@@ -833,7 +833,7 @@ func (c *Client) prepareGetPlaylistItemsStmt() error {
 			a.duration,
 			a.added_by,
 			COALESCE(
-				(SELECT c.name FROM sessions c WHERE c.id = a.added_by),
+				c.name,
 				a.added_by_nickname
 			) AS added_by_nickname,
 			a.added_at,
@@ -842,10 +842,11 @@ func (c *Client) prepareGetPlaylistItemsStmt() error {
 		LEFT JOIN playlist_item_votes b
 		ON a.id = b.playlist_item_id
 		AND a.room_id = b.room_id
+		LEFT JOIN sessions c ON c.id = a.added_by
 		WHERE a.room_id = $1
 		AND a.source_type = ANY($2::TEXT[])
 		AND NOT (a.source_type = 'youtube' AND a.duration <= 0)
-		GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at
+		GROUP BY a.id, c.name
 		ORDER BY vote_count DESC, MAX(b.created_at) ASC, a.added_at ASC
 	`)
 	if err != nil {

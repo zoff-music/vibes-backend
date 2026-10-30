@@ -179,11 +179,16 @@ func (r *adminRoomRow) toSummary() (*vibe.AdminRoomSummaryV2, error) {
 
 func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH active_users_q AS (
+		WITH selected_rooms_q AS (
+			SELECT a.* FROM rooms a
+			WHERE ($3 = '' OR a.name ILIKE '%' || $3 || '%')
+			AND (NOT $8::BOOLEAN OR a.flagged)
+		), active_users_q AS (
 			SELECT
 				a.room_id,
 				COUNT(*) AS user_count
 			FROM room_users a
+			JOIN selected_rooms_q b ON b.id = a.room_id
 			WHERE a.is_active_listener
 			AND a.last_seen_at >= $1
 			GROUP BY a.room_id
@@ -194,6 +199,7 @@ func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 				COUNT(*) AS playlist_item_count,
 				STRING_AGG(DISTINCT a.source_type, ',') AS active_sources
 			FROM playlist_items a
+			JOIN selected_rooms_q b ON b.id = a.room_id
 			WHERE a.source_type = ANY($2::TEXT[])
 			GROUP BY a.room_id
 		),
@@ -210,12 +216,10 @@ func (c *Client) prepareSearchAdminRoomsV2Stmt() error {
 				COALESCE(c.playlist_item_count, 0) AS playlist_item_count,
 				COALESCE(c.active_sources, '') AS active_sources,
 				(a.admin_password_hash IS NOT NULL AND a.admin_password_hash != '') AS has_admin_password
-			FROM rooms a
+			FROM selected_rooms_q a
 			LEFT JOIN active_users_q b ON b.room_id = a.id
 			LEFT JOIN playlist_item_counts_q c ON c.room_id = a.id
 			LEFT JOIN room_settings d ON d.room_id = a.id
-			WHERE ($3 = '' OR a.name ILIKE '%' || $3 || '%')
-			AND (NOT $8::BOOLEAN OR a.flagged)
 		),
 		numbered_q AS (
 			SELECT

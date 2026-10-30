@@ -99,58 +99,32 @@ func (c *Client) CreateListenerUsage(ctx context.Context) error {
 
 func (c *Client) prepareListAdminListenerUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH windows_q AS (
-			SELECT
-				a.period,
-				a.starts_at,
-				a.granularity,
-				a.window_order
-			FROM (
-				VALUES
-					(
-						'hour'::TEXT,
-						DATE_TRUNC('HOUR', NOW(), 'UTC'),
-						'minute'::TEXT,
-						1
-					),
-					(
-						'day'::TEXT,
-						DATE_TRUNC('DAY', NOW(), 'UTC'),
-						'hour'::TEXT,
-						2
-					),
-					(
-						'week'::TEXT,
-						DATE_TRUNC('WEEK', NOW(), 'UTC'),
-						'day'::TEXT,
-						3
-					),
-					(
-						'month'::TEXT,
-						DATE_TRUNC('MONTH', NOW(), 'UTC'),
-						'day'::TEXT,
-						4
-					)
-			) AS a(
-				period,
-				starts_at,
-				granularity,
-				window_order
-			)
+		WITH windows_q (period, starts_at, granularity, step, window_order) AS (
+			VALUES
+				('hour', DATE_TRUNC('HOUR', NOW(), 'UTC'), 'minute', INTERVAL '1 MINUTE', 1),
+				('day', DATE_TRUNC('DAY', NOW(), 'UTC'), 'hour', INTERVAL '1 HOUR', 2),
+				('week', DATE_TRUNC('WEEK', NOW(), 'UTC'), 'day', INTERVAL '1 DAY', 3),
+				('month', DATE_TRUNC('MONTH', NOW(), 'UTC'), 'day', INTERVAL '1 DAY', 4)
+		), bounds_q AS (
+			SELECT MAX(created_at) AS ends_at FROM listener_usage
+		), buckets_q AS (
+			SELECT a.period, a.step, a.window_order, c.bucket
+			FROM windows_q a
+			CROSS JOIN bounds_q b
+			CROSS JOIN LATERAL GENERATE_SERIES(
+				a.starts_at, DATE_TRUNC(a.granularity, b.ends_at, 'UTC'), a.step, 'UTC'
+			) c(bucket)
 		)
-		SELECT
-			a.period,
-			DATE_TRUNC(a.granularity, b.created_at, 'UTC') AS recorded_at,
-			MAX(b.listener_count) AS listener_count
-		FROM windows_q a
-		JOIN listener_usage b ON b.created_at >= a.starts_at
-		GROUP BY
-			a.period,
-			a.window_order,
-			DATE_TRUNC(a.granularity, b.created_at, 'UTC')
-		ORDER BY
-			a.window_order,
-			recorded_at
+		SELECT a.period, a.bucket AS recorded_at, b.listener_count
+		FROM buckets_q a
+		JOIN LATERAL (
+			SELECT MAX(b.listener_count) AS listener_count
+			FROM listener_usage b
+			WHERE b.created_at >= a.bucket
+			AND b.created_at < ((a.bucket AT TIME ZONE 'UTC') + a.step) AT TIME ZONE 'UTC'
+			HAVING COUNT(*) > 0
+		) b ON TRUE
+		ORDER BY a.window_order, a.bucket
 	`)
 	if err != nil {
 		return fmt.Errorf(
@@ -240,24 +214,31 @@ func (r *listenerUsageRow) toListenerUsagePoint() (*vibe.ListenerUsagePoint, err
 
 func (c *Client) prepareListAdminRoomListenerUsageStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH windows_q (period, starts_at, granularity) AS (
+		WITH windows_q (period, starts_at, granularity, step) AS (
 			VALUES
-				('hour', DATE_TRUNC('HOUR', NOW(), 'UTC'), 'minute'),
-				('day', DATE_TRUNC('DAY', NOW(), 'UTC'), 'hour'),
-				('week', DATE_TRUNC('WEEK', NOW(), 'UTC'), 'day'),
-				('month', DATE_TRUNC('MONTH', NOW(), 'UTC'), 'day')
-		), peaks_q AS (
-			SELECT DISTINCT ON (a.period, DATE_TRUNC(a.granularity, b.created_at, 'UTC'))
-				a.period,
-				DATE_TRUNC(a.granularity, b.created_at, 'UTC') AS bucket,
-				b.created_at
+				('hour', DATE_TRUNC('HOUR', NOW(), 'UTC'), 'minute', INTERVAL '1 MINUTE'),
+				('day', DATE_TRUNC('DAY', NOW(), 'UTC'), 'hour', INTERVAL '1 HOUR'),
+				('week', DATE_TRUNC('WEEK', NOW(), 'UTC'), 'day', INTERVAL '1 DAY'),
+				('month', DATE_TRUNC('MONTH', NOW(), 'UTC'), 'day', INTERVAL '1 DAY')
+		), bounds_q AS (
+			SELECT MAX(created_at) AS ends_at FROM listener_usage
+		), buckets_q AS (
+			SELECT a.period, a.step, c.bucket
 			FROM windows_q a
-			JOIN listener_usage b ON b.created_at >= a.starts_at
-			ORDER BY
-				a.period,
-				DATE_TRUNC(a.granularity, b.created_at, 'UTC'),
-				b.listener_count DESC,
-				b.created_at DESC
+			CROSS JOIN bounds_q b
+			CROSS JOIN LATERAL GENERATE_SERIES(
+				a.starts_at, DATE_TRUNC(a.granularity, b.ends_at, 'UTC'), a.step, 'UTC'
+			) c(bucket)
+		), peaks_q AS (
+			SELECT a.period, a.bucket, b.created_at
+			FROM buckets_q a
+			JOIN LATERAL (
+				SELECT b.created_at FROM listener_usage b
+				WHERE b.created_at >= a.bucket
+				AND b.created_at < ((a.bucket AT TIME ZONE 'UTC') + a.step) AT TIME ZONE 'UTC'
+				ORDER BY b.listener_count DESC, b.created_at DESC
+				LIMIT 1
+			) b ON TRUE
 		)
 		SELECT a.period, a.bucket, b.room_id, b.listener_count, c.room_type
 		FROM peaks_q a
