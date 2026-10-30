@@ -14,6 +14,8 @@ import (
 
 // Config contains environment variables.
 type Config struct {
+	PlausibleEndpoint      string `envconfig:"PLAUSIBLE_ENDPOINT" default:"https://analytics.zoff.me/api/event"`
+	PlausibleDomain        string `envconfig:"PLAUSIBLE_DOMAIN" default:"zoff.me"`
 	DocumentationDirectory string `envconfig:"DOCUMENTATION_DIRECTORY" default:"./static/swagger"`
 
 	Port                string        `envconfig:"PORT" default:"8080"`

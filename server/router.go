@@ -14,6 +14,11 @@ import (
 
 // setupRoutes - the root route function.
 func (s *Server) setupRoutes() {
+	// Analytics is cookie-free and must not create an application session.
+	analytics := s.Router.NewRoute().Subrouter()
+	analytics.HandleFunc(v1API+"/usage-events", handler.CreateAnalyticsEvent(s.Plausible, s.Config.PlausibleDomain)).Methods(http.MethodPost, http.MethodOptions).Name("CreateAnalyticsEvent")
+	s.addTracingAndMetrics(analytics)
+	s.addRateLimitMiddleware(analytics)
 	apiV1 := s.Router.PathPrefix(v1API).Subrouter()
 	apiV2 := s.Router.PathPrefix(v2API).Subrouter()
 	apiV3 := s.Router.PathPrefix(v3API).Subrouter()
@@ -135,12 +140,14 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 	rm := middleware.RateLimitMiddleware{
 		Enabled: s.Config.RateLimitEnabled,
 		RequiredRoutes: map[string]bool{
-			"AdminLogin":     true,
-			"CreateMessages": true,
+			"CreateAnalyticsEvent": true,
+			"AdminLogin":           true,
+			"CreateMessages":       true,
 		},
 		Checker: s.Redis,
 		Policies: map[string]vibe.RateLimitPolicy{
-			"CreateRoomV2": {Bucket: "CreateRoom", Rate: time.Minute, Limit: 10},
+			"CreateAnalyticsEvent": {Rate: time.Minute, Limit: 120, IPLimit: 1200},
+			"CreateRoomV2":         {Bucket: "CreateRoom", Rate: time.Minute, Limit: 10},
 			"ReserveRoomName": {
 				Bucket:  "RoomNameReservations",
 				Rate:    time.Minute,
