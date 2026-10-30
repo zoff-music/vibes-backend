@@ -10,7 +10,7 @@ import (
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
-func CreateAnalyticsEvent(analytics vibe.AnalyticsEventCreator, domain string) http.HandlerFunc {
+func CreateActivities(analytics vibe.AnalyticsEventCreator, domain string) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		if r.Header.Get("DNT") == "1" || r.Header.Get("Sec-GPC") == "1" {
