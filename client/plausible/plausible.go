@@ -57,6 +57,8 @@ func (c *Client) CreateAnalyticsEvent(ctx context.Context, event vibe.AnalyticsE
 	request.Header.Set("Content-Type", "application/json")
 	request.Header.Set("User-Agent", visitor.UserAgent)
 	request.Header.Set("X-Forwarded-For", visitor.IP)
+	// Plausible CE reads this before proxy headers, which another ingress hop may replace.
+	request.Header.Set("X-Plausible-IP", visitor.IP)
 	response, err := c.HTTPClient.Do(request)
 	if err != nil {
 		return nil, fmt.Errorf("error forwarding analytics event: %w", err)
