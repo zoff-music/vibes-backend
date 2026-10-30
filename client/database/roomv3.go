@@ -11,24 +11,11 @@ import (
 )
 
 func (c *Client) prepareGetItemsV3Stmt() error {
+	// Resolve contributor names after pagination, not once for every item in the room.
 	stmt, err := c.DB.Prepare(`
 		WITH items_q AS (
 			SELECT
 				a.id,
-				a.room_id,
-				a.source_type,
-				a.source_id,
-				a.provider_url,
-				a.playback_restriction,
-				a.title,
-				a.publisher,
-				a.thumbnail_url,
-				a.duration,
-				a.added_by,
-				COALESCE(
-					(SELECT c.name FROM sessions c WHERE c.id = a.added_by),
-					a.added_by_nickname
-				) AS added_by_nickname,
 				a.added_at,
 				COUNT(b.user_id)::INT AS vote_count,
 				MAX(b.created_at) AS last_vote_at
@@ -42,54 +29,41 @@ func (c *Client) prepareGetItemsV3Stmt() error {
 				AND (NOT $6 OR a.id IS DISTINCT FROM (
 					SELECT current_playlist_item_id FROM playback_state WHERE room_id = $1
 				))
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url,
-				a.playback_restriction, a.title, a.publisher, a.thumbnail_url,
-				a.duration, a.added_by, a.added_by_nickname, a.added_at
+			GROUP BY a.id
 		), numbered_q AS (
 			SELECT
 				a.id,
-				a.room_id,
-				a.source_type,
-				a.source_id,
-				a.provider_url,
-				a.playback_restriction,
-				a.title,
-				a.publisher,
-				a.thumbnail_url,
-				a.duration,
-				a.added_by,
-				a.added_by_nickname,
-				a.added_at,
 				a.vote_count,
-				a.last_vote_at,
 				ROW_NUMBER() OVER (
 					ORDER BY a.vote_count DESC, a.last_vote_at ASC, a.added_at ASC, a.id ASC
-				)::INT AS row_number
+				) AS row_number
 			FROM items_q a
 		), totals_q AS (
 			SELECT COUNT(*)::INT AS total FROM items_q a
 		)
 		SELECT
-			b.id,
-			b.room_id,
-			b.source_type,
-			b.source_id,
-			b.provider_url,
-			b.playback_restriction,
-			b.title,
-			b.publisher,
-			b.thumbnail_url,
-			b.duration,
-			b.added_by,
-			b.added_by_nickname,
-			b.added_at,
+			c.id,
+			c.room_id,
+			c.source_type,
+			c.source_id,
+			c.provider_url,
+			c.playback_restriction,
+			c.title,
+			c.publisher,
+			c.thumbnail_url,
+			c.duration,
+			c.added_by,
+			COALESCE(d.name, c.added_by_nickname) AS added_by_nickname,
+			c.added_at,
 			b.vote_count,
-			b.row_number,
+			b.row_number::INT,
 			a.total
 		FROM totals_q a
 		LEFT JOIN numbered_q b
 			ON ($3 = 0 OR b.row_number >= $3)
 			AND ($4 = 0 OR b.row_number <= $4)
+		LEFT JOIN playlist_items c ON c.id = b.id
+		LEFT JOIN sessions d ON d.id = c.added_by
 		ORDER BY b.row_number
 	`)
 	if err != nil {
