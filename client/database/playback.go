@@ -320,19 +320,6 @@ func (c *Client) prepareProcessNextExpiredPlaybackV2Stmt() error {
 			SELECT
 				a.id,
 				a.room_id,
-				a.source_type,
-				a.source_id,
-				a.provider_url,
-				a.playback_restriction,
-				a.title,
-				a.publisher,
-				a.thumbnail_url,
-				a.duration,
-				a.added_by,
-				COALESCE(
-					(SELECT d.name FROM sessions d WHERE d.id = a.added_by),
-					a.added_by_nickname
-				) AS added_by_nickname,
 				CASE
 					WHEN a.id = b.current_playlist_item_id AND NOT b.remove_on_play THEN NOW()
 					ELSE a.added_at
@@ -346,7 +333,7 @@ func (c *Client) prepareProcessNextExpiredPlaybackV2Stmt() error {
 			AND a.id IS DISTINCT FROM b.current_playlist_item_id
 			WHERE NOT (b.remove_on_play AND a.id = b.current_playlist_item_id)
 			AND a.source_type = ANY($1::TEXT[])
-			GROUP BY a.id, a.room_id, a.source_type, a.source_id, a.provider_url, a.playback_restriction, a.title, a.publisher, a.thumbnail_url, a.duration, a.added_by, a.added_by_nickname, a.added_at, b.current_playlist_item_id, b.remove_on_play
+			GROUP BY a.id, b.current_playlist_item_id, b.remove_on_play
 			ORDER BY vote_count DESC, MAX(c.created_at) ASC, added_at ASC
 			LIMIT 1
 		),
@@ -369,24 +356,26 @@ func (c *Client) prepareProcessNextExpiredPlaybackV2Stmt() error {
 			a.updated_at,
 			b.id,
 			b.room_id,
-			b.source_type,
-			b.source_id,
-			b.provider_url,
-			b.playback_restriction,
-			b.title,
-			b.publisher,
-			b.thumbnail_url,
-			b.duration,
-			b.added_by,
+			c.source_type,
+			c.source_id,
+			c.provider_url,
+			c.playback_restriction,
+			c.title,
+			c.publisher,
+			c.thumbnail_url,
+			c.duration,
+			c.added_by,
 			COALESCE(
-				(SELECT c.name FROM sessions c WHERE c.id = b.added_by),
-				b.added_by_nickname
+				d.name,
+				c.added_by_nickname
 			) AS added_by_nickname,
 			b.added_at,
 			COALESCE(b.vote_count, 0) AS vote_count,
 			(SELECT current_playlist_item_id FROM locked_playback_q) AS previous_playlist_item_id
 		FROM updated_playback_q a
 		LEFT JOIN next_playlist_item_q b ON b.id = a.current_playlist_item_id
+		LEFT JOIN playlist_items c ON c.id = b.id
+		LEFT JOIN sessions d ON d.id = c.added_by
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ProcessNextExpiredPlaybackV2Statement: %w", err)

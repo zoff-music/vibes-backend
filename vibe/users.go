@@ -4,6 +4,16 @@ import (
 	"time"
 )
 
+// RoomPassword contains only the room identity and its stored credential.
+type RoomPassword struct {
+	RoomID string
+	Hash   string
+}
+
+func (r *RoomPassword) IsEmpty() bool {
+	return r.RoomID == ""
+}
+
 // User represents a user session in a room
 type User struct {
 	ID         string    `json:"id"`
