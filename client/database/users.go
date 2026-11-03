@@ -199,23 +199,63 @@ func (c *Client) ClaimRoomPassword(ctx context.Context, roomID, hash string) (bo
 	return count == 1, nil
 }
 
+func (c *Client) prepareGetRoomPasswordStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT
+			a.id,
+			COALESCE(a.admin_password_hash, '')
+		FROM rooms a
+		WHERE a.id = $1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetRoomPasswordStatement: %w", err)
+	}
+
+	c.GetRoomPasswordStatement = stmt
+
+	return nil
+}
+
+func (c *Client) GetRoomPassword(ctx context.Context, roomID string) (*vibe.RoomPassword, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetRoomPassword")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	row := c.GetRoomPasswordStatement.QueryRowContext(cctx, roomID)
+	var result vibe.RoomPassword
+	err := row.Scan(
+		&result.RoomID,
+		&result.Hash,
+	)
+	if errors.Is(err, sql.ErrNoRows) {
+		return &vibe.RoomPassword{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error scanning room password in GetRoomPassword: %w", err)
+	}
+
+	return &result, nil
+}
+
 // AuthenticateAdmin handles password verification and admin elevation.
 func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password string) (*vibe.AdminAuthResult, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "AuthenticateAdmin")
 	defer span.End()
 
-	room, err := c.GetRoomV2(ctx, roomID, userID)
+	credential, err := c.GetRoomPassword(ctx, roomID)
 	if err != nil {
 		return nil, fmt.Errorf("error getting room in authenticate admin: %w", err)
 	}
 
-	if room.IsEmpty() {
+	if credential.IsEmpty() {
 		return nil, fmt.Errorf("error room not found in authenticate admin")
 	}
 
 	isFirstTimeSetup := false
 
-	if !room.HasPassword {
+	if credential.Hash == "" {
 		isFirstTimeSetup = true
 		hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 		if err != nil {
@@ -230,18 +270,19 @@ func (c *Client) AuthenticateAdmin(ctx context.Context, roomID, userID, password
 			return &vibe.AdminAuthResult{}, nil
 		}
 
-		room.AdminPasswordHash = string(hash)
+		credential.Hash = string(hash)
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(room.AdminPasswordHash), []byte(password))
-	if err != nil {
-		return &vibe.AdminAuthResult{
-			IsAdmin:          false,
-			IsFirstTimeSetup: isFirstTimeSetup,
-		}, nil
+	// A successfully claimed hash was generated from this password above.
+	// Existing credentials still require a full bcrypt verification.
+	if !isFirstTimeSetup {
+		err = bcrypt.CompareHashAndPassword([]byte(credential.Hash), []byte(password))
+		if err != nil {
+			return &vibe.AdminAuthResult{}, nil
+		}
 	}
 
-	granted, err := c.GrantRoomAdmin(ctx, roomID, userID, room.AdminPasswordHash)
+	granted, err := c.GrantRoomAdmin(ctx, roomID, userID, credential.Hash)
 	if err != nil {
 		return nil, fmt.Errorf("error granting room admin in authenticate admin: %w", err)
 	}

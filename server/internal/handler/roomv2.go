@@ -114,11 +114,10 @@ func CreateSessionV2(
 		// Notification failures must not prevent the session response or chat activity.
 		switch {
 		case isFirstTimeSetup:
-			neutralRoom, err := db.GetRoomV2(ctx, roomID, "")
-			if err != nil {
-				log.Printf("error fetching neutral room for password notification: %v", err)
-				break
-			}
+			neutralRoom := *room
+			neutralRoom.UserID = ""
+			neutralRoom.IsAdmin = false
+			neutralRoom.AdminPasswordHash = ""
 
 			settingsBody, err := json.Marshal(neutralRoom)
 			if err != nil {
