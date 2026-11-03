@@ -817,6 +817,128 @@ func (c *Client) DeferPlaylistItemMetadataRefresh(
 	return nil
 }
 
+func (c *Client) prepareGetPlaylistItemPositionStmt() error {
+	stmt, err := c.DB.Prepare(`
+		WITH ordered_items_q AS (
+			SELECT
+				a.id,
+				COUNT(b.user_id) AS vote_count,
+				ROW_NUMBER() OVER (
+					ORDER BY
+						COUNT(b.user_id) DESC,
+						MAX(b.created_at) ASC,
+						a.added_at ASC
+				) - 1 AS position
+			FROM playlist_items a
+			LEFT JOIN playlist_item_votes b
+			ON b.room_id = a.room_id
+			AND b.playlist_item_id = a.id
+			WHERE a.room_id = $1
+			AND a.source_type = ANY($3::TEXT[])
+			AND NOT (a.source_type = 'youtube' AND a.duration <= 0)
+			GROUP BY a.id
+		)
+		SELECT
+			b.id,
+			b.room_id,
+			b.source_type,
+			b.source_id,
+			b.provider_url,
+			b.playback_restriction,
+			b.title,
+			b.publisher,
+			b.thumbnail_url,
+			b.duration,
+			b.added_by,
+			COALESCE(
+				c.name,
+				b.added_by_nickname
+			) AS added_by_nickname,
+			b.added_at,
+			a.vote_count,
+			a.position
+		FROM ordered_items_q a
+		JOIN playlist_items b ON b.id = a.id
+		LEFT JOIN sessions c ON c.id = b.added_by
+		WHERE a.id = $2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetPlaylistItemPositionStatement: %w", err)
+	}
+
+	c.GetPlaylistItemPositionStatement = stmt
+
+	return nil
+}
+
+func (c *Client) GetPlaylistItemPosition(
+	ctx context.Context,
+	roomID string,
+	playlistItemID string,
+) (*vibe.PlaylistItemPositionUpdate, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetPlaylistItemPosition")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	row := c.GetPlaylistItemPositionStatement.QueryRowContext(
+		cctx,
+		roomID,
+		playlistItemID,
+		c.enabledProviders,
+	)
+
+	var result playlistItemPositionRow
+	err := result.scan(row)
+	if errors.Is(err, sql.ErrNoRows) {
+		return &vibe.PlaylistItemPositionUpdate{}, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("error scanning playlist item position: %w", err)
+	}
+
+	item, err := result.Item.toPlaylistItem()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping playlist item position: %w", err)
+	}
+
+	return &vibe.PlaylistItemPositionUpdate{
+		PlaylistItem: *item,
+		Position:     result.Position,
+	}, nil
+}
+
+type playlistItemPositionRow struct {
+	Item     playlistItemRow
+	Position int
+}
+
+func (r *playlistItemPositionRow) scan(row *sql.Row) error {
+	err := row.Scan(
+		&r.Item.ID,
+		&r.Item.RoomID,
+		&r.Item.SourceType,
+		&r.Item.SourceID,
+		&r.Item.ProviderURL,
+		&r.Item.PlaybackRestriction,
+		&r.Item.Title,
+		&r.Item.Publisher,
+		&r.Item.ThumbnailURL,
+		&r.Item.Duration,
+		&r.Item.AddedBySessionID,
+		&r.Item.AddedBy,
+		&r.Item.AddedAt,
+		&r.Item.VoteCount,
+		&r.Position,
+	)
+	if err != nil {
+		return fmt.Errorf("error scanning playlist item position row: %w", err)
+	}
+
+	return nil
+}
+
 // prepareGetPlaylistItemsStmt prepares the GetPlaylistItemsStatement.
 func (c *Client) prepareGetPlaylistItemsStmt() error {
 	stmt, err := c.DB.Prepare(`

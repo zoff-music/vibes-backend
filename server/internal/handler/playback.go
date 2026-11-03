@@ -28,37 +28,29 @@ func (h *ReviewRoomPlayback) Handle(ctx context.Context, _ []byte) error {
 		return fmt.Errorf("error marshaling playback state payload: %w", err)
 	}
 
-	playlistItems, err := h.DB.GetPlaylistItems(ctx, advance.Playback.RoomID)
+	item, err := h.DB.GetPlaylistItemPosition(
+		ctx,
+		advance.Playback.RoomID,
+		advance.PreviousPlaylistItemID,
+	)
 	if err != nil {
-		return fmt.Errorf("error fetching playlistItems for room %s: %w", advance.Playback.RoomID, err)
+		return fmt.Errorf("error fetching advanced playlist item position: %w", err)
 	}
 
-	playlistItemsPayload, err := json.Marshal(playlistItems)
+	itemPayload, err := json.Marshal(item)
 	if err != nil {
-		return fmt.Errorf("error marshaling playlistItems payload: %w", err)
+		return fmt.Errorf("error marshaling playback item position: %w", err)
 	}
-	var compactEvent *vibe.RoomEventV3Payload
-	for position, playlistItem := range playlistItems {
-		if playlistItem.ID != advance.PreviousPlaylistItemID {
-			continue
-		}
 
-		compactPayload, marshalErr := json.Marshal(vibe.PlaylistItemPositionUpdate{
-			PlaylistItem: playlistItem,
-			Position:     position,
+	itemEventType := vibe.PlaylistItemUpdated
+	if item.IsEmpty() {
+		itemEventType = vibe.PlaylistItemRemoved
+		itemPayload, err = json.Marshal(vibe.PlaylistItemIDUpdate{
+			ID: advance.PreviousPlaylistItemID,
 		})
-		if marshalErr != nil {
-			return fmt.Errorf("error marshaling compact playback advance event: %w", marshalErr)
+		if err != nil {
+			return fmt.Errorf("error marshaling playback item removal: %w", err)
 		}
-		compactEvent = &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemUpdated, Payload: compactPayload}
-		break
-	}
-	if compactEvent == nil {
-		compactPayload, marshalErr := json.Marshal(vibe.PlaylistItemIDUpdate{ID: advance.PreviousPlaylistItemID})
-		if marshalErr != nil {
-			return fmt.Errorf("error marshaling compact playback advance removal fallback: %w", marshalErr)
-		}
-		compactEvent = &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemRemoved, Payload: compactPayload}
 	}
 
 	err = h.Events.NotifyRoomUpdatesV3(ctx, advance.Playback.RoomID, []vibe.RoomEventV3{
@@ -67,9 +59,8 @@ func (h *ReviewRoomPlayback) Handle(ctx context.Context, _ []byte) error {
 			Payload: statePayload,
 		},
 		{
-			Type:    vibe.PlaylistItemsUpdate,
-			Payload: playlistItemsPayload,
-			Compact: compactEvent,
+			Type:    itemEventType,
+			Payload: itemPayload,
 		},
 	})
 	if err != nil {

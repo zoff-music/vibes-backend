@@ -1042,7 +1042,11 @@ func SkipPlaylistItem(
 		}
 
 		if result.Skipped {
-			playlistItems, err := db.GetPlaylistItems(ctx, roomID)
+			item, err := db.GetPlaylistItemPosition(
+				ctx,
+				roomID,
+				result.PreviousPlaylistItemID,
+			)
 			if err != nil {
 				handleError(
 					w,
@@ -1053,7 +1057,7 @@ func SkipPlaylistItem(
 				return
 			}
 
-			playlistItemsPayload, err := json.Marshal(playlistItems)
+			itemPayload, err := json.Marshal(item)
 			if err != nil {
 				handleError(
 					w,
@@ -1075,51 +1079,28 @@ func SkipPlaylistItem(
 				return
 			}
 
-			var compactEvent *vibe.RoomEventV3Payload
-			for position, playlistItem := range playlistItems {
-				if playlistItem.ID != result.PreviousPlaylistItemID {
-					continue
-				}
-
-				compactPayload, marshalErr := json.Marshal(vibe.PlaylistItemPositionUpdate{
-					PlaylistItem: playlistItem,
-					Position:     position,
+			itemEventType := vibe.PlaylistItemUpdated
+			if item.IsEmpty() {
+				itemEventType = vibe.PlaylistItemRemoved
+				itemPayload, err = json.Marshal(vibe.PlaylistItemIDUpdate{
+					ID: result.PreviousPlaylistItemID,
 				})
-				if marshalErr != nil {
+				if err != nil {
 					handleError(
 						w,
-						fmt.Errorf("error marshaling compact skipped playlist item event: %w", marshalErr),
+						fmt.Errorf("error marshaling skipped playlist item removal: %w", err),
 						http.StatusInternalServerError,
 						true,
 					)
 					return
 				}
-
-				compactEvent = &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemUpdated, Payload: compactPayload}
-				break
-			}
-
-			if compactEvent == nil {
-				compactPayload, marshalErr := json.Marshal(vibe.PlaylistItemIDUpdate{ID: result.PreviousPlaylistItemID})
-				if marshalErr != nil {
-					handleError(
-						w,
-						fmt.Errorf("error marshaling compact skipped playlist item removal fallback: %w", marshalErr),
-						http.StatusInternalServerError,
-						true,
-					)
-					return
-				}
-
-				compactEvent = &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemRemoved, Payload: compactPayload}
 			}
 
 			err = notifier.NotifyRoomUpdatesV3(context.WithoutCancel(ctx), roomID, []vibe.RoomEventV3{
 				{
-					Type:    vibe.PlaylistItemsUpdate,
-					Payload: playlistItemsPayload,
+					Type:    itemEventType,
+					Payload: itemPayload,
 					Origin:  session.EventOrigin,
-					Compact: compactEvent,
 				},
 				{
 					Type:    vibe.PlaybackUpdate,

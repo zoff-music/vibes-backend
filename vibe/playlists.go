@@ -106,7 +106,7 @@ type PlaylistItemMetadataRefreshStorage interface {
 		retryAfter time.Duration,
 	) error
 	PlaylistItemRemover
-	PlaylistItemsFetcher
+	PlaylistItemPositionFetcher
 	PlaybackV2Fetcher
 }
 
@@ -134,6 +134,10 @@ func (p *PlaylistItem) IsEmpty() bool {
 
 type PlaylistItemsFetcher interface {
 	GetPlaylistItems(ctx context.Context, roomID string) ([]PlaylistItem, error)
+}
+
+type PlaylistItemPositionFetcher interface {
+	GetPlaylistItemPosition(ctx context.Context, roomID, playlistItemID string) (*PlaylistItemPositionUpdate, error)
 }
 
 type PlaylistItemFetcher interface {

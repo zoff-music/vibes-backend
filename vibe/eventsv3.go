@@ -18,6 +18,11 @@ type RoomEventV3Payload struct {
 	Payload []byte `json:"payload"`
 }
 
+// RoomEventHeader allows replay compaction without decoding large payloads.
+type RoomEventHeader struct {
+	Type string `json:"type"`
+}
+
 // MarshalJSON preserves empty collections in the public JSON contract.
 func (v RoomEventV3Payload) MarshalJSON() ([]byte, error) {
 	type payload RoomEventV3Payload
@@ -38,6 +43,10 @@ func (v RoomEventV3Payload) MarshalJSON() ([]byte, error) {
 type PlaylistItemPositionUpdate struct {
 	PlaylistItem PlaylistItem `json:"playlistItem"`
 	Position     int          `json:"position"`
+}
+
+func (p *PlaylistItemPositionUpdate) IsEmpty() bool {
+	return p.PlaylistItem.IsEmpty()
 }
 
 type PlaylistItemIDUpdate struct {

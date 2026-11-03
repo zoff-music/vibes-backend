@@ -67,7 +67,9 @@ func (c *Client) NotifyRoomUpdateV3(
 		return fmt.Errorf("error appending room event in NotifyRoomUpdate: %w", err)
 	}
 
-	if event.Type == vibe.SettingsUpdate || event.Type == vibe.UsersUpdate || event.Type == vibe.PlaylistItemsUpdate || event.Type == vibe.PlaylistItemAdded || event.Type == vibe.PlaylistItemRemoved {
+	if event.Type == vibe.SettingsUpdate || event.Type == vibe.UsersUpdate ||
+		event.Type == vibe.PlaylistItemsUpdate || event.Type == vibe.PlaylistItemAdded ||
+		event.Type == vibe.PlaylistItemUpdated || event.Type == vibe.PlaylistItemRemoved {
 		err = c.NotifyAdminRoomChange(ctx, roomID)
 		if err != nil {
 			return fmt.Errorf("error notifying admin room change in NotifyRoomUpdateV3: %w", err)
@@ -103,7 +105,9 @@ func (c *Client) NotifyRoomUpdatesV3(
 			return fmt.Errorf("error notifying room event batch in NotifyRoomUpdatesV3: %w", err)
 		}
 
-		if event.Type == vibe.SettingsUpdate || event.Type == vibe.UsersUpdate || event.Type == vibe.PlaylistItemsUpdate || event.Type == vibe.PlaylistItemAdded || event.Type == vibe.PlaylistItemRemoved {
+		if event.Type == vibe.SettingsUpdate || event.Type == vibe.UsersUpdate ||
+			event.Type == vibe.PlaylistItemsUpdate || event.Type == vibe.PlaylistItemAdded ||
+			event.Type == vibe.PlaylistItemUpdated || event.Type == vibe.PlaylistItemRemoved {
 			adminChanged = true
 		}
 	}
@@ -345,7 +349,7 @@ func (r *eventStreams) subscribe(
 		key:        replayKey(topicName),
 		messages:   make(chan []byte, roomEventSubscriptionBufferSize),
 		pool:       r.pool,
-		readCount:  r.maxEvents,
+		readCount:  min(r.maxEvents, replayReadBatchSize),
 		roomEvents: roomEvents,
 	}
 
@@ -400,13 +404,14 @@ func (s *streamSubscription) listen(ctx context.Context, cursor string) {
 			continue
 		}
 
-		// Admin deltas cannot safely skip a trimmed stream segment. Closing the
+		// Room and admin deltas cannot safely skip a trimmed stream segment. Closing the
 		// subscription makes the consumer reconnect for a complete snapshot.
-		if s.key == replayKey(vibe.AdminRoomChangesTopic) && len(messages) > 0 && currentCursor != initialStreamID {
+		if (s.roomEvents || s.key == replayKey(vibe.AdminRoomChangesTopic)) && len(messages) > 0 && currentCursor != initialStreamID {
 			streams := &eventStreams{pool: s.pool}
-			replay, err := streams.prepare(ctx, vibe.AdminRoomChangesTopic, currentCursor)
+			topicName := strings.TrimPrefix(s.key, redisPrefix+":events:")
+			replay, err := streams.prepare(ctx, topicName, currentCursor)
 			if err != nil {
-				log.Printf("error checking admin stream continuity: %v", err)
+				log.Printf("error checking stream continuity: %v", err)
 				return
 			}
 			if replay.RequiresSnapshot {
@@ -423,16 +428,19 @@ func (s *streamSubscription) listen(ctx context.Context, cursor string) {
 			// Compaction can discard earlier item deltas. Promote the retained
 			// queue record to its full snapshot for versioned subscribers.
 			// The original stored event and stream cursor remain unchanged.
-			if s.roomEvents && len(messages) > 1 && message.Type == vibe.PlaylistItemsUpdate {
+			if s.roomEvents {
 				event, err := vibe.ParseRoomEvent(message.Data)
 				if err != nil {
-					log.Printf("error decoding compacted queue snapshot: %v", err)
+					log.Printf("error decoding retained room event: %v", err)
 					return
 				}
 
-				event.Compact = &vibe.RoomEventV3Payload{
-					Type:    vibe.PlaylistItemsSnapshot,
-					Payload: event.Payload,
+				event.ID = message.ID
+				if len(messages) > 1 && message.Type == vibe.PlaylistItemsUpdate {
+					event.Compact = &vibe.RoomEventV3Payload{
+						Type:    vibe.PlaylistItemsSnapshot,
+						Payload: event.Payload,
+					}
 				}
 
 				message.Data, err = json.Marshal(event)
@@ -521,14 +529,10 @@ func (s *streamSubscription) read(
 			eventData := []byte(data)
 			eventType := ""
 			if s.roomEvents {
-				event, err := vibe.ParseRoomEvent(eventData)
+				var event vibe.RoomEventHeader
+				err := json.Unmarshal(eventData, &event)
 				if err != nil {
 					return nil, fmt.Errorf("error unmarshaling room event in read: %w", err)
-				}
-				event.ID = id
-				eventData, err = json.Marshal(event)
-				if err != nil {
-					return nil, fmt.Errorf("error marshaling room event in read: %w", err)
 				}
 				eventType = event.Type
 			}
@@ -560,7 +564,7 @@ func compactReplayMessages(messages []streamMessage) []streamMessage {
 				keep[index] = true
 				queueSnapshotSeen = true
 			}
-		case vibe.PlaylistItemAdded, vibe.PlaylistItemRemoved:
+		case vibe.PlaylistItemAdded, vibe.PlaylistItemUpdated, vibe.PlaylistItemRemoved:
 			keep[index] = !queueSnapshotSeen
 		case vibe.UsersUpdate:
 			if !usersSnapshotSeen {
@@ -731,4 +735,7 @@ const replayEventField = "event"
 const initialStreamID = "0-0"
 const replayBlockMilliseconds = 3000
 const replayRetryDelay = time.Second
-const roomEventSubscriptionBufferSize = 32
+const roomEventSubscriptionBufferSize = 8
+
+// Retention and delivery batch size are independent: retained snapshots can be large.
+const replayReadBatchSize = 8

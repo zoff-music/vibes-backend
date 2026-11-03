@@ -157,4 +157,4 @@ func (c *Client) NotifyAdminRoomDeparture(ctx context.Context, roomID string) er
 	return nil
 }
 
-const adminUsageCacheExpiration = 30 * time.Second
+const adminUsageCacheExpiration = 5 * time.Minute

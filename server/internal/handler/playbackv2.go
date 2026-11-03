@@ -433,7 +433,11 @@ func ReportPlaybackFailureV2(
 			return
 		}
 
-		playlistItems, err := db.GetPlaylistItems(ctx, roomID)
+		item, err := db.GetPlaylistItemPosition(
+			ctx,
+			roomID,
+			advance.PreviousPlaylistItemID,
+		)
 		if err != nil {
 			handleError(
 				w,
@@ -443,7 +447,8 @@ func ReportPlaybackFailureV2(
 			)
 			return
 		}
-		playlistItemsBody, err := json.Marshal(playlistItems)
+
+		itemPayload, err := json.Marshal(item)
 		if err != nil {
 			handleError(
 				w,
@@ -453,62 +458,32 @@ func ReportPlaybackFailureV2(
 			)
 			return
 		}
-		var compactEvent *vibe.RoomEventV3Payload
-		for position, playlistItem := range playlistItems {
-			if playlistItem.ID != advance.PreviousPlaylistItemID {
-				continue
-			}
 
-			compactPayload, marshalErr := json.Marshal(vibe.PlaylistItemPositionUpdate{
-				PlaylistItem: playlistItem,
-				Position:     position,
+		itemEventType := vibe.PlaylistItemUpdated
+		if item.IsEmpty() {
+			itemEventType = vibe.PlaylistItemRemoved
+			itemPayload, err = json.Marshal(vibe.PlaylistItemIDUpdate{
+				ID: advance.PreviousPlaylistItemID,
 			})
-			if marshalErr != nil {
+			if err != nil {
 				handleError(
 					w,
-					fmt.Errorf("error marshaling compact restricted skip event: %w", marshalErr),
+					fmt.Errorf("error marshaling restricted skip removal: %w", err),
 					http.StatusInternalServerError,
 					true,
 				)
 				return
 			}
-			compactEvent = &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemUpdated, Payload: compactPayload}
-			break
-		}
-		if compactEvent == nil {
-			compactPayload, marshalErr := json.Marshal(vibe.PlaylistItemIDUpdate{ID: advance.PreviousPlaylistItemID})
-			if marshalErr != nil {
-				handleError(
-					w,
-					fmt.Errorf("error marshaling compact restricted skip removal fallback: %w", marshalErr),
-					http.StatusInternalServerError,
-					true,
-				)
-				return
-			}
-			compactEvent = &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemRemoved, Payload: compactPayload}
-		}
-
-		playbackBody, err := json.Marshal(advance.Playback)
-		if err != nil {
-			handleError(
-				w,
-				fmt.Errorf("error marshaling restricted playback: %w", err),
-				http.StatusInternalServerError,
-				true,
-			)
-			return
 		}
 
 		err = notifier.NotifyRoomUpdatesV3(context.WithoutCancel(ctx), roomID, []vibe.RoomEventV3{
 			{
-				Type:    vibe.PlaylistItemsUpdate,
-				Payload: playlistItemsBody,
-				Compact: compactEvent,
+				Type:    itemEventType,
+				Payload: itemPayload,
 			},
 			{
 				Type:    vibe.PlaybackUpdate,
-				Payload: playbackBody,
+				Payload: stateBody,
 			},
 		})
 		if err != nil {
