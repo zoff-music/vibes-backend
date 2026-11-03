@@ -7,7 +7,7 @@ import (
 // RoomPassword contains only the room identity and its stored credential.
 type RoomPassword struct {
 	RoomID string
-	Hash   string
+	Hash   string `json:"-"`
 }
 
 func (r *RoomPassword) IsEmpty() bool {
