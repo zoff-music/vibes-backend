@@ -43,12 +43,12 @@ type PlaybackFailureRequestV2 struct {
 
 type PlaybackFailureV2Storage interface {
 	PlaybackV2Fetcher
-	PlaylistItemsFetcher
+	PlaylistItemPositionFetcher
 	PlaylistItemPlaybackRestrictionUpdater
 	SkipRestrictedPlaylistItem(ctx context.Context, roomID, playlistItemID string) (*PlaybackAdvanceV2, error)
 }
 
 type ExpiredPlaybackPlaylistItemFetcher interface {
-	PlaylistItemsFetcher
+	PlaylistItemPositionFetcher
 	ProcessNextExpiredPlaybackV2(ctx context.Context) (*PlaybackAdvanceV2, error)
 }

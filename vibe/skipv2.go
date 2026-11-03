@@ -27,6 +27,6 @@ type RoomV2Skipper interface {
 	RoomV2Fetcher
 	SessionProfileFetcherCreator
 	PlaybackV2Fetcher
-	PlaylistItemsFetcher
+	PlaylistItemPositionFetcher
 	SkipPlaylistItem(ctx context.Context, roomID, userID string) (*SkipPlaylistItemResult, error)
 }

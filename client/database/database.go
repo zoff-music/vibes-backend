@@ -50,6 +50,7 @@ type Client struct {
 
 	// PlaylistItem statements
 	GetPlaylistItemsStatement                      *sql.Stmt
+	GetPlaylistItemPositionStatement               *sql.Stmt
 	GetItemsV3Statement                            *sql.Stmt
 	GetPlaylistItemStatement                       *sql.Stmt
 	AddPlaylistItemStatement                       *sql.Stmt
@@ -256,6 +257,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareDeleteExpiredRoomGenerationsStmt,
 		// PlaylistItem statements
 		c.prepareGetPlaylistItemsStmt,
+		c.prepareGetPlaylistItemPositionStmt,
 		c.prepareGetItemsV3Stmt,
 		c.prepareGetPlaylistItemStmt,
 		c.prepareAddPlaylistItemStmt,
@@ -366,6 +368,7 @@ func (c *Client) Close() error {
 		c.FailRoomGenerationStatement,
 		c.DeleteExpiredRoomGenerationsStatement,
 		c.GetPlaylistItemsStatement,
+		c.GetPlaylistItemPositionStatement,
 		c.GetItemsV3Statement,
 		c.GetPlaylistItemStatement,
 		c.AddPlaylistItemStatement,
