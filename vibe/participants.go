@@ -21,6 +21,21 @@ type ListenerCounts struct {
 	ActiveCastReceivers int
 }
 
+// RoomMember exposes presentation roles, never authorization credentials.
+type RoomMember struct {
+	UserID      string `json:"userId"`
+	Name        string `json:"name"`
+	IsAdmin     bool   `json:"isAdmin"`
+	IsModerator bool   `json:"isModerator"`
+	IsHost      bool   `json:"isHost"`
+}
+
+type RoomPresence struct {
+	Members             []RoomMember `json:"members"`
+	ActiveListeners     int          `json:"-"`
+	ActiveCastReceivers int          `json:"castReceivers"`
+}
+
 // InactiveParticipantCleaner cleans inactive room participants.
 type InactiveParticipantCleaner interface {
 	CleanInactiveParticipants(ctx context.Context, olderThan time.Duration) (int, error)
@@ -29,5 +44,5 @@ type InactiveParticipantCleaner interface {
 // RoomEventParticipantFetcherUpdater maintains listener presence for room events.
 type RoomEventParticipantFetcherUpdater interface {
 	UpdateParticipant(ctx context.Context, roomID, userID string, isActiveListener bool, isCastReceiver bool, castOwnerID string) error
-	GetActiveListenerCounts(ctx context.Context, roomID string, activeWithin time.Duration) (*ListenerCounts, error)
+	GetRoomPresence(ctx context.Context, roomID string, activeWithin time.Duration) (*RoomPresence, error)
 }

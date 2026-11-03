@@ -115,6 +115,7 @@ type RoomBatchEventV3Notifier interface {
 type RoomEventV3ReplayNotifier interface {
 	ReplaySubscriber
 	RoomEventV3Notifier
+	RoomBatchEventV3Notifier
 	AdminRoomDepartureNotifier
 }
 

@@ -16,7 +16,7 @@ import (
 // AdminMiddleware enforces admin access on protected routes and verifies
 // optional moderator identity on room activity routes without granting access.
 type AdminMiddleware struct {
-	DB              vibe.AdminUserFetcher
+	DB              vibe.AdminSessionFetcher
 	CookieSecret    string
 	ProtectedRoutes map[string]bool
 	OptionalRoutes  map[string]bool
@@ -100,7 +100,7 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 			return
 		}
 
-		admin, err := m.DB.GetAdminUser(ctx, payload.AdminID)
+		admin, err := m.DB.GetAdminSession(ctx, *payload)
 		if err != nil {
 			if errors.Is(err, context.Canceled) {
 				w.WriteHeader(statusClientClosedRequest)
@@ -131,6 +131,7 @@ func (m *AdminMiddleware) Middleware(next http.Handler) http.Handler {
 		defer cancel()
 
 		ctx = context.WithValue(cctx, helper.AdminUserKey, admin)
+		ctx = context.WithValue(ctx, helper.AdminAuthKey, *payload)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

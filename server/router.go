@@ -113,7 +113,7 @@ func (s *Server) setupRoutes() {
 	if s.Config.AdminPasswordPepper != "" {
 		apiV1.HandleFunc("/admin/sessions", handler.AdminLogin(s.DB, s.Config.AdminPasswordPepper, s.Config.CookieSecret)).Methods(http.MethodPost, http.MethodOptions).Name("AdminLogin")
 		apiV1.HandleFunc("/admin/sessions", handler.AdminSession()).Methods(http.MethodGet, http.MethodOptions).Name("AdminSession")
-		apiV1.HandleFunc("/admin/sessions", handler.AdminLogout()).Methods(http.MethodDelete, http.MethodOptions).Name("AdminLogout")
+		apiV1.HandleFunc("/admin/sessions", handler.AdminLogout(s.DB)).Methods(http.MethodDelete, http.MethodOptions).Name("AdminLogout")
 		apiV1.HandleFunc("/admin/users", handler.AdminUsers(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("AdminUsers")
 		apiV1.HandleFunc("/admin/users", handler.AdminCreateUser(s.DB, s.Config.AdminPasswordPepper)).Methods(http.MethodPost, http.MethodOptions).Name("AdminCreateUser")
 		apiV1.HandleFunc("/admin/users/{id}", handler.AdminUpdateUser(s.DB, s.Config.AdminPasswordPepper)).Methods(http.MethodPatch, http.MethodOptions).Name("AdminUpdateUser")

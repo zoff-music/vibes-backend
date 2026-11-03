@@ -25,6 +25,29 @@ type AdminSessionResponse struct {
 	User       *AdminUser `json:"user,omitempty"`
 }
 
+// SessionModerator records the active admin login for a verified user session.
+type SessionModerator struct {
+	SessionID      string
+	UserID         string
+	AdminID        string
+	SessionVersion int64
+	ExpiresAt      time.Time
+}
+
+type AdminUserFetcherModeratorUpdater interface {
+	AdminUserByUsernameFetcher
+	SessionProfileFetcherCreator
+	UpdateSessionModerator(ctx context.Context, session SessionModerator) error
+}
+
+type SessionModeratorDeleter interface {
+	DeleteSessionModerator(ctx context.Context, userID string) error
+}
+
+type AdminSessionFetcher interface {
+	GetAdminSession(ctx context.Context, payload AdminAuthPayload) (*AdminUser, error)
+}
+
 type AdminUser struct {
 	ID             string    `json:"id"`
 	Username       string    `json:"username"`

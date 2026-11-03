@@ -44,6 +44,8 @@ const NewHost = "new_host"
 const UserJoined = "user_joined"
 const UserLeft = "user_left"
 const UsersUpdate = "users_update"
+
+const MembersUpdate = "members_update"
 const SettingsUpdate = "settings_update"
 const GenerationUpdate = "generation_update"
 const Connected = "connected"

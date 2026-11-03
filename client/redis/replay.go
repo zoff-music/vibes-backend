@@ -570,6 +570,7 @@ func compactReplayMessages(messages []streamMessage) []streamMessage {
 		case vibe.UserJoined, vibe.UserLeft:
 			keep[index] = !usersSnapshotSeen
 		case vibe.PlaybackUpdate,
+			vibe.MembersUpdate,
 			vibe.SettingsUpdate,
 			vibe.SkipVoteEvent,
 			vibe.NewHost,
