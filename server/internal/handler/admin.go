@@ -31,7 +31,7 @@ import (
 //	@Failure	500		{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/sessions [post]
 func AdminLogin(
-	fetcher vibe.AdminUserByUsernameFetcher,
+	fetcher vibe.AdminUserFetcherModeratorUpdater,
 	passwordPepper string,
 	cookieSecret string,
 ) http.HandlerFunc {
@@ -128,6 +128,7 @@ func AdminLogin(
 		}
 
 		payload := vibe.AdminAuthPayload{
+			SessionID:      uuid.NewString(),
 			UserID:         session.UserID,
 			AdminID:        admin.ID,
 			SessionVersion: admin.SessionVersion,
@@ -145,6 +146,35 @@ func AdminLogin(
 			return
 		}
 
+		expiresAt := time.Unix(payload.IssuedAt, 0).Add(adminSessionDuration)
+		_, err = fetcher.GetOrCreateSessionProfile(ctx, session.UserID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching session profile in AdminLogin: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
+		err = fetcher.UpdateSessionModerator(ctx, vibe.SessionModerator{
+			SessionID:      payload.SessionID,
+			UserID:         session.UserID,
+			AdminID:        admin.ID,
+			SessionVersion: admin.SessionVersion,
+			ExpiresAt:      expiresAt,
+		})
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error updating session moderator in AdminLogin: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+
 		http.SetCookie(w, &http.Cookie{
 			Name:     helper.AdminAuthCookieName,
 			Value:    signed,
@@ -152,7 +182,7 @@ func AdminLogin(
 			HttpOnly: true,
 			Secure:   true,
 			SameSite: http.SameSiteLaxMode,
-			Expires:  time.Now().Add(adminSessionDuration),
+			Expires:  expiresAt,
 		})
 
 		resp := vibe.AdminSessionResponse{
@@ -229,8 +259,23 @@ func AdminSession() http.HandlerFunc {
 //	@Success	200	{object}	vibe.AdminSessionResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
 //	@Router		/api/v1/admin/sessions [delete]
-func AdminLogout() http.HandlerFunc {
+func AdminLogout(deleter vibe.SessionModeratorDeleter) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		session, ok := helper.GetSessionFromContext(ctx)
+		if ok && session.UserID != "" {
+			err := deleter.DeleteSessionModerator(ctx, session.UserID)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error clearing session moderator in AdminLogout: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+		}
+
 		http.SetCookie(w, &http.Cookie{
 			Name:     helper.AdminAuthCookieName,
 			Value:    "",

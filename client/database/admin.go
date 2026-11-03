@@ -488,6 +488,103 @@ func (c *Client) DeleteAdminRoom(ctx context.Context, roomID string) (bool, erro
 	return rowsAffected > 0, nil
 }
 
+func (c *Client) prepareUpdateSessionModeratorStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE sessions SET moderator_id = $2, moderator_version = $3,
+			moderator_expires_at = $4, moderator_session_id = $5
+		WHERE id = $1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing UpdateSessionModeratorStatement: %w", err)
+	}
+	c.UpdateSessionModeratorStatement = stmt
+	return nil
+}
+
+func (c *Client) UpdateSessionModerator(ctx context.Context, session vibe.SessionModerator) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "UpdateSessionModerator")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := c.UpdateSessionModeratorStatement.ExecContext(cctx, session.UserID, session.AdminID, session.SessionVersion, session.ExpiresAt.UTC(), session.SessionID)
+	if err != nil {
+		return fmt.Errorf("error updating session moderator: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) prepareDeleteSessionModeratorStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE sessions SET moderator_id = NULL, moderator_version = NULL,
+			moderator_expires_at = NULL, moderator_session_id = NULL
+		WHERE id = $1
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing DeleteSessionModeratorStatement: %w", err)
+	}
+	c.DeleteSessionModeratorStatement = stmt
+	return nil
+}
+
+func (c *Client) DeleteSessionModerator(ctx context.Context, userID string) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "DeleteSessionModerator")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	_, err := c.DeleteSessionModeratorStatement.ExecContext(cctx, userID)
+	if err != nil {
+		return fmt.Errorf("error clearing session moderator: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) prepareGetAdminSessionStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT a.id, a.username, a.password_hash, a.session_version,
+			a.created_at, a.updated_at
+		FROM admin_users a
+		JOIN sessions b ON b.moderator_id = a.id
+		WHERE a.id = $1 AND b.id = $2 AND b.moderator_session_id = $3
+			AND a.session_version = $4 AND b.moderator_version = a.session_version
+			AND b.moderator_expires_at > (NOW() AT TIME ZONE 'UTC')
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetAdminSessionStatement: %w", err)
+	}
+	c.GetAdminSessionStatement = stmt
+	return nil
+}
+
+func (c *Client) GetAdminSession(ctx context.Context, payload vibe.AdminAuthPayload) (*vibe.AdminUser, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetAdminSession")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	if payload.SessionID == "" {
+		return &vibe.AdminUser{}, nil
+	}
+	row := c.GetAdminSessionStatement.QueryRowContext(cctx, payload.AdminID, payload.UserID, payload.SessionID, payload.SessionVersion)
+	var rowData adminUserRow
+	err := rowData.scanRow(row)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return &vibe.AdminUser{}, nil
+		}
+		return nil, fmt.Errorf("error scanning admin session in GetAdminSession: %w", err)
+	}
+	admin, err := rowData.toAdminUser()
+	if err != nil {
+		return nil, fmt.Errorf("error mapping admin session in GetAdminSession: %w", err)
+	}
+	return admin, nil
+}
+
 func (c *Client) prepareGetAdminUserStmt() error {
 	stmt, err := c.DB.Prepare(`
 		SELECT

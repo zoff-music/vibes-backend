@@ -20,12 +20,12 @@ func (c *Client) prepareUpdateParticipantStmt() error {
 			is_cast_receiver,
 			cast_owner_id
 		)
-		SELECT a.id, $2, NOW(), $3, $4, $5
+		SELECT a.id, $2, (NOW() AT TIME ZONE 'UTC'), $3, $4, $5
 		FROM rooms a
 		WHERE a.id = $1
 		FOR KEY SHARE OF a
 		ON CONFLICT(id, room_id) DO UPDATE SET
-		last_seen_at = NOW(),
+		last_seen_at = (NOW() AT TIME ZONE 'UTC'),
 		is_active_listener = $3,
 		is_cast_receiver = $4,
 		cast_owner_id = $5
@@ -65,6 +65,98 @@ func (c *Client) UpdateParticipant(
 	}
 
 	return nil
+}
+
+func (c *Client) prepareGetRoomPresenceStmt() error {
+	stmt, err := c.DB.Prepare(`
+		SELECT a.id, COALESCE(NULLIF(b.name, ''), 'Listener'),
+			COALESCE(a.is_admin AND a.admin_password_hash = c.admin_password_hash
+				AND c.admin_password_hash != '', FALSE),
+			d.id IS NOT NULL,
+			COALESCE(c.mode = 'host' AND c.host_id = a.id, FALSE),
+			COALESCE(a.is_cast_receiver, FALSE)
+		FROM room_users a
+		LEFT JOIN sessions b ON b.id = a.id
+		JOIN rooms c ON c.id = a.room_id
+		LEFT JOIN admin_users d ON d.id = b.moderator_id
+			AND d.session_version = b.moderator_version
+			AND b.moderator_expires_at > (NOW() AT TIME ZONE 'UTC')
+			AND b.moderator_session_id IS NOT NULL AND b.moderator_session_id != ''
+		WHERE a.room_id = $1 AND a.last_seen_at > $2
+			AND (a.is_active_listener OR a.is_cast_receiver)
+		ORDER BY a.id
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing GetRoomPresenceStatement: %w", err)
+	}
+	c.GetRoomPresenceStatement = stmt
+	return nil
+}
+
+// GetRoomPresence reads the roster and counts from the same shared presence snapshot.
+func (c *Client) GetRoomPresence(ctx context.Context, roomID string, activeWithin time.Duration) (*vibe.RoomPresence, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "GetRoomPresence")
+	defer span.End()
+
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	rows, err := c.GetRoomPresenceStatement.QueryContext(cctx, roomID, time.Now().UTC().Add(-activeWithin))
+	if err != nil {
+		return nil, fmt.Errorf("error querying room presence: %w", err)
+	}
+	defer rows.Close()
+
+	presence := vibe.RoomPresence{Members: make([]vibe.RoomMember, 0)}
+	for rows.Next() {
+		var row roomMemberRow
+		err = row.scanRows(rows)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning room presence: %w", err)
+		}
+		if row.IsCastReceiver {
+			presence.ActiveCastReceivers++
+			continue
+		}
+		member, err := row.toRoomMember()
+		if err != nil {
+			return nil, fmt.Errorf("error mapping room member: %w", err)
+		}
+		presence.Members = append(presence.Members, *member)
+		presence.ActiveListeners++
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error iterating room presence: %w", err)
+	}
+	return &presence, nil
+}
+
+type roomMemberRow struct {
+	UserID         string
+	Name           string
+	IsAdmin        bool
+	IsModerator    bool
+	IsHost         bool
+	IsCastReceiver bool
+}
+
+func (r *roomMemberRow) scanRows(rows *sql.Rows) error {
+	err := rows.Scan(&r.UserID, &r.Name, &r.IsAdmin, &r.IsModerator, &r.IsHost, &r.IsCastReceiver)
+	if err != nil {
+		return fmt.Errorf("error scanning room member row: %w", err)
+	}
+	return nil
+}
+
+func (r *roomMemberRow) toRoomMember() (*vibe.RoomMember, error) {
+	return &vibe.RoomMember{
+		UserID:      r.UserID,
+		Name:        r.Name,
+		IsAdmin:     r.IsAdmin,
+		IsModerator: r.IsModerator,
+		IsHost:      r.IsHost,
+	}, nil
 }
 
 func (c *Client) prepareHasActiveParticipantStmt() error {

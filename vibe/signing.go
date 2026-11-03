@@ -1,6 +1,7 @@
 package vibe
 
 type AdminAuthPayload struct {
+	SessionID      string `json:"session_id"`
 	UserID         string `json:"user_id"`
 	AdminID        string `json:"admin_id"`
 	SessionVersion int64  `json:"session_version"`

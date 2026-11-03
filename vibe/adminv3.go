@@ -23,7 +23,8 @@ type AdminRoomSummaryFetcher interface {
 }
 
 type AdminRoomSummaryListerUserFetcher interface {
-	AdminRoomV2ListerUserFetcher
+	AdminRoomV2Lister
+	AdminSessionFetcher
 	AdminRoomSummaryFetcher
 }
 

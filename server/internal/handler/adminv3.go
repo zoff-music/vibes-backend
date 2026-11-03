@@ -26,8 +26,8 @@ func AdminEventsV3(
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 
-		admin, ok := helper.GetAdminUserFromContext(ctx)
-		if !ok || admin == nil {
+		adminAuth, ok := helper.GetAdminAuthFromContext(ctx)
+		if !ok || adminAuth.SessionID == "" {
 			handleError(
 				w,
 				fmt.Errorf("error missing admin session"),
@@ -84,7 +84,7 @@ func AdminEventsV3(
 			return
 		}
 
-		currentAdmin, err := db.GetAdminUser(ctx, admin.ID)
+		currentAdmin, err := db.GetAdminSession(ctx, *adminAuth)
 		if ctx.Err() != nil {
 			return
 		}
@@ -92,7 +92,7 @@ func AdminEventsV3(
 			log.Printf("error revalidating admin session in AdminEventsV3: %v", err)
 			return
 		}
-		if currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion {
+		if currentAdmin.IsEmpty() {
 			return
 		}
 
@@ -168,7 +168,7 @@ func AdminEventsV3(
 				expiry.Reset(time.Until(nextDeparture))
 			}
 
-			currentAdmin, err = db.GetAdminUser(ctx, admin.ID)
+			currentAdmin, err = db.GetAdminSession(ctx, *adminAuth)
 			if ctx.Err() != nil {
 				return
 			}
@@ -176,7 +176,7 @@ func AdminEventsV3(
 				log.Printf("error revalidating admin session in AdminEventsV3: %v", err)
 				return
 			}
-			if currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion {
+			if currentAdmin.IsEmpty() {
 				return
 			}
 
@@ -211,7 +211,7 @@ func AdminEventsV3(
 				return
 			}
 
-			currentAdmin, err = db.GetAdminUser(ctx, admin.ID)
+			currentAdmin, err = db.GetAdminSession(ctx, *adminAuth)
 			if ctx.Err() != nil {
 				return
 			}
@@ -219,7 +219,7 @@ func AdminEventsV3(
 				log.Printf("error revalidating admin session in AdminEventsV3: %v", err)
 				return
 			}
-			if currentAdmin.IsEmpty() || currentAdmin.SessionVersion != admin.SessionVersion {
+			if currentAdmin.IsEmpty() {
 				return
 			}
 

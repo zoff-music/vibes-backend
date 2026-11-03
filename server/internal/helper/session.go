@@ -20,3 +20,10 @@ func GetAdminUserFromContext(ctx context.Context) (*vibe.AdminUser, bool) {
 const SessionKey = "session"
 
 const AdminUserKey = "admin_user"
+
+const AdminAuthKey = "admin_auth"
+
+func GetAdminAuthFromContext(ctx context.Context) (*vibe.AdminAuthPayload, bool) {
+	payload, ok := ctx.Value(AdminAuthKey).(vibe.AdminAuthPayload)
+	return &payload, ok
+}

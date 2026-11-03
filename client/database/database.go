@@ -118,6 +118,7 @@ type Client struct {
 	HasActiveParticipantStatement      *sql.Stmt
 	GetActiveParticipantsStatement     *sql.Stmt
 	GetActiveListenerCountsStatement   *sql.Stmt
+	GetRoomPresenceStatement           *sql.Stmt
 	SetRoomHostStatement               *sql.Stmt
 	RemoveParticipantStatement         *sql.Stmt
 	CleanInactiveParticipantsStatement *sql.Stmt
@@ -134,6 +135,9 @@ type Client struct {
 
 	// Admin user statements
 	GetAdminUserStatement            *sql.Stmt
+	GetAdminSessionStatement         *sql.Stmt
+	UpdateSessionModeratorStatement  *sql.Stmt
+	DeleteSessionModeratorStatement  *sql.Stmt
 	GetAdminUserByUsernameStatement  *sql.Stmt
 	ListAdminUsersStatement          *sql.Stmt
 	CreateAdminUserStatement         *sql.Stmt
@@ -221,6 +225,9 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareDeleteAdminRoomStmt,
 		// Admin user statements
 		c.prepareGetAdminUserStmt,
+		c.prepareGetAdminSessionStmt,
+		c.prepareUpdateSessionModeratorStmt,
+		c.prepareDeleteSessionModeratorStmt,
 		c.prepareGetAdminUserByUsernameStmt,
 		c.prepareListAdminUsersStmt,
 		c.prepareCreateAdminUserStmt,
@@ -305,6 +312,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareHasActiveParticipantStmt,
 		c.prepareGetActiveParticipantsStmt,
 		c.prepareGetActiveListenerCountsStmt,
+		c.prepareGetRoomPresenceStmt,
 		c.prepareSetRoomHostStmt,
 		c.prepareRemoveParticipantStmt,
 		c.prepareCleanInactiveParticipantsStmt,
@@ -406,6 +414,7 @@ func (c *Client) Close() error {
 		c.HasActiveParticipantStatement,
 		c.GetActiveParticipantsStatement,
 		c.GetActiveListenerCountsStatement,
+		c.GetRoomPresenceStatement,
 		c.SetRoomHostStatement,
 		c.RemoveParticipantStatement,
 		c.CleanInactiveParticipantsStatement,
@@ -418,6 +427,9 @@ func (c *Client) Close() error {
 		c.UpdateAdminRoomStatement,
 		c.DeleteAdminRoomStatement,
 		c.GetAdminUserStatement,
+		c.GetAdminSessionStatement,
+		c.UpdateSessionModeratorStatement,
+		c.DeleteSessionModeratorStatement,
 		c.GetAdminUserByUsernameStatement,
 		c.ListAdminUsersStatement,
 		c.CreateAdminUserStatement,
