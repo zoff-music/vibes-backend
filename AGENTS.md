@@ -357,6 +357,13 @@ work and finish in a useful timeframe. Long-running methods such as
 `SubscribeAndListen` must keep the incoming context unchanged and create a new
 span for each bounded event or scheduled task handled inside the loop.
 
+Never add spans to event subscription or replay code, including its setup
+steps: `Subscribe`, `SubscribeFrom`, replay preparation and reading, and the
+SSE handlers that hold them. These paths keep their context open for the life
+of a client connection, often 30 minutes or more, so any span there becomes a
+trace that long and pollutes Tempo. Leave them untraced even when a sub-step
+looks bounded.
+
 Do not start another span inside a scheduled event `Handle` implementation.
 `AppEvent.SubscribeAndListen` creates the invocation span immediately around
 the `Handler.Handle` call, so a handler-level span only duplicates that trace.
