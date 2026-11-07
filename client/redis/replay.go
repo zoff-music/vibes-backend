@@ -193,7 +193,11 @@ func (c *Client) Subscribe(
 		return nil, fmt.Errorf("error subscribing to events: streams are not initialized")
 	}
 
-	replay, err := c.events.prepare(ctx, topicName, "")
+	// Preparing the replay is bounded work; trace it on its own so the span never covers the
+	// subscription's lifetime.
+	span, prepareCtx := tracing.StartSpanFromContext(ctx, "PrepareSubscription")
+	replay, err := c.events.prepare(prepareCtx, topicName, "")
+	span.End()
 	if err != nil {
 		return nil, fmt.Errorf("error preparing events in Subscribe: %w", err)
 	}
