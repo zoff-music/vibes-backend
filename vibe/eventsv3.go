@@ -46,7 +46,9 @@ type PlaylistItemPositionUpdate struct {
 }
 
 func (p *PlaylistItemPositionUpdate) IsEmpty() bool {
-	return p.PlaylistItem.IsEmpty()
+	isEmpty := p.PlaylistItem.IsEmpty()
+
+	return isEmpty
 }
 
 type PlaylistItemIDUpdate struct {
