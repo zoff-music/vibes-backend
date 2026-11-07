@@ -144,14 +144,13 @@ func (c *Client) appendEvent(ctx context.Context, topicName string, data []byte)
 	return nil
 }
 
+// PrepareReplay stays untraced: it runs inside SSE handlers whose context lives for the whole
+// connection, so a span here would join a trace lasting as long as that connection.
 func (c *Client) PrepareReplay(
 	ctx context.Context,
 	topicName string,
 	lastEventID string,
 ) (*vibe.ReplaySubscription, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx, "PrepareReplay")
-	defer span.End()
-
 	if c.events == nil {
 		return nil, fmt.Errorf("error preparing room event replay: replay is not initialized")
 	}
@@ -193,11 +192,7 @@ func (c *Client) Subscribe(
 		return nil, fmt.Errorf("error subscribing to events: streams are not initialized")
 	}
 
-	// Preparing the replay is bounded work; trace it on its own so the span never covers the
-	// subscription's lifetime.
-	span, prepareCtx := tracing.StartSpanFromContext(ctx, "PrepareSubscription")
-	replay, err := c.events.prepare(prepareCtx, topicName, "")
-	span.End()
+	replay, err := c.events.prepare(ctx, topicName, "")
 	if err != nil {
 		return nil, fmt.Errorf("error preparing events in Subscribe: %w", err)
 	}

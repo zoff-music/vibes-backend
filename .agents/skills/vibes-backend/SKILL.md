@@ -107,5 +107,6 @@ Use these rules for Go backend work in this repository.
 
 - Trace bounded methods that accept `context.Context` unless their caller already provides the operation span.
 - Do not wrap process-lifetime listener or subscription loops in a span. Keep the incoming context unchanged and create a span for each bounded event or scheduled task inside the loop.
+- Never add spans to event subscription or replay code, including setup steps that look bounded: `Subscribe`, `SubscribeFrom`, replay preparation and reading, and the SSE handlers that hold them. Their contexts live as long as a client connection (often 30 minutes or more), so any span there becomes a trace that long and pollutes Tempo.
 - Do not start a span inside scheduled event `Handle` implementations. `AppEvent.SubscribeAndListen` creates the invocation span immediately around `Handler.Handle`, so another handler-level span duplicates the same operation.
 - HTTP handlers do not start spans because tracing middleware handles them.
