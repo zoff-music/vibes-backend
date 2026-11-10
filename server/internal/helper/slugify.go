@@ -24,6 +24,12 @@ func Slugify(s string) string {
 		}
 	}
 
+	result := LegacySlugify(s)
+	return result
+}
+
+// LegacySlugify preserves the name conversion used by existing room IDs.
+func LegacySlugify(s string) string {
 	var slug strings.Builder
 	previousWasDash := false
 

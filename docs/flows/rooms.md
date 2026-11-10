@@ -15,6 +15,20 @@ as `東京` → `u6771-u4eac`, while the original name remains the display name.
 Reservations and creation use the same conversion. This requires no database
 migration or changes to existing rooms, queues, sessions, or reservations.
 
+## Enter an existing room
+
+`GET /api/v2/room-resolutions?name=...` resolves typed input to an existing
+room without renaming it. An exact stored ID wins, followed by an exact display
+name, the current encoded ID, and finally the legacy ASCII slug. If multiple
+rooms have the same display name, the oldest is chosen with ID as the tie-breaker;
+an exact ID can always be used to select a specific room. For example, typing
+`dümen-8` resolves to the existing `dmen-8` room. SQL parameters handle input as
+data, and the ordinary room fetch determines the requesting user's permissions.
+
+Clients use the resolved ID for navigation, sessions, playback, queues, and
+subsequent events. Only a 404 offers creation; other failures remain errors.
+The resolver is a separate endpoint so it does not shadow any existing room ID.
+
 ## Generate and reserve a room name
 
 Room name suggestions come from the generated name pool and are reserved for the

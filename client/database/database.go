@@ -33,6 +33,7 @@ type Client struct {
 	ReserveSuggestedRoomNameStatement          *sql.Stmt
 	DeleteExpiredRoomNameReservationsStatement *sql.Stmt
 	RoomExistsStatement                        *sql.Stmt
+	ResolveRoomStatement                       *sql.Stmt
 	CreateRoomV2Statement                      *sql.Stmt
 	UpdateRoomV2Statement                      *sql.Stmt
 	ProcessNextAbandonedHostStatement          *sql.Stmt
@@ -215,6 +216,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareReserveSuggestedRoomNameStmt,
 		c.prepareDeleteExpiredRoomNameReservationsStmt,
 		c.prepareRoomExistsStmt,
+		c.prepareResolveRoomStmt,
 		c.prepareCreateRoomV2Stmt,
 		c.prepareUpdateRoomV2Stmt,
 		c.prepareProcessNextAbandonedHostStmt,
@@ -357,6 +359,7 @@ func (c *Client) Close() error {
 		c.ReserveSuggestedRoomNameStatement,
 		c.DeleteExpiredRoomNameReservationsStatement,
 		c.RoomExistsStatement,
+		c.ResolveRoomStatement,
 		c.CreateRoomV2Statement,
 		c.UpdateRoomV2Statement,
 		c.ProcessNextAbandonedHostStatement,
