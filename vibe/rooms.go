@@ -84,3 +84,21 @@ const RoomModeServer = "server"
 
 // RoomModeHost is the mode where a host controls playback
 const RoomModeHost = "host"
+
+// RoomNameLookup resolves user input without changing persisted room IDs.
+type RoomNameLookup struct {
+	Name      string
+	EncodedID string
+	LegacyID  string
+}
+
+type RoomResolution struct {
+	ID string
+}
+
+func (r *RoomResolution) IsEmpty() bool { return r.ID == "" }
+
+type RoomResolver interface {
+	ResolveRoom(ctx context.Context, lookup RoomNameLookup) (*RoomResolution, error)
+	RoomV2Fetcher
+}

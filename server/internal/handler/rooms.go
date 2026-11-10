@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
+	"unicode/utf8"
 
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -275,4 +277,82 @@ func (h *CleanupRoomNameReservations) Handle(
 	}
 
 	return nil
+}
+
+// ResolveRoom handles GET /api/v2/room-resolutions.
+// @Summary Resolve a room ID or display name to an existing room
+// @Tags rooms
+// @Produce json
+// @Param name query string true "Room ID or display name"
+// @Success 200 {object} vibe.RoomV2
+// @Failure 400 {object} vibe.ErrorResponse
+// @Failure 404 {object} vibe.ErrorResponse
+// @Failure 500 {object} vibe.ErrorResponse
+// @Router /api/v2/room-resolutions [get]
+func ResolveRoom(db vibe.RoomResolver) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx := r.Context()
+		name := strings.TrimSpace(r.URL.Query().Get("name"))
+		if name == "" || utf8.RuneCountInString(name) > 799 {
+			handleError(
+				w,
+				fmt.Errorf("error invalid room name or ID"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+		resolution, err := db.ResolveRoom(ctx, vibe.RoomNameLookup{Name: name, EncodedID: helper.Slugify(name), LegacyID: helper.LegacySlugify(name)})
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error resolving room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+		if resolution.IsEmpty() {
+			handleError(
+				w,
+				fmt.Errorf("error room not found"),
+				http.StatusNotFound,
+				false,
+			)
+			return
+		}
+		session, _ := helper.GetSessionFromContext(ctx)
+		room, err := db.GetRoomV2(ctx, resolution.ID, session.UserID)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error fetching resolved room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+		if room.IsEmpty() {
+			handleError(
+				w,
+				fmt.Errorf("error room not found"),
+				http.StatusNotFound,
+				false,
+			)
+			return
+		}
+		body, err := json.Marshal(room)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling resolved room: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}
 }

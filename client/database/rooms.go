@@ -1448,3 +1448,35 @@ func (r *publicRoomResultRow) scanRows(rows *sql.Rows) error {
 }
 
 const postgresUniqueViolation = "23505"
+
+func (c *Client) prepareResolveRoomStmt() error {
+	stmt, err := c.DB.Prepare(`
+ SELECT a.id FROM rooms a
+ WHERE a.id = $1 OR a.name = $1 OR a.id = $2 OR a.id = $3
+ ORDER BY CASE WHEN a.id = $1 THEN 0 WHEN a.name = $1 THEN 1 WHEN a.id = $2 THEN 2 ELSE 3 END,
+ a.created_at, a.id
+ LIMIT 1
+ `)
+	if err != nil {
+		return fmt.Errorf("error preparing ResolveRoomStatement: %w", err)
+	}
+	c.ResolveRoomStatement = stmt
+	return nil
+}
+
+func (c *Client) ResolveRoom(ctx context.Context, lookup vibe.RoomNameLookup) (*vibe.RoomResolution, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ResolveRoom")
+	defer span.End()
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	row := c.ResolveRoomStatement.QueryRowContext(cctx, lookup.Name, lookup.EncodedID, lookup.LegacyID)
+	var resolution vibe.RoomResolution
+	err := row.Scan(&resolution.ID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return &vibe.RoomResolution{}, nil
+		}
+		return nil, fmt.Errorf("error resolving room: %w", err)
+	}
+	return &resolution, nil
+}

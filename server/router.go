@@ -40,6 +40,7 @@ func (s *Server) setupRoutes() {
 	docs.PathPrefix("/").Handler(handler.Documentation(s.Config.DocumentationDirectory)).Methods(http.MethodGet)
 
 	// Room routes
+	apiV2.HandleFunc("/room-resolutions", handler.ResolveRoom(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("ResolveRoom")
 	apiV2.HandleFunc("/rooms", handler.CreateRoomV2(s.DB, s.Redis)).Methods(http.MethodPost, http.MethodOptions).Name("CreateRoomV2")
 	apiV1.HandleFunc("/rooms/reservations", handler.ReserveRoomName(s.DB)).Methods(http.MethodPost, http.MethodOptions).Name("ReserveRoomName")
 	apiV1.HandleFunc("/rooms/suggestions", handler.SuggestRoomName(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("SuggestRoomName")
