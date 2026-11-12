@@ -146,3 +146,14 @@ See the [architecture](docs/ARCHITECTURE.md), [application flows](docs/FLOWS.md)
 
 Read [AGENTS.md](AGENTS.md) and the
 [backend skill](.agents/skills/vibes-backend/SKILL.md) before contributing.
+
+### Database connection budget
+
+Each backend process uses one `database/sql` pool with pgx and prepared statements.
+`DATABASE_MAX_CONNECTIONS` defaults to 10 and `DATABASE_MAX_IDLE_CONNECTIONS`
+to 2. Budget the open limit across replicas, rolling deployments, migration jobs,
+and other database clients; the limit is per process, not per database.
+`DATABASE_MAX_IDLE_TIME` defaults to `5m` and `DATABASE_MAX_LIFETIME` to `30m`.
+Both accept Go durations; `0` disables the corresponding expiration. Idle capacity
+allows reuse but is not a guaranteed minimum connection count. Connections and
+prepared statements are retained until expiry or server/network closure.

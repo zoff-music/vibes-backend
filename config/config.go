@@ -31,6 +31,8 @@ type Config struct {
 	DatabaseURL              string        `envconfig:"DATABASE_URL" required:"true"`
 	DatabaseMaxConns         int           `envconfig:"DATABASE_MAX_CONNECTIONS" default:"10"`
 	DatabaseMaxIdleConns     int           `envconfig:"DATABASE_MAX_IDLE_CONNECTIONS" default:"2"`
+	DatabaseMaxIdleTime      time.Duration `envconfig:"DATABASE_MAX_IDLE_TIME" default:"5m"`
+	DatabaseMaxLifetime      time.Duration `envconfig:"DATABASE_MAX_LIFETIME" default:"30m"`
 	RedisURL                 string        `envconfig:"REDIS_URL" required:"true"`
 	RateLimitEnabled         bool          `envconfig:"RATE_LIMIT_ENABLED" default:"false"`
 	RequestBodyMaxBytes      int           `envconfig:"REQUEST_BODY_MAX_BYTES" default:"8388608"`
@@ -150,6 +152,18 @@ func LoadConfig() (*Config, error) {
 	}
 	if c.CastTokenSecret != "" && len(strings.TrimSpace(c.CastTokenSecret)) < 32 {
 		return nil, fmt.Errorf("error validating cast token secret: configure a random secret of at least 32 bytes")
+	}
+	if c.DatabaseMaxConns < 1 {
+		return nil, fmt.Errorf("error validating database maximum connections: must be positive")
+	}
+	if c.DatabaseMaxIdleConns < 0 || c.DatabaseMaxIdleConns > c.DatabaseMaxConns {
+		return nil, fmt.Errorf("error validating database idle connections: must be between zero and maximum connections")
+	}
+	if c.DatabaseMaxIdleTime < 0 {
+		return nil, fmt.Errorf("error validating database idle time: must not be negative")
+	}
+	if c.DatabaseMaxLifetime < 0 {
+		return nil, fmt.Errorf("error validating database lifetime: must not be negative")
 	}
 	if c.RequestBodyMaxBytes < 1 {
 		return nil, fmt.Errorf("error validating request body limit: must be greater than zero")

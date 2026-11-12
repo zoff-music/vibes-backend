@@ -9,27 +9,19 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/monitoring/metrics"
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
-	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel/attribute"
 )
 
 // TraceMiddleware handles tracing of our HTTPS requests.
 type TraceMiddleware struct {
 	ExemptRoutes map[string]bool
+	Trace        func(http.Handler) http.Handler
 }
 
 func (m *TraceMiddleware) Middleware(next http.Handler) http.Handler {
-	middleware := otelhttp.NewMiddleware(
-		"http.server",
-		otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
-			name := routeName(r)
-			return name
-		}),
-	)
-
-	tracedHandler := middleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	tracedHandler := m.Trace(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		span := tracing.SpanFromContext(r.Context())
-		span.SetAttributes(attribute.String("path", r.RequestURI))
+		span.SetAttributes(attribute.String("path", r.URL.Path))
 		next.ServeHTTP(w, r)
 	}))
 

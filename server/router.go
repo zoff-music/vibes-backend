@@ -10,6 +10,7 @@ import (
 	"github.com/zoff-music/vibes-backend/server/internal/middleware"
 	_ "github.com/zoff-music/vibes-backend/swaggerdocs"
 	"github.com/zoff-music/vibes-backend/vibe"
+	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 )
 
 // setupRoutes - the root route function.
@@ -336,6 +337,17 @@ func (s *Server) addSessionMiddleware(routers ...*mux.Router) {
 // addTracingAndMetrics - Adds tracing and metrics to a router.
 func (s *Server) addTracingAndMetrics(routers ...*mux.Router) {
 	tm := middleware.TraceMiddleware{
+		// Mux invokes middleware factories while matching requests. Reuse instruments.
+		Trace: otelhttp.NewMiddleware(
+			"http.server",
+			otelhttp.WithSpanNameFormatter(func(_ string, r *http.Request) string {
+				route := mux.CurrentRoute(r)
+				if route == nil || route.GetName() == "" {
+					return "http.server"
+				}
+				return route.GetName()
+			}),
+		),
 		ExemptRoutes: map[string]bool{
 			"RoomEventsV3":   true,
 			"Messages":       true,
