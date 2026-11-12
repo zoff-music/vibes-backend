@@ -49,6 +49,7 @@ type MessageAuthorFetcherUsageCreator interface {
 }
 
 type MessageUsagePoint struct {
+	RoomName  string    `json:"roomName,omitempty"`
 	RoomType  RoomType  `json:"roomType,omitempty"`
 	RoomID    string    `json:"roomId"`
 	Window    string    `json:"window"`

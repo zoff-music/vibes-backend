@@ -41,6 +41,7 @@ func (v AdminListenerUsage) MarshalJSON() ([]byte, error) {
 }
 
 type RoomListenerUsagePoint struct {
+	RoomName string `json:"roomName,omitempty"`
 	ListenerUsagePoint
 	RoomType RoomType `json:"roomType,omitempty"`
 	RoomID   string   `json:"roomId"`
