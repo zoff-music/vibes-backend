@@ -201,7 +201,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		return fmt.Errorf("error in db: open postgres: %w", err)
 	}
 
-	db.SetConnMaxLifetime(30 * time.Minute)
+	db.SetConnMaxLifetime(cfg.DatabaseMaxLifetime)
+	db.SetConnMaxIdleTime(cfg.DatabaseMaxIdleTime)
 	db.SetMaxOpenConns(cfg.DatabaseMaxConns)
 	db.SetMaxIdleConns(cfg.DatabaseMaxIdleConns)
 
