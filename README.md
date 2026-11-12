@@ -39,7 +39,7 @@ changes. This service coordinates state; it does not host or extract media strea
 
 ### Prerequisites
 
-- Go matching [go.mod](go.mod), currently 1.27.2 or newer.
+- Go matching [go.mod](go.mod), currently 1.27.4 or newer.
 - PostgreSQL with the migrator's schema applied before starting the backend.
 - Redis, required for event replay, caches, and remote state even when rate
   limiting is disabled.

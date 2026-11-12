@@ -49,20 +49,20 @@ func (c *Client) prepareListAdminMessageUsageStmt() error {
 				('day', DATE_TRUNC('DAY', NOW(), 'UTC') - INTERVAL '29 DAYS'),
 				('month', DATE_TRUNC('MONTH', NOW(), 'UTC') - INTERVAL '11 MONTHS')
 		)
-		SELECT a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), SUM(b.message_count), b.room_id, c.room_type::TEXT
+		SELECT a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), SUM(b.message_count), b.room_id, c.room_type::TEXT, c.name
 		FROM windows_q a
 		JOIN chat_usage b ON b.created_at >= a.starts_at
 		LEFT JOIN rooms c ON c.id = b.room_id
 		WHERE ($1 = '' OR b.room_id = $1)
-		GROUP BY a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), b.room_id, c.room_type
+		GROUP BY a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), b.room_id, c.room_type, c.name
 		UNION ALL
-		SELECT a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), SUM(b.message_count), NULL::TEXT, NULL::TEXT
+		SELECT a.period, DATE_TRUNC(a.period, b.created_at, 'UTC'), SUM(b.message_count), NULL::TEXT, NULL::TEXT, NULL::TEXT
 		FROM windows_q a
 		JOIN chat_usage b ON b.created_at >= a.starts_at
 		WHERE ($1 = '' OR b.room_id = $1)
 		GROUP BY a.period, DATE_TRUNC(a.period, b.created_at, 'UTC')
 		UNION ALL
-		SELECT 'total', NULL::TIMESTAMPTZ, COALESCE(SUM(message_count), 0), '', NULL::TEXT
+		SELECT 'total', NULL::TIMESTAMPTZ, COALESCE(SUM(message_count), 0), '', NULL::TEXT, NULL::TEXT
 		FROM chat_usage WHERE ($1 = '' OR room_id = $1)
 		ORDER BY 1, 2
 	`)
@@ -134,6 +134,7 @@ func (c *Client) ListAdminMessageUsage(ctx context.Context, roomID string) (*vib
 }
 
 type messageUsageRow struct {
+	RoomName  sql.NullString
 	RoomType  sql.NullString
 	RoomID    sql.NullString
 	Window    sql.NullString
@@ -142,7 +143,7 @@ type messageUsageRow struct {
 }
 
 func (r *messageUsageRow) scanRows(rows *sql.Rows) error {
-	err := rows.Scan(&r.Window, &r.Timestamp, &r.Messages, &r.RoomID, &r.RoomType)
+	err := rows.Scan(&r.Window, &r.Timestamp, &r.Messages, &r.RoomID, &r.RoomType, &r.RoomName)
 	if err != nil {
 		return fmt.Errorf("error scanning message usage row: %w", err)
 	}
@@ -152,6 +153,7 @@ func (r *messageUsageRow) scanRows(rows *sql.Rows) error {
 
 func (r *messageUsageRow) toMessageUsagePoint() (*vibe.MessageUsagePoint, error) {
 	return &vibe.MessageUsagePoint{
+		RoomName:  r.RoomName.String,
 		RoomType:  vibe.RoomType(r.RoomType.String),
 		RoomID:    r.RoomID.String,
 		Window:    r.Window.String,
