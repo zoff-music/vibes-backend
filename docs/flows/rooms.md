@@ -151,3 +151,26 @@ sequenceDiagram
     end
     API-->>Platform: Counts for selected experience only
 ```
+
+## Paginated room summaries
+
+`GET /api/v3/rooms?from=0&to=2&ids=room-one,room-two` returns the existing
+paginated room-result shape: `rooms`, `from`, `to`, `total`, and `count`.
+Both `from` and `to` are required, zero-based, inclusive, and limited to
+100 rooms per page. Invalid ranges return 400 before accessing the database.
+
+An optional comma-separated `ids` parameter restricts the result to those exact
+IDs and preserves their order. It accepts 1–20 nonempty IDs of up to 799
+characters, accommodating encoded Unicode room names. Whitespace is trimmed,
+duplicates are removed, and missing or flagged rooms are omitted. With no `ids`,
+the endpoint lists only eligible public rooms, using the same public settings,
+admin protection, enabled-provider and flagged-room filters as public discovery.
+Private rooms are never returned unless their exact ID is in the supplied list.
+
+The response reuses the existing display metadata: ID, name, room type, active
+listener count and enabled-provider playlist item count. It exposes no
+credentials, settings or participant details and creates no room membership.
+One prepared query uses the existing participant-count and room-row mapping
+patterns, including one listener for an otherwise unattended Cast receiver.
+Responses use `Cache-Control: private, no-store` and the normal room-read rate
+limit. Platform uses this endpoint for its server-rendered recent-room tab.

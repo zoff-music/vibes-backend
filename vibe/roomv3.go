@@ -67,3 +67,13 @@ type ItemSearchV3 struct {
 type ItemsV3Fetcher interface {
 	GetItemsV3(ctx context.Context, roomID string, search ItemSearchV3) (*ItemResultV3, error)
 }
+
+type RoomsSearchV3 struct {
+	IDs  []string
+	From int
+	To   int
+}
+
+type RoomsV3Fetcher interface {
+	GetRoomsV3(ctx context.Context, search RoomsSearchV3) (*PublicRoomResultV3, error)
+}
