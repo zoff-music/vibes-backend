@@ -48,13 +48,7 @@ func (c *Client) prepareGetStatsV2Stmt() error {
 			SELECT COUNT(*)
 			FROM selected_rooms_q a
 			LEFT JOIN playlist_counts_q b ON b.room_id = a.id
-			WHERE b.item_count > 0 OR (
-				COALESCE(a.admin_password_hash, '') != ''
-				AND EXISTS (
-					SELECT 1 FROM room_settings c
-					WHERE c.room_id = a.id AND c.remove_on_play
-				)
-			)
+			WHERE b.item_count > 0 OR COALESCE(a.admin_password_hash, '') != ''
 		) AS total_rooms
 		FROM room_listener_counts_q
 	`)
