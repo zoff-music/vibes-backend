@@ -25,6 +25,7 @@ func (s *Server) setupRoutes() {
 	apiV1 := s.Router.PathPrefix(v1API).Subrouter()
 	apiV2 := s.Router.PathPrefix(v2API).Subrouter()
 	apiV3 := s.Router.PathPrefix(v3API).Subrouter()
+	apiV3.HandleFunc("/rooms", handler.GetRoomsV3(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetRoomsV3")
 	apiV3.HandleFunc("/rooms/public", handler.GetPublicRoomsV3(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetPublicRoomsV3")
 	apiV3.HandleFunc("/rooms/{id}/events", handler.RoomEventsV3(s.Redis, s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("RoomEventsV3")
 	apiV3.HandleFunc("/rooms/{id}/items", handler.GetItemsV3(s.DB)).Methods(http.MethodGet, http.MethodOptions).Name("GetItemsV3")
@@ -168,6 +169,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			},
 			"RoomExists":                  {Rate: time.Minute, Limit: 60},
 			"GetRoomV2":                   {Bucket: "GetRoom", Rate: time.Minute, Limit: 120},
+			"GetRoomsV3":                  {Bucket: "GetRoom", Rate: time.Minute, Limit: 120},
 			"GetPublicRoomsV3":            {Bucket: "GetPublicRoomsV2", Rate: time.Minute, Limit: 120},
 			"UpdateRoomSettingsV2":        {Bucket: "UpdateRoomSettings", Rate: time.Minute, Limit: 30},
 			"SkipPlaylistItem":            {Bucket: "SkipSong", Rate: time.Minute, Limit: 60},

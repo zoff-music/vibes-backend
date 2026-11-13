@@ -29,6 +29,7 @@ type Client struct {
 	GetRoomV2Statement                         *sql.Stmt
 	GetRoomByNameV2Statement                   *sql.Stmt
 	SearchPublicRoomsV3Statement               *sql.Stmt
+	GetRoomsV3Statement                        *sql.Stmt
 	ReserveRoomNameStatement                   *sql.Stmt
 	ReserveSuggestedRoomNameStatement          *sql.Stmt
 	DeleteExpiredRoomNameReservationsStatement *sql.Stmt
@@ -213,6 +214,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareGetRoomV2Stmt,
 		c.prepareGetRoomByNameV2Stmt,
 		c.prepareSearchPublicRoomsV3Stmt,
+		c.prepareGetRoomsV3Stmt,
 		c.prepareReserveRoomNameStmt,
 		c.prepareReserveSuggestedRoomNameStmt,
 		c.prepareDeleteExpiredRoomNameReservationsStmt,
@@ -356,6 +358,7 @@ func (c *Client) Close() error {
 		c.GetRoomV2Statement,
 		c.GetRoomByNameV2Statement,
 		c.SearchPublicRoomsV3Statement,
+		c.GetRoomsV3Statement,
 		c.ReserveRoomNameStatement,
 		c.ReserveSuggestedRoomNameStatement,
 		c.DeleteExpiredRoomNameReservationsStatement,

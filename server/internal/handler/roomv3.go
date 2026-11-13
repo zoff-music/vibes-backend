@@ -1672,3 +1672,128 @@ func GetPublicRoomsV3(db vibe.PublicRoomsV3Searcher) http.HandlerFunc {
 		_, _ = w.Write(body)
 	}
 }
+
+const roomSummaryMaximumIDs = 20
+
+const roomSummaryMaximumIDLength = 799
+
+// GetRoomsV3 handles GET /api/v3/rooms.
+//
+// @Summary Get paginated room summaries
+// @Description With ids, returns only explicitly requested public or private rooms in request order. Without ids, browses eligible public rooms by listeners, playlist count and ID descending. Missing and flagged rooms are omitted. Ranges are zero-based and inclusive. Does not join rooms or expose settings, passwords or participants.
+// @Tags rooms
+// @Produce json
+// @Param ids query string false "Comma-separated room IDs; 1 to 20 IDs, each at most 799 characters"
+// @Param from query int true "First row, zero-based" minimum(0)
+// @Param to query int true "Last row, inclusive; at most 100 rooms per page" minimum(0)
+// @Success 200 {object} vibe.PublicRoomResultV3
+// @Failure 400 {object} vibe.ErrorResponse
+// @Failure 500 {object} vibe.ErrorResponse
+// @Router /api/v3/rooms [get]
+func GetRoomsV3(db vibe.RoomsV3Fetcher) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		query := r.URL.Query()
+		if len(query["from"]) != 1 || len(query["to"]) != 1 {
+			handleError(
+				w,
+				fmt.Errorf("error getting rooms: supply from and to pagination parameters once"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+		from, err := strconv.ParseInt(query.Get("from"), 10, 32)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error parsing first room row: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+		to, err := strconv.ParseInt(query.Get("to"), 10, 32)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error parsing last room row: %w", err),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+		if from < 0 || to < from || to-from+1 > publicRoomMaximumPageSize {
+			handleError(
+				w,
+				fmt.Errorf("error getting rooms: invalid range or more than 100 rooms requested"),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+		ids := make([]string, 0)
+		values, supplied := query["ids"]
+		if supplied {
+			if len(values) != 1 || len(values[0]) > roomSummaryMaximumIDs*(4*roomSummaryMaximumIDLength+1) {
+				handleError(
+					w,
+					fmt.Errorf("error getting rooms: supply one bounded ids query parameter"),
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+			requested := strings.Split(values[0], ",")
+			if len(requested) > roomSummaryMaximumIDs {
+				handleError(
+					w,
+					fmt.Errorf("error getting rooms: at most 20 room IDs are allowed"),
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+			seen := make(map[string]bool, len(requested))
+			for _, value := range requested {
+				id := strings.TrimSpace(value)
+				if id == "" || !utf8.ValidString(id) || strings.ContainsRune(id, '\x00') || utf8.RuneCountInString(id) > roomSummaryMaximumIDLength {
+					handleError(
+						w,
+						fmt.Errorf("error getting rooms: IDs must contain 1 to 799 valid characters"),
+						http.StatusBadRequest,
+						false,
+					)
+					return
+				}
+				if !seen[id] {
+					ids = append(ids, id)
+					seen[id] = true
+				}
+			}
+		}
+		result, err := db.GetRoomsV3(r.Context(), vibe.RoomsSearchV3{IDs: ids, From: int(from), To: int(to)})
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error getting room summaries: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+		body, err := json.Marshal(result)
+		if err != nil {
+			handleError(
+				w,
+				fmt.Errorf("error marshaling room summaries: %w", err),
+				http.StatusInternalServerError,
+				true,
+			)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		w.Header().Set("Cache-Control", "private, no-store")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write(body)
+	}
+}
