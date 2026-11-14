@@ -21,7 +21,6 @@ type chatCompletionRequest struct {
 	Model           string        `json:"model"`
 	Messages        []chatMessage `json:"messages"`
 	ReasoningEffort string        `json:"reasoning_effort"`
-	Temperature     float64       `json:"temperature"`
 	MaxTokens       int           `json:"max_tokens"`
 }
 
@@ -69,8 +68,7 @@ func (c *Client) GeneratePlaylist(ctx context.Context, prompt string, roomType v
 				Content: prompt,
 			},
 		},
-		ReasoningEffort: "low",
-		Temperature:     0.3,
+		ReasoningEffort: "medium",
 		MaxTokens:       8000,
 	}
 
