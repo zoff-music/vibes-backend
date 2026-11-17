@@ -37,9 +37,65 @@ func GenerateSearchUsage(
 
 func NormalizeSearch(query string) string {
 	value := strings.ToLower(html.UnescapeString(query))
-	normalizedQuery := strings.Join(strings.Fields(value), " ")
+	value = strings.ReplaceAll(value, "\u200b", "")
+	value = strings.ReplaceAll(value, "\ufeff", "")
+	value = strings.Join(strings.Fields(value), " ")
+	normalizedQuery := value
+	// Quoted searches are intentional. Outside quotes, remove only complete
+	// bracketed metadata labels, never arbitrary parenthetical song versions.
+	if !strings.ContainsAny(value, "\"“”") {
+		var cleaned strings.Builder
+		for index := 0; index < len(value); {
+			closing := byte(0)
+			if value[index] == '(' {
+				closing = ')'
+			}
+			if value[index] == '[' {
+				closing = ']'
+			}
+			if closing != 0 {
+				end := strings.IndexByte(value[index+1:], closing)
+				if end >= 0 {
+					end += index + 1
+					label := strings.TrimSpace(value[index+1 : end])
+					if isSearchMetadata(label) {
+						cleaned.WriteByte(' ')
+					} else {
+						cleaned.WriteString(value[index : end+1])
+					}
+					index = end + 1
+					continue
+				}
+			}
+			cleaned.WriteByte(value[index])
+			index++
+		}
+		normalizedQuery = strings.Join(strings.Fields(cleaned.String()), " ")
+	}
+	// Preserve artist punctuation and version qualifiers; only drop separate
+	// trailing punctuation tokens, not punctuation attached to a title.
+	for {
+		separator := strings.LastIndex(normalizedQuery, " ")
+		if separator < 0 || strings.Trim(normalizedQuery[separator+1:], ".,;:!?…|–—-") != "" {
+			break
+		}
+		normalizedQuery = normalizedQuery[:separator]
+	}
+	normalizedQuery = strings.TrimSpace(strings.TrimRight(normalizedQuery, ",;"))
+	if normalizedQuery == "" {
+		return value
+	}
 
 	return normalizedQuery
+}
+
+func isSearchMetadata(label string) bool {
+	switch label {
+	case "official", "vevo", "official video", "official music video", "official audio", "official hd video", "official 4k video":
+		return true
+	default:
+		return false
+	}
 }
 
 func (t GeneratedPlaylistItem) ToProviderItem() (*ProviderItem, error) {

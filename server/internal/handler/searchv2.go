@@ -11,7 +11,6 @@ import (
 	"log"
 	"net/http"
 	"slices"
-	"strings"
 	"unicode/utf8"
 )
 
@@ -36,7 +35,7 @@ func SearchYouTubeV2(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		query := strings.TrimSpace(r.URL.Query().Get("q"))
+		query := vibe.NormalizeSearch(r.URL.Query().Get("q"))
 		vars := mux.Vars(r)
 		roomID := vars["id"]
 		if utf8.RuneCountInString(roomID) > 200 {
@@ -262,7 +261,7 @@ func SearchSoundCloudV2(
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		query := strings.TrimSpace(r.URL.Query().Get("q"))
+		query := vibe.NormalizeSearch(r.URL.Query().Get("q"))
 		vars := mux.Vars(r)
 		roomID := vars["id"]
 		if utf8.RuneCountInString(roomID) > 200 {
