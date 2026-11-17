@@ -71,6 +71,17 @@ func NormalizeSearch(query string) string {
 			index++
 		}
 		normalizedQuery = strings.Join(strings.Fields(cleaned.String()), " ")
+		segments := strings.Split(normalizedQuery, "|")
+		kept := make([]string, 0, len(segments))
+		for _, segment := range segments {
+			segment = strings.TrimSpace(segment)
+			if segment != "" && !isSearchMetadata(segment) {
+				kept = append(kept, segment)
+			}
+		}
+		if len(segments) > 1 {
+			normalizedQuery = strings.Join(kept, " | ")
+		}
 	}
 	// Preserve artist punctuation and version qualifiers; only drop separate
 	// trailing punctuation tokens, not punctuation attached to a title.
@@ -91,7 +102,13 @@ func NormalizeSearch(query string) string {
 
 func isSearchMetadata(label string) bool {
 	switch label {
-	case "official", "vevo", "official video", "official music video", "official audio", "official hd video", "official 4k video":
+	case "official", "vevo", "official video", "official music video", "official audio",
+		"official hd video", "official 4k video", "official hd music video", "official 4k music video",
+		"official video hd", "official video 4k", "4k official video", "official 4k",
+		"music video", "music video 4k", "4k video",
+		"official visualizer", "official visualiser", "visualizer", "visualiser", "official visual",
+		"video oficial", "vídeo oficial", "videoclip oficial", "videoclip oficial 4k", "clipe oficial", "clip officiel",
+		"audio oficial", "áudio oficial", "hd", "hq", "4k", "1080p", "full hd":
 		return true
 	default:
 		return false
