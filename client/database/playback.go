@@ -257,7 +257,7 @@ func (r *playbackPlaylistItemRow) toPlaybackStateV2() (*vibe.PlaybackStateV2, er
 
 // prepareProcessNextExpiredPlaybackV2Stmt prepares the ProcessNextExpiredPlaybackV2Statement.
 func (c *Client) prepareProcessNextExpiredPlaybackV2Stmt() error {
-	// Look up only current item durations instead of joining every queued item on each review.
+	// Keep the duration lookup bounded per playing room so Postgres can use the playlist item primary key.
 	stmt, err := c.DB.Prepare(`
 		WITH locked_playback_q AS (
 			SELECT
@@ -267,18 +267,23 @@ func (c *Client) prepareProcessNextExpiredPlaybackV2Stmt() error {
 			FROM playback_state a
 			JOIN rooms b ON a.room_id = b.id
 			JOIN room_settings c ON c.room_id = b.id
-			JOIN playlist_items d ON d.id = a.current_playlist_item_id
+			JOIN LATERAL (
+				SELECT d.duration
+				FROM playlist_items d
+				WHERE d.id = a.current_playlist_item_id
+				LIMIT 1
+			) e ON TRUE
 			WHERE a.is_playing
 			AND (b.mode = 'server' OR b.mode = 'host')
-			AND ((EXTRACT(EPOCH FROM (NOW() - a.updated_at)) * 1000) + a.position_ms) >= d.duration * 1000 - 500
+			AND ((EXTRACT(EPOCH FROM (NOW() - a.updated_at)) * 1000) + a.position_ms) >= e.duration * 1000 - 500
 			ORDER BY (
 				SELECT COUNT(*)
-				FROM room_users e
-				WHERE e.room_id = a.room_id
-				AND e.last_seen_at > NOW() - INTERVAL '15 SECONDS'
+				FROM room_users f
+				WHERE f.room_id = a.room_id
+				AND f.last_seen_at > NOW() - INTERVAL '15 SECONDS'
 				AND (
-					COALESCE(e.is_active_listener, FALSE)
-					OR COALESCE(e.is_cast_receiver, FALSE)
+					COALESCE(f.is_active_listener, FALSE)
+					OR COALESCE(f.is_cast_receiver, FALSE)
 				)
 			) DESC,
 			a.updated_at ASC
