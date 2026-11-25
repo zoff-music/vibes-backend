@@ -654,20 +654,31 @@ func (c *Client) SchedulePlaylistItemMetadataRefresh(ctx context.Context, roomID
 
 func (c *Client) prepareClaimPlaylistItemMetadataRefreshStmt() error {
 	stmt, err := c.DB.Prepare(`
-		WITH stale_playlist_item_q AS (
-			SELECT a.id, a.metadata_refresh_after <= a.metadata_updated_at AS force
+		WITH candidate_q AS MATERIALIZED (
+			SELECT a.id, a.source_id
 			FROM playlist_items a
-			WHERE a.source_type = $1
-			AND a.metadata_refresh_after <= NOW()
-			ORDER BY a.metadata_refresh_after ASC, a.id ASC
+			WHERE a.source_type = $1 AND a.metadata_refresh_after <= NOW()
+			ORDER BY a.metadata_refresh_after
 			LIMIT 1
 			FOR UPDATE OF a SKIP LOCKED
+		), guarded_q AS MATERIALIZED (
+			SELECT a.source_id FROM candidate_q a
+			WHERE pg_try_advisory_xact_lock(hashtextextended($1 || ':' || a.source_id, 0))
+		), entries_q AS MATERIALIZED (
+			SELECT a.id, a.metadata_refresh_after <= a.metadata_updated_at AS force
+			FROM playlist_items a JOIN guarded_q b ON a.source_id = b.source_id
+			WHERE a.source_type = $1
+			ORDER BY a.id
+			FOR UPDATE OF a
+		), claimed_q AS (
+			UPDATE playlist_items a
+			SET metadata_refresh_after = NOW() + MAKE_INTERVAL(secs => $2)
+			FROM entries_q b WHERE a.id = b.id
+			RETURNING a.source_type, a.source_id, a.metadata_refresh_after, b.force
 		)
-		UPDATE playlist_items a
-		SET metadata_refresh_after = NOW() + MAKE_INTERVAL(secs => $2)
-		FROM stale_playlist_item_q b
-		WHERE a.id = b.id
-		RETURNING a.id, a.room_id, a.source_id, b.force
+		SELECT a.source_type, a.source_id, a.metadata_refresh_after, BOOL_OR(a.force)
+		FROM claimed_q a
+		GROUP BY a.source_type, a.source_id, a.metadata_refresh_after
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ClaimPlaylistItemMetadataRefreshStatement: %w", err)
@@ -723,93 +734,105 @@ func (c *Client) ClaimPlaylistItemMetadataRefresh(
 }
 
 type playlistItemMetadataRefreshRow struct {
-	PlaylistItemID sql.NullString
-	RoomID         sql.NullString
-	SourceID       sql.NullString
-	Force          bool
+	Provider   string
+	SourceID   string
+	LeaseUntil time.Time
+	Force      bool
 }
 
 func (r *playlistItemMetadataRefreshRow) scan(row *sql.Row) error {
-	err := row.Scan(
-		&r.PlaylistItemID,
-		&r.RoomID,
-		&r.SourceID,
-		&r.Force,
-	)
+	err := row.Scan(&r.Provider, &r.SourceID, &r.LeaseUntil, &r.Force)
 	if err != nil {
-		return fmt.Errorf("error scanning playlist item metadata refresh in scan: %w", err)
+		return fmt.Errorf("error scanning source metadata claim: %w", err)
 	}
-
 	return nil
 }
 
 func (r *playlistItemMetadataRefreshRow) toPlaylistItemMetadataRefresh() (*vibe.PlaylistItemMetadataRefresh, error) {
 	return &vibe.PlaylistItemMetadataRefresh{
-		PlaylistItemID: r.PlaylistItemID.String,
-		RoomID:         r.RoomID.String,
-		SourceID:       r.SourceID.String,
-		Force:          r.Force,
+		Provider:   r.Provider,
+		SourceID:   r.SourceID,
+		LeaseUntil: r.LeaseUntil,
+		Force:      r.Force,
 	}, nil
 }
 
-func (c *Client) prepareRefreshPlaylistItemMetadataStmt() error {
+func (c *Client) prepareApplyProviderMetadataStmt() error {
 	stmt, err := c.DB.Prepare(`
-		UPDATE playlist_items
-		SET title = $2,
-			publisher = $3,
-			thumbnail_url = $4,
-			duration = $5,
-			provider_url = $6,
-			playback_restriction = $7,
-			metadata_updated_at = $9,
-			metadata_refresh_after = $9::timestamptz + MAKE_INTERVAL(secs => $8)
-		WHERE id = $1
+		WITH updated_q AS (
+			UPDATE playlist_items a
+			SET title = $4, publisher = $5, thumbnail_url = $6, duration = $7,
+				provider_url = $8, playback_restriction = $9, metadata_updated_at = $10,
+				metadata_refresh_after = $10::timestamptz + MAKE_INTERVAL(secs => $11)
+			WHERE a.source_type = $1 AND a.source_id = $2 AND a.metadata_refresh_after = $3 AND NOT $12
+			RETURNING a.room_id
+		), deleted_q AS (
+			DELETE FROM playlist_items a
+			WHERE a.source_type = $1 AND a.source_id = $2 AND a.metadata_refresh_after = $3 AND $12
+			RETURNING a.id, a.room_id
+		), skip_votes_q AS (
+			DELETE FROM skip_votes a USING deleted_q b
+			WHERE a.room_id = b.room_id AND a.playlist_item_id = b.id
+		), item_votes_q AS (
+			DELETE FROM playlist_item_votes a USING deleted_q b
+			WHERE a.room_id = b.room_id AND a.playlist_item_id = b.id
+		), playback_q AS (
+			UPDATE playback_state a SET current_playlist_item_id = NULL, is_playing = FALSE, position_ms = 0, updated_at = NOW()
+			FROM deleted_q b WHERE a.room_id = b.room_id AND a.current_playlist_item_id = b.id
+		)
+		SELECT a.room_id FROM updated_q a UNION SELECT b.room_id FROM deleted_q b
 	`)
 	if err != nil {
-		return fmt.Errorf("error preparing RefreshPlaylistItemMetadataStatement: %w", err)
+		return fmt.Errorf("error preparing ApplyProviderMetadataStatement: %w", err)
 	}
-
-	c.RefreshPlaylistItemMetadataStatement = stmt
-
+	c.ApplyProviderMetadataStatement = stmt
 	return nil
 }
 
-func (c *Client) RefreshPlaylistItemMetadata(
+func (c *Client) ApplyProviderMetadata(
 	ctx context.Context,
 	refresh vibe.PlaylistItemMetadataRefresh,
-	item vibe.ProviderItem,
+	metadata vibe.ProviderMetadata,
 	refreshInterval time.Duration,
-) error {
-	span, ctx := tracing.StartSpanFromContext(ctx, "RefreshPlaylistItemMetadata")
+) (*vibe.MetadataAffectedRooms, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ApplyProviderMetadata")
 	defer span.End()
-
 	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
-
-	_, err := c.RefreshPlaylistItemMetadataStatement.ExecContext(
+	item := metadata.Item
+	unavailable := metadata.Unavailable || item.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding
+	rows, err := c.ApplyProviderMetadataStatement.QueryContext(
 		cctx,
-		refresh.PlaylistItemID,
-		item.Title,
-		item.Publisher,
-		item.ThumbnailURL,
-		item.DurationSeconds,
-		item.ProviderURL,
-		item.PlaybackRestriction,
-		int(refreshInterval/time.Second),
-		refresh.VerifiedAt,
+		refresh.Provider, refresh.SourceID, refresh.LeaseUntil,
+		item.Title, item.Publisher, item.ThumbnailURL, item.DurationSeconds,
+		item.ProviderURL, item.PlaybackRestriction,
+		metadata.CheckedAt, int(refreshInterval/time.Second), unavailable,
 	)
 	if err != nil {
-		return fmt.Errorf("error refreshing playlist item metadata in RefreshPlaylistItemMetadata: %w", err)
+		return nil, fmt.Errorf("error applying source metadata: %w", err)
 	}
-
-	return nil
+	defer rows.Close()
+	result := &vibe.MetadataAffectedRooms{}
+	for rows.Next() {
+		var roomID string
+		err = rows.Scan(&roomID)
+		if err != nil {
+			return nil, fmt.Errorf("error scanning metadata room: %w", err)
+		}
+		result.RoomIDs = append(result.RoomIDs, roomID)
+	}
+	err = rows.Err()
+	if err != nil {
+		return nil, fmt.Errorf("error reading metadata rooms: %w", err)
+	}
+	return result, nil
 }
 
 func (c *Client) prepareDeferPlaylistItemMetadataRefreshStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE playlist_items
-		SET metadata_refresh_after = NOW() + MAKE_INTERVAL(secs => $2)
-		WHERE id = $1
+		SET metadata_refresh_after = NOW() + MAKE_INTERVAL(secs => $4)
+		WHERE source_type = $1 AND source_id = $2 AND metadata_refresh_after = $3
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing DeferPlaylistItemMetadataRefreshStatement: %w", err)
@@ -822,7 +845,7 @@ func (c *Client) prepareDeferPlaylistItemMetadataRefreshStmt() error {
 
 func (c *Client) DeferPlaylistItemMetadataRefresh(
 	ctx context.Context,
-	playlistItemID string,
+	refresh vibe.PlaylistItemMetadataRefresh,
 	retryAfter time.Duration,
 ) error {
 	span, ctx := tracing.StartSpanFromContext(ctx, "DeferPlaylistItemMetadataRefresh")
@@ -833,7 +856,7 @@ func (c *Client) DeferPlaylistItemMetadataRefresh(
 
 	_, err := c.DeferPlaylistItemMetadataRefreshStatement.ExecContext(
 		cctx,
-		playlistItemID,
+		refresh.Provider, refresh.SourceID, refresh.LeaseUntil,
 		int(retryAfter/time.Second),
 	)
 	if err != nil {

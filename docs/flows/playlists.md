@@ -59,7 +59,7 @@ refresh on the next attempt rather than silently losing the notification.
 
 New playlist entries and successful metadata refreshes schedule the next check
 five days later. Existing due dates remain unchanged until an entry is refreshed.
-The worker checks for due entries every second, with a five-minute retry lease
+The worker claims one due `(provider, sourceId)` every second, with a five-minute retry lease
 and a 24-hour delay for provider quota errors.
 
 A skip may include `errorCode` and `playlistItemId`. After skip permissions are
@@ -69,12 +69,18 @@ next track. Reports request verification; they never directly remove content.
 YouTube metadata confirming embedding is disabled removes the item and publishes
 queue removal and playback updates, as do missing, live, and made-for-kids videos.
 
-Verified metadata results are shared in Redis by `(provider, sourceId)` for five
-days. A single shared lookup lease prevents backend pods from fetching the same
-source concurrently. Duplicate entries reuse that result, including confirmed
-unavailability, while each room still receives its own queue/playback updates.
-A fixture with 200,000 entries and 5,000 unique source IDs verifies 5,000 provider
-calls; the per-entry database and notification work remains.
+Each claim leases all matching playlist entries together, including duplicates
+in other rooms. One provider result updates or removes those entries atomically,
+then publishes one queue snapshot and playback update per affected room. A
+PostgreSQL regression test with 200,000 entries and 5,000 unique IDs verifies
+exactly 5,000 scheduled jobs, with no duplicate jobs left due. Provider namespaces
+remain separate. Advisory and row locks coordinate concurrent backend pods.
+
+Verified results are also shared in Redis by `(provider, sourceId)` for five
+days, protecting provider calls when a new duplicate arrives after a source was
+checked. Completion and quota backoff are fenced by the database lease timestamp;
+a newer error-triggered check is not overwritten by an older job. No migration
+or bulk rescheduling of existing deadlines is required.
 
 Cached results retain the original verification time: reading one does not
 extend its freshness or schedule another five days from the cache read. An

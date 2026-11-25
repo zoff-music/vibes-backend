@@ -62,7 +62,7 @@ type Client struct {
 	UpdatePlaylistItemAddedAtStatement             *sql.Stmt
 	ClaimPlaylistItemMetadataRefreshStatement      *sql.Stmt
 	SchedulePlaylistItemMetadataRefreshStatement   *sql.Stmt
-	RefreshPlaylistItemMetadataStatement           *sql.Stmt
+	ApplyProviderMetadataStatement                 *sql.Stmt
 	DeferPlaylistItemMetadataRefreshStatement      *sql.Stmt
 	ExpirePlaylistItemMetadataStatement            *sql.Stmt
 	UpdatePlaylistItemPlaybackRestrictionStatement *sql.Stmt
@@ -274,7 +274,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareUpdatePlaylistItemAddedAtStmt,
 		c.prepareClaimPlaylistItemMetadataRefreshStmt,
 		c.prepareSchedulePlaylistItemMetadataRefreshStmt,
-		c.prepareRefreshPlaylistItemMetadataStmt,
+		c.prepareApplyProviderMetadataStmt,
 		c.prepareDeferPlaylistItemMetadataRefreshStmt,
 		c.prepareExpirePlaylistItemMetadataStmt,
 		c.prepareUpdatePlaylistItemPlaybackRestrictionStmt,
@@ -390,7 +390,7 @@ func (c *Client) Close() error {
 		c.UpdatePlaylistItemPlaybackRestrictionStatement,
 		c.ClaimPlaylistItemMetadataRefreshStatement,
 		c.SchedulePlaylistItemMetadataRefreshStatement,
-		c.RefreshPlaylistItemMetadataStatement,
+		c.ApplyProviderMetadataStatement,
 		c.DeferPlaylistItemMetadataRefreshStatement,
 		c.ExpirePlaylistItemMetadataStatement,
 		c.CreatePlaylistImportStatement,
