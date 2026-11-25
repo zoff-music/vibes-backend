@@ -9,6 +9,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/zoff-music/vibes-backend/internalerror"
+	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
 
@@ -338,9 +339,13 @@ func GetYouTubePlaylistV2(
 
 		w.Header().Set("Cache-Control", "private, no-store")
 		accessToken := ""
-		receipt := r.Header.Get("X-Playlist-Code")
+		receipt := r.Header.Get("X-Playlist-Authorization")
+		if receipt == "" {
+			receipt = r.Header.Get("X-Playlist-Code")
+		}
 		if receipt != "" {
-			token, consumeErr := authorizations.ConsumePlaylistAuthorization(ctx, playlistHash(receipt), playlistHash(provider+"."+id))
+			session, _ := helper.GetSessionFromContext(ctx)
+			token, consumeErr := authorizations.ConsumePlaylistAuthorization(ctx, playlistGrantKey(receipt, session.UserID), playlistHash(provider+"."+id))
 			if consumeErr != nil {
 				handleError(
 					w,
@@ -358,7 +363,7 @@ func GetYouTubePlaylistV2(
 						StatusCode: http.StatusForbidden,
 						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Error:     "playlist_authentication_required",
-							Message:   "The import code has expired or belongs to another playlist. Authenticate again to import it.",
+							Message:   "Sign-in expired. Authenticate again to import this playlist.",
 							Propagate: true,
 						},
 					},
@@ -459,9 +464,13 @@ func ResolveSoundCloudPlaylistV2(
 
 		w.Header().Set("Cache-Control", "private, no-store")
 		accessToken := ""
-		receipt := r.Header.Get("X-Playlist-Code")
+		receipt := r.Header.Get("X-Playlist-Authorization")
+		if receipt == "" {
+			receipt = r.Header.Get("X-Playlist-Code")
+		}
 		if receipt != "" {
-			token, consumeErr := authorizations.ConsumePlaylistAuthorization(ctx, playlistHash(receipt), playlistHash(vibe.SourceTypeSoundCloud+"."+providerURL))
+			session, _ := helper.GetSessionFromContext(ctx)
+			token, consumeErr := authorizations.ConsumePlaylistAuthorization(ctx, playlistGrantKey(receipt, session.UserID), playlistHash(vibe.SourceTypeSoundCloud+"."+providerURL))
 			if consumeErr != nil {
 				handleError(
 					w,
@@ -479,7 +488,7 @@ func ResolveSoundCloudPlaylistV2(
 						StatusCode: http.StatusForbidden,
 						ResponseBody: internalerror.ErrorCodeResponseBody{
 							Error:     "playlist_authentication_required",
-							Message:   "The import code has expired or belongs to another playlist. Authenticate again to import it.",
+							Message:   "Sign-in expired. Authenticate again to import this playlist.",
 							Propagate: true,
 						},
 					},
