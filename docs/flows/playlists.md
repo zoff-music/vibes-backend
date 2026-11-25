@@ -54,3 +54,17 @@ policy. Retries publish a current queue snapshot instead of repeating an add
 delta, and resolve an existing item ID even when the room allows duplicates.
 Publication precedes completion, so a completion failure may cause a safe state
 refresh on the next attempt rather than silently losing the notification.
+
+## Scheduled metadata checks
+
+New playlist entries and successful metadata refreshes schedule the next check
+five days later. Existing due dates remain unchanged until an entry is refreshed.
+The worker checks for due entries every second, with a five-minute retry lease
+and a 24-hour delay for provider quota errors.
+
+A skip may include `errorCode` and `playlistItemId`. After skip permissions are
+validated, a report matching the skipped item (or the current item for a skip
+vote) makes its metadata refresh due immediately. Stale reports cannot flag the
+next track. Reports request verification; they never directly remove content.
+YouTube metadata confirming embedding is disabled removes the item and publishes
+queue removal and playback updates, as do missing, live, and made-for-kids videos.

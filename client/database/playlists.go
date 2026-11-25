@@ -627,6 +627,31 @@ func (r *playlistItemMetadataExpiryRow) toPlaylistItemMetadataExpiry() (*vibe.Pl
 	return &vibe.PlaylistItemMetadataExpiry{RoomID: r.RoomID}, nil
 }
 
+func (c *Client) prepareSchedulePlaylistItemMetadataRefreshStmt() error {
+	stmt, err := c.DB.Prepare(`
+		UPDATE playlist_items
+		SET metadata_refresh_after = LEAST(metadata_refresh_after, NOW())
+		WHERE room_id = $1 AND id = $2
+	`)
+	if err != nil {
+		return fmt.Errorf("error preparing SchedulePlaylistItemMetadataRefreshStatement: %w", err)
+	}
+	c.SchedulePlaylistItemMetadataRefreshStatement = stmt
+	return nil
+}
+
+func (c *Client) SchedulePlaylistItemMetadataRefresh(ctx context.Context, roomID, playlistItemID string) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SchedulePlaylistItemMetadataRefresh")
+	defer span.End()
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := c.SchedulePlaylistItemMetadataRefreshStatement.ExecContext(cctx, roomID, playlistItemID)
+	if err != nil {
+		return fmt.Errorf("error scheduling playlist item metadata refresh: %w", err)
+	}
+	return nil
+}
+
 func (c *Client) prepareClaimPlaylistItemMetadataRefreshStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH stale_playlist_item_q AS (
@@ -1289,6 +1314,7 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 				added_by,
 				added_by_nickname,
 				added_at,
+				metadata_refresh_after,
 				duplicate_guard
 			)
 			SELECT
@@ -1305,6 +1331,7 @@ func (c *Client) prepareAddPlaylistItemStmt() error {
 				$8,
 				COALESCE((SELECT name FROM session_profile_q), $9),
 				NOW(),
+				NOW() + INTERVAL '5 days',
 				NOT a.allow_duplicates
 			FROM room_config_q a
 			WHERE NOT EXISTS (SELECT 1 FROM existing_import_item_q)

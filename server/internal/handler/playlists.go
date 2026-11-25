@@ -29,7 +29,8 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 	}
 
 	providerItem, err := h.Provider.GetProviderItem(ctx, refresh.SourceID)
-	if err != nil {
+	embeddingDisabled := err == nil && providerItem.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding
+	if err != nil || embeddingDisabled {
 		var quotaError internalerror.ErrProviderQuotaExceeded
 		if errors.As(err, &quotaError) {
 			err = h.DB.DeferPlaylistItemMetadataRefresh(ctx, refresh.PlaylistItemID, metadataQuotaRetry)
@@ -51,7 +52,7 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 		var notFoundError internalerror.ErrProviderItemNotFound
 		var liveVideoError internalerror.ErrLiveVideo
 		var madeForKidsError internalerror.ErrMadeForKids
-		if !errors.As(err, &notFoundError) &&
+		if !embeddingDisabled && !errors.As(err, &notFoundError) &&
 			!errors.As(err, &liveVideoError) &&
 			!errors.As(err, &madeForKidsError) {
 			return fmt.Errorf(
@@ -324,7 +325,7 @@ func (h *CleanupPlaylistImportItems) Handle(ctx context.Context, _ []byte) error
 
 const playlistImportItemLimit = 5000
 
-const metadataRefreshInterval = 21 * 24 * time.Hour
+const metadataRefreshInterval = 5 * 24 * time.Hour
 
 const metadataRefreshRetry = 5 * time.Minute
 
