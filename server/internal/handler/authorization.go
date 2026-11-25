@@ -5,15 +5,16 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"html/template"
 	"log"
 	"net/http"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/zoff-music/vibes-backend/server/internal/helper"
 	"github.com/zoff-music/vibes-backend/vibe"
 )
@@ -95,6 +96,32 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer, provider
 				}
 				channel = parsed.String()
 			}
+			switch r.URL.Query().Get("flow") {
+			case "web":
+				if channel == "" {
+					handleError(
+						w,
+						fmt.Errorf("error missing browser callback channel"),
+						http.StatusBadRequest,
+						false,
+					)
+					return
+				}
+				channel = "web-" + channel
+			case "native":
+				challenge := r.URL.Query().Get("challenge")
+				digest, decodeErr := hex.DecodeString(challenge)
+				if decodeErr != nil || len(digest) != sha256.Size {
+					handleError(
+						w,
+						fmt.Errorf("error invalid app authorization challenge"),
+						http.StatusBadRequest,
+						false,
+					)
+					return
+				}
+				channel = "native-" + challenge
+			}
 			state = "playlist." + playlistHash(providerName+"."+source) + "." + channel + "." + state
 		}
 		state = providerName + "." + state
@@ -122,7 +149,7 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer, provider
 
 // OAuthCallback handles GET /api/v1/callbacks/{provider}
 //
-//	@Success 200 {string} string "Single-use playlist import code page"
+//	@Success 200 {string} string "Browser sign-in completion page"
 //	@Summary	Handle provider authorization callback
 //	@Tags		authorization
 //	@Param		code	query	string	true	"Authorization code"
@@ -152,7 +179,8 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 			return
 		}
 
-		if code == "" || !strings.HasPrefix(state, providerName+".") {
+		cancelled := query.Get("error") == "access_denied" && strings.HasPrefix(state, providerName+".playlist.")
+		if (code == "" && !cancelled) || !strings.HasPrefix(state, providerName+".") {
 			handleError(
 				w,
 				fmt.Errorf("error invalid OAuth callback parameters"),
@@ -180,6 +208,23 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 				http.StatusBadRequest,
 				true,
 			)
+			return
+		}
+
+		if cancelled {
+			w.Header().Set("Cache-Control", "no-store")
+			w.Header().Set("Referrer-Policy", "no-referrer")
+			parts := strings.Split(state, ".")
+			if len(parts) == 5 && strings.HasPrefix(parts[3], "native-") {
+				w.Header().Set("Location", "zoff://playlist-import#cancelled")
+				w.WriteHeader(http.StatusSeeOther)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			_, err = fmt.Fprint(w, `<!doctype html><title>Playlist sign-in cancelled</title><p>Sign-in cancelled. Close this tab to return to your playlist.</p>`)
+			if err != nil {
+				log.Printf("error writing sign-in cancellation: %v", err)
+			}
 			return
 		}
 
@@ -220,7 +265,16 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 			if expiresAt.Before(deadline) {
 				deadline = expiresAt
 			}
-			err = db.SavePlaylistAuthorization(ctx, playlistHash(receipt), parts[2], tokenResp.AccessToken, deadline)
+			channel := parts[3]
+			grantKey := playlistHash(receipt)
+			if strings.HasPrefix(channel, "web-") {
+				grantKey = playlistHash(channel + "." + pendingState.UserID)
+			}
+			challenge, native := strings.CutPrefix(channel, "native-")
+			if native {
+				grantKey = playlistHash("native." + receipt + "." + challenge)
+			}
+			err = db.SavePlaylistAuthorization(ctx, grantKey, parts[2], tokenResp.AccessToken, deadline)
 			if err != nil {
 				handleError(
 					w,
@@ -232,6 +286,14 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 			}
 			w.Header().Set("Cache-Control", "no-store")
 			w.Header().Set("Referrer-Policy", "no-referrer")
+			if strings.HasPrefix(channel, "native-") {
+				w.Header().Set("Location", "zoff://playlist-import#"+receipt)
+				w.WriteHeader(http.StatusSeeOther)
+				return
+			}
+			if strings.HasPrefix(channel, "web-") {
+				receipt = ""
+			}
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			scriptDigest := sha256.Sum256([]byte(playlistCallbackScript))
 			w.Header().Set("Content-Security-Policy", "script-src 'sha256-"+base64.StdEncoding.EncodeToString(scriptDigest[:])+"'; default-src 'none'; frame-ancestors 'none'; base-uri 'none'")
@@ -503,16 +565,15 @@ func playlistHash(value string) string {
 }
 
 const playlistCallbackScript = `
-const code = document.querySelector('code');
-if (code.dataset.channel && typeof BroadcastChannel !== 'undefined') {
-    const channel = new BroadcastChannel(code.dataset.channel);
-    channel.onmessage = ({data}) => {
-        if (data === 'received') {
-            channel.close();
-            window.close();
-        }
-    };
-    channel.postMessage(code.textContent);
+const {channel, legacy} = document.body.dataset;
+if (channel.startsWith('web-')) {
+    localStorage.setItem(channel, 'complete');
+    localStorage.removeItem(channel);
+    window.close();
+} else if (channel && typeof BroadcastChannel !== 'undefined') {
+    const updates = new BroadcastChannel(channel);
+    updates.postMessage(legacy);
+    updates.onmessage = () => { updates.close(); window.close(); };
 }
 `
 
@@ -522,10 +583,26 @@ const playlistCallbackPage = `<!doctype html>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Playlist authorized</title>
 </head>
-<body>
+<body data-channel="%s" data-legacy="%s">
     <h1>Playlist authorized</h1>
-    <p>Return to Zoff. If prompted, paste this single-use import code within five minutes.</p>
-    <code data-channel="%s">%s</code>
+    <p>Return to Zoff to finish importing your playlist.</p>
     <script>%s</script>
 </body>
 </html>`
+
+// Browser grants belong to the initiating cookie session. App grants require both
+// the provider callback result and the verifier kept by the initiating app.
+func playlistGrantKey(authorization, sessionID string) string {
+	if strings.HasPrefix(authorization, "web-") && sessionID != "" {
+		return playlistHash(authorization + "." + sessionID)
+	}
+	receipt, verifier, found := strings.Cut(authorization, ".")
+	if found {
+		digest := sha256.Sum256([]byte(verifier))
+		return playlistHash("native." + receipt + "." + hex.EncodeToString(digest[:]))
+	}
+	if len(authorization) == 24 {
+		return playlistHash(authorization)
+	}
+	return ""
+}
