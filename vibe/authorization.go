@@ -62,6 +62,7 @@ type PendingOAuthStateSaver interface {
 
 // CodeValidatorUpserter handles database operations for OAuth callbacks
 type CodeValidatorUpserter interface {
+	SavePlaylistAuthorization(ctx context.Context, codeHash, sourceHash, accessToken string, expiresAt time.Time) error
 	ConsumePendingOAuthState(ctx context.Context, userID, state string) (*PendingOAuthState, error)
 	UpsertAuthToken(ctx context.Context, userID, provider, code, state string, expiresAt time.Time) error
 	UpsertAccessToken(ctx context.Context, userID, provider, accessToken, refreshToken string, expiresAt, refreshExpiresAt time.Time) error
@@ -81,4 +82,8 @@ type ExpiredTokenClaimUpdater interface {
 // ExpiredPendingOAuthStateCleaner deletes expired pending OAuth states
 type ExpiredPendingOAuthStateCleaner interface {
 	DeleteExpiredPendingOAuthStates(ctx context.Context) (int, error)
+}
+
+type PlaylistAuthorizationConsumer interface {
+	ConsumePlaylistAuthorization(ctx context.Context, codeHash, sourceHash string) (string, error)
 }

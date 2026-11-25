@@ -3,6 +3,7 @@ package soundcloud
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -18,6 +19,7 @@ import (
 func (c *Client) ResolveProviderPlaylist(
 	ctx context.Context,
 	providerURL string,
+	accessToken string,
 ) (*vibe.ProviderPlaylist, error) {
 	if !c.Enabled {
 		return nil, fmt.Errorf(
@@ -25,11 +27,16 @@ func (c *Client) ResolveProviderPlaylist(
 		)
 	}
 
-	err := c.EnsureToken(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("error ensuring token in ResolveProviderPlaylist: %w", err)
-	}
+	if accessToken == "" {
+		err := c.EnsureToken(ctx)
+		if err != nil {
+			return nil, fmt.Errorf("error ensuring token in ResolveProviderPlaylist: %w", err)
+		}
 
+		c.mu.Lock()
+		accessToken = c.accessToken
+		c.mu.Unlock()
+	}
 	params := url.Values{}
 	params.Set("url", providerURL)
 	responseBody, err := c.HTTPClient.RequestBytes(ctx, client.HTTPRequestData{
@@ -37,11 +44,15 @@ func (c *Client) ResolveProviderPlaylist(
 		URL:     fmt.Sprintf("%s/resolve", c.Endpoint),
 		Payload: &params,
 		Headers: map[string]string{
-			"Authorization": fmt.Sprintf("OAuth %s", c.accessToken),
+			"Authorization": fmt.Sprintf("OAuth %s", accessToken),
 			"Accept":        "application/json; charset=utf-8",
 		},
 	})
 	if err != nil {
+		var status internalerror.HTTPStatusCodeError
+		if errors.As(err, &status) && (status.StatusCode == http.StatusForbidden || status.StatusCode == http.StatusNotFound) {
+			return nil, internalerror.ErrPlaylistAccess{}
+		}
 		return nil, fmt.Errorf(
 			"error resolving soundcloud playlist in ResolveProviderPlaylist: %w",
 			err,
@@ -88,7 +99,7 @@ func (c *Client) ResolveProviderPlaylist(
 			Method: http.MethodGet,
 			URL:    nextURL,
 			Headers: map[string]string{
-				"Authorization": fmt.Sprintf("OAuth %s", c.accessToken),
+				"Authorization": fmt.Sprintf("OAuth %s", accessToken),
 				"Accept":        "application/json; charset=utf-8",
 			},
 		}
@@ -103,6 +114,10 @@ func (c *Client) ResolveProviderPlaylist(
 
 		responseBody, err = c.HTTPClient.RequestBytes(ctx, requestData)
 		if err != nil {
+			var status internalerror.HTTPStatusCodeError
+			if errors.As(err, &status) && (status.StatusCode == http.StatusForbidden || status.StatusCode == http.StatusNotFound) {
+				return nil, internalerror.ErrPlaylistAccess{}
+			}
 			return nil, fmt.Errorf(
 				"error requesting soundcloud playlist items in ResolveProviderPlaylist: %w",
 				err,
@@ -151,6 +166,13 @@ func (c *Client) ResolveProviderPlaylist(
 			break
 		}
 		nextURL = page.NextHref
+		if nextURL != "" {
+			next, parseErr := url.Parse(nextURL)
+			endpoint, endpointErr := url.Parse(c.Endpoint)
+			if parseErr != nil || endpointErr != nil || next.Scheme != endpoint.Scheme || next.Host != endpoint.Host || next.User != nil {
+				return nil, fmt.Errorf("error validating SoundCloud playlist pagination URL")
+			}
+		}
 	}
 
 	return &vibe.ProviderPlaylist{

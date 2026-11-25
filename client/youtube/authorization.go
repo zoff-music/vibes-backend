@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/zoff-music/vibes-backend/monitoring/tracing"
 
@@ -26,7 +27,11 @@ func (c *Client) GetOAuthURL(state, codeVerifier string) string {
 	q.Set("scope", "https://www.googleapis.com/auth/youtube.readonly")
 	q.Set("redirect_uri", c.redirectURI)
 	q.Set("state", state)
-	q.Set("access_type", "offline")
+	if strings.HasPrefix(state, "youtube.playlist.") {
+		q.Set("access_type", "online")
+	} else {
+		q.Set("access_type", "offline")
+	}
 	q.Set("prompt", "consent")
 	u.RawQuery = q.Encode()
 

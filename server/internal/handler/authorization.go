@@ -3,9 +3,12 @@ package handler
 import (
 	"context"
 	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
+	"html/template"
 	"log"
 	"net/http"
 	"strings"
@@ -17,6 +20,8 @@ import (
 
 // Authorize redirects the user to the provider for authentication
 //
+//	@Param playlist query string false "Playlist ID or SoundCloud URL for a single-use import"
+//	@Param channel query string false "Same-origin browser callback channel UUID"
 //	@Summary	Start provider authorization
 //	@Tags		authorization
 //	@Produce	json
@@ -62,6 +67,36 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer, provider
 			return
 		}
 
+		source := r.URL.Query().Get("playlist")
+		if source != "" {
+			if providerName == vibe.SourceTypeSoundCloud {
+				source, err = vibe.ResolveSoundCloudPlaylistURL(source)
+				if err != nil {
+					handleError(
+						w,
+						fmt.Errorf("error validating playlist: %w", err),
+						http.StatusBadRequest,
+						false,
+					)
+					return
+				}
+			}
+			channel := r.URL.Query().Get("channel")
+			if channel != "" {
+				parsed, parseErr := uuid.Parse(channel)
+				if parseErr != nil {
+					handleError(
+						w,
+						fmt.Errorf("error validating callback channel: %w", parseErr),
+						http.StatusBadRequest,
+						false,
+					)
+					return
+				}
+				channel = parsed.String()
+			}
+			state = "playlist." + playlistHash(providerName+"."+source) + "." + channel + "." + state
+		}
 		state = providerName + "." + state
 		err = db.SavePendingOAuthState(ctx, session.UserID, state, codeVerifier)
 		if err != nil {
@@ -75,6 +110,7 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer, provider
 		}
 
 		redirectURL := oa.GetOAuthURL(state, codeVerifier)
+		// #nosec G710 -- each provider constructs a fixed HTTPS origin and URL-encodes state as a query parameter.
 		http.Redirect(
 			w,
 			r,
@@ -86,6 +122,7 @@ func Authorize(db vibe.PendingOAuthStateSaver, oa vibe.OAuthAuthorizer, provider
 
 // OAuthCallback handles GET /api/v1/callbacks/{provider}
 //
+//	@Success 200 {string} string "Single-use playlist import code page"
 //	@Summary	Handle provider authorization callback
 //	@Tags		authorization
 //	@Param		code	query	string	true	"Authorization code"
@@ -158,6 +195,53 @@ func OAuthCallback(db vibe.CodeValidatorUpserter, oa vibe.OAuthExchanger, provid
 		}
 
 		expiresAt := time.Now().UTC().Add(time.Duration(tokenResp.ExpiresIn) * time.Second)
+		if strings.HasPrefix(state, providerName+".playlist.") {
+			parts := strings.Split(state, ".")
+			if len(parts) != 5 {
+				handleError(
+					w,
+					fmt.Errorf("error invalid playlist state"),
+					http.StatusBadRequest,
+					false,
+				)
+				return
+			}
+			receipt, err := generateRandomString(18)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error creating import code: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+			deadline := time.Now().Add(5 * time.Minute)
+			if expiresAt.Before(deadline) {
+				deadline = expiresAt
+			}
+			err = db.SavePlaylistAuthorization(ctx, playlistHash(receipt), parts[2], tokenResp.AccessToken, deadline)
+			if err != nil {
+				handleError(
+					w,
+					fmt.Errorf("error saving import authorization: %w", err),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+			w.Header().Set("Cache-Control", "no-store")
+			w.Header().Set("Referrer-Policy", "no-referrer")
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			scriptDigest := sha256.Sum256([]byte(playlistCallbackScript))
+			w.Header().Set("Content-Security-Policy", "script-src 'sha256-"+base64.StdEncoding.EncodeToString(scriptDigest[:])+"'; default-src 'none'; frame-ancestors 'none'; base-uri 'none'")
+			_, err = fmt.Fprintf(w, playlistCallbackPage, template.HTMLEscapeString(parts[3]), template.HTMLEscapeString(receipt), playlistCallbackScript)
+			if err != nil {
+				log.Printf("error writing import code page: %v", err)
+			}
+			return
+		}
+
 		refreshExpiresAt := time.Now().UTC().Add(30 * 24 * time.Hour) // Default 30 days specific for refresh token if not provided.
 
 		authExpiresAt := time.Now().UTC().Add(24 * time.Hour)
@@ -332,7 +416,7 @@ func generateRandomString(n int) (string, error) {
 		return "", fmt.Errorf("error reading cryptographic random bytes: %w", err)
 	}
 
-	value := base64.URLEncoding.EncodeToString(b)
+	value := base64.RawURLEncoding.EncodeToString(b)
 	return value, nil
 }
 
@@ -412,3 +496,36 @@ func (h *CleanupExpiredPendingOAuthStates) Handle(ctx context.Context, _ []byte)
 
 	return nil
 }
+
+func playlistHash(value string) string {
+	digest := sha256.Sum256([]byte(value))
+	return base64.RawURLEncoding.EncodeToString(digest[:])
+}
+
+const playlistCallbackScript = `
+const code = document.querySelector('code');
+if (code.dataset.channel && typeof BroadcastChannel !== 'undefined') {
+    const channel = new BroadcastChannel(code.dataset.channel);
+    channel.onmessage = ({data}) => {
+        if (data === 'received') {
+            channel.close();
+            window.close();
+        }
+    };
+    channel.postMessage(code.textContent);
+}
+`
+
+const playlistCallbackPage = `<!doctype html>
+<html lang="en">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Playlist authorized</title>
+</head>
+<body>
+    <h1>Playlist authorized</h1>
+    <p>Return to Zoff. If prompted, paste this single-use import code within five minutes.</p>
+    <code data-channel="%s">%s</code>
+    <script>%s</script>
+</body>
+</html>`
