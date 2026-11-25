@@ -72,7 +72,31 @@ func ResolveSoundCloudPlaylistURL(value string) (string, error) {
 	return url, nil
 }
 
+type ProviderMetadata struct {
+	Item        ProviderItem `json:"item"`
+	Unavailable bool         `json:"unavailable"`
+	CheckedAt   time.Time    `json:"checkedAt"`
+}
+
+type ProviderMetadataLookup struct {
+	Metadata ProviderMetadata
+	Token    string
+}
+
+type MetadataRefreshNotifier interface {
+	RoomBatchEventV3Notifier
+	ProviderMetadataCache
+}
+
+type ProviderMetadataCache interface {
+	GetOrClaimMetadata(ctx context.Context, provider, sourceID string, force bool) (*ProviderMetadataLookup, error)
+	CompleteMetadata(ctx context.Context, provider, sourceID, token string, metadata ProviderMetadata, lifetime time.Duration) (bool, error)
+	ReleaseMetadata(ctx context.Context, provider, sourceID, token string) error
+}
+
 type PlaylistItemMetadataRefresh struct {
+	Force          bool
+	VerifiedAt     time.Time
 	PlaylistItemID string
 	RoomID         string
 	SourceID       string

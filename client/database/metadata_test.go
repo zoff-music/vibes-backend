@@ -83,6 +83,10 @@ func TestMetadataScheduling(t *testing.T) {
 			if err == nil || second != nil {
 				t.Fatal("claimed the same item while leased")
 			}
+			if !refresh.Force {
+				t.Fatal("reported error did not request fresh provider metadata")
+			}
+			refresh.VerifiedAt = time.Now().Add(-24 * time.Hour)
 			err = c.RefreshPlaylistItemMetadata(ctx, *refresh, vibe.ProviderItem{Title: "Updated"}, 5*24*time.Hour)
 			if err != nil {
 				t.Fatal(err)

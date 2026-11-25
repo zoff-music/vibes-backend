@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/zoff-music/vibes-backend/internalerror"
@@ -13,7 +14,7 @@ import (
 
 type MetaRefresh struct {
 	DB           vibe.PlaylistItemMetadataRefreshStorage
-	Events       vibe.RoomBatchEventV3Notifier
+	Events       vibe.MetadataRefreshNotifier
 	Provider     vibe.ProviderItemFetcher
 	ProviderName string
 }
@@ -28,8 +29,42 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 		)
 	}
 
-	providerItem, err := h.Provider.GetProviderItem(ctx, refresh.SourceID)
-	embeddingDisabled := err == nil && providerItem.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding
+	lookup, err := h.Events.GetOrClaimMetadata(ctx, h.ProviderName, refresh.SourceID, refresh.Force)
+	if err != nil {
+		return fmt.Errorf("error coordinating metadata lookup: %w", err)
+	}
+	if lookup.Token == "" && lookup.Metadata.CheckedAt.IsZero() {
+		return internalerror.ErrExpected{Err: internalerror.ErrNonRecoverable{Err: fmt.Errorf("error metadata lookup already claimed")}}
+	}
+	providerItem := &lookup.Metadata.Item
+	if lookup.Token != "" {
+		defer func() {
+			releaseErr := h.Events.ReleaseMetadata(context.WithoutCancel(ctx), h.ProviderName, refresh.SourceID, lookup.Token)
+			if releaseErr != nil {
+				log.Printf("error releasing metadata lookup: %v", releaseErr)
+			}
+		}()
+		providerItem, err = h.Provider.GetProviderItem(ctx, refresh.SourceID)
+		var notFound internalerror.ErrProviderItemNotFound
+		var live internalerror.ErrLiveVideo
+		var kids internalerror.ErrMadeForKids
+		unavailable := errors.As(err, &notFound) || errors.As(err, &live) || errors.As(err, &kids)
+		if err == nil || unavailable {
+			lookup.Metadata = vibe.ProviderMetadata{Unavailable: unavailable, CheckedAt: time.Now()}
+			if err == nil {
+				lookup.Metadata.Item = *providerItem
+			}
+			completed, cacheErr := h.Events.CompleteMetadata(ctx, h.ProviderName, refresh.SourceID, lookup.Token, lookup.Metadata, metadataRefreshInterval)
+			if cacheErr != nil {
+				return fmt.Errorf("error caching verified metadata: %w", cacheErr)
+			}
+			if !completed {
+				return internalerror.ErrExpected{Err: internalerror.ErrNonRecoverable{Err: fmt.Errorf("error metadata claim expired")}}
+			}
+		}
+	}
+	refresh.VerifiedAt = lookup.Metadata.CheckedAt
+	embeddingDisabled := lookup.Metadata.Unavailable || (err == nil && providerItem.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding)
 	if err != nil || embeddingDisabled {
 		var quotaError internalerror.ErrProviderQuotaExceeded
 		if errors.As(err, &quotaError) {

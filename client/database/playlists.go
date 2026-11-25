@@ -630,7 +630,7 @@ func (r *playlistItemMetadataExpiryRow) toPlaylistItemMetadataExpiry() (*vibe.Pl
 func (c *Client) prepareSchedulePlaylistItemMetadataRefreshStmt() error {
 	stmt, err := c.DB.Prepare(`
 		UPDATE playlist_items
-		SET metadata_refresh_after = LEAST(metadata_refresh_after, NOW())
+		SET metadata_refresh_after = LEAST(metadata_refresh_after, metadata_updated_at, NOW())
 		WHERE room_id = $1 AND id = $2
 	`)
 	if err != nil {
@@ -655,7 +655,7 @@ func (c *Client) SchedulePlaylistItemMetadataRefresh(ctx context.Context, roomID
 func (c *Client) prepareClaimPlaylistItemMetadataRefreshStmt() error {
 	stmt, err := c.DB.Prepare(`
 		WITH stale_playlist_item_q AS (
-			SELECT a.id
+			SELECT a.id, a.metadata_refresh_after <= a.metadata_updated_at AS force
 			FROM playlist_items a
 			WHERE a.source_type = $1
 			AND a.metadata_refresh_after <= NOW()
@@ -667,7 +667,7 @@ func (c *Client) prepareClaimPlaylistItemMetadataRefreshStmt() error {
 		SET metadata_refresh_after = NOW() + MAKE_INTERVAL(secs => $2)
 		FROM stale_playlist_item_q b
 		WHERE a.id = b.id
-		RETURNING a.id, a.room_id, a.source_id
+		RETURNING a.id, a.room_id, a.source_id, b.force
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing ClaimPlaylistItemMetadataRefreshStatement: %w", err)
@@ -726,6 +726,7 @@ type playlistItemMetadataRefreshRow struct {
 	PlaylistItemID sql.NullString
 	RoomID         sql.NullString
 	SourceID       sql.NullString
+	Force          bool
 }
 
 func (r *playlistItemMetadataRefreshRow) scan(row *sql.Row) error {
@@ -733,6 +734,7 @@ func (r *playlistItemMetadataRefreshRow) scan(row *sql.Row) error {
 		&r.PlaylistItemID,
 		&r.RoomID,
 		&r.SourceID,
+		&r.Force,
 	)
 	if err != nil {
 		return fmt.Errorf("error scanning playlist item metadata refresh in scan: %w", err)
@@ -746,6 +748,7 @@ func (r *playlistItemMetadataRefreshRow) toPlaylistItemMetadataRefresh() (*vibe.
 		PlaylistItemID: r.PlaylistItemID.String,
 		RoomID:         r.RoomID.String,
 		SourceID:       r.SourceID.String,
+		Force:          r.Force,
 	}, nil
 }
 
@@ -758,8 +761,8 @@ func (c *Client) prepareRefreshPlaylistItemMetadataStmt() error {
 			duration = $5,
 			provider_url = $6,
 			playback_restriction = $7,
-			metadata_updated_at = NOW(),
-			metadata_refresh_after = NOW() + MAKE_INTERVAL(secs => $8)
+			metadata_updated_at = $9,
+			metadata_refresh_after = $9::timestamptz + MAKE_INTERVAL(secs => $8)
 		WHERE id = $1
 	`)
 	if err != nil {
@@ -793,6 +796,7 @@ func (c *Client) RefreshPlaylistItemMetadata(
 		item.ProviderURL,
 		item.PlaybackRestriction,
 		int(refreshInterval/time.Second),
+		refresh.VerifiedAt,
 	)
 	if err != nil {
 		return fmt.Errorf("error refreshing playlist item metadata in RefreshPlaylistItemMetadata: %w", err)
