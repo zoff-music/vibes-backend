@@ -11,6 +11,11 @@ import (
 )
 
 type metadataFixture struct {
+	cache         map[string]vibe.ProviderMetadata
+	providerCalls int
+	source        string
+	force         bool
+
 	vibe.PlaylistItemMetadataRefreshStorage
 	vibe.RoomEventBatchV3Notifier
 	item        vibe.ProviderItem
@@ -22,9 +27,10 @@ type metadataFixture struct {
 }
 
 func (f *metadataFixture) ClaimPlaylistItemMetadataRefresh(context.Context, string, time.Duration) (*vibe.PlaylistItemMetadataRefresh, error) {
-	return &vibe.PlaylistItemMetadataRefresh{PlaylistItemID: "item", RoomID: "room", SourceID: "video"}, nil
+	return &vibe.PlaylistItemMetadataRefresh{PlaylistItemID: "item", RoomID: "room", SourceID: f.source, Force: f.force}, nil
 }
 func (f *metadataFixture) GetProviderItem(context.Context, string) (*vibe.ProviderItem, error) {
+	f.providerCalls++
 	if f.providerErr != nil {
 		return nil, fmt.Errorf("error fetching fixture provider: %w", f.providerErr)
 	}
@@ -85,6 +91,64 @@ func TestMetadataRefresh(t *testing.T) {
 			}
 			if tt.removed && (len(f.events) != 2 || f.events[0].Type != vibe.PlaylistItemRemoved || f.events[1].Type != vibe.PlaybackUpdate) {
 				t.Fatalf("missing removal/playback events: %v", f.events)
+			}
+		})
+	}
+}
+
+func (f *metadataFixture) GetOrClaimMetadata(_ context.Context, provider, sourceID string, force bool) (*vibe.ProviderMetadataLookup, error) {
+	if f.cache == nil {
+		f.cache = make(map[string]vibe.ProviderMetadata)
+	}
+	key := provider + ":" + sourceID
+	if force {
+		delete(f.cache, key)
+	}
+	metadata, ok := f.cache[key]
+	if ok {
+		return &vibe.ProviderMetadataLookup{Metadata: metadata}, nil
+	}
+	return &vibe.ProviderMetadataLookup{Token: "claim"}, nil
+}
+func (f *metadataFixture) CompleteMetadata(_ context.Context, provider, sourceID, _ string, metadata vibe.ProviderMetadata, _ time.Duration) (bool, error) {
+	f.cache[provider+":"+sourceID] = metadata
+	return true, nil
+}
+func (f *metadataFixture) ReleaseMetadata(context.Context, string, string, string) error { return nil }
+
+func TestMetadataDeduplication(t *testing.T) {
+	tests := []struct {
+		name        string
+		entries     int
+		unique      int
+		force       bool
+		unavailable bool
+		calls       int
+	}{
+		{name: "200000 entries with 5000 unique videos", entries: 200000, unique: 5000, calls: 5000},
+		{name: "error reports bypass cached result", entries: 2, unique: 1, force: true, calls: 2},
+		{name: "unavailable results remove each duplicate", entries: 3, unique: 1, unavailable: true, calls: 1},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := &metadataFixture{force: tt.force}
+			if tt.unavailable {
+				f.providerErr = internalerror.ErrProviderItemNotFound{Err: fmt.Errorf("error missing")}
+			}
+			h := MetaRefresh{DB: f, Provider: f, Events: f, ProviderName: "youtube"}
+			for i := 0; i < tt.entries; i++ {
+				f.source = fmt.Sprintf("video-%d", i%tt.unique)
+				f.removed = false
+				err := h.Handle(context.Background(), nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if f.removed != tt.unavailable {
+					t.Fatalf("entry %d removal=%v", i, f.removed)
+				}
+			}
+			if f.providerCalls != tt.calls {
+				t.Fatalf("provider calls=%d want=%d", f.providerCalls, tt.calls)
 			}
 		})
 	}

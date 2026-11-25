@@ -68,3 +68,18 @@ vote) makes its metadata refresh due immediately. Stale reports cannot flag the
 next track. Reports request verification; they never directly remove content.
 YouTube metadata confirming embedding is disabled removes the item and publishes
 queue removal and playback updates, as do missing, live, and made-for-kids videos.
+
+Verified metadata results are shared in Redis by `(provider, sourceId)` for five
+days. A single shared lookup lease prevents backend pods from fetching the same
+source concurrently. Duplicate entries reuse that result, including confirmed
+unavailability, while each room still receives its own queue/playback updates.
+A fixture with 200,000 entries and 5,000 unique source IDs verifies 5,000 provider
+calls; the per-entry database and notification work remains.
+
+Cached results retain the original verification time: reading one does not
+extend its freshness or schedule another five days from the cache read. An
+error-triggered skip marks the row due at its last verification time, which the
+worker recognizes as a request to bypass cached metadata. Existing future due
+dates remain untouched. Transient provider failures and quota errors are not
+cached as unavailable content. Redis claim ownership is checked before publishing
+results so an expired worker cannot replace a newer result.
