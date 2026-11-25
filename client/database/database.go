@@ -111,6 +111,8 @@ type Client struct {
 	DeleteExpiredAccessTokensStatement *sql.Stmt
 
 	// Pending OAuth state statements
+	SavePlaylistAuthorizationStatement       *sql.Stmt
+	ConsumePlaylistAuthorizationStatement    *sql.Stmt
 	SavePendingOAuthStateStatement           *sql.Stmt
 	ConsumePendingOAuthStateStatement        *sql.Stmt
 	DeleteExpiredPendingOAuthStatesStatement *sql.Stmt
@@ -314,6 +316,8 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareUpsertAccessTokenStmt,
 		c.prepareGetAccessTokenStmt,
 		c.prepareDeleteExpiredAccessTokensStmt,
+		c.prepareSavePlaylistAuthorizationStmt,
+		c.prepareConsumePlaylistAuthorizationStmt,
 		c.prepareSavePendingOAuthStateStmt,
 		c.prepareConsumePendingOAuthStateStmt,
 		c.prepareDeleteExpiredPendingOAuthStatesStmt,
@@ -422,6 +426,8 @@ func (c *Client) Close() error {
 		c.UpsertAccessTokenStatement,
 		c.GetAccessTokenStatement,
 		c.DeleteExpiredAccessTokensStatement,
+		c.SavePlaylistAuthorizationStatement,
+		c.ConsumePlaylistAuthorizationStatement,
 		c.SavePendingOAuthStateStatement,
 		c.ConsumePendingOAuthStateStatement,
 		c.DeleteExpiredPendingOAuthStatesStatement,

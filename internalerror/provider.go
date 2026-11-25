@@ -72,3 +72,7 @@ func (e ErrLiveVideo) Error() string {
 func (e ErrLiveVideo) Unwrap() error {
 	return e.Err
 }
+
+type ErrPlaylistAccess struct{}
+
+func (ErrPlaylistAccess) Error() string { return "error accessing provider playlist" }

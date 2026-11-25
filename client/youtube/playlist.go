@@ -22,6 +22,7 @@ func (c *Client) GetProviderPlaylist(
 	ctx context.Context,
 	id string,
 	roomType vibe.RoomType,
+	accessToken string,
 ) (*vibe.ProviderPlaylist, error) {
 	span, ctx := tracing.StartSpanFromContext(ctx, "GetProviderPlaylist")
 	defer span.End()
@@ -39,6 +40,10 @@ func (c *Client) GetProviderPlaylist(
 		)
 	}
 
+	headers := make(map[string]string)
+	if accessToken != "" {
+		headers["Authorization"] = "Bearer " + accessToken
+	}
 	videoIDs := make([]string, 0)
 	seenVideoIDs := make(map[string]bool)
 	seenPageTokens := make(map[string]bool)
@@ -62,9 +67,22 @@ func (c *Client) GetProviderPlaylist(
 		responseBody, err := c.requestPlaylistPage(ctx, client.HTTPRequestData{
 			Method:  http.MethodGet,
 			URL:     fmt.Sprintf("%s/playlistItems", c.Endpoint),
+			Headers: headers,
 			Payload: &params,
 		})
 		if err != nil {
+			var status internalerror.HTTPStatusCodeError
+			if errors.As(err, &status) && (status.StatusCode == http.StatusForbidden || status.StatusCode == http.StatusNotFound) {
+				var body searchErrorResponse
+				decodeErr := json.Unmarshal(status.ResponseBody, &body)
+				if decodeErr == nil {
+					for _, reason := range body.Error.Errors {
+						if reason.Reason == "playlistItemsNotAccessible" || reason.Reason == "playlistNotFound" || reason.Reason == "playlistForbidden" {
+							return nil, internalerror.ErrPlaylistAccess{}
+						}
+					}
+				}
+			}
 			return nil, fmt.Errorf(
 				"error requesting youtube playlist items in GetProviderPlaylist: %w",
 				err,

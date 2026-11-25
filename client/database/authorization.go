@@ -247,7 +247,10 @@ func (c *Client) DeleteExpiredAuthTokens(ctx context.Context) (int, error) {
 
 func (c *Client) prepareDeleteExpiredAccessTokensStmt() error {
 	stmt, err := c.DB.Prepare(`
-		DELETE FROM access_tokens WHERE refresh_expires_at <= CURRENT_TIMESTAMP
+		WITH expired_playlist_authorizations_q AS (
+            DELETE FROM playlist_authorizations WHERE expires_at <= CURRENT_TIMESTAMP
+        )
+        DELETE FROM access_tokens WHERE refresh_expires_at <= CURRENT_TIMESTAMP
 	`)
 	if err != nil {
 		return fmt.Errorf("error preparing DeleteExpiredAccessTokensStatement: %w", err)
@@ -459,5 +462,58 @@ func (c *Client) ClaimAndGetExpiredTokenForRefresh(ctx context.Context, provider
 		return nil, fmt.Errorf("error mapping token: %w", err)
 	}
 
+	return token, nil
+}
+
+func (c *Client) prepareSavePlaylistAuthorizationStmt() error {
+	stmt, err := c.DB.Prepare(`
+ INSERT INTO playlist_authorizations (code_hash, source_hash, access_token, expires_at)
+ VALUES ($1, $2, $3, $4)
+ `)
+	if err != nil {
+		return fmt.Errorf("error preparing SavePlaylistAuthorizationStatement: %w", err)
+	}
+	c.SavePlaylistAuthorizationStatement = stmt
+	return nil
+}
+
+func (c *Client) SavePlaylistAuthorization(ctx context.Context, codeHash, sourceHash, accessToken string, expiresAt time.Time) error {
+	span, ctx := tracing.StartSpanFromContext(ctx, "SavePlaylistAuthorization")
+	defer span.End()
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	_, err := c.SavePlaylistAuthorizationStatement.ExecContext(cctx, codeHash, sourceHash, accessToken, expiresAt)
+	if err != nil {
+		return fmt.Errorf("error saving playlist authorization: %w", err)
+	}
+	return nil
+}
+
+func (c *Client) prepareConsumePlaylistAuthorizationStmt() error {
+	stmt, err := c.DB.Prepare(`
+ DELETE FROM playlist_authorizations
+ WHERE code_hash = $1 AND source_hash = $2 AND expires_at > CURRENT_TIMESTAMP
+ RETURNING access_token
+ `)
+	if err != nil {
+		return fmt.Errorf("error preparing ConsumePlaylistAuthorizationStatement: %w", err)
+	}
+	c.ConsumePlaylistAuthorizationStatement = stmt
+	return nil
+}
+
+func (c *Client) ConsumePlaylistAuthorization(ctx context.Context, codeHash, sourceHash string) (string, error) {
+	span, ctx := tracing.StartSpanFromContext(ctx, "ConsumePlaylistAuthorization")
+	defer span.End()
+	cctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+	var token string
+	err := c.ConsumePlaylistAuthorizationStatement.QueryRowContext(cctx, codeHash, sourceHash).Scan(&token)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", fmt.Errorf("error consuming playlist authorization: %w", err)
+	}
 	return token, nil
 }

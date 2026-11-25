@@ -293,6 +293,7 @@ func ResolveSoundCloudItemV2(
 //	@Router		/api/v2/youtube/playlists/{id} [get]
 func GetYouTubePlaylistV2(
 	fetcher vibe.ProviderPlaylistFetcher,
+	authorizations vibe.PlaylistAuthorizationConsumer,
 	cache vibe.CachedProviderItemsCreator,
 	provider string,
 ) http.HandlerFunc {
@@ -335,8 +336,66 @@ func GetYouTubePlaylistV2(
 			return
 		}
 
-		playlist, err := fetcher.GetProviderPlaylist(ctx, id, roomType)
+		w.Header().Set("Cache-Control", "private, no-store")
+		accessToken := ""
+		receipt := r.Header.Get("X-Playlist-Code")
+		if receipt != "" {
+			token, consumeErr := authorizations.ConsumePlaylistAuthorization(ctx, playlistHash(receipt), playlistHash(provider+"."+id))
+			if consumeErr != nil {
+				handleError(
+					w,
+					fmt.Errorf("error consuming import code: %w", consumeErr),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+			if token == "" {
+				handleError(
+					w,
+					internalerror.ErrorCodeWrapper{
+						Err:        fmt.Errorf("error invalid or expired import code"),
+						StatusCode: http.StatusForbidden,
+						ResponseBody: internalerror.ErrorCodeResponseBody{
+							Error:     "playlist_authentication_required",
+							Message:   "The import code has expired or belongs to another playlist. Authenticate again to import it.",
+							Propagate: true,
+						},
+					},
+					http.StatusForbidden,
+					false,
+				)
+				return
+			}
+			accessToken = token
+		}
+		playlist, err := fetcher.GetProviderPlaylist(ctx, id, roomType, accessToken)
 		if err != nil {
+			var accessErr internalerror.ErrPlaylistAccess
+			if errors.As(err, &accessErr) {
+				message := "This list seems to be private, authenticate to import it"
+				code := "playlist_authentication_required"
+				if accessToken != "" {
+					message = "This account cannot access the playlist. Check the link and the account you used."
+					code = "playlist_access_denied"
+				}
+				handleError(
+					w,
+					internalerror.ErrorCodeWrapper{
+						Err:        err,
+						StatusCode: http.StatusForbidden,
+						ResponseBody: internalerror.ErrorCodeResponseBody{
+							Error:     code,
+							Message:   message,
+							Propagate: true,
+						},
+					},
+					http.StatusForbidden,
+					false,
+				)
+				return
+			}
+
 			handleError(
 				w,
 				fmt.Errorf("error getting provider playlist: %w", err),
@@ -371,6 +430,8 @@ func GetYouTubePlaylistV2(
 // ResolveSoundCloudPlaylistV2 handles SoundCloud playlist URL lookups.
 //
 //	@Summary	Resolve a SoundCloud playlist URL
+//	@Param X-Playlist-Code header string false "Single-use private playlist import code"
+//	@Failure 403 {object} vibe.ErrorResponse
 //	@Tags		providers
 //	@Produce	json
 //	@Param		url	query		string	true	"SoundCloud playlist URL"
@@ -380,6 +441,7 @@ func GetYouTubePlaylistV2(
 //	@Router		/api/v2/soundcloud/playlists [get]
 func ResolveSoundCloudPlaylistV2(
 	resolver vibe.ProviderPlaylistResolver,
+	authorizations vibe.PlaylistAuthorizationConsumer,
 	cache vibe.CachedProviderItemsCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
@@ -395,8 +457,66 @@ func ResolveSoundCloudPlaylistV2(
 			return
 		}
 
-		playlist, err := resolver.ResolveProviderPlaylist(ctx, providerURL)
+		w.Header().Set("Cache-Control", "private, no-store")
+		accessToken := ""
+		receipt := r.Header.Get("X-Playlist-Code")
+		if receipt != "" {
+			token, consumeErr := authorizations.ConsumePlaylistAuthorization(ctx, playlistHash(receipt), playlistHash(vibe.SourceTypeSoundCloud+"."+providerURL))
+			if consumeErr != nil {
+				handleError(
+					w,
+					fmt.Errorf("error consuming import code: %w", consumeErr),
+					http.StatusInternalServerError,
+					true,
+				)
+				return
+			}
+			if token == "" {
+				handleError(
+					w,
+					internalerror.ErrorCodeWrapper{
+						Err:        fmt.Errorf("error invalid or expired import code"),
+						StatusCode: http.StatusForbidden,
+						ResponseBody: internalerror.ErrorCodeResponseBody{
+							Error:     "playlist_authentication_required",
+							Message:   "The import code has expired or belongs to another playlist. Authenticate again to import it.",
+							Propagate: true,
+						},
+					},
+					http.StatusForbidden,
+					false,
+				)
+				return
+			}
+			accessToken = token
+		}
+		playlist, err := resolver.ResolveProviderPlaylist(ctx, providerURL, accessToken)
 		if err != nil {
+			var accessErr internalerror.ErrPlaylistAccess
+			if errors.As(err, &accessErr) {
+				message := "This list seems to be private, authenticate to import it"
+				code := "playlist_authentication_required"
+				if accessToken != "" {
+					message = "This account cannot access the playlist. Check the link and the account you used."
+					code = "playlist_access_denied"
+				}
+				handleError(
+					w,
+					internalerror.ErrorCodeWrapper{
+						Err:        err,
+						StatusCode: http.StatusForbidden,
+						ResponseBody: internalerror.ErrorCodeResponseBody{
+							Error:     code,
+							Message:   message,
+							Propagate: true,
+						},
+					},
+					http.StatusForbidden,
+					false,
+				)
+				return
+			}
+
 			var invalidPlaylist internalerror.ErrProviderPlaylistInvalid
 			if errors.As(err, &invalidPlaylist) {
 				handleError(

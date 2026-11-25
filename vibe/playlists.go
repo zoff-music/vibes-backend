@@ -280,11 +280,11 @@ func (p *ProviderPlaylist) IsEmpty() bool {
 }
 
 type ProviderPlaylistFetcher interface {
-	GetProviderPlaylist(ctx context.Context, id string, roomType RoomType) (*ProviderPlaylist, error)
+	GetProviderPlaylist(ctx context.Context, id string, roomType RoomType, accessToken string) (*ProviderPlaylist, error)
 }
 
 type ProviderPlaylistResolver interface {
-	ResolveProviderPlaylist(ctx context.Context, providerURL string) (*ProviderPlaylist, error)
+	ResolveProviderPlaylist(ctx context.Context, providerURL string, accessToken string) (*ProviderPlaylist, error)
 }
 
 func ResolveSoundCloudTrackURL(value string) (string, error) {
