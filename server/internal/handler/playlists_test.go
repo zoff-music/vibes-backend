@@ -27,7 +27,7 @@ type metadataFixture struct {
 }
 
 func (f *metadataFixture) ClaimPlaylistItemMetadataRefresh(context.Context, string, time.Duration) (*vibe.PlaylistItemMetadataRefresh, error) {
-	return &vibe.PlaylistItemMetadataRefresh{PlaylistItemID: "item", RoomID: "room", SourceID: f.source, Force: f.force}, nil
+	return &vibe.PlaylistItemMetadataRefresh{Provider: "youtube", SourceID: f.source, Force: f.force}, nil
 }
 func (f *metadataFixture) GetProviderItem(context.Context, string) (*vibe.ProviderItem, error) {
 	f.providerCalls++
@@ -36,20 +36,19 @@ func (f *metadataFixture) GetProviderItem(context.Context, string) (*vibe.Provid
 	}
 	return &f.item, nil
 }
-func (f *metadataFixture) RemovePlaylistItem(_ context.Context, roomID, itemID string) error {
-	if roomID != "room" || itemID != "item" {
-		return fmt.Errorf("error removing unexpected fixture item")
+func (f *metadataFixture) ApplyProviderMetadata(_ context.Context, _ vibe.PlaylistItemMetadataRefresh, metadata vibe.ProviderMetadata, interval time.Duration) (*vibe.MetadataAffectedRooms, error) {
+	f.removed = metadata.Unavailable || metadata.Item.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding
+	if !f.removed {
+		f.interval = interval
 	}
-	f.removed = true
-	return nil
+	return &vibe.MetadataAffectedRooms{RoomIDs: []string{"room", "second-room"}}, nil
 }
-func (f *metadataFixture) RefreshPlaylistItemMetadata(_ context.Context, _ vibe.PlaylistItemMetadataRefresh, _ vibe.ProviderItem, interval time.Duration) error {
-	f.interval = interval
-	return nil
-}
-func (f *metadataFixture) DeferPlaylistItemMetadataRefresh(_ context.Context, _ string, interval time.Duration) error {
+func (f *metadataFixture) DeferPlaylistItemMetadataRefresh(_ context.Context, _ vibe.PlaylistItemMetadataRefresh, interval time.Duration) error {
 	f.deferred = interval
 	return nil
+}
+func (f *metadataFixture) GetPlaylistItems(context.Context, string) ([]vibe.PlaylistItem, error) {
+	return []vibe.PlaylistItem{}, nil
 }
 func (f *metadataFixture) GetPlaybackStateV2(context.Context, string) (*vibe.PlaybackStateV2, error) {
 	return &vibe.PlaybackStateV2{}, nil
@@ -89,7 +88,7 @@ func TestMetadataRefresh(t *testing.T) {
 			if f.removed != tt.removed || f.interval != tt.interval || f.deferred != tt.deferred {
 				t.Fatalf("removed=%v interval=%v deferred=%v", f.removed, f.interval, f.deferred)
 			}
-			if tt.removed && (len(f.events) != 2 || f.events[0].Type != vibe.PlaylistItemRemoved || f.events[1].Type != vibe.PlaybackUpdate) {
+			if tt.removed && (len(f.events) != 2 || f.events[0].Type != vibe.PlaylistItemsUpdate || f.events[1].Type != vibe.PlaybackUpdate) {
 				t.Fatalf("missing removal/playback events: %v", f.events)
 			}
 		})
@@ -125,7 +124,7 @@ func TestMetadataDeduplication(t *testing.T) {
 		unavailable bool
 		calls       int
 	}{
-		{name: "200000 entries with 5000 unique videos", entries: 200000, unique: 5000, calls: 5000},
+		{name: "cached sources avoid provider requests", entries: 10000, unique: 5000, calls: 5000},
 		{name: "error reports bypass cached result", entries: 2, unique: 1, force: true, calls: 2},
 		{name: "unavailable results remove each duplicate", entries: 3, unique: 1, unavailable: true, calls: 1},
 	}

@@ -94,12 +94,16 @@ type ProviderMetadataCache interface {
 	ReleaseMetadata(ctx context.Context, provider, sourceID, token string) error
 }
 
+// PlaylistItemMetadataRefresh leases one provider resource across all queues.
 type PlaylistItemMetadataRefresh struct {
-	Force          bool
-	VerifiedAt     time.Time
-	PlaylistItemID string
-	RoomID         string
-	SourceID       string
+	Force      bool
+	LeaseUntil time.Time
+	Provider   string
+	SourceID   string
+}
+
+type MetadataAffectedRooms struct {
+	RoomIDs []string
 }
 
 type PlaylistItemMetadataExpiry struct {
@@ -118,19 +122,14 @@ type PlaylistItemMetadataRefreshStorage interface {
 		provider string,
 		retryAfter time.Duration,
 	) (*PlaylistItemMetadataRefresh, error)
-	RefreshPlaylistItemMetadata(
+	ApplyProviderMetadata(
 		ctx context.Context,
 		refresh PlaylistItemMetadataRefresh,
-		item ProviderItem,
+		metadata ProviderMetadata,
 		refreshInterval time.Duration,
-	) error
-	DeferPlaylistItemMetadataRefresh(
-		ctx context.Context,
-		playlistItemID string,
-		retryAfter time.Duration,
-	) error
-	PlaylistItemRemover
-	PlaylistItemPositionFetcher
+	) (*MetadataAffectedRooms, error)
+	DeferPlaylistItemMetadataRefresh(ctx context.Context, refresh PlaylistItemMetadataRefresh, retryAfter time.Duration) error
+	PlaylistItemsFetcher
 	PlaybackV2Fetcher
 }
 

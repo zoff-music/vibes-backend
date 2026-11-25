@@ -63,12 +63,11 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 			}
 		}
 	}
-	refresh.VerifiedAt = lookup.Metadata.CheckedAt
 	embeddingDisabled := lookup.Metadata.Unavailable || (err == nil && providerItem.PlaybackRestriction == vibe.PlaybackRestrictionEmbedding)
 	if err != nil || embeddingDisabled {
 		var quotaError internalerror.ErrProviderQuotaExceeded
 		if errors.As(err, &quotaError) {
-			err = h.DB.DeferPlaylistItemMetadataRefresh(ctx, refresh.PlaylistItemID, metadataQuotaRetry)
+			err = h.DB.DeferPlaylistItemMetadataRefresh(ctx, *refresh, metadataQuotaRetry)
 			if err != nil {
 				return fmt.Errorf(
 					"error deferring %s metadata refresh in MetaRefresh.Handle: %w",
@@ -96,108 +95,37 @@ func (h *MetaRefresh) Handle(ctx context.Context, _ []byte) error {
 				err,
 			)
 		}
+	}
 
-		err = h.DB.RemovePlaylistItem(ctx, refresh.RoomID, refresh.PlaylistItemID)
+	affected, err := h.DB.ApplyProviderMetadata(ctx, *refresh, lookup.Metadata, metadataRefreshInterval)
+	if err != nil {
+		return fmt.Errorf("error applying verified source metadata: %w", err)
+	}
+	for _, roomID := range affected.RoomIDs {
+		items, err := h.DB.GetPlaylistItems(ctx, roomID)
 		if err != nil {
-			return fmt.Errorf(
-				"error removing unavailable %s playlist item in MetaRefresh.Handle: %w",
-				h.ProviderName,
-				err,
-			)
+			return fmt.Errorf("error fetching refreshed queue: %w", err)
 		}
-
-		payload, err := json.Marshal(vibe.PlaylistItemIDUpdate{
-			ID: refresh.PlaylistItemID,
-		})
+		payload, err := json.Marshal(items)
 		if err != nil {
-			return fmt.Errorf(
-				"error marshaling compact unavailable %s playlist item event in MetaRefresh.Handle: %w",
-				h.ProviderName,
-				err,
-			)
+			return fmt.Errorf("error marshaling refreshed queue: %w", err)
 		}
-
-		playback, err := h.DB.GetPlaybackStateV2(ctx, refresh.RoomID)
+		playback, err := h.DB.GetPlaybackStateV2(ctx, roomID)
 		if err != nil {
-			return fmt.Errorf("error fetching playback after metadata removal in MetaRefresh.Handle: %w", err)
+			return fmt.Errorf("error fetching refreshed playback: %w", err)
 		}
-
 		playbackPayload, err := json.Marshal(playback)
 		if err != nil {
-			return fmt.Errorf("error marshaling playback after metadata removal in MetaRefresh.Handle: %w", err)
+			return fmt.Errorf("error marshaling refreshed playback: %w", err)
 		}
-
-		err = h.Events.NotifyRoomUpdatesV3(ctx, refresh.RoomID, []vibe.RoomEventV3{
-			{
-				Type:    vibe.PlaylistItemRemoved,
-				Payload: payload,
-			},
-			{
-				Type:    vibe.PlaybackUpdate,
-				Payload: playbackPayload,
-			},
+		err = h.Events.NotifyRoomUpdatesV3(ctx, roomID, []vibe.RoomEventV3{
+			{Type: vibe.PlaylistItemsUpdate, Payload: payload, Compact: &vibe.RoomEventV3Payload{Type: vibe.PlaylistItemsSnapshot, Payload: payload}},
+			{Type: vibe.PlaybackUpdate, Payload: playbackPayload},
 		})
 		if err != nil {
-			return fmt.Errorf("error notifying playback after metadata removal in MetaRefresh.Handle: %w", err)
+			return fmt.Errorf("error notifying source metadata refresh: %w", err)
 		}
-
-		return nil
 	}
-
-	err = h.DB.RefreshPlaylistItemMetadata(ctx, *refresh, *providerItem, metadataRefreshInterval)
-	if err != nil {
-		return fmt.Errorf(
-			"error refreshing %s metadata in MetaRefresh.Handle: %w",
-			h.ProviderName,
-			err,
-		)
-	}
-
-	item, err := h.DB.GetPlaylistItemPosition(
-		ctx,
-		refresh.RoomID,
-		refresh.PlaylistItemID,
-	)
-	if err != nil {
-		return fmt.Errorf("error fetching refreshed queue in MetaRefresh.Handle: %w", err)
-	}
-
-	events := make([]vibe.RoomEventV3, 0, 2)
-	if !item.IsEmpty() {
-		payload, err := json.Marshal(item)
-		if err != nil {
-			return fmt.Errorf("error marshaling refreshed playlist item in MetaRefresh.Handle: %w", err)
-		}
-
-		events = append(events, vibe.RoomEventV3{
-			Type:    vibe.PlaylistItemUpdated,
-			Payload: payload,
-		})
-	}
-
-	playback, err := h.DB.GetPlaybackStateV2(ctx, refresh.RoomID)
-	if err != nil {
-		return fmt.Errorf("error fetching refreshed playback in MetaRefresh.Handle: %w", err)
-	}
-
-	if playback.CurrentPlaylistItem != nil && playback.CurrentPlaylistItem.ID == refresh.PlaylistItemID {
-		payload, err := json.Marshal(playback)
-		if err != nil {
-			return fmt.Errorf("error marshaling refreshed playback in MetaRefresh.Handle: %w", err)
-		}
-
-		events = append(events, vibe.RoomEventV3{Type: vibe.PlaybackUpdate, Payload: payload})
-	}
-
-	if len(events) == 0 {
-		return nil
-	}
-
-	err = h.Events.NotifyRoomUpdatesV3(ctx, refresh.RoomID, events)
-	if err != nil {
-		return fmt.Errorf("error notifying metadata refresh in MetaRefresh.Handle: %w", err)
-	}
-
 	return nil
 }
 
