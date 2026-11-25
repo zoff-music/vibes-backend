@@ -913,6 +913,7 @@ func UpdateRoomSettingsV2(
 //	@Failure	401	{object}	vibe.ErrorResponse
 //	@Failure	403	{object}	vibe.ErrorResponse
 //	@Failure	500	{object}	vibe.ErrorResponse
+//	@Param		request	body	vibe.SkipPlaylistItemRequest	false	"Optional provider playback error"
 //	@Router		/api/v2/rooms/{id}/skips [post]
 func SkipPlaylistItem(
 	db vibe.RoomV2Skipper,
@@ -938,6 +939,30 @@ func SkipPlaylistItem(
 					StatusCode: http.StatusUnauthorized,
 				},
 				http.StatusUnauthorized,
+				false,
+			)
+			return
+		}
+
+		var req vibe.SkipPlaylistItemRequest
+		requestBody, decodeErr := io.ReadAll(http.MaxBytesReader(w, r.Body, 4096))
+		if decodeErr == nil && len(requestBody) > 0 {
+			decodeErr = jsonv2.Unmarshal(requestBody, &req)
+		}
+		if decodeErr != nil {
+			handleError(
+				w,
+				fmt.Errorf("error decoding skip request: %w", decodeErr),
+				http.StatusBadRequest,
+				false,
+			)
+			return
+		}
+		if len(req.ErrorCode) > 128 || (req.ErrorCode != "" && req.PlaylistItemID == "") {
+			handleError(
+				w,
+				fmt.Errorf("error validating skip request: errorCode requires playlistItemId and must be at most 128 bytes"),
+				http.StatusBadRequest,
 				false,
 			)
 			return
@@ -999,6 +1024,17 @@ func SkipPlaylistItem(
 				true,
 			)
 			return
+		}
+
+		reportedItemID := result.PreviousPlaylistItemID
+		if !result.Skipped && result.Playback != nil && result.Playback.CurrentPlaylistItem != nil {
+			reportedItemID = result.Playback.CurrentPlaylistItem.ID
+		}
+		if req.ErrorCode != "" && req.PlaylistItemID == reportedItemID {
+			refreshErr := db.SchedulePlaylistItemMetadataRefresh(context.WithoutCancel(ctx), roomID, reportedItemID)
+			if refreshErr != nil {
+				log.Printf("error scheduling metadata after successful skip: %v", refreshErr)
+			}
 		}
 
 		if result.Playback != nil {

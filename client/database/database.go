@@ -61,6 +61,7 @@ type Client struct {
 	ClearVotesPlaylistItemStatement                *sql.Stmt
 	UpdatePlaylistItemAddedAtStatement             *sql.Stmt
 	ClaimPlaylistItemMetadataRefreshStatement      *sql.Stmt
+	SchedulePlaylistItemMetadataRefreshStatement   *sql.Stmt
 	RefreshPlaylistItemMetadataStatement           *sql.Stmt
 	DeferPlaylistItemMetadataRefreshStatement      *sql.Stmt
 	ExpirePlaylistItemMetadataStatement            *sql.Stmt
@@ -272,6 +273,7 @@ func (c *Client) Init(ctx context.Context, cfg *config.Config) error {
 		c.prepareClearVotesPlaylistItemStmt,
 		c.prepareUpdatePlaylistItemAddedAtStmt,
 		c.prepareClaimPlaylistItemMetadataRefreshStmt,
+		c.prepareSchedulePlaylistItemMetadataRefreshStmt,
 		c.prepareRefreshPlaylistItemMetadataStmt,
 		c.prepareDeferPlaylistItemMetadataRefreshStmt,
 		c.prepareExpirePlaylistItemMetadataStmt,
@@ -387,6 +389,7 @@ func (c *Client) Close() error {
 		c.UpdatePlaylistItemAddedAtStatement,
 		c.UpdatePlaylistItemPlaybackRestrictionStatement,
 		c.ClaimPlaylistItemMetadataRefreshStatement,
+		c.SchedulePlaylistItemMetadataRefreshStatement,
 		c.RefreshPlaylistItemMetadataStatement,
 		c.DeferPlaylistItemMetadataRefreshStatement,
 		c.ExpirePlaylistItemMetadataStatement,

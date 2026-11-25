@@ -11,6 +11,11 @@ func (r *RoomV2) RequiresSkipVote(userID string) bool {
 	return r.Settings.DemocraticSkip && (r.Settings.SkipAllowed || !r.IsAdmin)
 }
 
+type SkipPlaylistItemRequest struct {
+	PlaylistItemID string `json:"playlistItemId,omitempty"`
+	ErrorCode      string `json:"errorCode,omitempty"`
+}
+
 type SkipPlaylistItemResult struct {
 	Action                 string           `json:"action"`
 	Skipped                bool             `json:"skipped"`
@@ -24,6 +29,7 @@ type SkipPlaylistItemResult struct {
 }
 
 type RoomV2Skipper interface {
+	SchedulePlaylistItemMetadataRefresh(ctx context.Context, roomID, playlistItemID string) error
 	RoomV2Fetcher
 	SessionProfileFetcherCreator
 	PlaybackV2Fetcher
