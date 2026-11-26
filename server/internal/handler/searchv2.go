@@ -177,7 +177,7 @@ func SearchYouTubeV2(
 							ResponseBody: internalerror.ErrorCodeResponseBody{
 								Namespace: "vibes-backend",
 								Error:     "youtube_search_quota_exhausted",
-								Message:   vibe.RoomGenerationYouTubeQuotaFailure,
+								Message:   vibe.RoomGenerationYouTubeQuotaFailure + " You can still try pasting a YouTube video or playlist link.",
 								Propagate: true,
 							},
 							StatusCode: http.StatusServiceUnavailable,

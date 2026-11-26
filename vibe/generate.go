@@ -285,6 +285,8 @@ func GeneratedWatchSystemInstruction(itemCount int) string {
 // responses and SSE snapshots. Only the known user-facing reasons are retained.
 func PublicGenerationError(reason string) string {
 	switch reason {
+	case "YouTube search has reached its quota. Please try again later.":
+		return RoomGenerationYouTubeQuotaFailure
 	case "", RoomGenerationFailure, RoomGenerationYouTubeQuotaFailure:
 		return reason
 	default:
@@ -310,7 +312,7 @@ const RoomGenerationFailed = "failed"
 
 const RoomGenerationFailure = "Could not finish generating this playlist. You can try again."
 
-const RoomGenerationYouTubeQuotaFailure = "YouTube search has reached its quota. Please try again later."
+const RoomGenerationYouTubeQuotaFailure = "Zoff has reached its daily YouTube search limit. Search resets at midnight Pacific time."
 
 const generatedPlaylistSystemInstruction = `
 You generate playlists from a listener's natural-language request.
