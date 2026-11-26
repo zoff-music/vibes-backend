@@ -34,6 +34,7 @@ func SearchYouTubeV2(
 	db vibe.RoomSearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
 		ctx := r.Context()
 		query := vibe.NormalizeSearch(r.URL.Query().Get("q"))
 		vars := mux.Vars(r)
@@ -260,6 +261,7 @@ func SearchSoundCloudV2(
 	db vibe.RoomSearchUsageCreator,
 ) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "no-store")
 		ctx := r.Context()
 		query := vibe.NormalizeSearch(r.URL.Query().Get("q"))
 		vars := mux.Vars(r)
