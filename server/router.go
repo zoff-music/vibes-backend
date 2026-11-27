@@ -189,7 +189,7 @@ func (s *Server) addRateLimitMiddleware(routers ...*mux.Router) {
 			"AddPlaylistV2":               {Bucket: "AddPlaylist", Rate: time.Minute, Limit: 6},
 			"RemoveItemV3":                {Bucket: "RemoveSong", Rate: time.Minute, Limit: 600},
 			"VoteItemV3":                  {Bucket: "VoteSong", Rate: time.Minute, Limit: 600},
-			"CreateMessages":              {Rate: time.Second, Limit: 1},
+			"CreateMessages":              {Rate: time.Second, Limit: 3},
 			"Messages":                    {Rate: time.Minute, Limit: 300},
 			"RoomEventsV3":                {Bucket: "RoomEventsV2", Rate: time.Minute, Limit: 300},
 			"GetYouTubeItemV2":            {Bucket: "GetMusicTrack", Rate: time.Minute, Limit: 120},
